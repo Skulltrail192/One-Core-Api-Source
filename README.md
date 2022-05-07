@@ -6,7 +6,7 @@ Here you can found source code of One-Core-API project. It's is based on reactos
 
 Now we will describe folders present on this repository:
 
-Cointains all reactos code and addition of wrappers, new dlls present in Windows Vista, drivers and API-SETs. 
+Contains all ReactOS code and addition of wrappers, new dlls present in Windows Vista, drivers and API-SETs. 
 
 You can run several programs with One-Core-API, like:
 
