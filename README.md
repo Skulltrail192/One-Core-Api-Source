@@ -2,9 +2,9 @@
 
 Welcome to One-Core-API!
 
-Here you can found source code of One-Core-API project. It's is based on reactos source and use reactos's build enviroment and is compatible with Windows Server 2003 SP2, Windows XP SP3 and Windows XP x64 SP2. You can do amazing things installing binaries.
+Here you can found source code of One-Core-API project. It's is based on ReactOS source and use ReactOS's build environment and is compatible with Windows Server 2003 SP2, Windows XP SP3 and Windows XP x64 SP2. You can do amazing things installing binaries.
 
-Now we will describe folders present on this repository:
+Now, we will describe folders present on this repository:
 
 Contains all ReactOS code and addition of wrappers, new dlls present in Windows Vista, drivers and API-SETs. 
 
