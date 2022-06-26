@@ -10,6 +10,8 @@ This repository contains all code from React OS, as well as some additional wrap
 
 ### List of known compatible software.
 
+Note: This list only represents a list of known working software. If your application is not listed here, this does not mean that it does not work, it simply means that it has not been tested by the maintainers.
+
 * Web Storm 2018
 * Intelliji 2018 (other versions might work)
 * Filezilla (latest)
@@ -32,7 +34,7 @@ Several other applications have been tested.
 
 ### Installation order of packages:
 
-1. Case 1 (Kernel Standalone first): Kernel Standalone -> App Compat Installer: you can't install Base installer and other packages side by side with Kernel Standalone installed;
-2: App Compat (only once)
-3: Case Base Installer first Base Installer -> New Installer (Additional Dlls) -> D3d Installer -> API-SET installer -> App Compat -> Kernel Update
-4: AppCompat Base Installer first App Compat -> Base Installer -> New Installer (Additional Dlls) -> D3d Installer -> API-SET installer -> Kernel Update
+* Case 1 (Kernel Standalone first): Kernel Standalone -> App Compat Installer: you can't install Base installer and other packages side by side with Kernel Standalone installed;
+* App Compat (only once)
+* Case Base Installer first Base Installer -> New Installer (Additional Dlls) -> D3d Installer -> API-SET installer -> App Compat -> Kernel Update
+* AppCompat Base Installer first App Compat -> Base Installer -> New Installer (Additional Dlls) -> D3d Installer -> API-SET installer -> Kernel Update
