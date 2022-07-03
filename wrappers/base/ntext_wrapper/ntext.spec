@@ -18,9 +18,9 @@
 @ stdcall CsrFreeCaptureBuffer(ptr)
 @ stdcall CsrGetProcessId()
 @ stdcall CsrIdentifyAlertableThread()
-@ stdcall CsrNewThread()
-@ stdcall CsrProbeForRead(ptr long long)
-@ stdcall CsrProbeForWrite(ptr long long)
+@ stdcall CsrNewThread() ntdll.CsrNewThread
+@ stdcall CsrProbeForRead(ptr long long) ntdll.CsrProbeForRead
+@ stdcall CsrProbeForWrite(ptr long long) ntdll.CsrProbeForWrite
 @ stdcall CsrSetPriorityClass(ptr ptr)
 @ stdcall DbgBreakPoint()
 @ varargs DbgPrint(str)
@@ -44,16 +44,16 @@
 @ stdcall KiUserApcDispatcher(ptr ptr ptr ptr)
 @ stdcall KiUserCallbackDispatcher(ptr ptr long) ; CHECKME
 @ stdcall KiUserExceptionDispatcher(ptr ptr)
-@ stdcall LdrAccessOutOfProcessResource(ptr ptr ptr ptr ptr)
+@ stdcall LdrAccessOutOfProcessResource(ptr ptr ptr ptr ptr) ntdll.LdrAccessOutOfProcessResource
 @ stdcall LdrAccessResource(long ptr ptr ptr)
 @ stdcall LdrAddRefDll(long ptr)
 @ stdcall LdrAlternateResourcesEnabled()
-@ stdcall LdrCreateOutOfProcessImage(long ptr ptr ptr)
-@ stdcall LdrDestroyOutOfProcessImage(ptr)
+@ stdcall LdrCreateOutOfProcessImage(long ptr ptr ptr) ntdll.LdrCreateOutOfProcessImage
+@ stdcall LdrDestroyOutOfProcessImage(ptr) ntdll.LdrDestroyOutOfProcessImage
 @ stdcall LdrDisableThreadCalloutsForDll(long)
 @ stdcall LdrEnumResources(ptr ptr long ptr ptr)
 @ stdcall LdrEnumerateLoadedModules(long ptr long)
-@ stdcall LdrFindCreateProcessManifest(long ptr ptr long ptr) ; 5.1 and 5.2 only
+@ stdcall LdrFindCreateProcessManifest(long ptr ptr long ptr) ntdll.LdrFindCreateProcessManifest
 @ stdcall LdrFindEntryForAddress(ptr ptr)
 @ stdcall LdrFindResourceDirectory_U(long ptr long ptr)
 @ stdcall LdrFindResourceEx_U(long ptr long ptr ptr)
@@ -536,7 +536,7 @@
 @ stdcall RtlEraseUnicodeString(ptr)
 @ stdcall RtlExitUserThread(long)
 @ stdcall RtlExpandEnvironmentStrings_U(ptr ptr ptr ptr)
-@ stdcall RtlExtendHeap(ptr long ptr ptr)
+@ stdcall RtlExtendHeap(ptr long ptr ptr) ntdll.RtlExtendHeap
 @ stdcall -arch=win32 -ret64 RtlExtendedIntegerMultiply(double long)
 @ stdcall -arch=win32 -ret64 RtlExtendedLargeIntegerDivide(double long ptr)
 @ stdcall -arch=win32 -ret64 RtlExtendedMagicDivide(double double long)
@@ -568,7 +568,7 @@
 @ stdcall RtlFreeSid(long)
 @ stdcall RtlFreeThreadActivationContextStack()
 @ stdcall RtlFreeUnicodeString(ptr)
-@ stdcall RtlFreeUserThreadStack(ptr ptr) ; 4.0 to 5.2 only
+@ stdcall RtlFreeUserThreadStack(ptr ptr) ntdll.RtlFreeUserThreadStack
 @ stdcall RtlGUIDFromString(ptr ptr)
 @ stdcall RtlGenerate8dot3Name(ptr ptr long ptr)
 @ stdcall RtlGetAce(ptr long ptr)
@@ -835,7 +835,7 @@
 @ stdcall RtlUpdateTimer(ptr ptr long long)
 @ stdcall RtlUpperChar(long)
 @ stdcall RtlUpperString(ptr ptr)
-@ stdcall RtlUsageHeap(ptr long ptr)
+@ stdcall RtlUsageHeap(ptr long ptr) ntdll.RtlUsageHeap
 @ stdcall RtlValidAcl(ptr)
 @ stdcall RtlValidRelativeSecurityDescriptor(ptr long long)
 @ stdcall RtlValidSecurityDescriptor(ptr)

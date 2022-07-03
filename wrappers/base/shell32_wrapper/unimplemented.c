@@ -21,6 +21,16 @@
  
 WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
+FORCEINLINE HRESULT IPropertyStore_QueryInterface(IPropertyStore* This,REFIID riid,void **ppvObject) {
+    return This->lpVtbl->QueryInterface(This,riid,ppvObject);
+}
+FORCEINLINE ULONG IPropertyStore_AddRef(IPropertyStore* This) {
+    return This->lpVtbl->AddRef(This);
+}
+FORCEINLINE ULONG IPropertyStore_Release(IPropertyStore* This) {
+    return This->lpVtbl->Release(This);
+}
+
 typedef struct _NOTIFYICONIDENTIFIER {
   DWORD cbSize;
   HWND  hWnd;
@@ -54,13 +64,126 @@ typedef struct _ASSOCIATIONELEMENT {
   PCWSTR     pszClass;
 } ASSOCIATIONELEMENT;
 
-HRESULT WINAPI SHGetPropertyStoreForWindow(
+struct window_prop_store
+{
+    IPropertyStore IPropertyStore_iface;
+    LONG           ref;
+};
+
+static inline struct window_prop_store *impl_from_IPropertyStore(IPropertyStore *iface)
+{
+    return CONTAINING_RECORD(iface, struct window_prop_store, IPropertyStore_iface);
+}
+
+static ULONG WINAPI window_prop_store_AddRef(IPropertyStore *iface)
+{
+    struct window_prop_store *store = impl_from_IPropertyStore(iface);
+    LONG ref = InterlockedIncrement(&store->ref);
+    TRACE("returning %ld\n", ref);
+    return ref;
+}
+
+static ULONG WINAPI window_prop_store_Release(IPropertyStore *iface)
+{
+    struct window_prop_store *store = impl_from_IPropertyStore(iface);
+    LONG ref = InterlockedDecrement(&store->ref);
+    if (!ref) heap_free(store);
+    TRACE("returning %ld\n", ref);
+    return ref;
+}
+
+static HRESULT WINAPI window_prop_store_QueryInterface(IPropertyStore *iface, REFIID iid, void **obj)
+{
+    struct window_prop_store *store = impl_from_IPropertyStore(iface);
+    TRACE("%p, %s, %p\n", iface, debugstr_guid(iid), obj);
+
+    if (!obj) return E_POINTER;
+    if (IsEqualIID(iid, &IID_IUnknown) || IsEqualIID(iid, &IID_IPropertyStore))
+    {
+        *obj = &store->IPropertyStore_iface;
+    }
+    else
+    {
+        FIXME("no interface for %s\n", debugstr_guid(iid));
+        *obj = NULL;
+        return E_NOINTERFACE;
+    }
+
+    IUnknown_AddRef((IUnknown *)*obj);
+    return S_OK;
+}
+
+static HRESULT WINAPI window_prop_store_GetCount(IPropertyStore *iface, DWORD *count)
+{
+    FIXME("%p, %p\n", iface, count);
+    return E_NOTIMPL;
+}
+
+static HRESULT WINAPI window_prop_store_GetAt(IPropertyStore *iface, DWORD prop, PROPERTYKEY *key)
+{
+    FIXME("%p, %lu,%p\n", iface, prop, key);
+    return E_NOTIMPL;
+}
+
+static HRESULT WINAPI window_prop_store_GetValue(IPropertyStore *iface, const PROPERTYKEY *key, PROPVARIANT *var)
+{
+    FIXME("%p, {%s,%lu}, %p\n", iface, debugstr_guid(&key->fmtid), key->pid, var);
+    return E_NOTIMPL;
+}
+
+static HRESULT WINAPI window_prop_store_SetValue(IPropertyStore *iface, const PROPERTYKEY *key, const PROPVARIANT *var)
+{
+    FIXME("%p, {%s,%lu}, %p\n", iface, debugstr_guid(&key->fmtid), key->pid, var);
+    return S_OK;
+}
+
+static HRESULT WINAPI window_prop_store_Commit(IPropertyStore *iface)
+{
+    FIXME("%p\n", iface);
+    return S_OK;
+}
+
+static const IPropertyStoreVtbl window_prop_store_vtbl =
+{
+    window_prop_store_QueryInterface,
+    window_prop_store_AddRef,
+    window_prop_store_Release,
+    window_prop_store_GetCount,
+    window_prop_store_GetAt,
+    window_prop_store_GetValue,
+    window_prop_store_SetValue,
+    window_prop_store_Commit
+};
+
+static HRESULT create_window_prop_store(IPropertyStore **obj)
+{
+    struct window_prop_store *store;
+
+    if (!(store = heap_alloc(sizeof(*store)))) return E_OUTOFMEMORY;
+    store->IPropertyStore_iface.lpVtbl = &window_prop_store_vtbl;
+    store->ref = 1;
+
+    *obj = &store->IPropertyStore_iface;
+    return S_OK;
+}
+
+HRESULT 
+WINAPI 
+SHGetPropertyStoreForWindow(
   _In_   HWND hwnd,
   _In_   REFIID riid,
   _Out_  void **ppv
 )
 {
-	return E_FAIL;
+    IPropertyStore *store;
+    HRESULT hr;
+
+    FIXME("(%p %p %p) stub!\n", hwnd, riid, ppv);
+
+    if ((hr = create_window_prop_store( &store )) != S_OK) return hr;
+    hr = IPropertyStore_QueryInterface( store, riid, ppv );
+    IPropertyStore_Release( store );
+    return hr;
 }
 
 static const GUID CLSID_Bind_Query = 

@@ -52,7 +52,7 @@
 @ stdcall CoGetPSClsid(ptr ptr)
 @ stdcall CoGetProcessIdentifier(ptr) olebase.CoGetProcessIdentifier
 @ stdcall CoGetStandardMarshal(ptr ptr long ptr long ptr)
-@ stdcall CoGetState(ptr)
+@ stdcall CoGetState(ptr) olebase.CoGetState
 @ stdcall CoGetStdMarshalEx(ptr long ptr)
 @ stdcall CoGetSystemSecurityPermissions(long ptr) olebase.CoGetSystemSecurityPermissions
 @ stdcall CoGetTreatAsClass(ptr ptr)
@@ -426,3 +426,9 @@
 @ stdcall -arch=x86_64 WdtpInterfacePointer_UserMarshal64(ptr long ptr ptr ptr) olebase.WdtpInterfacePointer_UserMarshal64
 @ stdcall -arch=x86_64 WdtpInterfacePointer_UserSize64(ptr long ptr long ptr) olebase.WdtpInterfacePointer_UserSize64
 @ stdcall -arch=x86_64 WdtpInterfacePointer_UserUnmarshal64(ptr ptr ptr ptr) olebase.WdtpInterfacePointer_UserUnmarshal64
+
+#For Vista Compatibility
+@ stdcall HRGN_UserFree(ptr ptr) olebase.HRGN_UserFree
+@ stdcall HRGN_UserMarshal(ptr ptr ptr) olebase.HRGN_UserMarshal
+@ stdcall HRGN_UserSize(ptr long ptr) olebase.HRGN_UserSize
+@ stdcall HRGN_UserUnmarshal(ptr ptr ptr) olebase.HRGN_UserUnmarshal

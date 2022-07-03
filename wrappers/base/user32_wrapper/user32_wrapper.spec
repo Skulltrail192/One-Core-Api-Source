@@ -871,6 +871,11 @@
 1551  stdcall -noname DwmSetRedirSurfacePresentFlags(ptr long)
 1552  stdcall -noname DwmGetRedirSurfacePresentFlags(ptr ptr) 
 
+#Win8 functions
+@ stdcall GetDpiForMonitorInternal(long long ptr ptr) NtUserGetDpiForMonitor
+@ stdcall GetProcessDpiAwarenessInternal(long ptr)
+@ stdcall SetProcessDpiAwarenessInternal(long) 
+
 #functions exported by user32 from Longhorn Pre-Reset
 @ stdcall HangrepRegisterPort(ptr)
 @ stdcall HangrepUnregisterPort(ptr)

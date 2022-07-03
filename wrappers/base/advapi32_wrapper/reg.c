@@ -611,75 +611,77 @@ RegpCopyTree(IN HKEY hKeySrc,
  *
  * @implemented
  */
-LONG WINAPI
-RegCopyTreeW(IN HKEY hKeySrc,
-             IN LPCWSTR lpSubKey  OPTIONAL,
-             IN HKEY hKeyDest)
+LSTATUS WINAPI RegCopyTreeW( HKEY hsrc, const WCHAR *subkey, HKEY hdst )
 {
-    HANDLE DestKeyHandle, KeyHandle, CurKey, SubKeyHandle = NULL;
-    NTSTATUS Status;
+    DWORD name_size, max_name;
+    DWORD value_size, max_value;
+    DWORD max_subkey, i, type;
+    WCHAR *name_buf = NULL;
+    BYTE *value_buf = NULL;
+    HKEY hkey;
+    LONG ret;
 
-    Status = MapDefaultKey(&KeyHandle,
-                           hKeySrc);
-    if (!NT_SUCCESS(Status))
+    TRACE( "(%p, %s, %p)\n", hsrc, debugstr_w(subkey), hdst );
+
+    if (subkey)
     {
-        return RtlNtStatusToDosError(Status);
+        ret = RegOpenKeyExW( hsrc, subkey, 0, KEY_READ, &hsrc );
+        if (ret) return ret;
     }
 
-    Status = MapDefaultKey(&DestKeyHandle,
-                           hKeyDest);
-    if (!NT_SUCCESS(Status))
+    ret = RegQueryInfoKeyW( hsrc, NULL, NULL, NULL, NULL, &max_subkey,
+                            NULL, NULL, &max_name, &max_value, NULL, NULL );
+    if (ret)
+        goto cleanup;
+
+    max_name = max( max_subkey, max_name ) + 1;
+    if (!(name_buf = heap_alloc( max_name * sizeof(WCHAR) )))
     {
-        goto Cleanup2;
+        ret = ERROR_NOT_ENOUGH_MEMORY;
+        goto cleanup;
     }
 
-    if (lpSubKey != NULL)
+    if (!(value_buf = heap_alloc( max_value )))
     {
-        OBJECT_ATTRIBUTES ObjectAttributes;
-        UNICODE_STRING SubKeyName;
-
-        RtlInitUnicodeString(&SubKeyName, lpSubKey);
-
-        InitializeObjectAttributes(&ObjectAttributes,
-                                   &SubKeyName,
-                                   OBJ_CASE_INSENSITIVE,
-                                   KeyHandle,
-                                   NULL);
-
-        Status = NtOpenKey(&SubKeyHandle,
-                           KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE,
-                           &ObjectAttributes);
-        if (!NT_SUCCESS(Status))
-        {
-            goto Cleanup;
-        }
-
-        CurKey = SubKeyHandle;
-    }
-    else
-        CurKey = KeyHandle;
-
-    Status = RegpCopyTree(CurKey,
-                          hKeyDest);
-
-    if (SubKeyHandle != NULL)
-    {
-        NtClose(SubKeyHandle);
+        ret = ERROR_NOT_ENOUGH_MEMORY;
+        goto cleanup;
     }
 
-Cleanup:
-    ClosePredefKey(DestKeyHandle);
-Cleanup2:
-    ClosePredefKey(KeyHandle);
-
-    if (!NT_SUCCESS(Status))
+    /* Copy values */
+    for (i = 0;; i++)
     {
-        return RtlNtStatusToDosError(Status);
+        name_size = max_name;
+        value_size = max_value;
+        ret = RegEnumValueW( hsrc, i, name_buf, &name_size, NULL, &type, value_buf, &value_size );
+        if (ret == ERROR_NO_MORE_ITEMS) break;
+        if (ret) goto cleanup;
+        ret = RegSetValueExW( hdst, name_buf, 0, type, value_buf, value_size );
+        if (ret) goto cleanup;
     }
 
-    return ERROR_SUCCESS;
+    /* Recursively copy subkeys */
+    for (i = 0;; i++)
+    {
+        name_size = max_name;
+        ret = RegEnumKeyExW( hsrc, i, name_buf, &name_size, NULL, NULL, NULL, NULL );
+        if (ret == ERROR_NO_MORE_ITEMS) break;
+        if (ret) goto cleanup;
+        ret = RegCreateKeyExW( hdst, name_buf, 0, NULL, 0, KEY_WRITE, NULL, &hkey, NULL );
+        if (ret) goto cleanup;
+        ret = RegCopyTreeW( hsrc, name_buf, hkey );
+        RegCloseKey( hkey );
+        if (ret) goto cleanup;
+    }
+
+    ret = ERROR_SUCCESS;
+
+cleanup:
+    heap_free( name_buf );
+    heap_free( value_buf );
+    if (subkey)
+        RegCloseKey( hsrc );
+    return ret;
 }
-
 
 /************************************************************************
  *  RegCopyTreeA
