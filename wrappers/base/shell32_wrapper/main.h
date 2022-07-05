@@ -35,7 +35,6 @@
 #include <secext.h>
 #include <Lmaccess.h>
 #include <Lmapibuf.h>
-#include <propsys_private.h>
 #include <objbase.h>
 #include <rpcproxy.h>
 #include <security.h>
@@ -58,6 +57,14 @@
 #include <wingdi.h>
 #include <commdlg.h>
 #include <wine/heap.h>
+
+#define WIN32_NO_STATUS
+#define _INC_WINDOWS
+#define COM_NO_WINDOWS_H
+
+#define COBJMACROS
+#define NONAMELESSUNION
+#include "propsys.h"
 
 //DEFINITIONS
 #define IDS_DESKTOP		20

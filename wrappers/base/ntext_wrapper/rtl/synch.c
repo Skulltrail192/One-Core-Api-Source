@@ -180,7 +180,7 @@ static HANDLE __fastcall GetGlobalKeyedEventHandle()
 				RtlRaiseStatus(STATUS_RESOURCE_NOT_OWNED);
 			}
 
-			if (InterlockedCompareExchange((size_t*)&_GlobalKeyedEventHandle, (size_t)KeyedEventHandle, (size_t)0))
+			if (InterlockedCompareExchange((volatile long *)&_GlobalKeyedEventHandle, (size_t)KeyedEventHandle, (size_t)0))
 			{
 				RtlFreeHeap( RtlGetProcessHeap(), 0, KeyedEventHandle );
 			}
@@ -200,7 +200,7 @@ static void RtlpWaitOnAddressWakeEntireList(ADDRESS_WAIT_BLOCK* pBlock)
 	{
 		ADDRESS_WAIT_BLOCK* Tmp = pBlock->back;
 
-		if (InterlockedExchange(&pBlock->flag, 2) == 0)
+		if (InterlockedExchange((volatile long *)&pBlock->flag, 2) == 0)
 		{
 			NtReleaseKeyedEvent(GlobalKeyedEventHandle, pBlock, 0, 0);
 		}
@@ -234,7 +234,7 @@ static void RtlpOptimizeWaitOnAddressWaitList(volatile ULONG_PTR* ppFirstBlock)
 			pItem->notify = Tmp;
 		}
 
-		Last = InterlockedCompareExchange(ppFirstBlock, (Current & 1) == 0 ? (size_t)(pBlock) : 0, Current);
+		Last = InterlockedCompareExchange((volatile long *)ppFirstBlock, (Current & 1) == 0 ? (size_t)(pBlock) : 0, Current);
 
 		if (Last == Current)
 		{
@@ -276,7 +276,7 @@ static void RtlpAddWaitBlockToWaitList(ADDRESS_WAIT_BLOCK* pWaitBlock)
 			pWaitBlock->next = pWaitBlock;
 		}
 
-		Last = InterlockedCompareExchange(ppFirstBlock, New, Current);
+		Last = InterlockedCompareExchange((volatile long *)ppFirstBlock, New, Current);
 
 		if (Last == Current)
 		{
@@ -365,7 +365,7 @@ RtlpWaitOnAddressWithTimeout(
 
 	if (Status == STATUS_TIMEOUT)
 	{
-		if (InterlockedExchange(&pWaitBlock->flag, 4) == 2)
+		if (InterlockedExchange((volatile long *)&pWaitBlock->flag, 4) == 2)
 		{
 			Status = NtWaitForKeyedEvent(GlobalKeyedEventHandle, pWaitBlock, 0, 0);
 		}
@@ -396,7 +396,7 @@ static void RtlpWaitOnAddressRemoveWaitBlock(ADDRESS_WAIT_BLOCK* pWaitBlock)
 	{
 		if (Current & 2)
 		{
-			Last = InterlockedCompareExchange(ppFirstBlock, Current | 1, Current);
+			Last = InterlockedCompareExchange((volatile long *)ppFirstBlock, Current | 1, Current);
 
 			if (Last == Current)
 			{
@@ -404,7 +404,7 @@ static void RtlpWaitOnAddressRemoveWaitBlock(ADDRESS_WAIT_BLOCK* pWaitBlock)
 			}
 		}else{
 			New = Current | 0x2;
-			Last = InterlockedCompareExchange(ppFirstBlock, New, Current);
+			Last = InterlockedCompareExchange((volatile long *)ppFirstBlock, New, Current);
 
 			if (Last == Current)
 			{
@@ -455,7 +455,7 @@ static void RtlpWaitOnAddressRemoveWaitBlock(ADDRESS_WAIT_BLOCK* pWaitBlock)
 						New = (size_t)(Tmp) ^ (Current ^ (size_t)(Tmp)) & 0x3;
 					}
 
-					Last = InterlockedCompareExchange(ppFirstBlock, New, Current);
+					Last = InterlockedCompareExchange((volatile long *)ppFirstBlock, New, Current);
 
 					if (Last == Current)
 					{
@@ -476,7 +476,7 @@ static void RtlpWaitOnAddressRemoveWaitBlock(ADDRESS_WAIT_BLOCK* pWaitBlock)
 				} while (pBlock);
 							
 
-				if (bFind == FALSE && InterlockedExchange(&pWaitBlock->flag, 0) != 2)
+				if (bFind == FALSE && InterlockedExchange((volatile long *)&pWaitBlock->flag, 0) != 2)
 				{
 					NtWaitForKeyedEvent(GlobalKeyedEventHandle, pWaitBlock, 0, 0);
 				}
@@ -485,7 +485,7 @@ static void RtlpWaitOnAddressRemoveWaitBlock(ADDRESS_WAIT_BLOCK* pWaitBlock)
 
 				for (;;)
 				{
-					Last = InterlockedCompareExchange(ppFirstBlock, (Current & 1) == 0 ? (size_t)(ADDRESS_GET_BLOCK(Current)) : 0, Current);
+					Last = InterlockedCompareExchange((volatile long *)ppFirstBlock, (Current & 1) == 0 ? (size_t)(ADDRESS_GET_BLOCK(Current)) : 0, Current);
 
 					if (Last == Current)
 						break;
@@ -502,7 +502,7 @@ static void RtlpWaitOnAddressRemoveWaitBlock(ADDRESS_WAIT_BLOCK* pWaitBlock)
 		}
 	}
 
-	if (InterlockedExchange(&pWaitBlock->flag, 1) == 2)
+	if (InterlockedExchange((volatile long *)&pWaitBlock->flag, 1) == 2)
 		return;
 
 	RtlpWaitOnAddressWithTimeout(pWaitBlock, 0);

@@ -410,3 +410,9 @@
 @ stdcall -stub -arch=x86_64 WdtpInterfacePointer_UserMarshal64(ptr long ptr ptr ptr)
 @ stdcall -stub -arch=x86_64 WdtpInterfacePointer_UserSize64(ptr long ptr long ptr)
 @ stdcall -stub -arch=x86_64 WdtpInterfacePointer_UserUnmarshal64(ptr ptr ptr ptr)
+
+#For Vista Compatibility
+@ stdcall -stub HRGN_UserFree(ptr ptr)
+@ stdcall -stub HRGN_UserMarshal(ptr ptr ptr)
+@ stdcall -stub HRGN_UserSize(ptr long ptr)
+@ stdcall -stub HRGN_UserUnmarshal(ptr ptr ptr)
