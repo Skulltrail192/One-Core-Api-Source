@@ -134,248 +134,248 @@ GetVolumeInformationByHandleW(
   return TRUE;
 }
 
-HRESULT WINAPI PathCchAddBackslash(WCHAR *path, SIZE_T size)
-{
-    return PathCchAddBackslashEx(path, size, NULL, NULL);
-}
+// HRESULT WINAPI PathCchAddBackslash(WCHAR *path, SIZE_T size)
+// {
+    // return PathCchAddBackslashEx(path, size, NULL, NULL);
+// }
 
-HRESULT WINAPI PathCchAddBackslashEx(WCHAR *path, SIZE_T size, WCHAR **endptr, SIZE_T *remaining)
-{
-    BOOL needs_termination;
-    SIZE_T length;
+// HRESULT WINAPI PathCchAddBackslashEx(WCHAR *path, SIZE_T size, WCHAR **endptr, SIZE_T *remaining)
+// {
+    // BOOL needs_termination;
+    // SIZE_T length;
 
-    TRACE("%s, %lu, %p, %p\n", debugstr_w(path), size, endptr, remaining);
+    // TRACE("%s, %lu, %p, %p\n", debugstr_w(path), size, endptr, remaining);
 
-    length = strlenW(path);
-    needs_termination = size && length && path[length - 1] != '\\';
+    // length = strlenW(path);
+    // needs_termination = size && length && path[length - 1] != '\\';
 
-    if (length >= (needs_termination ? size - 1 : size))
-    {
-        if (endptr) *endptr = NULL;
-        if (remaining) *remaining = 0;
-        return STRSAFE_E_INSUFFICIENT_BUFFER;
-    }
+    // if (length >= (needs_termination ? size - 1 : size))
+    // {
+        // if (endptr) *endptr = NULL;
+        // if (remaining) *remaining = 0;
+        // return STRSAFE_E_INSUFFICIENT_BUFFER;
+    // }
 
-    if (!needs_termination)
-    {
-        if (endptr) *endptr = path + length;
-        if (remaining) *remaining = size - length;
-        return S_FALSE;
-    }
+    // if (!needs_termination)
+    // {
+        // if (endptr) *endptr = path + length;
+        // if (remaining) *remaining = size - length;
+        // return S_FALSE;
+    // }
 
-    path[length++] = '\\';
-    path[length] = 0;
+    // path[length++] = '\\';
+    // path[length] = 0;
 
-    if (endptr) *endptr = path + length;
-    if (remaining) *remaining = size - length;
+    // if (endptr) *endptr = path + length;
+    // if (remaining) *remaining = size - length;
 
-    return S_OK;
-}
+    // return S_OK;
+// }
 
-/***********************************************************************
- *          PathCchCombineEx (KERNELBASE.@)
- */
-HRESULT WINAPI PathCchCombineEx(WCHAR *out, SIZE_T size, const WCHAR *path1, const WCHAR *path2, DWORD flags)
-{
-    WCHAR result[MAX_PATH];
-	hshlwapi = GetModuleHandleA("shlwapi.dll");
+// /***********************************************************************
+ // *          PathCchCombineEx (KERNELBASE.@)
+ // */
+// HRESULT WINAPI PathCchCombineEx(WCHAR *out, SIZE_T size, const WCHAR *path1, const WCHAR *path2, DWORD flags)
+// {
+    // WCHAR result[MAX_PATH];
+	// hshlwapi = GetModuleHandleA("shlwapi.dll");
 	
-    FIXME("(%p, %lu, %s, %s, %x): semi-stub\n", out, size, wine_dbgstr_w(path1), wine_dbgstr_w(path2), flags);
+    // FIXME("(%p, %lu, %s, %s, %x): semi-stub\n", out, size, wine_dbgstr_w(path1), wine_dbgstr_w(path2), flags);
 
-    if (!out || !size) return E_INVALIDARG;
-    if (flags) FIXME("Flags %x not supported\n", flags);
+    // if (!out || !size) return E_INVALIDARG;
+    // if (flags) FIXME("Flags %x not supported\n", flags);
 	
 	
-	pPathCombineW = (void *)GetProcAddress(hshlwapi, "PathCombineW");
-	if(pPathCombineW){
-		if(!pPathCombineW(result, path1, path2))
-			return E_INVALIDARG;
-	}else{
-		SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-		return FALSE;
-	}	
+	// pPathCombineW = (void *)GetProcAddress(hshlwapi, "PathCombineW");
+	// if(pPathCombineW){
+		// if(!pPathCombineW(result, path1, path2))
+			// return E_INVALIDARG;
+	// }else{
+		// SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+		// return FALSE;
+	// }	
 
-    if (strlenW(result) + 1 > size)
-    {
-        out[0] = 0;
-        return STRSAFE_E_INSUFFICIENT_BUFFER;
-    }
+    // if (strlenW(result) + 1 > size)
+    // {
+        // out[0] = 0;
+        // return STRSAFE_E_INSUFFICIENT_BUFFER;
+    // }
 
-    strcpyW(out, result);
-    return S_OK;
-}
+    // strcpyW(out, result);
+    // return S_OK;
+// }
 
-/***********************************************************************
- *          PathCchCombineEx (KERNELBASE.@)
- */
-HRESULT WINAPI PathCchCombine(WCHAR *out, SIZE_T size, const WCHAR *path1, const WCHAR *path2){
-	return PathCchCombineEx(out, size, path1, path2, 0);
-}
+// /***********************************************************************
+ // *          PathCchCombineEx (KERNELBASE.@)
+ // */
+// HRESULT WINAPI PathCchCombine(WCHAR *out, SIZE_T size, const WCHAR *path1, const WCHAR *path2){
+	// return PathCchCombineEx(out, size, path1, path2, 0);
+// }
 
-HRESULT WINAPI PathCchFindExtension(const WCHAR *path, SIZE_T size, const WCHAR **extension)
-{
-    const WCHAR *lastpoint = NULL;
-    SIZE_T counter = 0;
+// HRESULT WINAPI PathCchFindExtension(const WCHAR *path, SIZE_T size, const WCHAR **extension)
+// {
+    // const WCHAR *lastpoint = NULL;
+    // SIZE_T counter = 0;
 
-    TRACE("%s %lu %p\n", wine_dbgstr_w(path), size, extension);
+    // TRACE("%s %lu %p\n", wine_dbgstr_w(path), size, extension);
 
-    if (!path || !size || size > PATHCCH_MAX_CCH)
-    {
-        *extension = NULL;
-        return E_INVALIDARG;
-    }
+    // if (!path || !size || size > PATHCCH_MAX_CCH)
+    // {
+        // *extension = NULL;
+        // return E_INVALIDARG;
+    // }
 
-    while (*path)
-    {
-        if (*path == '\\' || *path == ' ')
-            lastpoint = NULL;
-        else if (*path == '.')
-            lastpoint = path;
+    // while (*path)
+    // {
+        // if (*path == '\\' || *path == ' ')
+            // lastpoint = NULL;
+        // else if (*path == '.')
+            // lastpoint = path;
 
-        path++;
-        counter++;
-        if (counter == size || counter == PATHCCH_MAX_CCH)
-        {
-            *extension = NULL;
-            return E_INVALIDARG;
-        }
-    }
+        // path++;
+        // counter++;
+        // if (counter == size || counter == PATHCCH_MAX_CCH)
+        // {
+            // *extension = NULL;
+            // return E_INVALIDARG;
+        // }
+    // }
 
-    *extension = lastpoint ? lastpoint : path;
-    return S_OK;
-} 
+    // *extension = lastpoint ? lastpoint : path;
+    // return S_OK;
+// } 
 
-HRESULT WINAPI PathCchAddExtension(WCHAR *path, SIZE_T size, const WCHAR *extension)
-{
-    const WCHAR *existing_extension, *next;
-    SIZE_T path_length, extension_length, dot_length;
-    BOOL has_dot;
-    HRESULT hr;
+// HRESULT WINAPI PathCchAddExtension(WCHAR *path, SIZE_T size, const WCHAR *extension)
+// {
+    // const WCHAR *existing_extension, *next;
+    // SIZE_T path_length, extension_length, dot_length;
+    // BOOL has_dot;
+    // HRESULT hr;
 
-    TRACE("%s %lu %s\n", wine_dbgstr_w(path), size, wine_dbgstr_w(extension));
+    // TRACE("%s %lu %s\n", wine_dbgstr_w(path), size, wine_dbgstr_w(extension));
 
-    if (!path || !size || size > PATHCCH_MAX_CCH || !extension) return E_INVALIDARG;
+    // if (!path || !size || size > PATHCCH_MAX_CCH || !extension) return E_INVALIDARG;
 
-    next = extension;
-    while (*next)
-    {
-        if ((*next == '.' && next > extension) || *next == ' ' || *next == '\\') return E_INVALIDARG;
-        next++;
-    }
+    // next = extension;
+    // while (*next)
+    // {
+        // if ((*next == '.' && next > extension) || *next == ' ' || *next == '\\') return E_INVALIDARG;
+        // next++;
+    // }
 
-    has_dot = extension[0] == '.' ? TRUE : FALSE;
+    // has_dot = extension[0] == '.' ? TRUE : FALSE;
 
-    hr = PathCchFindExtension(path, size, &existing_extension);
-    if (FAILED(hr)) return hr;
-    if (*existing_extension) return S_FALSE;
+    // hr = PathCchFindExtension(path, size, &existing_extension);
+    // if (FAILED(hr)) return hr;
+    // if (*existing_extension) return S_FALSE;
 
-    //path_length = wcsnlen(path, size);
-    path_length = wcslen(path);
-    dot_length = has_dot ? 0 : 1;
-    extension_length = strlenW(extension);
+    // //path_length = wcsnlen(path, size);
+    // path_length = wcslen(path);
+    // dot_length = has_dot ? 0 : 1;
+    // extension_length = strlenW(extension);
 
-    if (path_length + dot_length + extension_length + 1 > size) return STRSAFE_E_INSUFFICIENT_BUFFER;
+    // if (path_length + dot_length + extension_length + 1 > size) return STRSAFE_E_INSUFFICIENT_BUFFER;
 
-    /* If extension is empty or only dot, return S_OK with path unchanged */
-    if (!extension[0] || (extension[0] == '.' && !extension[1])) return S_OK;
+    // /* If extension is empty or only dot, return S_OK with path unchanged */
+    // if (!extension[0] || (extension[0] == '.' && !extension[1])) return S_OK;
 
-    if (!has_dot)
-    {
-        path[path_length] = '.';
-        path_length++;
-    }
+    // if (!has_dot)
+    // {
+        // path[path_length] = '.';
+        // path_length++;
+    // }
 
-    strcpyW(path + path_length, extension);
-    return S_OK;
-} 
+    // strcpyW(path + path_length, extension);
+    // return S_OK;
+// } 
 
-HRESULT WINAPI PathCchRemoveExtension(WCHAR *path, SIZE_T size)
-{
-    const WCHAR *extension;
-    WCHAR *next;
-    HRESULT hr;
+// HRESULT WINAPI PathCchRemoveExtension(WCHAR *path, SIZE_T size)
+// {
+    // const WCHAR *extension;
+    // WCHAR *next;
+    // HRESULT hr;
 
-    TRACE("%s %lu\n", wine_dbgstr_w(path), size);
+    // TRACE("%s %lu\n", wine_dbgstr_w(path), size);
 
-    if (!path || !size || size > PATHCCH_MAX_CCH) return E_INVALIDARG;
+    // if (!path || !size || size > PATHCCH_MAX_CCH) return E_INVALIDARG;
 
-    hr = PathCchFindExtension(path, size, &extension);
-    if (FAILED(hr)) return hr;
+    // hr = PathCchFindExtension(path, size, &extension);
+    // if (FAILED(hr)) return hr;
 
-    next = path + (extension - path);
-    while (next - path < size && *next) *next++ = 0;
+    // next = path + (extension - path);
+    // while (next - path < size && *next) *next++ = 0;
 
-    return next == extension ? S_FALSE : S_OK;
-}
+    // return next == extension ? S_FALSE : S_OK;
+// }
 
-HRESULT WINAPI PathCchRenameExtension(WCHAR *path, SIZE_T size, const WCHAR *extension)
-{
-    HRESULT hr;
+// HRESULT WINAPI PathCchRenameExtension(WCHAR *path, SIZE_T size, const WCHAR *extension)
+// {
+    // HRESULT hr;
 
-    TRACE("%s %lu %s\n", wine_dbgstr_w(path), size, wine_dbgstr_w(extension));
+    // TRACE("%s %lu %s\n", wine_dbgstr_w(path), size, wine_dbgstr_w(extension));
 
-    hr = PathCchRemoveExtension(path, size);
-    if (FAILED(hr)) return hr;
+    // hr = PathCchRemoveExtension(path, size);
+    // if (FAILED(hr)) return hr;
 
-    hr = PathCchAddExtension(path, size, extension);
-    return FAILED(hr) ? hr : S_OK;
-}  
+    // hr = PathCchAddExtension(path, size, extension);
+    // return FAILED(hr) ? hr : S_OK;
+// }  
 
-HRESULT WINAPI PathCchRemoveBackslashEx(WCHAR *path, SIZE_T size, WCHAR **endptr, SIZE_T *remaining)
-{
-    BOOL needs_trim;
-    SIZE_T length;
+// HRESULT WINAPI PathCchRemoveBackslashEx(WCHAR *path, SIZE_T size, WCHAR **endptr, SIZE_T *remaining)
+// {
+    // BOOL needs_trim;
+    // SIZE_T length;
 
-    TRACE("%s, %lu, %p, %p\n", debugstr_w(path), size, endptr, remaining);
+    // TRACE("%s, %lu, %p, %p\n", debugstr_w(path), size, endptr, remaining);
 
-    if (!path) return E_INVALIDARG;
-    length = strlenW(path);
-    needs_trim = size && length && path[length - 1] == '\\';
+    // if (!path) return E_INVALIDARG;
+    // length = strlenW(path);
+    // needs_trim = size && length && path[length - 1] == '\\';
 
-    if (needs_trim && (length > 1) && path[length - 2] == ':')
-        needs_trim = 0;
+    // if (needs_trim && (length > 1) && path[length - 2] == ':')
+        // needs_trim = 0;
 
-    if (needs_trim)
-    {
-        path[length - 1] = 0;
-        --length;
-    }
+    // if (needs_trim)
+    // {
+        // path[length - 1] = 0;
+        // --length;
+    // }
 
-    if (endptr) *endptr = path + length;
-    if (remaining) *remaining = size - length;
+    // if (endptr) *endptr = path + length;
+    // if (remaining) *remaining = size - length;
 
-    return needs_trim ? S_OK : S_FALSE;
-}
+    // return needs_trim ? S_OK : S_FALSE;
+// }
 
-HRESULT WINAPI PathCchRemoveBackslash(WCHAR *path, SIZE_T size)
-{
-    return PathCchRemoveBackslashEx(path, size, NULL, NULL);
-}
+// HRESULT WINAPI PathCchRemoveBackslash(WCHAR *path, SIZE_T size)
+// {
+    // return PathCchRemoveBackslashEx(path, size, NULL, NULL);
+// }
 
-HRESULT WINAPI PathCchAppendEx(WCHAR *path1, SIZE_T size, const WCHAR *path2, DWORD flags)
-{
-    HRESULT hr;
-    WCHAR *result;
-    TRACE("%s %lu %s %#x\n", wine_dbgstr_w(path1), size, wine_dbgstr_w(path2), flags);
-    if (!path1 || !size) return E_INVALIDARG;
-    /* Create a temporary buffer for result because we need to keep path1 unchanged if error occurs.
-     * And PathCchCombineEx writes empty result if there is error so we can't just use path1 as output
-     * buffer for PathCchCombineEx */
-    result = HeapAlloc(GetProcessHeap(), 0, size * sizeof(WCHAR));
-    if (!result) return E_OUTOFMEMORY;
-    /* Avoid the single backslash behavior with PathCchCombineEx when appending */
-    if (path2 && path2[0] == '\\' && path2[1] != '\\') path2++;
-    hr = PathCchCombineEx(result, size, path1, path2, flags);
-    if (SUCCEEDED(hr)) memcpy(path1, result, size * sizeof(WCHAR));
-    HeapFree(GetProcessHeap(), 0, result);
-    return hr;
-}
+// HRESULT WINAPI PathCchAppendEx(WCHAR *path1, SIZE_T size, const WCHAR *path2, DWORD flags)
+// {
+    // HRESULT hr;
+    // WCHAR *result;
+    // TRACE("%s %lu %s %#x\n", wine_dbgstr_w(path1), size, wine_dbgstr_w(path2), flags);
+    // if (!path1 || !size) return E_INVALIDARG;
+    // /* Create a temporary buffer for result because we need to keep path1 unchanged if error occurs.
+     // * And PathCchCombineEx writes empty result if there is error so we can't just use path1 as output
+     // * buffer for PathCchCombineEx */
+    // result = HeapAlloc(GetProcessHeap(), 0, size * sizeof(WCHAR));
+    // if (!result) return E_OUTOFMEMORY;
+    // /* Avoid the single backslash behavior with PathCchCombineEx when appending */
+    // if (path2 && path2[0] == '\\' && path2[1] != '\\') path2++;
+    // hr = PathCchCombineEx(result, size, path1, path2, flags);
+    // if (SUCCEEDED(hr)) memcpy(path1, result, size * sizeof(WCHAR));
+    // HeapFree(GetProcessHeap(), 0, result);
+    // return hr;
+// }
 
-HRESULT WINAPI PathCchAppend(WCHAR *path1, SIZE_T size, const WCHAR *path2)
-{
-    TRACE("%s %lu %s\n", wine_dbgstr_w(path1), size, wine_dbgstr_w(path2));
-    return PathCchAppendEx(path1, size, path2, PATHCCH_NONE);
-}
+// HRESULT WINAPI PathCchAppend(WCHAR *path1, SIZE_T size, const WCHAR *path2)
+// {
+    // TRACE("%s %lu %s\n", wine_dbgstr_w(path1), size, wine_dbgstr_w(path2));
+    // return PathCchAppendEx(path1, size, path2, PATHCCH_NONE);
+// }
 
 // HRESULT WINAPI PathAllocCanonicalize(const WCHAR *path_in, DWORD flags, WCHAR **path_out)
 // {
@@ -882,228 +882,228 @@ BOOL WINAPI StrToIntExW(LPCWSTR lpszStr, DWORD dwFlags, LPINT lpiRet)
   return bRes;
 }
 
-/*************************************************************************
- *      UrlUnescapeW	[SHLWAPI.@]
- *
- * See UrlUnescapeA.
- */
-HRESULT WINAPI UrlUnescapeW(
-	LPWSTR pszUrl,
-	LPWSTR pszUnescaped,
-	LPDWORD pcchUnescaped,
-	DWORD dwFlags)
-{
-    WCHAR *dst, next;
-    LPCWSTR src;
-    HRESULT ret;
-    DWORD needed;
-    BOOL stop_unescaping = FALSE;
+// /*************************************************************************
+ // *      UrlUnescapeW	[SHLWAPI.@]
+ // *
+ // * See UrlUnescapeA.
+ // */
+// HRESULT WINAPI UrlUnescapeW(
+	// LPWSTR pszUrl,
+	// LPWSTR pszUnescaped,
+	// LPDWORD pcchUnescaped,
+	// DWORD dwFlags)
+// {
+    // WCHAR *dst, next;
+    // LPCWSTR src;
+    // HRESULT ret;
+    // DWORD needed;
+    // BOOL stop_unescaping = FALSE;
 
-    TRACE("(%s, %p, %p, 0x%08x)\n", debugstr_w(pszUrl), pszUnescaped,
-	  pcchUnescaped, dwFlags);
+    // TRACE("(%s, %p, %p, 0x%08x)\n", debugstr_w(pszUrl), pszUnescaped,
+	  // pcchUnescaped, dwFlags);
 
-    if(!pszUrl) return E_INVALIDARG;
+    // if(!pszUrl) return E_INVALIDARG;
 
-    if(dwFlags & URL_UNESCAPE_INPLACE)
-        dst = pszUrl;
-    else
-    {
-        if (!pszUnescaped || !pcchUnescaped) return E_INVALIDARG;
-        dst = pszUnescaped;
-    }
+    // if(dwFlags & URL_UNESCAPE_INPLACE)
+        // dst = pszUrl;
+    // else
+    // {
+        // if (!pszUnescaped || !pcchUnescaped) return E_INVALIDARG;
+        // dst = pszUnescaped;
+    // }
 
-    for(src = pszUrl, needed = 0; *src; src++, needed++) {
-        if(dwFlags & URL_DONT_UNESCAPE_EXTRA_INFO &&
-           (*src == '#' || *src == '?')) {
-	    stop_unescaping = TRUE;
-	    next = *src;
-        } else if(*src == '%' && isxdigitW(*(src + 1)) && isxdigitW(*(src + 2))
-		  && stop_unescaping == FALSE) {
-	    INT ih;
-	    WCHAR buf[5] = {'0','x',0};
-	    memcpy(buf + 2, src + 1, 2*sizeof(WCHAR));
-	    buf[4] = 0;
-	    StrToIntExW(buf, STIF_SUPPORT_HEX, &ih);
-	    next = (WCHAR) ih;
-	    src += 2; /* Advance to end of escape */
-	} else
-	    next = *src;
+    // for(src = pszUrl, needed = 0; *src; src++, needed++) {
+        // if(dwFlags & URL_DONT_UNESCAPE_EXTRA_INFO &&
+           // (*src == '#' || *src == '?')) {
+	    // stop_unescaping = TRUE;
+	    // next = *src;
+        // } else if(*src == '%' && isxdigitW(*(src + 1)) && isxdigitW(*(src + 2))
+		  // && stop_unescaping == FALSE) {
+	    // INT ih;
+	    // WCHAR buf[5] = {'0','x',0};
+	    // memcpy(buf + 2, src + 1, 2*sizeof(WCHAR));
+	    // buf[4] = 0;
+	    // StrToIntExW(buf, STIF_SUPPORT_HEX, &ih);
+	    // next = (WCHAR) ih;
+	    // src += 2; /* Advance to end of escape */
+	// } else
+	    // next = *src;
 
-	if(dwFlags & URL_UNESCAPE_INPLACE || needed < *pcchUnescaped)
-	    *dst++ = next;
-    }
+	// if(dwFlags & URL_UNESCAPE_INPLACE || needed < *pcchUnescaped)
+	    // *dst++ = next;
+    // }
 
-    if(dwFlags & URL_UNESCAPE_INPLACE || needed < *pcchUnescaped) {
-        *dst = '\0';
-	ret = S_OK;
-    } else {
-        needed++; /* add one for the '\0' */
-	ret = E_POINTER;
-    }
-    if(!(dwFlags & URL_UNESCAPE_INPLACE))
-        *pcchUnescaped = needed;
+    // if(dwFlags & URL_UNESCAPE_INPLACE || needed < *pcchUnescaped) {
+        // *dst = '\0';
+	// ret = S_OK;
+    // } else {
+        // needed++; /* add one for the '\0' */
+	// ret = E_POINTER;
+    // }
+    // if(!(dwFlags & URL_UNESCAPE_INPLACE))
+        // *pcchUnescaped = needed;
 
-    if (ret == S_OK) {
-	TRACE("result %s\n", (dwFlags & URL_UNESCAPE_INPLACE) ?
-	      debugstr_w(pszUrl) : debugstr_w(pszUnescaped));
-    }
+    // if (ret == S_OK) {
+	// TRACE("result %s\n", (dwFlags & URL_UNESCAPE_INPLACE) ?
+	      // debugstr_w(pszUrl) : debugstr_w(pszUnescaped));
+    // }
 
-    return ret;
-}
+    // return ret;
+// }
 
-/*************************************************************************
- * PathCreateFromUrlW   [SHLWAPI.@]
- *
- * Create a path from a URL
- *
- * PARAMS
- *  lpszUrl  [I] URL to convert into a path
- *  lpszPath [O] Output buffer for the resulting Path
- *  pcchPath [I] Length of lpszPath
- *  dwFlags  [I] Flags controlling the conversion
- *
- * RETURNS
- *  Success: S_OK. lpszPath contains the URL in path format,
- *  Failure: An HRESULT error code such as E_INVALIDARG.
- */
-HRESULT WINAPI PathCreateFromUrlW(LPCWSTR pszUrl, LPWSTR pszPath,
-                                  LPDWORD pcchPath, DWORD dwReserved)
-{
-    static const WCHAR file_colon[] = { 'f','i','l','e',':',0 };
-    static const WCHAR localhost[] = { 'l','o','c','a','l','h','o','s','t',0 };
-    DWORD nslashes, unescape, len;
-    const WCHAR *src;
-    WCHAR *tpath, *dst;
-    HRESULT ret;
+// /*************************************************************************
+ // * PathCreateFromUrlW   [SHLWAPI.@]
+ // *
+ // * Create a path from a URL
+ // *
+ // * PARAMS
+ // *  lpszUrl  [I] URL to convert into a path
+ // *  lpszPath [O] Output buffer for the resulting Path
+ // *  pcchPath [I] Length of lpszPath
+ // *  dwFlags  [I] Flags controlling the conversion
+ // *
+ // * RETURNS
+ // *  Success: S_OK. lpszPath contains the URL in path format,
+ // *  Failure: An HRESULT error code such as E_INVALIDARG.
+ // */
+// HRESULT WINAPI PathCreateFromUrlW(LPCWSTR pszUrl, LPWSTR pszPath,
+                                  // LPDWORD pcchPath, DWORD dwReserved)
+// {
+    // static const WCHAR file_colon[] = { 'f','i','l','e',':',0 };
+    // static const WCHAR localhost[] = { 'l','o','c','a','l','h','o','s','t',0 };
+    // DWORD nslashes, unescape, len;
+    // const WCHAR *src;
+    // WCHAR *tpath, *dst;
+    // HRESULT ret;
 
-    TRACE("(%s,%p,%p,0x%08x)\n", debugstr_w(pszUrl), pszPath, pcchPath, dwReserved);
+    // TRACE("(%s,%p,%p,0x%08x)\n", debugstr_w(pszUrl), pszPath, pcchPath, dwReserved);
 
-    if (!pszUrl || !pszPath || !pcchPath || !*pcchPath)
-        return E_INVALIDARG;
+    // if (!pszUrl || !pszPath || !pcchPath || !*pcchPath)
+        // return E_INVALIDARG;
 
-    if (lstrlenW(pszUrl) < 5)
-        return E_INVALIDARG;
+    // if (lstrlenW(pszUrl) < 5)
+        // return E_INVALIDARG;
 
-    if (CompareStringW(LOCALE_INVARIANT, NORM_IGNORECASE, pszUrl, 5,
-                       file_colon, 5) != CSTR_EQUAL)
-        return E_INVALIDARG;
-    pszUrl += 5;
-    ret = S_OK;
+    // if (CompareStringW(LOCALE_INVARIANT, NORM_IGNORECASE, pszUrl, 5,
+                       // file_colon, 5) != CSTR_EQUAL)
+        // return E_INVALIDARG;
+    // pszUrl += 5;
+    // ret = S_OK;
 
-    src = pszUrl;
-    nslashes = 0;
-    while (*src == '/' || *src == '\\') {
-        nslashes++;
-        src++;
-    }
+    // src = pszUrl;
+    // nslashes = 0;
+    // while (*src == '/' || *src == '\\') {
+        // nslashes++;
+        // src++;
+    // }
 
-    /* We need a temporary buffer so we can compute what size to ask for.
-     * We know that the final string won't be longer than the current pszUrl
-     * plus at most two backslashes. All the other transformations make it
-     * shorter.
-     */
-    len = 2 + lstrlenW(pszUrl) + 1;
-    if (*pcchPath < len)
-        tpath = HeapAlloc(GetProcessHeap(), 0, len * sizeof(WCHAR));
-    else
-        tpath = pszPath;
+    // /* We need a temporary buffer so we can compute what size to ask for.
+     // * We know that the final string won't be longer than the current pszUrl
+     // * plus at most two backslashes. All the other transformations make it
+     // * shorter.
+     // */
+    // len = 2 + lstrlenW(pszUrl) + 1;
+    // if (*pcchPath < len)
+        // tpath = HeapAlloc(GetProcessHeap(), 0, len * sizeof(WCHAR));
+    // else
+        // tpath = pszPath;
 
-    len = 0;
-    dst = tpath;
-    unescape = 1;
-    switch (nslashes)
-    {
-    case 0:
-        /* 'file:' + escaped DOS path */
-        break;
-    case 1:
-        /* 'file:/' + escaped DOS path */
-        /* fall through */
-    case 3:
-        /* 'file:///' (implied localhost) + escaped DOS path */
-        if (!isalphaW(*src) || (src[1] != ':' && src[1] != '|'))
-            src -= 1;
-        break;
-    case 2:
-        if (lstrlenW(src) >= 10 && CompareStringW(LOCALE_INVARIANT, NORM_IGNORECASE,
-            src, 9, localhost, 9) == CSTR_EQUAL && (src[9] == '/' || src[9] == '\\'))
-        {
-            /* 'file://localhost/' + escaped DOS path */
-            src += 10;
-        }
-        else if (isalphaW(*src) && (src[1] == ':' || src[1] == '|'))
-        {
-            /* 'file://' + unescaped DOS path */
-            unescape = 0;
-        }
-        else
-        {
-            /*    'file://hostname:port/path' (where path is escaped)
-             * or 'file:' + escaped UNC path (\\server\share\path)
-             * The second form is clearly specific to Windows and it might
-             * even be doing a network lookup to try to figure it out.
-             */
-            while (*src && *src != '/' && *src != '\\')
-                src++;
-            len = src - pszUrl;
-            StrCpyNW(dst, pszUrl, len + 1);
-            dst += len;
-            if (*src && isalphaW(src[1]) && (src[2] == ':' || src[2] == '|'))
-            {
-                /* 'Forget' to add a trailing '/', just like Windows */
-                src++;
-            }
-        }
-        break;
-    case 4:
-        /* 'file://' + unescaped UNC path (\\server\share\path) */
-        unescape = 0;
-        if (isalphaW(*src) && (src[1] == ':' || src[1] == '|'))
-            break;
-        /* fall through */
-    default:
-        /* 'file:/...' + escaped UNC path (\\server\share\path) */
-        src -= 2;
-    }
+    // len = 0;
+    // dst = tpath;
+    // unescape = 1;
+    // switch (nslashes)
+    // {
+    // case 0:
+        // /* 'file:' + escaped DOS path */
+        // break;
+    // case 1:
+        // /* 'file:/' + escaped DOS path */
+        // /* fall through */
+    // case 3:
+        // /* 'file:///' (implied localhost) + escaped DOS path */
+        // if (!isalphaW(*src) || (src[1] != ':' && src[1] != '|'))
+            // src -= 1;
+        // break;
+    // case 2:
+        // if (lstrlenW(src) >= 10 && CompareStringW(LOCALE_INVARIANT, NORM_IGNORECASE,
+            // src, 9, localhost, 9) == CSTR_EQUAL && (src[9] == '/' || src[9] == '\\'))
+        // {
+            // /* 'file://localhost/' + escaped DOS path */
+            // src += 10;
+        // }
+        // else if (isalphaW(*src) && (src[1] == ':' || src[1] == '|'))
+        // {
+            // /* 'file://' + unescaped DOS path */
+            // unescape = 0;
+        // }
+        // else
+        // {
+            // /*    'file://hostname:port/path' (where path is escaped)
+             // * or 'file:' + escaped UNC path (\\server\share\path)
+             // * The second form is clearly specific to Windows and it might
+             // * even be doing a network lookup to try to figure it out.
+             // */
+            // while (*src && *src != '/' && *src != '\\')
+                // src++;
+            // len = src - pszUrl;
+            // StrCpyNW(dst, pszUrl, len + 1);
+            // dst += len;
+            // if (*src && isalphaW(src[1]) && (src[2] == ':' || src[2] == '|'))
+            // {
+                // /* 'Forget' to add a trailing '/', just like Windows */
+                // src++;
+            // }
+        // }
+        // break;
+    // case 4:
+        // /* 'file://' + unescaped UNC path (\\server\share\path) */
+        // unescape = 0;
+        // if (isalphaW(*src) && (src[1] == ':' || src[1] == '|'))
+            // break;
+        // /* fall through */
+    // default:
+        // /* 'file:/...' + escaped UNC path (\\server\share\path) */
+        // src -= 2;
+    // }
 
-    /* Copy the remainder of the path */
-    len += lstrlenW(src);
-    StrCpyW(dst, src);
+    // /* Copy the remainder of the path */
+    // len += lstrlenW(src);
+    // StrCpyW(dst, src);
 
-     /* First do the Windows-specific path conversions */
-    for (dst = tpath; *dst; dst++)
-        if (*dst == '/') *dst = '\\';
-    if (isalphaW(*tpath) && tpath[1] == '|')
-        tpath[1] = ':'; /* c| -> c: */
+     // /* First do the Windows-specific path conversions */
+    // for (dst = tpath; *dst; dst++)
+        // if (*dst == '/') *dst = '\\';
+    // if (isalphaW(*tpath) && tpath[1] == '|')
+        // tpath[1] = ':'; /* c| -> c: */
 
-    /* And only then unescape the path (i.e. escaped slashes are left as is) */
-    if (unescape)
-    {
-        ret = UrlUnescapeW(tpath, NULL, &len, URL_UNESCAPE_INPLACE);
-        if (ret == S_OK)
-        {
-            /* When working in-place UrlUnescapeW() does not set len */
-            len = lstrlenW(tpath);
-        }
-    }
+    // /* And only then unescape the path (i.e. escaped slashes are left as is) */
+    // if (unescape)
+    // {
+        // ret = UrlUnescapeW(tpath, NULL, &len, URL_UNESCAPE_INPLACE);
+        // if (ret == S_OK)
+        // {
+            // /* When working in-place UrlUnescapeW() does not set len */
+            // len = lstrlenW(tpath);
+        // }
+    // }
 
-    if (*pcchPath < len + 1)
-    {
-        ret = E_POINTER;
-        *pcchPath = len + 1;
-    }
-    else
-    {
-        *pcchPath = len;
-        if (tpath != pszPath)
-            StrCpyW(pszPath, tpath);
-    }
-    if (tpath != pszPath)
-      HeapFree(GetProcessHeap(), 0, tpath);
+    // if (*pcchPath < len + 1)
+    // {
+        // ret = E_POINTER;
+        // *pcchPath = len + 1;
+    // }
+    // else
+    // {
+        // *pcchPath = len;
+        // if (tpath != pszPath)
+            // StrCpyW(pszPath, tpath);
+    // }
+    // if (tpath != pszPath)
+      // HeapFree(GetProcessHeap(), 0, tpath);
 
-    TRACE("Returning (%u) %s\n", *pcchPath, debugstr_w(pszPath));
-    return ret;
-}
+    // TRACE("Returning (%u) %s\n", *pcchPath, debugstr_w(pszPath));
+    // return ret;
+// }
 
 /*************************************************************************
  * StrDupW	[SHLWAPI.@]
@@ -1130,22 +1130,22 @@ LPWSTR WINAPI StrDupW(LPCWSTR lpszStr)
   return lpszRet;
 }
 
-/*************************************************************************
- * PathCreateFromUrlAlloc   [SHLWAPI.@]
- */
-HRESULT WINAPI PathCreateFromUrlAlloc(LPCWSTR pszUrl, LPWSTR *pszPath,
-                                      DWORD dwReserved)
-{
-    WCHAR pathW[MAX_PATH];
-    DWORD size;
-    HRESULT hr;
+// /*************************************************************************
+ // * PathCreateFromUrlAlloc   [SHLWAPI.@]
+ // */
+// HRESULT WINAPI PathCreateFromUrlAlloc(LPCWSTR pszUrl, LPWSTR *pszPath,
+                                      // DWORD dwReserved)
+// {
+    // WCHAR pathW[MAX_PATH];
+    // DWORD size;
+    // HRESULT hr;
 
-    size = MAX_PATH;
-    hr = PathCreateFromUrlW(pszUrl, pathW, &size, dwReserved);
-    if (SUCCEEDED(hr))
-    {
-        /* Yes, this is supposed to crash if pszPath is NULL */
-        *pszPath = StrDupW(pathW);
-    }
-    return hr;
-}
+    // size = MAX_PATH;
+    // hr = PathCreateFromUrlW(pszUrl, pathW, &size, dwReserved);
+    // if (SUCCEEDED(hr))
+    // {
+        // /* Yes, this is supposed to crash if pszPath is NULL */
+        // *pszPath = StrDupW(pathW);
+    // }
+    // return hr;
+// }

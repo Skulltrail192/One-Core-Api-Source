@@ -47,6 +47,7 @@ list(APPEND SOURCE
 	nls.c
 	numa.c
 	number.c
+	path.c
 	pathmisc.c
 	perf.c
 	powrmgmt.c

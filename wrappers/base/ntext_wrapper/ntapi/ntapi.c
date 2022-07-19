@@ -396,3 +396,19 @@ NtOpenKeyEx(
 {
     return NtOpenKey( retkey, access, attr);
 }
+
+/**************************************************************************
+ *           NtCancelIoFileEx   (NTDLL.@)
+ */
+NTSTATUS 
+WINAPI 
+NtCancelIoFileEx( 
+	HANDLE handle, 
+	IO_STATUS_BLOCK *io, 
+	IO_STATUS_BLOCK *io_status 
+)
+{
+	/*Ignoring io parameter for now*/
+	UNREFERENCED_PARAMETER(io);
+	return NtCancelIoFile(handle, io_status);
+}
