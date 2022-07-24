@@ -1638,3 +1638,21 @@ SetHKCRValue(
     _In_ DWORD Type,
     _In_ CONST BYTE* Data,
     _In_ DWORD DataSize);	
+	
+INT 
+WINAPI 
+CompareStringOrdinal(
+	const WCHAR *str1, 
+	INT len1, 
+	const WCHAR *str2, 
+	INT len2, 
+	BOOL ignore_case
+);	
+
+HRESULT 
+WINAPI 
+PathMatchSpecExW(
+	const WCHAR *path, 
+	const WCHAR *mask, 
+	DWORD flags
+);

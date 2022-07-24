@@ -1527,6 +1527,7 @@
 @ stdcall NtAlpcSendWaitReceivePort(ptr long ptr ptr ptr ptr ptr ptr)
 @ stdcall NtAlpcSetInformation(ptr ptr ptr long)
 @ stdcall NtAlpcCreateSectionView(ptr long ptr)
+@ stdcall NtCancelIoFileEx(long ptr ptr);
 @ stdcall NtCreateMutantEx(ptr long ptr long long)
 @ stdcall NtCreateSemaphoreEx(ptr long long str long long)
 @ stdcall NtCreateThreadEx(ptr long ptr ptr ptr ptr long ptr long long ptr)

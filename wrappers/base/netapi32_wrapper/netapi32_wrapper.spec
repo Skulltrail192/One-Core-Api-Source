@@ -345,11 +345,11 @@
 
 ; #Vista functions from netapinew
 ; @ stdcall DavAddConnection(ptr wstr wstr wstr ptr long)
-; @ stdcall DavDeleteConnection(ptr)
-; @ stdcall DavFlushFile(ptr)
-; @ stdcall DavGetExtendedError(ptr ptr wstr ptr)
-; @ stdcall DavGetHTTPFromUNCPath(wstr wstr ptr)
-; @ stdcall DavGetUNCFromHTTPPath(wstr wstr ptr)
+@ stdcall DavDeleteConnection(long)
+@ stdcall DavFlushFile(long)
+@ stdcall DavGetExtendedError(long ptr wstr ptr)
+@ stdcall DavGetHTTPFromUNCPath(wstr wstr ptr)
+@ stdcall DavGetUNCFromHTTPPath(wstr wstr ptr)
 ; @ stdcall I_DsUpdateReadOnlyServerDnsRecords() netapinew.I_DsUpdateReadOnlyServerDnsRecords
 ; @ stdcall I_NetChainSetClientAttributes() netapinew.I_NetChainSetClientAttributes
 ; @ stdcall NetDfsAddRootTarget(wstr wstr long wstr long)

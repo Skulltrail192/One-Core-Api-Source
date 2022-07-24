@@ -1,5 +1,5 @@
 /*
- * Copyright 2009 Henri Verbeet for CodeWeavers
+ * Copyright 2011 Jacek Caban for CodeWeavers
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,10 +15,11 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
-#define WINE_FILEVERSION 6,0,6003,18007
-#define WINE_FILEVERSION_STR "2.7.0"
-#define WINE_PRODUCTVERSION 2,7,0
-#define WINE_PRODUCTVERSION_STR "6.0.6003.18007"
 
-#include "one_core-api_common_ver.rc"
+#include <windef.h>
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+#define WINE_FILEDESCRIPTION_STR "Windows Performance Data Helper Wrapper for One-Core-API"
+#define WINE_FILENAME_STR "pdh.dll"
+
+#include "common_wrappers_ver.rc"
