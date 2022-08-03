@@ -584,3 +584,33 @@ void load_global_options(void)
                                        // sizeof(DWORD), NULL );
     // heap_set_debug_flags( RtlProcessHeap() );
 }
+
+/******************************************************************
+ *		LdrGetDllPath  (NTDLL.@)
+ */
+NTSTATUS 
+NTAPI 
+LdrGetDllPathInternal( 
+	PCWSTR module, 
+	ULONG flags, 
+	PWSTR *path, 
+	PWSTR *unknown)
+{
+    NTSTATUS Status;
+    const ULONG load_library_search_flags = (LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR |
+                                             LOAD_LIBRARY_SEARCH_APPLICATION_DIR |
+                                             LOAD_LIBRARY_SEARCH_USER_DIRS |
+                                             LOAD_LIBRARY_SEARCH_SYSTEM32 |
+                                             LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+	if (flags & load_library_search_flags)
+    {
+        Status = get_dll_load_path_search_flags( module, flags, path );
+    }else{
+		Status = LdrGetDllPath(module,
+							   flags,
+							   path,
+							   unknown);
+	}
+	
+	return Status;
+}

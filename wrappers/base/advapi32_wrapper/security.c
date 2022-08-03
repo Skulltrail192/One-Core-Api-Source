@@ -953,14 +953,3 @@ BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSidToSidW( const WCHAR *string, PSID 
     }
     return TRUE;
 }
-
-BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSidToSidWInternal( const WCHAR *string, PSID *sid )
-{
-	BOOL ret;
-	
-	ret = ConvertStringSidToSidW(string, sid);
-	
-	DbgPrint("ConvertStringSidToSidWInternal:: ConvertStringSidToSidW return: %d\n", ret);
-	
-	return TRUE;
-}

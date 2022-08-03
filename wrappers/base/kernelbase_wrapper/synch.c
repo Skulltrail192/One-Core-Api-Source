@@ -151,6 +151,7 @@ BOOL WINAPI SleepConditionVariableSRW( RTL_CONDITION_VARIABLE *variable, RTL_SRW
 
     if (status != STATUS_SUCCESS)
     {
+		DbgPrint("SleepConditionVariableSRW:: RtlSleepConditionVariableSRW failed with status: %08x\n", status);
         SetLastError( RtlNtStatusToDosError(status) );
         return FALSE;
     }

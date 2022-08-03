@@ -4,7 +4,7 @@ Copyright (c) 2021 Shorthorn Project
 
 Module Name:
 
-    virutal.c
+    virtual.c
 
 Abstract:
 

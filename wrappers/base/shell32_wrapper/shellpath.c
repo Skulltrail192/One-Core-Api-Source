@@ -4797,7 +4797,7 @@ SHGetKnownFolderPath(
 
     if (dwflags & ~(KF_FLAG_CREATE|KF_FLAG_DONT_VERIFY|KF_FLAG_NO_ALIAS|KF_FLAG_INIT))
     {
-        FIXME("SHGetKnownFolderItem::dwflags 0x%08x not supported\n", dwflags);
+        FIXME("SHGetKnownFolderPath::dwflags 0x%08x not supported\n", dwflags);
         return E_INVALIDARG;
     }
 	

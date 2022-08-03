@@ -28,6 +28,8 @@ WINE_DEFAULT_DEBUG_CHANNEL(advapi32_hooks);
 BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescriptorW(
         const WCHAR *string, DWORD revision, PSECURITY_DESCRIPTOR *sd, ULONG *ret_size );
 
+BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSidToSidW( const WCHAR *string, PSID *sid );
+
 BOOL
 APIENTRY
 GetTokenInformationInternal (
@@ -404,29 +406,29 @@ GetNamedSecurityInfoWInternal(
     PSECURITY_DESCRIPTOR *ppSecurityDescriptor
 )
 {
-	DWORD resp;	
+	//DWORD resp;	
 	//This is a hack, for now is enabled because need a truly implementation of LABEL_SECURITY_INFORMATION (for Chrome and Chromium Framework)
 	if(SecurityInfo & LABEL_SECURITY_INFORMATION)
 	{
-		resp = GetNamedSecurityInfoW(pObjectName,
-									 ObjectType,
-									 SecurityInfo,
-									 ppsidOwner,
-									 ppsidGroup,
-									 ppDacl,
-									 ppSacl,
-									 ppSecurityDescriptor);
+		// resp = GetNamedSecurityInfoW(pObjectName,
+									 // ObjectType,
+									 // SecurityInfo,
+									 // ppsidOwner,
+									 // ppsidGroup,
+									 // ppDacl,
+									 // ppSacl,
+									 // ppSecurityDescriptor);
 												 
 									 
-		if(resp != ERROR_SUCCESS)
-		{		
+		// if(resp != ERROR_SUCCESS)
+		// {		
 			//DbgPrint("GetNamedSecurityInfoWInternal::GetNamedSecurityInfoW return: %d\n", resp);	
 			SecurityInfo = OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION | SACL_SECURITY_INFORMATION;
-			goto tryAgain;			
-		}	
+			//goto tryAgain;			
+		//}	
 	}	
 	
-tryAgain:	
+//tryAgain:	
 	return GetNamedSecurityInfoW(pObjectName,
 								 ObjectType,
 								 SecurityInfo,
@@ -450,6 +452,17 @@ BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescripto
 	if(!resp){															
 		DbgPrint("ConvertStringSecurityDescriptorToSecurityDescriptorWInternal::ConvertStringSecurityDescriptorToSecurityDescriptorW resp: %d\n", resp);															
 	}
+	
+	return TRUE;
+}
+
+BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSidToSidWInternal( const WCHAR *string, PSID *sid )
+{
+	BOOL ret;
+	
+	ret = ConvertStringSidToSidW(string, sid);
+	
+	DbgPrint("ConvertStringSidToSidWInternal:: ConvertStringSidToSidW return: %d\n", ret);
 	
 	return TRUE;
 }

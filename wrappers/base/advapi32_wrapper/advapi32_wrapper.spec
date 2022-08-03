@@ -820,42 +820,42 @@
 ; @ stdcall UsePinForEncryptedFilesA(long long long)
 ; @ stdcall UsePinForEncryptedFilesW(long long long)
 
-; #Imports from wevtapibase (wevtapi from Longhorn Pre-Reset)
-; @ stdcall EvtAssertConfig() wevtapibase.EvtIntAssertConfig
-; @ stdcall EvtClearLog() wevtapibase.EvtIntClearLog
-; @ stdcall EvtClose() wevtapibase.EvtIntClose
-; @ stdcall EvtCompileTemplate() wevtapibase.EvtIntCompileTemplate
-; @ stdcall EvtCreateBookmark() wevtapibase.EvtIntCreateBookmark
-; @ stdcall EvtCreateMessageRenderContext() wevtapibase.EvtIntCreateMessageRenderContext
-; @ stdcall EvtCreateValuesRenderContext() wevtapibase.EvtIntCreateValuesRenderContext
-; @ stdcall EvtDeleteChannelConfig() wevtapibase.EvtIntDeleteChannelConfig
-; @ stdcall EvtExportLog() wevtapibase.EvtIntExportLog
-; @ stdcall EvtGetChannelConfigProperty() wevtapibase.EvtIntGetChannelConfigProperty
-; @ stdcall EvtGetEventMetadataProperty() wevtapibase.EvtIntGetEventMetadataProperty
-; @ stdcall EvtGetExtendedStatus() wevtapibase.EvtIntGetExtendedStatus
-; @ stdcall EvtGetMatchedQueryIds() wevtapibase.EvtIntGetMatchedQueryIds
-; @ stdcall EvtGetNamedObjectInformation() wevtapibase.EvtIntGetNamedObjectInformation
-; @ stdcall EvtGetPublisherMetadataProperty() wevtapibase.EvtIntGetPublisherMetadataProperty
-; @ stdcall EvtNext() wevtapibase.EvtIntNext
-; @ stdcall EvtNextBatch() wevtapibase.EvtIntNextBatch
-; @ stdcall EvtNextChannelPath() wevtapibase.EvtIntNextChannelPath
-; @ stdcall EvtNextEventMetadata() wevtapibase.EvtIntNextEventMetadata
-; @ stdcall EvtNextPublisherId() wevtapibase.EvtIntNextPublisherId
-; @ stdcall EvtOpenChannelConfig() wevtapibase.EvtIntOpenChannelConfig
-; @ stdcall EvtOpenChannelEnum() wevtapibase.EvtIntOpenChannelEnum
-; @ stdcall EvtOpenEventMetadataEnum() wevtapibase.EvtIntOpenEventMetadataEnum
-; @ stdcall EvtOpenPublisherEnum() wevtapibase.EvtIntOpenPublisherEnum
-; @ stdcall EvtOpenPublisherMetadata() wevtapibase.EvtIntOpenPublisherMetadata
-; @ stdcall EvtQueryLog() wevtapibase.EvtIntQueryLog
-; @ stdcall EvtRegisterSubscription() wevtapibase.EvtIntRegisterSubscription
-; @ stdcall EvtRender() wevtapibase.EvtIntRender
-; @ stdcall EvtRenderBookmark() wevtapibase.EvtIntRenderBookmark
-; @ stdcall EvtRetractConfig() wevtapibase.EvtIntRetractConfig
-; @ stdcall EvtSaveChannelConfig() wevtapibase.EvtIntSaveChannelConfig
-; @ stdcall EvtSeek() wevtapibase.EvtIntSeek
-; @ stdcall EvtSetChannelConfigProperty() wevtapibase.EvtIntSetChannelConfigProperty
-; @ stdcall EvtUpdateBookmark() wevtapibase.EvtIntUpdateBookmark
-; @ stdcall EvtUpdateSubscription() wevtapibase.EvtIntUpdateSubscription
+#Imports from wevtapibase (wevtapi from Longhorn Pre-Reset)
+@ stdcall EvtAssertConfig() wevtapibase.EvtIntAssertConfig
+@ stdcall EvtClearLog() wevtapibase.EvtIntClearLog
+@ stdcall EvtClose() wevtapibase.EvtIntClose
+@ stdcall EvtCompileTemplate() wevtapibase.EvtIntCompileTemplate
+@ stdcall EvtCreateBookmark() wevtapibase.EvtIntCreateBookmark
+@ stdcall EvtCreateMessageRenderContext() wevtapibase.EvtIntCreateMessageRenderContext
+@ stdcall EvtCreateValuesRenderContext() wevtapibase.EvtIntCreateValuesRenderContext
+@ stdcall EvtDeleteChannelConfig() wevtapibase.EvtIntDeleteChannelConfig
+@ stdcall EvtExportLog() wevtapibase.EvtIntExportLog
+@ stdcall EvtGetChannelConfigProperty() wevtapibase.EvtIntGetChannelConfigProperty
+@ stdcall EvtGetEventMetadataProperty() wevtapibase.EvtIntGetEventMetadataProperty
+@ stdcall EvtGetExtendedStatus() wevtapibase.EvtIntGetExtendedStatus
+@ stdcall EvtGetMatchedQueryIds() wevtapibase.EvtIntGetMatchedQueryIds
+@ stdcall EvtGetNamedObjectInformation() wevtapibase.EvtIntGetNamedObjectInformation
+@ stdcall EvtGetPublisherMetadataProperty() wevtapibase.EvtIntGetPublisherMetadataProperty
+@ stdcall EvtNext() wevtapibase.EvtIntNext
+@ stdcall EvtNextBatch() wevtapibase.EvtIntNextBatch
+@ stdcall EvtNextChannelPath() wevtapibase.EvtIntNextChannelPath
+@ stdcall EvtNextEventMetadata() wevtapibase.EvtIntNextEventMetadata
+@ stdcall EvtNextPublisherId() wevtapibase.EvtIntNextPublisherId
+@ stdcall EvtOpenChannelConfig() wevtapibase.EvtIntOpenChannelConfig
+@ stdcall EvtOpenChannelEnum() wevtapibase.EvtIntOpenChannelEnum
+@ stdcall EvtOpenEventMetadataEnum() wevtapibase.EvtIntOpenEventMetadataEnum
+@ stdcall EvtOpenPublisherEnum() wevtapibase.EvtIntOpenPublisherEnum
+@ stdcall EvtOpenPublisherMetadata() wevtapibase.EvtIntOpenPublisherMetadata
+@ stdcall EvtQueryLog() wevtapibase.EvtIntQueryLog
+@ stdcall EvtRegisterSubscription() wevtapibase.EvtIntRegisterSubscription
+@ stdcall EvtRender() wevtapibase.EvtIntRender
+@ stdcall EvtRenderBookmark() wevtapibase.EvtIntRenderBookmark
+@ stdcall EvtRetractConfig() wevtapibase.EvtIntRetractConfig
+@ stdcall EvtSaveChannelConfig() wevtapibase.EvtIntSaveChannelConfig
+@ stdcall EvtSeek() wevtapibase.EvtIntSeek
+@ stdcall EvtSetChannelConfigProperty() wevtapibase.EvtIntSetChannelConfigProperty
+@ stdcall EvtUpdateBookmark() wevtapibase.EvtIntUpdateBookmark
+@ stdcall EvtUpdateSubscription() wevtapibase.EvtIntUpdateSubscription
 
 ; #Imports from advapilong (advapi32 from Longhorn Pre-Reset)
 ; @ stdcall EvtGetThreadCorrelationId()

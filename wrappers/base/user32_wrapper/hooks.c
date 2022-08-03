@@ -146,4 +146,4 @@ SystemParametersInfoAInternal(
 		return SystemParametersInfoA(uiAction, uiParam, pvParam, fWinIni);
   }
   return SystemParametersInfoA(uiAction, uiParam, pvParam, fWinIni); 			   
-}
+}	
