@@ -529,6 +529,9 @@
 @ stdcall Shell_NotifyIconA(long ptr)  ;Redirected to Longhorn shell
 @ stdcall Shell_NotifyIconW(long ptr) ;Redirected to Longhorn shell
 
+787 stdcall -noname SHMapIDListToSystemImageListIndexAsync(long ptr ptr ptr ptr ptr long ptr)
+@ stdcall SHCreateItemFromFolderID(ptr ptr ptr) SHCreateItemFromIDList;Redirected to Longhorn shell
+
 #Win7
 @ stdcall GetCurrentProcessExplicitAppUserModelID(ptr)
 @ stdcall Shell_NotifyIconGetRect(ptr ptr)

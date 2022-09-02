@@ -80,12 +80,18 @@ HRESULT WINAPI GetDpiForMonitor(HMONITOR monitor, MONITOR_DPI_TYPE type, UINT *x
     return HRESULT_FROM_WIN32( GetLastError() );
 }
 
-HRESULT WINAPI GetScaleFactorForMonitor(HMONITOR monitor, DEVICE_SCALE_FACTOR *scale)
+HRESULT 
+WINAPI 
+GetScaleFactorForMonitor( 
+	IN HMONITOR       hMon,
+	OUT DEVICE_SCALE_FACTOR *pScale)
 {
-    FIXME("(%p %p): stub\n", monitor, scale);
-
-    *scale = SCALE_100_PERCENT;
-    return S_OK;
+	HDC hDC;
+	INT index;
+	hDC = GetDC(NULL);
+	index = GetDeviceCaps(hDC, LOGPIXELSX);
+	*pScale = (DEVICE_SCALE_FACTOR)((96/index) * 100);
+	return S_OK;
 }
 
 DEVICE_SCALE_FACTOR WINAPI GetScaleFactorForDevice(DISPLAY_DEVICE_TYPE device_type)

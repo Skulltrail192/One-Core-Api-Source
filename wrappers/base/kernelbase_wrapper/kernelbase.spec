@@ -1325,6 +1325,7 @@
 @ stdcall GetThreadIdealProcessorEx(ptr ptr)
 @ stdcall -arch=x86_64 GetUmsCompletionListEvent(ptr ptr)
 # @ stub GetXStateFeaturesMask
+@ stdcall -arch=i386,x86_64 InitializeContext(ptr long ptr ptr)
 @ stub LoadStringBaseExW
 @ stub LoadStringByReference
 # @ stub LoadStringBaseW
@@ -1372,6 +1373,7 @@
 @ stdcall SetThreadpoolStackInformation(ptr ptr)
 @ stdcall -arch=x86_64 SetUmsThreadInformation(ptr long ptr long)
 @ stdcall SetWaitableTimerEx(ptr ptr long ptr ptr ptr long)
+@ stdcall -arch=i386,x86_64 SetXStateFeaturesMask(ptr int64)
 @ stdcall SystemTimeToTzSpecificLocalTimeEx(ptr ptr ptr)
 @ stdcall TryAcquireSRWLockExclusive(ptr) ntext.RtlTryAcquireSRWLockExclusive
 @ stdcall TryAcquireSRWLockShared(ptr) ntext.RtlTryAcquireSRWLockShared
@@ -1448,6 +1450,7 @@
 ; @ stdcall GetThreadDescription(long ptr)
 ; @ stdcall SetThreadDescription(long ptr)
 @ stdcall AppPolicyGetMediaFoundationCodecLoading(ptr ptr)
+@ stdcall IsWow64Process2(ptr ptr ptr)
 
 #Import from advapibase or registry function
 @ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) advapibase.AccessCheck

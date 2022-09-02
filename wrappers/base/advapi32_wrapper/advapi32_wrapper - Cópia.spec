@@ -874,7 +874,7 @@
 90 stdcall ConvertStringSidToSidW(ptr ptr) ConvertStringSidToSidWInternal
 101 stdcall CreateRestrictedToken(long long long ptr long ptr long ptr ptr) CreateRestrictedTokenInternal
 248 stdcall GetKernelObjectSecurity(long long ptr long ptr) GetKernelObjectSecurityInternal
-261 stdcall GetNamedSecurityInfoW(wstr long long ptr ptr ptr ptr ptr) ;GetNamedSecurityInfoWInternal
+261 stdcall GetNamedSecurityInfoW(wstr long long ptr ptr ptr ptr ptr) GetNamedSecurityInfoWInternal
 273 stdcall GetSecurityInfo(long long long ptr ptr ptr ptr ptr) GetSecurityInfoInternal
 284 stdcall GetTokenInformation(ptr long ptr long ptr) GetTokenInformationInternal
 429 stdcall OpenProcessToken(long long ptr) OpenProcessTokenInternal

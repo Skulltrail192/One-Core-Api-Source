@@ -24,7 +24,6 @@ list(APPEND SOURCE
 	appmodel.c
 	baseinit.c
 	console.c
-	cpu.c
 	curdir.c
 	datetime.c	
 	dep.c
@@ -71,6 +70,7 @@ list(APPEND SOURCE
 	vdm.c
 	winnls/ansi.c
     version.c
+	xstate.c
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/kernelbase_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/kernelbase.def)

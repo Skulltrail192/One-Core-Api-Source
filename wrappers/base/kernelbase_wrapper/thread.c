@@ -696,72 +696,59 @@ CreateThreadpoolWait(
 /***********************************************************************
  *              GetThreadGroupAffinity (KERNEL32.@)
  */
-BOOL 
-WINAPI 
-GetThreadGroupAffinity(
-	HANDLE thread, 
-	GROUP_AFFINITY *affinity 
-)
+BOOL GetThreadGroupAffinity(HANDLE hThread, PGROUP_AFFINITY GroupAffinity)
+	// This is basically the same procedure as above, with regards to obtaining the "previous" affinity
 {
-    NTSTATUS Status;
-    THREAD_BASIC_INFORMATION ThreadBasic;
+	DWORD_PTR ProcessAffinityMask;
+	DWORD_PTR SystemAffinityMask;
+	DWORD Pid;
+	HANDLE hProcess;
+		
+	Pid = GetProcessIdOfThread(hThread);
+	hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, Pid);
+	if(!hProcess)
+		return FALSE;
 
-    Status = NtQueryInformationThread(thread,
-                                      ThreadBasicInformation,
-                                      &ThreadBasic,
-                                      sizeof(THREAD_BASIC_INFORMATION),
-                                      NULL);								
-									  
-    if (!NT_SUCCESS(Status))
-    {
-        BaseSetLastNTError(Status);
-        return FALSE;
-    }
-	
-	affinity->Group = 0; //we only support 64 processors
-	affinity->Mask =  ThreadBasic.AffinityMask;
-    return TRUE;
+	if(!GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask))
+		return FALSE;
+	GroupAffinity->Mask = ProcessAffinityMask;
+	GroupAffinity->Group = 0;
+    
+	CloseHandle(hProcess);
+
+	return TRUE;
 }
 
 /***********************************************************************
  *              SetThreadGroupAffinity (KERNEL32.@)
  */
 BOOL 
-WINAPI 
-SetThreadGroupAffinity( 
+SetThreadGroupAffinity(
 	HANDLE hThread, 
-	const GROUP_AFFINITY *affinity_new,
-    GROUP_AFFINITY *affinity_old 
+	const GROUP_AFFINITY *GroupAffinity, 
+	PGROUP_AFFINITY PreviousGroupAffinity
 )
+	// Well, process affinity is supposed to match thread group affinity at least in basic cases.
+	// That is why I rely on process affinity for obtaining the previous group affinity.
 {
-    THREAD_BASIC_INFORMATION ThreadBasic;
-    KAFFINITY AffinityMask;
-    NTSTATUS Status;
+	DWORD_PTR ProcessAffinityMask;
+	DWORD_PTR SystemAffinityMask;
+	DWORD Pid;
+	HANDLE hProcess;
+		
+	if(PreviousGroupAffinity)
+	{		
+		Pid = GetProcessIdOfThread(hThread);
+	    hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, Pid);
+		if(!hProcess)
+			return FALSE;
 
-    AffinityMask = (KAFFINITY)affinity_new->Mask;
+		GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
+		PreviousGroupAffinity->Mask = ProcessAffinityMask;
+		CloseHandle(hProcess);
+	}
 
-    Status = NtQueryInformationThread(hThread,
-                                      ThreadBasicInformation,
-                                      &ThreadBasic,
-                                      sizeof(THREAD_BASIC_INFORMATION),
-                                      NULL);
-    if (!NT_SUCCESS(Status))
-    {
-        BaseSetLastNTError(Status);
-        return 0;
-    }
-
-    Status = NtSetInformationThread(hThread,
-                                    ThreadAffinityMask,
-                                    &AffinityMask,
-                                    sizeof(KAFFINITY));
-    if (!NT_SUCCESS(Status))
-    {
-        BaseSetLastNTError(Status);
-        ThreadBasic.AffinityMask = 0;
-    }
-
-	return TRUE;	
+		return SetThreadAffinityMask(hThread, GroupAffinity->Mask);
 }
 
 /*************************************************************************
@@ -1051,7 +1038,7 @@ PTP_CLEANUP_GROUP WINAPI CreateThreadpoolCleanupGroup( void )
 BOOL 
 WINAPI 
 SetThreadIdealProcessorEx(
-	HANDLE thread, 
+	HANDLE hThread, 
 	PROCESSOR_NUMBER *processor, 
 	PROCESSOR_NUMBER *previous
 )
@@ -1067,9 +1054,12 @@ SetThreadIdealProcessorEx(
     if (previous)
     {
         previous->Group = 0;
-        previous->Number = 0;
+        previous->Number = SetThreadIdealProcessor(hThread, processor->Number);
         previous->Reserved = 0;
     }
+	
+	if(previous->Number == -1)
+		return FALSE;	
 
     return TRUE;
 }
@@ -1197,23 +1187,16 @@ BOOL
 WINAPI
 GetThreadIdealProcessorEx(
 	HANDLE hThread, 
-	PPROCESSOR_NUMBER ThreadInformation
+	PPROCESSOR_NUMBER lpIdealProcessor
 )
 {
-  NTSTATUS Status; 
+	lpIdealProcessor->Number = SetThreadIdealProcessor(hThread, MAXIMUM_PROCESSORS);
+	lpIdealProcessor->Group = 0;
 
-  if ( hThread == (HANDLE)-2 )
-  {
-    ThreadInformation->Number = NtCurrentTeb()->IdealProcessor;
-	ThreadInformation->Group = 0;
-    ThreadInformation->Reserved = 0;
-    return TRUE;
-  }
-  Status = NtQueryInformationThread(hThread, (THREADINFOCLASS)33, ThreadInformation, 4u, 0);
-  if ( NT_SUCCESS(Status) )
-    return TRUE;
-  BaseSetLastNTError(Status);
-  return FALSE;
+	if(lpIdealProcessor->Number == -1)
+		return FALSE;
+	else
+		return TRUE;
 }
 
 #define THREADDESC_SUCCESS 0x10000000
@@ -1289,4 +1272,22 @@ BOOL WINAPI DECLSPEC_HOTPATCH QueryThreadpoolStackInformation( PTP_POOL pool, PT
 	Status = TpQueryPoolStackInformation( pool, stack_info );
 	
     return NT_SUCCESS(Status);
+}
+
+/**********************************************************************
+ *            SetThreadInformation   (kernelbase.@)
+ */
+BOOL WINAPI DECLSPEC_HOTPATCH SetThreadInformation( HANDLE thread, THREAD_INFORMATION_CLASS info_class,
+        VOID *info, DWORD size )
+{
+    switch (info_class)
+    {
+        case ThreadMemoryPriority:
+            return set_ntstatus( NtSetInformationThread( thread, ThreadPagePriority, info, size ));
+        // case ThreadPowerThrottling:
+            // return set_ntstatus( NtSetInformationThread( thread, ThreadPowerThrottlingState, info, size ));
+        default:
+            FIXME("Unsupported class %u.\n", info_class);
+            return FALSE;
+    }
 }

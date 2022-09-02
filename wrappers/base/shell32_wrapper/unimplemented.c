@@ -433,3 +433,8 @@ void SHChangeNotifyDeregisterWindow(HWND hwnd)
 {
 	;
 }
+
+int SHMapIDListToSystemImageListIndexAsync(int a1, struct IShellFolder *a2, LPCITEMIDLIST pidl2, PVOID a4, void *a5, void *a6, int a7, struct IRunnableTask *a8)
+{
+	return 0;
+}

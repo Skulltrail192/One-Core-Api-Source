@@ -239,11 +239,8 @@ CreateFile2(
   _In_opt_  LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams
 )
 {
-	return CreateFileW(lpFileName, 
-					   dwDesiredAccess, 
-					   dwShareMode, 
-					   pCreateExParams->lpSecurityAttributes, 
-					   dwCreationDisposition, 
-					   pCreateExParams->dwFileFlags |  pCreateExParams->dwFileAttributes,
-					   pCreateExParams->hTemplateFile);
+   if(!pCreateExParams)
+     return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, 0, NULL);
+	 
+   return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, pCreateExParams->lpSecurityAttributes, dwCreationDisposition, pCreateExParams->dwFileAttributes | pCreateExParams->dwFileFlags | pCreateExParams->dwSecurityQosFlags, pCreateExParams->hTemplateFile);	
 }

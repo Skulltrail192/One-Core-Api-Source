@@ -554,6 +554,15 @@ typedef struct _FLS_CALLBACK_INFO
 typedef DWORD WINAPI RTL_RUN_ONCE_INIT_FN(PRTL_RUN_ONCE, PVOID, PVOID*);
 typedef RTL_RUN_ONCE_INIT_FN *PRTL_RUN_ONCE_INIT_FN;
 
+typedef enum _THREAD_INFORMATION_CLASS
+{
+    ThreadMemoryPriority,
+    ThreadAbsoluteCpuPriority,
+    ThreadDynamicCodePolicy,
+    ThreadPowerThrottling,
+    ThreadInformationClassMax
+} THREAD_INFORMATION_CLASS;
+
 ULONG WINAPI EtwEventUnregister(
   _In_  REGHANDLE RegHandle
 );

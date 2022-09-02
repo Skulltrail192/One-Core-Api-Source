@@ -90,10 +90,14 @@ GetNumaNodeProcessorMaskEx(
 /***********************************************************************
  *           GetNumaProcessorNodeEx (KERNEL32.@)
  */
-BOOL WINAPI GetNumaProcessorNodeEx(PPROCESSOR_NUMBER processor, PUSHORT node_number)
+BOOL WINAPI GetNumaProcessorNodeEx(PPROCESSOR_NUMBER Processor, PUSHORT NodeNumber)
 {
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-    return FALSE;
+	if(!Processor)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+	return GetNumaProcessorNode(Processor->Number, (PUCHAR)NodeNumber);
 }
 
 /***********************************************************************

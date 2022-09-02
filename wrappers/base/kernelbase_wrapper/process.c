@@ -1418,18 +1418,36 @@ GetMaximumProcessorCount(
   _In_  WORD GroupNumber
 )
 {
-	SYSTEM_INFO sysinfo;
 	//Windows XP/2003 don't support more than 64 processors, so, we have only one processor group
 	//return 64;
 	//We don't support really groups, so, we emulate to support ALL_PROCESSOR_GROUPS	
-    if (GroupNumber && GroupNumber != ALL_PROCESSOR_GROUPS)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return 0;
-    }
-		
-	GetSystemInfo( &sysinfo );
-	return sysinfo.dwNumberOfProcessors;	
+	DWORD MaximumProcessorCount;
+	NTSTATUS Status;
+	INT i;
+	SYSTEM_BASIC_INFORMATION sysbasic;
+	if(GroupNumber != 0 && GroupNumber != ALL_PROCESSOR_GROUPS)
+		return 0;
+	else
+	{
+		Status = NtQuerySystemInformation(SystemBasicInformation, &sysbasic, sizeof(SYSTEM_BASIC_INFORMATION), NULL);	
+		if (Status < 0)
+		{
+			BaseSetLastNTError(Status);
+			return 0;
+		}
+      
+		MaximumProcessorCount = 0;
+
+#ifdef _X86_
+		for(i = 0; i < 32; i++) // Maximum of 32 processors on x86 Windows;
+#else
+        for(i = 0; i < 64; i++)
+#endif
+		if(sysbasic.ActiveProcessorsAffinityMask & 1 << i)
+			++MaximumProcessorCount;
+
+		return MaximumProcessorCount;
+	}
 }
 
 WORD 
@@ -1454,16 +1472,23 @@ GetActiveProcessorCount(
   _In_  WORD GroupNumber
 )
 {
-	SYSTEM_INFO sysinfo;
 	//We don't support really groups, so, we emulate to support ALL_PROCESSOR_GROUPS	
-    if (GroupNumber && GroupNumber != ALL_PROCESSOR_GROUPS)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return 0;
-    }	
-		
-	GetSystemInfo( &sysinfo );
-	return sysinfo.dwNumberOfProcessors;
+	NTSTATUS Status;
+	SYSTEM_BASIC_INFORMATION sysbasic;
+	if(GroupNumber != 0 && GroupNumber != ALL_PROCESSOR_GROUPS)
+	{
+		return 0;
+	}
+	else
+	{
+		Status = NtQuerySystemInformation(SystemBasicInformation, &sysbasic, sizeof(SYSTEM_BASIC_INFORMATION), NULL);	
+		if (Status < 0)
+		{
+			BaseSetLastNTError(Status);
+			return 0;
+		}
+		return sysbasic.NumberOfProcessors;
+	}
 }
 
 /***********************************************************************
@@ -1992,11 +2017,30 @@ BOOL WINAPI GetProcessMitigationPolicy(HANDLE hProcess, PROCESS_MITIGATION_POLIC
 /***********************************************************************
  *           GetProcessGroupAffinity   (kernelbase.@)
  */
-BOOL WINAPI DECLSPEC_HOTPATCH GetProcessGroupAffinity( HANDLE process, USHORT *count, USHORT *array )
+BOOL GetProcessGroupAffinity(HANDLE hProcess, PUSHORT GroupCount, PUSHORT GroupArray)
+// Technically, all CPUs before Windows 7 were in group 0, so the function implementations are changed to reflect this reality.
 {
-    FIXME( "(%p,%p,%p): stub\n", process, count, array );
-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
-    return FALSE;
+   PROCESS_INFORMATION ProcessInfo;
+   NTSTATUS Status;
+   *GroupCount = 1;
+   if(!GroupCount)
+   {
+     SetLastError(ERROR_INSUFFICIENT_BUFFER);
+	 return FALSE;
+   }
+   
+   Status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &ProcessInfo, sizeof(PROCESS_INFORMATION), NULL);
+   // Like GetProcessId(hProcess) but with fewer steps
+   if(Status < 0) 
+   {
+	 BaseSetLastNTError(Status);
+     return FALSE;
+   }
+   
+   GroupArray[0] = 1;
+   
+   return TRUE;
+   
 }
 
 /***********************************************************************
@@ -2008,4 +2052,61 @@ BOOL WINAPI DECLSPEC_HOTPATCH SetProcessGroupAffinity( HANDLE process, const GRO
     FIXME( "(%p,%p,%p): stub\n", process, new, old );
     SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
     return FALSE;
+}
+
+BOOL WINAPI IsWow64Process2(HANDLE hProcess, PUSHORT pProcessMachine, PUSHORT pNativeMachine)
+/*
+  An enhanced version of IsWow64Process() introduced with Windows 10 1511.
+  Not only does it determine if the process is running under WOW64, but it also determines the
+  WOW64 and native platforms.
+*/
+{
+	BOOL Wow64Process;
+	
+	if(!pProcessMachine)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+	
+	if(!IsWow64Process(hProcess, &Wow64Process))
+	{
+		return FALSE;
+	}
+	
+	if(!Wow64Process)
+	{
+		*pProcessMachine = IMAGE_FILE_MACHINE_UNKNOWN;
+	}
+	else
+	{
+		#ifdef _X86_ || _AMD64_ || _IA64_
+		*pProcessMachine = IMAGE_FILE_MACHINE_I386;
+		#elif _ARM64_ || _ARM_
+		*pProcessMachine = IMAGE_FILE_MACHINE_ARM;
+		#endif
+		// No other Windows architecture has WOW64.
+		
+	}
+	
+    if(pNativeMachine)
+    {
+		#ifdef _X86_
+		 *pNativeMachine = IMAGE_FILE_MACHINE_I386;
+		#elif _AMD64_
+		 *pNativeMachine = IMAGE_FILE_MACHINE_AMD64;
+		#elif _ARM_
+		 *pNativeMachine = IMAGE_FILE_MACHINE_ARM;
+		#elif _ARM64_
+		 *pNativeMachine = IMAGE_FILE_MACHINE_ARM64;
+    	#endif
+	}
+	
+	return TRUE;
+}
+
+int GetProcessUserModeExceptionPolicy(int a1)
+{
+  BaseSetLastNTError(STATUS_NOT_SUPPORTED);
+  return 0;
 }
