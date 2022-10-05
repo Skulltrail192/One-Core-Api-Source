@@ -119,7 +119,7 @@
 125 stdcall CredUnmarshalCredentialA(str ptr ptr)
 126 stdcall CredUnmarshalCredentialW(wstr ptr ptr)
 127 stdcall CredWriteA(ptr long)
-128 stdcall CredWriteDomainCredentialsA(ptr ptr long) advapibase.CredWriteDomainCredentialsA
+128 stdcall CredWriteDomainCredentialsA(ptr ptr long) advapibase.CredWriteDomainCredentialsA ;for reactos
 129 stdcall CredWriteDomainCredentialsW(ptr ptr long)
 130 stdcall CredWriteW(ptr long)
 131 stdcall CredpConvertCredential(long long long ptr)
@@ -230,7 +230,7 @@
 237 stdcall GetEffectiveRightsFromAclA(ptr ptr ptr)
 238 stdcall GetEffectiveRightsFromAclW(ptr ptr ptr)
 239 stdcall GetEventLogInformation(long long ptr long ptr)
-240 stdcall GetExplicitEntriesFromAclA(ptr ptr ptr) advapi32.GetExplicitEntriesFromAclW
+240 stdcall GetExplicitEntriesFromAclA(ptr ptr ptr) advapibase.GetExplicitEntriesFromAclW
 241 stdcall GetExplicitEntriesFromAclW(ptr ptr ptr)
 242 stdcall GetFileSecurityA(str long ptr long ptr)
 243 stdcall GetFileSecurityW(wstr long ptr long ptr)
@@ -574,27 +574,27 @@
 601 stdcall SystemFunction008(ptr ptr ptr)
 602 stdcall SystemFunction009(ptr ptr ptr)
 603 stdcall SystemFunction010(ptr ptr ptr)
-604 stdcall SystemFunction011(ptr ptr ptr) SystemFunction010
+604 stdcall SystemFunction011(ptr ptr ptr)
 605 stdcall SystemFunction012(ptr ptr ptr)
 606 stdcall SystemFunction013(ptr ptr ptr)
-607 stdcall SystemFunction014(ptr ptr ptr) SystemFunction012
-608 stdcall SystemFunction015(ptr ptr ptr) SystemFunction013
-609 stdcall SystemFunction016(ptr ptr ptr) SystemFunction012
-610 stdcall SystemFunction017(ptr ptr ptr) SystemFunction013
-611 stdcall SystemFunction018(ptr ptr ptr) SystemFunction012
-612 stdcall SystemFunction019(ptr ptr ptr) SystemFunction013
-613 stdcall SystemFunction020(ptr ptr ptr) SystemFunction012
-614 stdcall SystemFunction021(ptr ptr ptr) SystemFunction013
-615 stdcall SystemFunction022(ptr ptr ptr) SystemFunction012
-616 stdcall SystemFunction023(ptr ptr ptr) SystemFunction013
+607 stdcall SystemFunction014(ptr ptr ptr)
+608 stdcall SystemFunction015(ptr ptr ptr)
+609 stdcall SystemFunction016(ptr ptr ptr)
+610 stdcall SystemFunction017(ptr ptr ptr)
+611 stdcall SystemFunction018(ptr ptr ptr)
+612 stdcall SystemFunction019(ptr ptr ptr)
+613 stdcall SystemFunction020(ptr ptr ptr)
+614 stdcall SystemFunction021(ptr ptr ptr)
+615 stdcall SystemFunction022(ptr ptr ptr)
+616 stdcall SystemFunction023(ptr ptr ptr)
 617 stdcall SystemFunction024(ptr ptr ptr)
 618 stdcall SystemFunction025(ptr ptr ptr)
-619 stdcall SystemFunction026(ptr ptr ptr) SystemFunction024
-620 stdcall SystemFunction027(ptr ptr ptr) SystemFunction025
+619 stdcall SystemFunction026(ptr ptr ptr)
+620 stdcall SystemFunction027(ptr ptr ptr)
 621 stdcall SystemFunction028(long long)
 622 stdcall SystemFunction029(long long)
 623 stdcall SystemFunction030(ptr ptr)
-624 stdcall SystemFunction031(ptr ptr) SystemFunction030
+624 stdcall SystemFunction031(ptr ptr)
 625 stdcall SystemFunction032(ptr ptr)
 626 stdcall SystemFunction033(long long)
 627 stdcall SystemFunction034(long long)
@@ -678,7 +678,7 @@
 486 stdcall RegGetValueA(long str str long ptr ptr ptr) 
 487 stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) 
 
-;@ stdcall LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr)
+; @ stdcall LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr)
 
 #Vista Functions implemented (without redirection)
 @ stdcall AddMandatoryAce(ptr long long long ptr)
@@ -869,12 +869,12 @@
 
 #Hooks
 87 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorA(str long ptr ptr)
-88 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorW(wstr long ptr ptr) ConvertStringSecurityDescriptorToSecurityDescriptorWInternal
+88 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorW(wstr long ptr ptr) ;ConvertStringSecurityDescriptorToSecurityDescriptorWInternal
 89 stdcall ConvertStringSidToSidA(ptr ptr)
-90 stdcall ConvertStringSidToSidW(ptr ptr) ConvertStringSidToSidWInternal
+90 stdcall ConvertStringSidToSidW(ptr ptr) ;ConvertStringSidToSidWInternal
 101 stdcall CreateRestrictedToken(long long long ptr long ptr long ptr ptr) CreateRestrictedTokenInternal
 248 stdcall GetKernelObjectSecurity(long long ptr long ptr) GetKernelObjectSecurityInternal
-261 stdcall GetNamedSecurityInfoW(wstr long long ptr ptr ptr ptr ptr) ;GetNamedSecurityInfoWInternal
+261 stdcall GetNamedSecurityInfoW(wstr long long ptr ptr ptr ptr ptr) GetNamedSecurityInfoWInternal
 273 stdcall GetSecurityInfo(long long long ptr ptr ptr ptr ptr) GetSecurityInfoInternal
 284 stdcall GetTokenInformation(ptr long ptr long ptr) GetTokenInformationInternal
 429 stdcall OpenProcessToken(long long ptr) OpenProcessTokenInternal

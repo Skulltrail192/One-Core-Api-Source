@@ -22,13 +22,10 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(advapi32_hooks); 
 
-/******************************************************************************
- *     ConvertStringSecurityDescriptorToSecurityDescriptorW   (sechost.@)
- */
-BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescriptorW(
+BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescriptorExW(
         const WCHAR *string, DWORD revision, PSECURITY_DESCRIPTOR *sd, ULONG *ret_size );
 
-BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSidToSidW( const WCHAR *string, PSID *sid );
+BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSidToSidExW( const WCHAR *string, PSID *sid );
 
 BOOL
 APIENTRY
@@ -444,7 +441,7 @@ BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescripto
 {
 	BOOL resp;
 	
-	resp = ConvertStringSecurityDescriptorToSecurityDescriptorW(string,
+	resp = ConvertStringSecurityDescriptorToSecurityDescriptorExW(string,
 																revision,
 																sd,
 																ret_size);
@@ -453,16 +450,19 @@ BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescripto
 		DbgPrint("ConvertStringSecurityDescriptorToSecurityDescriptorWInternal::ConvertStringSecurityDescriptorToSecurityDescriptorW resp: %d\n", resp);															
 	}
 	
-	return TRUE;
+	return resp;
 }
 
-BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSidToSidWInternal( const WCHAR *string, PSID *sid )
+BOOL 
+WINAPI 
+DECLSPEC_HOTPATCH 
+ConvertStringSidToSidWInternal( const WCHAR *string, PSID *sid )
 {
 	BOOL ret;
 	
-	ret = ConvertStringSidToSidW(string, sid);
+	ret = ConvertStringSidToSidExW(string, sid);
 	
 	DbgPrint("ConvertStringSidToSidWInternal:: ConvertStringSidToSidW return: %d\n", ret);
 	
-	return TRUE;
+	return ret;
 }

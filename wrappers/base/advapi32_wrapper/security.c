@@ -838,7 +838,7 @@ out:
 /******************************************************************************
  *     ConvertStringSecurityDescriptorToSecurityDescriptorW   (sechost.@)
  */
-BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescriptorW(
+BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescriptorExW(
         const WCHAR *string, DWORD revision, PSECURITY_DESCRIPTOR *sd, ULONG *ret_size )
 {
     DWORD size;
@@ -889,7 +889,7 @@ BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescripto
 /******************************************************************************
  * ConvertStringSecurityDescriptorToSecurityDescriptorA [ADVAPI32.@]
  */
-BOOL WINAPI ConvertStringSecurityDescriptorToSecurityDescriptorA(
+BOOL WINAPI ConvertStringSecurityDescriptorToSecurityDescriptorExA(
         LPCSTR StringSecurityDescriptor,
         DWORD StringSDRevision,
         PSECURITY_DESCRIPTOR* SecurityDescriptor,
@@ -916,7 +916,10 @@ BOOL WINAPI ConvertStringSecurityDescriptorToSecurityDescriptorA(
 /******************************************************************************
  *     ConvertStringSidToSidW   (sechost.@)
  */
-BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSidToSidW( const WCHAR *string, PSID *sid )
+BOOL 
+WINAPI 
+DECLSPEC_HOTPATCH 
+ConvertStringSidToSidExW( const WCHAR *string, PSID *sid )
 {
     DWORD size;
     const WCHAR *string_end;

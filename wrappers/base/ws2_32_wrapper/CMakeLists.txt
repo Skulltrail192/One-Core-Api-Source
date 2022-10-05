@@ -5,6 +5,7 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/wine)
 
 list(APPEND SOURCE
     main.c
+	protocol.c
 	socket.c
 	version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/ws2_32_wrapper_stubs.c

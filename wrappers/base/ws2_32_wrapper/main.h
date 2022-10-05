@@ -192,3 +192,9 @@ freeaddrinfo(
   
 WINAPI IdnToAscii(DWORD,LPCWSTR,INT,LPWSTR,INT);
 WINAPI TrySubmitThreadpoolCallback(PTP_SIMPLE_CALLBACK,void*,TP_CALLBACK_ENVIRON*);
+
+struct gethostname_params
+{
+    char *name;
+    unsigned int size;
+};

@@ -834,12 +834,12 @@
 @ stub SetMagnificationLensCtxInformation
 @ stdcall SetMirrorRendering(ptr ptr)
 @ stdcall SetProcessDPIAware() ;implemented
-@ stdcall SetProcessRestrictionExemption(long)
+@ stdcall SetProcessRestrictionExemption(long)  
 @ stdcall SetPhysicalCursorPos(long long)
 @ stdcall SetWindowRelative(ptr ptr)
 @ stdcall SetWindowDisplayAffinity(ptr long)
 @ stdcall SetWindowCompositionAttribute(ptr ptr)
-@ stdcall SetWindowRgnEx(long ptr long) ;implemented
+;@ stdcall SetWindowRgnEx(long ptr long) ;Impede que o WindowBlinds abra.
 @ stub SfmDxBindSwapChain
 @ stub SfmDxGetSwapChainStats
 @ stub SfmDxOpenSwapChain

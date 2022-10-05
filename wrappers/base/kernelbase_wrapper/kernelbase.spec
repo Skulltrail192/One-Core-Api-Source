@@ -1447,8 +1447,8 @@
 @ stdcall SetProcessGroupAffinity(long ptr ptr)
 
 ; #Win10 functions
-; @ stdcall GetThreadDescription(long ptr)
-; @ stdcall SetThreadDescription(long ptr)
+@ stdcall GetThreadDescription(long ptr)
+@ stdcall SetThreadDescription(long ptr)
 @ stdcall AppPolicyGetMediaFoundationCodecLoading(ptr ptr)
 @ stdcall IsWow64Process2(ptr ptr ptr)
 
