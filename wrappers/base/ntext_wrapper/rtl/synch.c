@@ -1,21 +1,24 @@
-/*
- * Copyright 2009 Henri Verbeet for CodeWeavers
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- */
+/*++
+
+Copyright (c) 2022  Shorthorn Project
+
+Module Name:
+
+    synch.c
+
+Abstract:
+
+    This module implements all NTAPI syncronization
+    objects.
+
+Author:
+
+    Skulltrail 18-October-2022
+
+Revision History:
+
+--*/
+
 #include <main.h>
 #include <config.h>
 #include <port.h>
@@ -1089,5 +1092,44 @@ NTSTATUS NTAPI RtlSleepConditionVariableSRW( RTL_CONDITION_VARIABLE *variable, R
         RtlAcquireSRWLockShared( lock );
     else
         RtlAcquireSRWLockExclusive( lock );
+    return status;
+}
+
+/***********************************************************************
+ *             NtRemoveIoCompletionEx (NTDLL.@)
+ */
+NTSTATUS WINAPI NtRemoveIoCompletionEx( HANDLE handle, FILE_IO_COMPLETION_INFORMATION *info, ULONG count,
+                                        ULONG *written, LARGE_INTEGER *timeout, BOOLEAN alertable )
+{
+    NTSTATUS status;
+    ULONG i = 0;
+	PVOID CompletionKey = 0;
+	PVOID CompletionValue = 0;
+	PIO_STATUS_BLOCK IoStatusBlock = {0};
+
+    for (;;)
+    {
+        while (i < count)
+        {
+			status = NtRemoveIoCompletion(handle, CompletionKey, CompletionValue, IoStatusBlock, timeout);			
+            if(status == STATUS_SUCCESS)
+			{
+				info[i].KeyContext             = CompletionKey;
+				info[i].ApcContext             = CompletionValue;
+				info[i].IoStatusBlock.Information = IoStatusBlock->Information;
+				info[i].IoStatusBlock.Status    = IoStatusBlock->Status;   
+			}				
+			if (status != STATUS_SUCCESS) break;
+            ++i;
+        }
+        if (i || status != STATUS_PENDING)
+        {
+            if (status == STATUS_PENDING) status = STATUS_SUCCESS;
+            break;
+        }
+        status = NtWaitForSingleObject( handle, alertable, timeout );
+        if (status != WAIT_OBJECT_0) break;
+    }
+    *written = i ? i : 1;
     return status;
 }
