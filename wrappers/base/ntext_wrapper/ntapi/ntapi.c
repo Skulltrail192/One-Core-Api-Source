@@ -259,7 +259,7 @@ NtTraceControl(
 	PULONG ReturnLength
 )
 {
-	return STATUS_SUCCESS;
+	return STATUS_UNSUCCESSFUL;
 }
 
 VOID 

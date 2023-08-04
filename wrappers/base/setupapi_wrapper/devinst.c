@@ -29,31 +29,6 @@ static unsigned int devnode_table_size;
 valid or not */
 #define SETUP_DEVICE_INFO_SET_MAGIC 0xd00ff056
 
-struct DeviceInfoSet
-{
-    DWORD magic;        /* if is equal to SETUP_DEVICE_INFO_SET_MAGIC struct is okay */
-    GUID ClassGuid;
-    HWND hwndParent;
-    struct list devices;
-};
-
-struct device
-{
-    struct DeviceInfoSet *set;
-    HKEY                  key;
-    BOOL                  phantom;
-    WCHAR                *instanceId;
-    struct list           interfaces;
-    GUID                  class;
-    DEVINST               devnode;
-    struct list           entry;
-    BOOL                  removed;
-    SP_DEVINSTALL_PARAMS_W params;
-    struct driver        *drivers;
-    unsigned int          driver_count;
-    struct driver        *selected_driver;
-};
-
 static void SETUPDI_GuidToString(const GUID *guid, LPWSTR guidStr)
 {
     static const WCHAR fmt[] = {'{','%','0','8','X','-','%','0','4','X','-',
@@ -374,4 +349,76 @@ BOOL WINAPI SetupDiGetDevicePropertyW(HDEVINFO devinfo, PSP_DEVINFO_DATA device_
 
     SetLastError(ls);
     return !ls;
+}
+
+DWORD
+GetErrorCodeFromCrCode(const IN CONFIGRET cr)
+{
+  switch (cr)
+  {
+    case CR_ACCESS_DENIED:        return ERROR_ACCESS_DENIED;
+    case CR_BUFFER_SMALL:         return ERROR_INSUFFICIENT_BUFFER;
+    case CR_CALL_NOT_IMPLEMENTED: return ERROR_CALL_NOT_IMPLEMENTED;
+    case CR_FAILURE:              return ERROR_GEN_FAILURE;
+    case CR_INVALID_DATA:         return ERROR_INVALID_USER_BUFFER;
+    case CR_INVALID_DEVICE_ID:    return ERROR_INVALID_PARAMETER;
+    case CR_INVALID_MACHINENAME:  return ERROR_INVALID_COMPUTERNAME;
+    case CR_INVALID_DEVNODE:      return ERROR_INVALID_PARAMETER;
+    case CR_INVALID_FLAG:         return ERROR_INVALID_FLAGS;
+    case CR_INVALID_POINTER:      return ERROR_INVALID_PARAMETER;
+    case CR_INVALID_PROPERTY:     return ERROR_INVALID_PARAMETER;
+    case CR_NO_SUCH_DEVNODE:      return ERROR_FILE_NOT_FOUND;
+    case CR_NO_SUCH_REGISTRY_KEY: return ERROR_FILE_NOT_FOUND;
+    case CR_NO_SUCH_VALUE:        return ERROR_FILE_NOT_FOUND;
+    case CR_OUT_OF_MEMORY:        return ERROR_NOT_ENOUGH_MEMORY;
+    case CR_REGISTRY_ERROR:       return ERROR_GEN_FAILURE;
+    case CR_ALREADY_SUCH_DEVINST: return ERROR_DEVINST_ALREADY_EXISTS;
+    case CR_SUCCESS:              return ERROR_SUCCESS;
+    default:                      return ERROR_GEN_FAILURE;
+  }
+}
+
+/***********************************************************************
+ *		SetupDiRestartDevices (SETUPAPI.@)
+ */
+BOOL
+WINAPI
+SetupDiRestartDevices(
+    HDEVINFO DeviceInfoSet,
+    PSP_DEVINFO_DATA DeviceInfoData)
+{
+    struct DeviceInfoSet *set = (struct DeviceInfoSet *)DeviceInfoSet;
+    struct DeviceInfo *devInfo;
+    CONFIGRET cr;
+
+    TRACE("%s(%p %p)\n", __FUNCTION__, DeviceInfoSet, DeviceInfoData);
+
+    if (!DeviceInfoSet || DeviceInfoSet == INVALID_HANDLE_VALUE)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+    if (set->magic != SETUP_DEVICE_INFO_SET_MAGIC)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+
+    if (!DeviceInfoData || DeviceInfoData->cbSize != sizeof(SP_DEVINFO_DATA)
+            || !DeviceInfoData->Reserved)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    devInfo = (struct DeviceInfo *)DeviceInfoData->Reserved;
+
+    cr = CM_Enable_DevNode_Ex(devInfo->dnDevInst, 0, set->hMachine);
+    if (cr != CR_SUCCESS)
+    {
+        SetLastError(GetErrorCodeFromCrCode(cr));
+        return FALSE;
+    }
+
+    return TRUE;
 }

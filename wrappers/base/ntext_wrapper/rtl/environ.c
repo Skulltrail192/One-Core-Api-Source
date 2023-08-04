@@ -145,18 +145,18 @@ Return Value:
     return STATUS_SUCCESS;
 
 
-unlock_and_exit:;
+unlock_and_exit:
     RtlReleasePebLock ();
     return Status;
 }
 
-NTSTATUS 
-NTAPI 
-RtlCreateEnvironmentEx( 	
-	_In_ PVOID  	SourceEnv,
-	_Out_ PVOID *  	Environment,
-	_In_ ULONG  	Flags 
-) 	
-{
-	return RtlCreateEnvironment(FALSE, (PWCHAR*)Environment);
-}
+// NTSTATUS 
+// NTAPI 
+// RtlCreateEnvironmentEx( 	
+	// _In_ PVOID  	SourceEnv,
+	// _Out_ PVOID *  	Environment,
+	// _In_ ULONG  	Flags 
+// ) 	
+// {
+	// return RtlCreateEnvironment(FALSE, (PWCHAR*)Environment);
+// }

@@ -797,25 +797,25 @@ RtlCultureNameToLCID(
 	return FALSE;
 }
 
-NTSTATUS
-NTAPI
-RtlLocaleNameToLcid(
-    _In_ PWSTR LocaleName,
-    _Out_ PLCID lcid,
-    _In_ ULONG Flags
-)
-{
-    int i;
+// NTSTATUS
+// NTAPI
+// RtlLocaleNameToLcid(
+    // _In_ PWSTR LocaleName,
+    // _Out_ PLCID lcid,
+    // _In_ ULONG Flags
+// )
+// {
+    // int i;
 
-	for(i=0;i<LOCALE_TABLE_SIZE;i++){
-		if(wcscmp(LocaleName, locale_table[i].localeName)==0){
-			*lcid = locale_table[i].lcid;
-			return STATUS_SUCCESS;
-		}
-	}
+	// for(i=0;i<LOCALE_TABLE_SIZE;i++){
+		// if(wcscmp(LocaleName, locale_table[i].localeName)==0){
+			// *lcid = locale_table[i].lcid;
+			// return STATUS_SUCCESS;
+		// }
+	// }
 	
-	return STATUS_UNSUCCESSFUL;
-}
+	// return STATUS_UNSUCCESSFUL;
+// }
 
 static NTSTATUS load_string( ULONG id, LANGID lang, WCHAR *buffer, ULONG len )
 {
@@ -2158,3 +2158,8 @@ void init_locale()
 {
 	LdrLoadDll(NULL, NULL, &Kernel32DllName, &kernel32_handle);	
 }
+
+NTSTATUS RtlpIsValidUILanguage(PUNICODE_STRING Language)
+{
+	return STATUS_SUCCESS;
+}	

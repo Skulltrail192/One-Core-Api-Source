@@ -35,3 +35,25 @@ BOOL WINAPI SetupGetInfDriverStoreLocationW(
     SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
     return FALSE;
 }
+
+/***********************************************************************
+ * CMP_WaitNoPendingInstallEvents [SETUPAPI.@]
+ */
+DWORD
+WINAPI
+CMP_WaitNoPendingInstallEvents(
+    _In_ DWORD dwTimeout)
+{
+    HANDLE hEvent;
+    DWORD ret;
+
+    TRACE("CMP_WaitNoPendingInstallEvents(%lu)\n", dwTimeout);
+
+    hEvent = OpenEventW(SYNCHRONIZE, FALSE, L"Global\\PnP_No_Pending_Install_Events");
+    if (hEvent == NULL)
+       return WAIT_FAILED;
+
+    ret = WaitForSingleObject(hEvent, dwTimeout);
+    CloseHandle(hEvent);
+    return ret;
+}

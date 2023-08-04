@@ -204,7 +204,7 @@ BOOL
 NTAPI 
 EtwpIsHeapRangeLoggingEnabled()
 {
-	return TRUE;
+	return (SharedUserData->TraceLogging >> 30) & 1;
 }
 
 BOOL 
@@ -618,4 +618,9 @@ ULONG WINAPI EtwEventWriteTransfer( REGHANDLE handle, PCEVENT_DESCRIPTOR descrip
     DbgPrint("%s, %p, %s, %s, %u, %p: stub\n", handle, descriptor,
           activity, related, count, data);
     return ERROR_SUCCESS;
+}
+
+ULONG WINAPI EtwTraceUserEvent(int a1, int a2, __int64 a3, __int64 *a4, __int64 *a5, int a6, char a7)
+{
+	return 0;
 }

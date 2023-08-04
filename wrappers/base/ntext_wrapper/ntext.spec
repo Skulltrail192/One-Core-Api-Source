@@ -1505,6 +1505,7 @@
 @ stdcall EtwSendNotification(long long long long long)
 @ stdcall EtwReplyNotification(long)
 @ stdcall EtwTraceDiagnosticEvent(long long long long long)
+@ stdcall EtwTraceUserEvent(long long long long long long long)
 @ stdcall EtwWriteUMSecurityEvent(ptr long long ptr)
 @ stdcall LdrAddLoadAsDataTable(ptr wstr long long)
 @ stdcall LdrGetProcedureAddressEx(ptr ptr long ptr long)
@@ -1566,6 +1567,7 @@
 @ stdcall RtlInitializeConditionVariable(ptr)
 @ stdcall RtlInitializeSRWLock(ptr) 
 @ stdcall RtlInternString(long long) ; to review
+@ stdcall RtlpIsValidUILanguage(ptr)
 @ stdcall RtlIsNormalizedString(long wstr long ptr)
 @ stdcall RtlLCIDToCultureName(long wstr) ;this functions already have implementation
 @ stdcall RtlLcidToLocaleName(long ptr long long)
@@ -1724,3 +1726,47 @@
 @ stdcall NtQuerySection(long long long long long) NtQuerySectionInternal
 @ stdcall NtSetInformationProcess(long long long long) NtSetInformationProcessInternal
 @ stdcall NtSetInformationToken(long long ptr long) NtSetInformationTokenInternal
+
+#Vista only support Functions
+@ stdcall -stub CsrVerifyRegion() ntdll.CsrVerifyRegion
+@ stdcall -stub LdrGetFileNameFromLoadAsDataTable() ntdll.LdrGetFileNameFromLoadAsDataTable
+@ stdcall -stub LdrRemoveLoadAsDataTable() ntdll.LdrRemoveLoadAsDataTable
+@ stdcall -stub LdrResFindResource() ntdll.LdrResFindResource
+@ stdcall -stub LdrResFindResourceDirectory() ntdll.LdrResFindResourceDirectory
+@ stdcall -stub LdrResSearchResource() ntdll.LdrResSearchResource
+@ stdcall -stub LdrpResGetMappingSize() ntdll.LdrpResGetMappingSize
+@ stdcall -stub LdrpResGetRCConfig() ntdll.LdrpResGetRCConfig
+@ stdcall -stub LdrpResGetResourceDirectory() ntdll.LdrpResGetResourceDirectory
+@ stdcall -stub NtCancelSynchronousIoFile() ntdll.NtCancelSynchronousIoFile
+@ stdcall -stub NtCreateUserProcess() ntdll.NtCreateUserProcess
+@ stdcall -stub NtInitializeNlsFiles() ntdll.NtInitializeNlsFiles
+@ stdcall -stub RtlCleanUpTEBLangLists() ntdll.RtlCleanUpTEBLangLists
+@ stdcall -stub RtlCreateEnvironmentEx() ntdll.RtlCreateEnvironmentEx
+@ stdcall -stub RtlCreateProcessParametersEx() ntdll.RtlCreateProcessParametersEx
+@ stdcall -stub RtlExitUserProcess() ntdll.RtlExitUserProcess
+@ stdcall -stub RtlExpandEnvironmentStrings() ntdll.RtlExpandEnvironmentStrings
+@ stdcall -stub RtlInitializeCriticalSectionEx() ntdll.RtlInitializeCriticalSectionEx
+@ stdcall -stub RtlInitializeExceptionChain() ntdll.RtlInitializeExceptionChain
+@ stdcall -stub RtlLocaleNameToLcid() ntdll.RtlLocaleNameToLcid
+@ stdcall -stub RtlQueryElevationFlags() ntdll.RtlQueryElevationFlags
+@ stdcall -stub RtlQueryEnvironmentVariable() ntdll.RtlQueryEnvironmentVariable
+@ stdcall -stub RtlSetEnvironmentVar() ntdll.RtlSetEnvironmentVar
+@ stdcall -stub RtlTryAcquirePebLock() ntdll.RtlTryAcquirePebLock
+@ stdcall -stub RtlWerpReportException() ntdll.RtlWerpReportException
+@ stdcall -stub RtlpCheckDynamicTimeZoneInformation() ntdll.RtlpCheckDynamicTimeZoneInformation
+@ stdcall -stub RtlpConvertCultureNamesToLCIDs() ntdll.RtlpConvertCultureNamesToLCIDs
+@ stdcall -stub RtlpConvertLCIDsToCultureNames() ntdll.RtlpConvertLCIDsToCultureNames
+@ stdcall -stub RtlpCreateProcessRegistryInfo() ntdll.RtlpCreateProcessRegistryInfo
+@ stdcall -stub RtlpGetLCIDFromLangInfoNode() ntdll.RtlpGetLCIDFromLangInfoNode
+@ stdcall -stub RtlpGetNameFromLangInfoNode() ntdll.RtlpGetNameFromLangInfoNode
+@ stdcall -stub RtlpGetSystemDefaultUILanguage() ntdll.RtlpGetSystemDefaultUILanguage
+@ stdcall -stub RtlpInitializeLangRegistryInfo() ntdll.RtlpInitializeLangRegistryInfo
+@ stdcall -stub RtlpIsQualifiedLanguage() ntdll.RtlpIsQualifiedLanguage
+@ stdcall -stub RtlpLoadMachineUIByPolicy() ntdll.RtlpLoadMachineUIByPolicy
+@ stdcall -stub RtlpLoadUserUIByPolicy() ntdll.RtlpLoadUserUIByPolicy
+@ stdcall -stub RtlpMuiFreeLangRegistryInfo() ntdll.RtlpMuiFreeLangRegistryInfo
+@ stdcall -stub TpCaptureCaller() ntdll.TpCaptureCaller
+@ stdcall -stub TpCheckTerminateWorker() ntdll.TpCheckTerminateWorker
+@ stdcall -stub WerCheckEventEscalation() ntdll.WerCheckEventEscalation
+@ stdcall -stub WerReportSQMEvent() ntdll.WerReportSQMEvent
+@ stdcall -stub WerReportWatsonEvent() ntdll.WerReportWatsonEvent
