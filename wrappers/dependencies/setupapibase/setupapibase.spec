@@ -606,9 +606,21 @@
 @ stub pSetupWriteLogError
 
 #Stubs
-@ stub CM_Install_DevNodeW
-@ stub pSetupDiInvalidateHelperModules
 @ stub SetupDiGetClassPropertyW
 @ stub SetupDiGetDevicePropertyW
-@ stub SetupDiLoadDeviceIcon
 @ stub SetupDiSetDevicePropertyW
+@ stdcall CM_Install_DevNode_ExW(long long long long long long ptr long long)
+@ stdcall CM_Install_DevNodeW(long long long long long long ptr long)
+@ stdcall SetupCloseTextLogSection(long long long long long)
+@ stdcall SetupCreateTextLogSectionW(wstr long wstr long)
+@ stdcall pSetupDiGetStrongNameForDriverNode(long long ptr wstr long long)
+@ stdcall pSetupDiInvalidateHelperModules(long long long)
+@ stdcall SetupDiReportPnPDeviceProblem(ptr ptr long long)
+@ stdcall SetupGetThreadLogToken()
+@ stdcall SetupSetThreadLogToken(long)
+@ stdcall SetupWriteTextLog(long long long long ptr)
+@ stdcall SetupDiReportDriverNotFoundError(ptr ptr long)
+@ stdcall SetupDiLoadDeviceIcon(long ptr long long long ptr)
+@ stdcall SetupDiGetDevicePropertyKeys(long ptr ptr long ptr long)
+@ stdcall SetupDiGetClassPropertyExW(ptr ptr ptr ptr long ptr long wstr ptr)
+@ stdcall SetupDiGetClassPropertyKeysExW(ptr ptr long ptr long wstr ptr)

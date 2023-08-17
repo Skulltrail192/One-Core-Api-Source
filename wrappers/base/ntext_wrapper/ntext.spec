@@ -1380,7 +1380,7 @@
 @ stdcall RtlUnlockMemoryStreamRegion(ptr int64 int64 long) ntdll.RtlUnlockMemoryStreamRegion
 @ stdcall RtlWriteMemoryStream(ptr ptr long ptr) ntdll.RtlWriteMemoryStream
 
-#Missing functions on Reactos - need realoc
+#Missing functions on Reactos - need realloc
 @ stdcall EtwControlTraceA(int64 str ptr long) 
 @ stdcall EtwControlTraceW(int64 wstr ptr long) 
 @ stdcall EtwCreateTraceInstanceId(ptr ptr)

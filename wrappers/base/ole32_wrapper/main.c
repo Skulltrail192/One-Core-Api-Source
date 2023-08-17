@@ -184,3 +184,24 @@ HRESULT WINAPI CoGetCallState(int unknown, PULONG unknown2)
 {
     return E_NOTIMPL;
 }
+
+/***********************************************************************
+ *           CoIncrementMTAUsage    (combase.@)
+ */
+HRESULT WINAPI CoIncrementMTAUsage(CO_MTA_USAGE_COOKIE *cookie)
+{
+    TRACE("%p\n", cookie);
+
+    return apartment_increment_mta_usage(cookie);
+}
+
+/***********************************************************************
+ *           CoDecrementMTAUsage    (combase.@)
+ */
+HRESULT WINAPI CoDecrementMTAUsage(CO_MTA_USAGE_COOKIE cookie)
+{
+    TRACE("%p\n", cookie);
+
+    apartment_decrement_mta_usage(cookie);
+    return S_OK;
+}

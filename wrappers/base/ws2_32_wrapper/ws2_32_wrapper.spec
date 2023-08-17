@@ -17,7 +17,7 @@
 17  stdcall  recvfrom(long ptr long long ptr ptr)
 18  stdcall  select(long ptr ptr ptr ptr)
 19  stdcall  send(long ptr long long)
-20  stdcall  sendto(long ptr long long ptr long)
+20  stdcall  sendto(long ptr long long ptr long) ws2_base.sendto
 21  stdcall  setsockopt(long long long ptr long)
 22  stdcall  shutdown(long long)
 23  stdcall  socket(long long long)

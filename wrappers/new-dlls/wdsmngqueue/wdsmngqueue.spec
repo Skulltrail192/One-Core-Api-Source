@@ -1,0 +1,1 @@
+@ stdcall ModuleInit(ptr long ptr ptr)

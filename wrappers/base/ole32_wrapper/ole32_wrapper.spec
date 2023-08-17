@@ -336,6 +336,8 @@
 ; @ stdcall VariantToPropVariant(ptr ptr) propsys.VariantToPropVariant
 
 #win7 functions
+@ stdcall CoDecrementMTAUsage(ptr)
+@ stdcall CoIncrementMTAUsage(ptr)
 @ stdcall CoGetApartmentType(ptr ptr)
 @ stdcall CoGetActivationState(int128 long ptr)
 @ stdcall CoGetCallState(long ptr)

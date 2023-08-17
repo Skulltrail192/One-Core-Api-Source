@@ -558,7 +558,7 @@
 @ stdcall pSetupInfCacheBuild(ptr)
 @ stdcall pSetupInfIsFromOemLocation(wstr ptr)
 @ stdcall pSetupInstallCatalog(wstr wstr ptr)
-@ stdcall pSetupInstallStopEx(ptr ptr ptr)
+@ stdcall pSetupInstallStopEx(ptr ptr ptr) setupapibase.pSetupInstallStopEx
 @ stdcall pSetupIsGuidNull(ptr)
 @ stdcall pSetupIsUserAdmin()
 @ stdcall pSetupMakeSurePathExists(wstr)
@@ -600,23 +600,23 @@
 @ stdcall pSetupWriteLogError(ptr ptr long)
 
 #Stubs
-@ stub CM_Install_DevNodeW
-@ stub pSetupDiInvalidateHelperModules
-@ stub SetupDiGetClassPropertyW
-@ stub SetupDiLoadDeviceIcon
-@ stub CM_Install_DevNode_ExW
+; @ stub CM_Install_DevNodeW
+; @ stub pSetupDiInvalidateHelperModules
+; @ stub SetupDiGetClassPropertyW
+; @ stub SetupDiLoadDeviceIcon
+; @ stub CM_Install_DevNode_ExW
 @ stub pSetupDiBuildInfoDataFromStrongName
-@ stub pSetupDiGetStrongNameForDriverNode
-@ stub SetupCloseTextLogSection
-@ stub SetupCreateTextLogSectionW
-@ stub SetupDiReportDriverNotFoundError
-@ stub SetupGetThreadLogToken
-@ stub SetupSetThreadLogToken
-@ stub SetupWriteTextLog
-@ stub SetupDiSetDeviceProperty
-@ stub SetupDiGetDeviceProperty
-@ stub SetupDiGetClassProperty
-@ stub SetupDiDeleteDeviceRegKey
+; @ stub pSetupDiGetStrongNameForDriverNode
+; @ stub SetupCloseTextLogSection
+; @ stub SetupCreateTextLogSectionW
+; @ stub SetupDiReportDriverNotFoundError
+; @ stub SetupGetThreadLogToken
+; @ stub SetupSetThreadLogToken
+; @ stub SetupWriteTextLog
+; @ stub SetupDiSetDeviceProperty
+; @ stub SetupDiGetDeviceProperty
+; @ stub SetupDiGetClassProperty
+; @ stub SetupDiDeleteDeviceRegKey
 
 #Missing on XP
 @ stdcall SetupConfigureWmiFromInfSectionA(ptr ptr str) setupapibase.SetupConfigureWmiFromInfSectionA
@@ -631,3 +631,20 @@
 @ stdcall SetupGetInfDriverStoreLocationW(wstr ptr wstr ptr long ptr) 
 @ stdcall SetupDiGetDevicePropertyW(ptr ptr ptr ptr ptr long ptr long)
 @ stdcall SetupDiSetDevicePropertyW(ptr ptr ptr long ptr long long)
+
+#From Native Vista Setupapi.dll
+@ stdcall CM_Install_DevNode_ExW(long long long long long long ptr long long) setupapibase.CM_Install_DevNode_ExW
+@ stdcall CM_Install_DevNodeW(long long long long long long ptr long) setupapibase.CM_Install_DevNodeW
+@ stdcall SetupCloseTextLogSection(long long long long long) setupapibase.SetupCloseTextLogSection
+@ stdcall SetupCreateTextLogSectionW(wstr long wstr long) setupapibase.SetupCreateTextLogSectionW
+@ stdcall pSetupDiGetStrongNameForDriverNode(long long ptr wstr long long) setupapibase.pSetupDiGetStrongNameForDriverNode
+@ stdcall pSetupDiInvalidateHelperModules(long long long) setupapibase.pSetupDiInvalidateHelperModules
+@ stdcall SetupDiReportPnPDeviceProblem(ptr ptr long long) setupapibase.SetupDiReportPnPDeviceProblem
+@ stdcall SetupWriteTextLog(long long long long ptr) setupapibase.SetupWriteTextLog
+@ stdcall SetupGetThreadLogToken() setupapibase.SetupGetThreadLogToken
+@ stdcall SetupSetThreadLogToken(long) setupapibase.SetupSetThreadLogToken
+@ stdcall SetupDiReportDriverNotFoundError(ptr ptr long) setupapibase.SetupDiReportDriverNotFoundError
+@ stdcall SetupDiLoadDeviceIcon(long ptr long long long ptr) setupapibase.SetupDiLoadDeviceIcon
+@ stdcall SetupDiGetDevicePropertyKeys(long ptr ptr long ptr long) setupapibase.SetupDiGetDevicePropertyKeys
+@ stdcall SetupDiGetClassPropertyExW(ptr ptr ptr ptr long ptr long wstr ptr) setupapibase.SetupDiGetClassPropertyExW
+@ stdcall SetupDiGetClassPropertyKeysExW(ptr ptr long ptr long wstr ptr) setupapibase.SetupDiGetClassPropertyKeysExW

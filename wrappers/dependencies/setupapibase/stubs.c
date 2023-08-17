@@ -180,3 +180,181 @@ SetupVerifyInfFileW(
     return FALSE;
 }
 
+WINAPI 
+BOOL 
+SetupDiGetDevicePropertyKeys(
+   HDEVINFO         DeviceInfoSet,
+   PSP_DEVINFO_DATA DeviceInfoData,
+   DEVPROPKEY       *PropertyKeyArray,
+   DWORD            PropertyKeyCount,
+   PDWORD           RequiredPropertyKeyCount,
+   DWORD            Flags
+)
+{
+	return FALSE;
+}
+
+BOOL 
+WINAPI 
+SetupDiGetClassPropertyExW(
+    const GUID *ClassGuid,
+    const DEVPROPKEY *PropertyKey,
+    DEVPROPTYPE *PropertyType,
+    PBYTE PropertyBuffer,
+    DWORD PropertyBufferSize,
+    PDWORD RequiredSize,
+    DWORD Flags,
+    PCWSTR MachineName,
+    PVOID Reserved
+)
+{
+	return FALSE;
+}
+
+BOOL
+WINAPI
+SetupDiGetClassPropertyKeysExW(
+    const GUID *ClassGuid,
+    DEVPROPKEY *PropertyKeyArray,
+    DWORD PropertyKeyCount,
+    PDWORD RequiredPropertyKeyCount,
+    DWORD Flags,
+    PCWSTR MachineName,
+    PVOID Reserved
+)
+{
+	return FALSE;
+}
+
+BOOL 
+WINAPI
+SetupDiLoadDeviceIcon(
+    HDEVINFO DeviceInfoSet,
+    PSP_DEVINFO_DATA DeviceInfoData,
+    UINT cxIcon,
+    UINT cyIcon,
+    DWORD Flags,
+    HICON *hIcon
+)
+{
+	return FALSE;
+}		
+
+int
+WINAPI
+CM_Install_DevNode_ExW(
+	int a1, 
+	int a2, 
+	int a3, 
+	int a4, 
+	int a5, 
+	int a6, 
+	PDWORD a7, 
+	int a8, 
+	int a9
+)
+{
+	return 0;
+}
+
+BOOL 
+WINAPI 
+pSetupCloseTextLogSection(
+	int a1, 
+	int a2, 
+	int a3, 
+	int a4, 
+	int a5
+)
+{
+	return FALSE;
+}
+
+int 
+WINAPI 
+pSetupCreateTextLogSectionW(
+	LPCWSTR lpString, 
+	int a2, 
+	LPCWSTR a3, 
+	int a4
+)
+{
+	return 0;
+}
+
+BOOL 
+WINAPI 
+SetupDiReportDriverNotFoundError(
+	void *a1, 
+	struct _SP_DEVINFO_DATA *a2, 
+	char a3
+)
+{
+	return FALSE;
+}
+
+int 
+SetupGetThreadLogToken()
+{
+	return 0
+}
+
+void 
+SetupSetThreadLogToken(int LogToken)
+{
+	;
+}
+
+int 
+pSetupWriteTextLog(int a1, int a2, int a3, int a4, size_t *pcchNewDestLength)
+{
+	return 0
+}
+
+BOOL 
+pSetupDiGetStrongNameForDriverNode(
+    int a1,
+    int a2,
+    PDWORD a3,
+    LPWSTR pszDest,
+    size_t cchDest,
+    int a6)
+{
+	return FALSE;
+}
+
+int 
+pSetupDiInvalidateHelperModules(
+	int a1, 
+	int a2,
+	char a3
+)
+{
+	return 0
+}
+
+BOOL 
+SetupDiReportPnPDeviceProblem(
+	HDEVINFO DeviceInfoSet, 
+	PSP_DEVINFO_DATA DeviceInfoData, 
+	int a3, 
+	char a4
+)
+{
+	return FALSE;
+}
+
+int 
+CM_Install_DevNodeW(
+	int a1, 
+	int a2, 
+	int a3, 
+	int a4, 
+	int a5, 
+	int a6, 
+	PDWORD a7, 
+	int a8
+)
+{
+	return 0
+}
