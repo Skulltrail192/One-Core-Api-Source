@@ -37,6 +37,7 @@ list(APPEND SOURCE
 	filemisc.c
 	fileopcr.c	
 	filefind.c
+	firmware.c
 	handle.c 
 	heap.c
     locale.c

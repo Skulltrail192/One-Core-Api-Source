@@ -1355,6 +1355,13 @@ typedef enum AppPolicyMediaFoundationCodecLoading
     AppPolicyMediaFoundationCodecLoading_InboxOnly = 1,
 } AppPolicyMediaFoundationCodecLoading;
 
+typedef enum _FIRMWARE_TYPE {
+  FirmwareTypeUnknown,
+  FirmwareTypeBios,
+  FirmwareTypeUefi,
+  FirmwareTypeMax
+} FIRMWARE_TYPE, *PFIRMWARE_TYPE;
+
 ULONG
 WINAPI
 BaseSetLastNTError(

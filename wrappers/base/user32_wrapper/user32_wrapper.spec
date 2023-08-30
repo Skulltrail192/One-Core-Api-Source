@@ -758,22 +758,23 @@
 @ stdcall CreateDesktopExA(str str ptr long long ptr long ptr)
 @ stdcall CreateDesktopExW(wstr wstr ptr long long ptr long ptr)
 @ stdcall CreateWindowInBand(long wstr wstr long long long long ptr ptr ptr ptr long)
-@ stdcall DCEQueryMode()
+#@ stdcall DCEQueryMode()
 @ stdcall DisplayConfigGetDeviceInfo(ptr)
 @ stdcall DisplayConfigSetDeviceInfo(ptr)
 @ stdcall DoSoundConnect()
 @ stdcall DoSoundDisconnect()
-@ stdcall DwmHintDxUpdate(ptr long)
-@ stdcall DwmShutdown()
-@ stdcall DwmStartRedirection(ptr)
-@ stdcall DwmStartup(ptr)
-@ stdcall DwmStopRedirection()
+#@ stdcall DwmHintDxUpdate(ptr long)
+@ stdcall DwmGetSurfaceData() userbase.DwmGetSurfaceData
+@ stdcall DwmShutdown() userbase.DwmShutdown
+#@ stdcall DwmStartRedirection(ptr)
+@ stdcall DwmStartup(ptr) userbase.DwmStartup
+#@ stdcall DwmStopRedirection()
 @ stdcall EnableMouseInPointer(long)
 @ stdcall EvaluateProximityToRect(ptr ptr ptr)
 @ stdcall FrostCrashedWindow(ptr ptr)
 @ stub gapfnScSendMessage
 @ stdcall GetCIMSSM(ptr)
-@ stdcall GetCurrentInputMessageSource(ptr long)
+#@ stdcall GetCurrentInputMessageSource(ptr long) ;commented because cause error with Ccleaner
 @ stdcall GetDisplayAutoRotationPreferences(ptr)
 @ stdcall GetDisplayConfigBufferSizes(long ptr ptr)
 @ stdcall GetGestureConfig(ptr long long ptr ptr long)
@@ -839,7 +840,7 @@
 @ stdcall SetWindowRelative(ptr ptr)
 @ stdcall SetWindowDisplayAffinity(ptr long)
 @ stdcall SetWindowCompositionAttribute(ptr ptr)
-;@ stdcall SetWindowRgnEx(long ptr long) ;Impede que o WindowBlinds abra.
+@ stdcall SetWindowRgnEx(long ptr long)  ;Impede que o WindowBlinds abra.
 @ stub SfmDxBindSwapChain
 @ stub SfmDxGetSwapChainStats
 @ stub SfmDxOpenSwapChain
@@ -855,8 +856,8 @@
 @ stdcall ShutdownWindows(long) ;implemented
 @ stdcall SkipPointerFrameMessages(long)
 @ stdcall SoundSentry() winsrv._UserSoundSentry
-@ stdcall StartDCE() ;semi-implemented
-@ stdcall StopDCE() ;semi-implemented
+#@ stdcall StartDCE() ;semi-implemented
+#@ stdcall StopDCE() ;semi-implemented
 @ stdcall SwitchDesktopWithFade(ptr long)
 @ stdcall _UserTestTokenForInteractive(ptr ptr) winsrv._UserTestTokenForInteractive
 @ stdcall UnregisterPointerInputTarget(ptr long)

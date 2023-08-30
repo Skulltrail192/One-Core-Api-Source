@@ -19,6 +19,7 @@
 
 #include <main.h>
 #include <ddrawint.h>
+#include <ntstrsafe.h>
 
 #define MAX_GDI_HANDLES  16384
 #define FIRST_GDI_HANDLE 32
@@ -29,6 +30,8 @@
         ((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) | \
         ((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24))
 #endif /* MAKEFOURCC */
+
+#define D3DKMT_MAX_ADAPTER_NAME_LENGTH 32
 
 /*Hack, i don't know how require these funcions really*/
 DWORD
@@ -589,16 +592,34 @@ NTSTATUS WINAPI D3DKMTCheckVidPnExclusiveOwnership( const D3DKMT_CHECKVIDPNEXCLU
  */
 NTSTATUS WINAPI D3DKMTOpenAdapterFromLuid( D3DKMT_OPENADAPTERFROMLUID *desc )
 {
-    static D3DKMT_HANDLE handle_start = 0;
-    struct d3dkmt_adapter *adapter;
+    WCHAR gdiDisplayName[D3DKMT_MAX_ADAPTER_NAME_LENGTH];
+    D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME usGdiDisplayName;
+    LUID luid = desc->AdapterLuid;
+    NTSTATUS status;
+	
 
-    if (!(adapter = malloc( sizeof( *adapter ) ))) return STATUS_NO_MEMORY;
+    // Convert the LUID to a GDI display name
+    status = RtlStringCchPrintfW(gdiDisplayName, D3DKMT_MAX_ADAPTER_NAME_LENGTH,
+                                 L"\\\\.\\DISPLAYV%d_%08X_%08X",
+                                 luid.HighPart, luid.LowPart);
+    if (!NT_SUCCESS(status))
+    {
+        return status;
+    }
+	
+	wcscpy(usGdiDisplayName.DeviceName,gdiDisplayName);
 
-    EnterCriticalSection( &driver_section );
-    desc->hAdapter = adapter->handle = ++handle_start;
-    list_add_tail( &d3dkmt_adapters, &adapter->entry );
-    LeaveCriticalSection( &driver_section );
-    return STATUS_SUCCESS;
+    //RtlInitUnicodeString(&usGdiDisplayName, gdiDisplayName);
+
+    // Open the adapter from the GDI display name
+    status = D3DKMTOpenAdapterFromGdiDisplayName(&usGdiDisplayName);
+	
+	if(NT_SUCCESS(status)){
+		desc->hAdapter = usGdiDisplayName.hAdapter;
+		return STATUS_SUCCESS;
+	}
+	
+	return STATUS_NOT_IMPLEMENTED;
 }
 
 NTSTATUS

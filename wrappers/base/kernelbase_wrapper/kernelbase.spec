@@ -1398,6 +1398,7 @@
 @ stdcall GetCurrentPackageFullName(ptr ptr)
 @ stdcall GetCurrentThreadStackLimits(ptr ptr)
 @ stdcall GetDynamicTimeZoneInformationEffectiveYears(ptr ptr ptr)
+@ stdcall GetFirmwareType(ptr)
 @ stdcall GetPackageFullName(long ptr ptr)
 @ stdcall GetProcessMitigationPolicy(long long ptr long)
 @ stdcall GetSystemTimePreciseAsFileTime(ptr)

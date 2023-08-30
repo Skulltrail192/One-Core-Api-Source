@@ -754,3 +754,6 @@
 @ stub PrivateSetRipFlags
 @ stub ResolveDesktopForWOW
 @ stub QueryUserCounters
+@ stdcall DwmGetSurfaceData(ptr long)
+@ stdcall DwmStartup(ptr)
+@ stdcall DwmShutdown()

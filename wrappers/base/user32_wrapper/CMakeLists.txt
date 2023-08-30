@@ -31,6 +31,7 @@ list(APPEND SOURCE
 	process.c
 	shutdown.c
 	syscall.c
+	timer.c
 	touch.c
 	window.c
     version.rc

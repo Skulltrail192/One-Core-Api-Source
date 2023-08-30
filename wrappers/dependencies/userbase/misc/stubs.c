@@ -584,3 +584,24 @@ Win32PoolAllocationStats(DWORD dw1, DWORD dw2, DWORD dw3, DWORD dw4, DWORD dw5)
     return FALSE;
 }
 
+NTSTATUS
+DwmStartup(
+	Handle hwnd
+){
+	return 0;
+}
+
+NTSTATUS
+DwmShutdown()
+{
+	return 0;
+}
+
+BOOL 
+DwmGetSurfaceData(
+	PVOID Object, 
+	int a2
+)
+{
+	return TRUE;
+}
