@@ -1,7 +1,7 @@
 add_subdirectory(advapi32_wrapper)
 add_subdirectory(browseui_wrapper)
 add_subdirectory(comdlg32_wrapper)
-add_subdirectory(cryptext_wrapper)
+add_subdirectory(cryptex_wrapper)
 add_subdirectory(gdi32_wrapper)
 add_subdirectory(iphlpapi_wrapper)
 add_subdirectory(kernelbase_wrapper)
