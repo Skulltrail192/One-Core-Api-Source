@@ -37,6 +37,7 @@ For create a Visual Studio Solution, follow these steps:
   - I always create "Output-MSVC-i386" for x86/i386 and "Output-MSVC-amd64" for am64/x64
 - Open Visual Studio Command Prompt for your target architecture;
   - Commonly placed on start menu: "All Programs" -> "Microsoft Visual Studio 2012 (example)" -> "Visual Studio Tools" -> VS2012 x86 Native Tools Command Prompt (for x86) and  VS2012 x64 Cross Tools Command Prompt (for x64)
+    ![Visual-Code-Tools-Shortcut](https://github.com/Skulltrail192/One-Core-Api/assets/5159776/30ae549b-fcb8-469e-af80-372a5e61aaea)
 - On Visual Studio Command Prompt, navigate to Ouput folder;
   - Example: "cd **/D** D:\Output-MSVC-i386"
 - After navigate to Output folder, copy path of your One-Core-API code folder and insert on command prompt with "configure VSSOlution" option;
