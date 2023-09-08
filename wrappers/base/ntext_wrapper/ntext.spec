@@ -1545,7 +1545,7 @@
 @ stdcall RtlAcquireSRWLockExclusive(ptr) 
 @ stdcall RtlAcquireSRWLockShared(ptr)
 @ stdcall RtlCloseStringHandle(long long)
-@ stdcall RtlCreateServiceSid(ptr ptr ptr) 
+# @ stdcall RtlCreateServiceSid(ptr ptr ptr) 
 @ stdcall RtlCreateUserStack(long long long long long ptr)
 @ stdcall RtlCultureNameToLCID(ptr ptr) ;this functions already have implementation 
 @ stdcall RtlFlsAlloc(ptr ptr)

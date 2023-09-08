@@ -1176,7 +1176,7 @@ ConvertInterfaceIndexToLuid(
 	memset(InterfaceLuid, 0, sizeof(*InterfaceLuid));
 	
 	row.dwIndex = InterfaceIndex;
-    if (GetIfEntry(&row)==0) 
+    if (GetIfEntry(&row) != NO_ERROR)
 		return ERROR_FILE_NOT_FOUND;
 	
 	InterfaceLuid->Info.Reserved     = 0;

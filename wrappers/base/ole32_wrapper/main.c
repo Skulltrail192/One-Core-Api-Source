@@ -1,8 +1,8 @@
 /*
- * Performance Data Helper (pdh.dll)
- *
- * Copyright 2007 Andrey Turkin
- * Copyright 2007 Hans Leidekker
+ *     Copyright 2002 Juergen Schmied
+ *     Copyright 2002 Marcus Meissner
+ *     Copyright 2004 Mike Hearn, for CodeWeavers
+ *     Copyright 2004 Rob Shearman, for CodeWeavers
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,103 +21,20 @@
 
 #define WIN32_NO_STATUS
 
-#include <assert.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
+#include "main.h"
 
-#define COBJMACROS
-#define NONAMELESSUNION
+WINE_DEFAULT_DEBUG_CHANNEL(ole32);
 
-#include "windef.h"
-#include "winbase.h"
-#include "winerror.h"
-#include "wingdi.h"
-#include "winuser.h"
-#include "winnls.h"
-#include "winreg.h"
-#include "ole2.h"
-#include "ole2ver.h"
+static struct list registered_classes = LIST_INIT(registered_classes);
 
-#include "wine/unicode.h"
-#include "olestd.h"
-
-#include "wine/list.h"
-
-#include "windef.h"
-#include "winbase.h"
-#include "wtypes.h"
-#include "dcom_p.h"
-#include "winreg.h"
-#include "wine/winternl.h"
-
-struct apartment;
-typedef struct apartment APARTMENT;
-typedef struct LocalServer LocalServer;
-
-/*
- * This is a marshallable object exposing registered local servers.
- * IServiceProvider is used only because it happens meet requirements
- * and already has proxy/stub code. If more functionality is needed,
- * a custom interface may be used instead.
- */
-struct LocalServer
+static CRITICAL_SECTION registered_classes_cs;
+static CRITICAL_SECTION_DEBUG registered_classes_cs_debug =
 {
-    PVOID IServiceProvider_iface;//IServiceProvider IServiceProvider_iface; Modified to not implement really functions
-    LONG ref;
-    APARTMENT *apt;
-    IStream *marshal_stream;
+    0, 0, &registered_classes_cs,
+    { &registered_classes_cs_debug.ProcessLocksList, &registered_classes_cs_debug.ProcessLocksList },
+      0, 0, { (DWORD_PTR)(__FILE__ ": registered_classes_cs") }
 };
-
-struct apartment
-{
-  struct list entry;
-
-  LONG  refs;              /* refcount of the apartment (LOCK) */
-  BOOL multi_threaded;     /* multi-threaded or single-threaded apartment? (RO) */
-  DWORD tid;               /* thread id (RO) */
-  OXID oxid;               /* object exporter ID (RO) */
-  LONG ipidc;              /* interface pointer ID counter, starts at 1 (LOCK) */
-  CRITICAL_SECTION cs;     /* thread safety */
-  struct list proxies;     /* imported objects (CS cs) */
-  struct list stubmgrs;    /* stub managers for exported objects (CS cs) */
-  BOOL remunk_exported;    /* has the IRemUnknown interface for this apartment been created yet? (CS cs) */
-  LONG remoting_started;   /* has the RPC system been started for this apartment? (LOCK) */
-  struct list psclsids;    /* list of registered PS CLSIDs (CS cs) */
-  struct list loaded_dlls; /* list of dlls loaded by this apartment (CS cs) */
-  DWORD host_apt_tid;      /* thread ID of apartment hosting objects of differing threading model (CS cs) */
-  HWND host_apt_hwnd;      /* handle to apartment window of host apartment (CS cs) */
-  LocalServer *local_server; /* A marshallable object exposing local servers (CS cs) */
-
-  /* FIXME: OIDs should be given out by RPCSS */
-  OID oidc;                /* object ID counter, starts at 1, zero is invalid OID (CS cs) */
-
-  /* STA-only fields */
-  HWND win;                /* message window (LOCK) */
-  LPMESSAGEFILTER filter;  /* message filter (CS cs) */
-  BOOL main;               /* is this a main-threaded-apartment? (RO) */
-};
-
-/* this is what is stored in TEB->ReservedForOle */
-struct oletls
-{
-    struct apartment *apt;
-    IErrorInfo       *errorinfo;   /* see errorinfo.c */
-    IUnknown         *state;       /* see CoSetState */
-    DWORD             apt_mask;    /* apartment mask (+0Ch on x86) */
-    IInitializeSpy   *spy;         /* The "SPY" from CoInitializeSpy */
-    DWORD            inits;        /* number of times CoInitializeEx called */
-    DWORD            ole_inits;    /* number of times OleInitialize called */
-    GUID             causality_id; /* unique identifier for each COM call */
-    LONG             pending_call_count_client; /* number of client calls pending */
-    LONG             pending_call_count_server; /* number of server calls pending */
-    DWORD            unknown;
-    IObjContext     *context_token; /* (+38h on x86) */
-    IUnknown        *call_state;    /* current call context (+3Ch on x86) */
-    DWORD            unknown2[46];
-    IUnknown        *cancel_object; /* cancel object set by CoSetCancelObject (+F8h on x86) */
-};
+static CRITICAL_SECTION registered_classes_cs = { &registered_classes_cs_debug, -1, 0, 0, 0, 0 };
 
 /* will create if necessary */
 static inline struct oletls *COM_CurrentInfo(void)
@@ -127,8 +44,6 @@ static inline struct oletls *COM_CurrentInfo(void)
 
     return NtCurrentTeb()->ReservedForOle;
 }
-
-WINE_DEFAULT_DEBUG_CHANNEL(ole32);
 
 /***********************************************************************
  *           CoGetApartmentType [OLE32.@]
@@ -190,9 +105,8 @@ HRESULT WINAPI CoGetCallState(int unknown, PULONG unknown2)
  */
 HRESULT WINAPI CoIncrementMTAUsage(CO_MTA_USAGE_COOKIE *cookie)
 {
-    TRACE("%p\n", cookie);
-
-    return apartment_increment_mta_usage(cookie);
+    //return apartment_increment_mta_usage(cookie);
+	return E_NOTIMPL;
 }
 
 /***********************************************************************
@@ -200,8 +114,7 @@ HRESULT WINAPI CoIncrementMTAUsage(CO_MTA_USAGE_COOKIE *cookie)
  */
 HRESULT WINAPI CoDecrementMTAUsage(CO_MTA_USAGE_COOKIE cookie)
 {
-    TRACE("%p\n", cookie);
-
-    apartment_decrement_mta_usage(cookie);
-    return S_OK;
+    //apartment_decrement_mta_usage(cookie);
+    //return S_OK;
+	return E_NOTIMPL;
 }

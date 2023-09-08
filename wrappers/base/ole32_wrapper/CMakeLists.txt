@@ -18,7 +18,10 @@ add_rpcproxy_files(
     dcom.idl)
 
 list(APPEND SOURCE
+	#apartment.c
     main.c
+    #marshal.c
+    #rpc.c
 	version.rc
 	${CMAKE_CURRENT_BINARY_DIR}/dcom_i.c
     ${CMAKE_CURRENT_BINARY_DIR}/ole32_wrapper_stubs.c
