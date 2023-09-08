@@ -35,7 +35,7 @@ KillSystemTimer( HWND hWnd, UINT_PTR IDEvent)
 	}
 }
 
-BOOL
+UINT_PTR
 WINAPI
 SetSystemTimer(HWND hWnd, UINT_PTR IDEvent, UINT Period, TIMERPROC TimerFunc)
 {
@@ -44,6 +44,6 @@ SetSystemTimer(HWND hWnd, UINT_PTR IDEvent, UINT Period, TIMERPROC TimerFunc)
 	if(pSetSystemTimer){
 		return pSetSystemTimer(hWnd, IDEvent, Period, TimerFunc);
 	}else{
-		return FALSE;
+		return 0;
 	}
 }

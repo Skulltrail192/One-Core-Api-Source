@@ -23,6 +23,7 @@
 #include <fdi.h>
 #include <shlwapi.h>
 
+#include "shlobj.h"
 #include "wine/debug.h"
 #include "wine/list.h"
 #include "wusa.h"
@@ -53,12 +54,12 @@ struct installer_state
 
 static void * CDECL cabinet_alloc(ULONG cb)
 {
-    return heap_alloc(cb);
+    return malloc(cb);
 }
 
 static void CDECL cabinet_free(void *pv)
 {
-    heap_free(pv);
+    free(pv);
 }
 
 static INT_PTR CDECL cabinet_open(char *pszFile, int oflag, int pmode)
@@ -133,7 +134,7 @@ static WCHAR *path_combine(const WCHAR *path, const WCHAR *filename)
 
     if (!path || !filename) return NULL;
     length = lstrlenW(path) + lstrlenW(filename) + 2;
-    if (!(result = heap_alloc(length * sizeof(WCHAR)))) return NULL;
+    if (!(result = malloc(length * sizeof(WCHAR)))) return NULL;
 
     lstrcpyW(result, path);
     if (result[0] && result[lstrlenW(result) - 1] != '\\') lstrcatW(result, L"\\");
@@ -145,7 +146,7 @@ static WCHAR *get_uncompressed_path(PFDINOTIFICATION pfdin)
 {
     WCHAR *file = strdupAtoW(pfdin->psz1);
     WCHAR *path = path_combine(pfdin->pv, file);
-    heap_free(file);
+    free(file);
     return path;
 }
 
@@ -165,7 +166,7 @@ static BOOL create_directory(const WCHAR *path)
 
 static BOOL create_parent_directory(const WCHAR *filename)
 {
-    WCHAR *p, *path = strdupW(filename);
+    WCHAR *p, *path = _wcsdup(filename);
     BOOL ret = FALSE;
 
     if (!path) return FALSE;
@@ -186,7 +187,7 @@ static BOOL create_parent_directory(const WCHAR *filename)
     ret = create_directory(path);
 
 done:
-    heap_free(path);
+    free(path);
     return ret;
 }
 
@@ -208,7 +209,7 @@ static INT_PTR cabinet_copy_file(FDINOTIFICATIONTYPE fdint, PFDINOTIFICATION pfd
         handle = CreateFileW(file, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, attrs, NULL);
     }
 
-    heap_free(file);
+    free(file);
     return (handle != INVALID_HANDLE_VALUE) ? (INT_PTR)handle : -1;
 }
 
@@ -256,7 +257,7 @@ static BOOL extract_cabinet(const WCHAR *filename, const WCHAR *destination)
     if ((filenameA = strdupWtoA(filename)))
     {
         ret = FDICopy(hfdi, filenameA, NULL, 0, cabinet_notify, NULL, (void *)destination);
-        heap_free(filenameA);
+        free(filenameA);
     }
 
     FDIDestroy(hfdi);
@@ -270,18 +271,18 @@ static const WCHAR *create_temp_directory(struct installer_state *state)
     WCHAR tmp[MAX_PATH];
 
     if (!GetTempPathW(ARRAY_SIZE(tmp), tmp)) return NULL;
-    if (!(entry = heap_alloc(sizeof(*entry)))) return NULL;
-    if (!(entry->path = heap_alloc((MAX_PATH + 20) * sizeof(WCHAR))))
+    if (!(entry = malloc(sizeof(*entry)))) return NULL;
+    if (!(entry->path = malloc((MAX_PATH + 20) * sizeof(WCHAR))))
     {
-        heap_free(entry);
+        free(entry);
         return NULL;
     }
     for (;;)
     {
         if (!GetTempFileNameW(tmp, L"msu", ++id, entry->path))
         {
-            heap_free(entry->path);
-            heap_free(entry);
+            free(entry->path);
+            free(entry);
             return NULL;
         }
         if (CreateDirectoryW(entry->path, NULL)) break;
@@ -299,7 +300,7 @@ static BOOL delete_directory(const WCHAR *path)
 
     if (!(full_path = path_combine(path, L"*"))) return FALSE;
     search = FindFirstFileW(full_path, &data);
-    heap_free(full_path);
+    free(full_path);
 
     if (search != INVALID_HANDLE_VALUE)
     {
@@ -312,7 +313,7 @@ static BOOL delete_directory(const WCHAR *path)
                 delete_directory(full_path);
             else
                 DeleteFileW(full_path);
-            heap_free(full_path);
+            free(full_path);
         }
         while (FindNextFileW(search, &data));
         FindClose(search);
@@ -331,8 +332,8 @@ static void installer_cleanup(struct installer_state *state)
     {
         list_remove(&tempdir->entry);
         delete_directory(tempdir->path);
-        heap_free(tempdir->path);
-        heap_free(tempdir);
+        free(tempdir->path);
+        free(tempdir);
     }
     LIST_FOR_EACH_ENTRY_SAFE(assembly, assembly2, &state->assemblies, struct assembly_entry, entry)
     {
@@ -376,11 +377,11 @@ static BOOL load_assemblies_from_cab(const WCHAR *filename, struct installer_sta
         FIXME("Cabinet uses proprietary msdelta file compression which is not (yet) supported\n");
         FIXME("Installation of msu file will most likely fail\n");
     }
-    heap_free(path);
+    free(path);
 
     if (!(path = path_combine(temp_path, L"*"))) return FALSE;
     search = FindFirstFileW(path, &data);
-    heap_free(path);
+    free(path);
 
     if (search != INVALID_HANDLE_VALUE)
     {
@@ -392,7 +393,7 @@ static BOOL load_assemblies_from_cab(const WCHAR *filename, struct installer_sta
             if (!(path = path_combine(temp_path, data.cFileName))) continue;
             if ((assembly = load_manifest(path)))
                 list_add_tail(&state->assemblies, &assembly->entry);
-            heap_free(path);
+            free(path);
         }
         while (FindNextFileW(search, &data));
         FindClose(search);
@@ -429,7 +430,7 @@ static struct assembly_entry *lookup_assembly(struct list *manifest_list, struct
 
 static WCHAR *get_assembly_source(struct assembly_entry *assembly)
 {
-    WCHAR *p, *path = strdupW(assembly->filename);
+    WCHAR *p, *path = _wcsdup(assembly->filename);
     if (path && (p = wcsrchr(path, '.'))) *p = 0;
     return path;
 }
@@ -438,13 +439,13 @@ static BOOL strbuf_init(struct strbuf *buf)
 {
     buf->pos = 0;
     buf->len = 64;
-    buf->buf = heap_alloc(buf->len * sizeof(WCHAR));
+    buf->buf = malloc(buf->len * sizeof(WCHAR));
     return buf->buf != NULL;
 }
 
 static void strbuf_free(struct strbuf *buf)
 {
-    heap_free(buf->buf);
+    free(buf->buf);
     buf->buf = NULL;
 }
 
@@ -460,7 +461,7 @@ static BOOL strbuf_append(struct strbuf *buf, const WCHAR *str, DWORD len)
     if (buf->pos + len + 1 > buf->len)
     {
         new_len = max(buf->pos + len + 1, buf->len * 2);
-        new_buf = heap_realloc(buf->buf, new_len * sizeof(WCHAR));
+        new_buf = realloc(buf->buf, new_len * sizeof(WCHAR));
         if (!new_buf)
         {
             strbuf_free(buf);
@@ -476,30 +477,57 @@ static BOOL strbuf_append(struct strbuf *buf, const WCHAR *str, DWORD len)
     return TRUE;
 }
 
+static BOOL assembly_is_wow64(const struct assembly_entry *assembly)
+{
+#ifdef __x86_64__
+    return !wcsicmp(assembly->identity.architecture, L"x86") || !wcsicmp(assembly->identity.architecture, L"wow64");
+#endif
+    return FALSE;
+}
+
 static WCHAR *lookup_expression(struct assembly_entry *assembly, const WCHAR *key)
 {
     WCHAR path[MAX_PATH];
+    int csidl = 0;
 
-    if (!wcscmp(key, L"runtime.system32"))
+    if (!wcsicmp(key, L"runtime.system32") || !wcsicmp(key, L"runtime.drivers") || !wcsicmp(key, L"runtime.wbem"))
     {
+        if (assembly_is_wow64(assembly)) csidl = CSIDL_SYSTEMX86;
+        else csidl = CSIDL_SYSTEM;
+    }
+    else if (!wcsicmp(key, L"runtime.windows") || !wcsicmp(key, L"runtime.inf")) csidl = CSIDL_WINDOWS;
+    else if (!wcsicmp(key, L"runtime.programfiles"))
+    {
+        if (assembly_is_wow64(assembly)) csidl = CSIDL_PROGRAM_FILESX86;
+        else csidl = CSIDL_PROGRAM_FILES;
+    }
+    else if (!wcsicmp(key, L"runtime.commonfiles"))
+    {
+        if (assembly_is_wow64(assembly)) csidl = CSIDL_PROGRAM_FILES_COMMONX86;
+        else csidl = CSIDL_PROGRAM_FILES_COMMON;
+    }
 #ifdef __x86_64__
-        if (!wcscmp(assembly->identity.architecture, L"x86"))
-        {
-            GetSystemWow64DirectoryW(path, ARRAY_SIZE(path));
-            return strdupW(path);
-        }
+    else if (!wcsicmp(key, L"runtime.programfilesx86")) csidl = CSIDL_PROGRAM_FILESX86;
+    else if (!wcsicmp(key, L"runtime.commonfilesx86")) csidl = CSIDL_PROGRAM_FILES_COMMONX86;
 #endif
-        GetSystemDirectoryW(path, ARRAY_SIZE(path));
-        return strdupW(path);
-    }
-    if (!wcscmp(key, L"runtime.windows"))
+    else if (!wcsicmp(key, L"runtime.programdata")) csidl = CSIDL_COMMON_APPDATA;
+    else if (!wcsicmp(key, L"runtime.fonts")) csidl = CSIDL_FONTS;
+
+    if (!csidl)
     {
-        GetWindowsDirectoryW(path, ARRAY_SIZE(path));
-        return strdupW(path);
+        FIXME("Unknown expression %s\n", debugstr_w(key));
+        return NULL;
+    }
+    if (!SHGetSpecialFolderPathW(NULL, path, csidl, TRUE))
+    {
+        ERR("Failed to get folder path for %s\n", debugstr_w(key));
+        return NULL;
     }
 
-    FIXME("Unknown expression %s\n", debugstr_w(key));
-    return NULL;
+    if (!wcsicmp(key, L"runtime.inf")) wcscat(path, L"\\inf");
+    else if (!wcsicmp(key, L"runtime.drivers")) wcscat(path, L"\\drivers");
+    else if (!wcsicmp(key, L"runtime.wbem")) wcscat(path, L"\\wbem");
+    return _wcsdup(path);
 }
 
 static WCHAR *expand_expression(struct assembly_entry *assembly, const WCHAR *expression)
@@ -522,10 +550,10 @@ static WCHAR *expand_expression(struct assembly_entry *assembly, const WCHAR *ex
 
         if (!(key = strdupWn(pos, next - pos))) goto error;
         value = lookup_expression(assembly, key);
-        heap_free(key);
+        free(key);
         if (!value) goto error;
         strbuf_append(&buf, value, ~0U);
-        heap_free(value);
+        free(value);
     }
 
     strbuf_append(&buf, pos, ~0U);
@@ -571,9 +599,9 @@ static BOOL install_files_copy(struct assembly_entry *assembly, const WCHAR *sou
     }
 
 error:
-    heap_free(target_path);
-    heap_free(target);
-    heap_free(source);
+    free(target_path);
+    free(target);
+    free(source);
     return ret;
 }
 
@@ -594,7 +622,7 @@ static BOOL install_files(struct assembly_entry *assembly, BOOL dryrun)
         if (!(ret = install_files_copy(assembly, source_path, fileop, dryrun))) break;
     }
 
-    heap_free(source_path);
+    free(source_path);
     return ret;
 }
 
@@ -641,7 +669,7 @@ static BOOL install_registry_string(struct assembly_entry *assembly, HKEY key, s
         ret = FALSE;
     }
 
-    heap_free(value);
+    free(value);
     return ret;
 }
 
@@ -699,7 +727,7 @@ static BOOL install_registry_multisz(struct assembly_entry *assembly, HKEY key, 
         ret = FALSE;
     }
 
-    heap_free(value);
+    free(value);
     return ret;
 }
 
@@ -729,7 +757,7 @@ static BYTE *parse_hex(const WCHAR *input, DWORD *size)
     if (length & 1) return NULL;
     length >>= 1;
 
-    if (!(output = heap_alloc(length))) return NULL;
+    if (!(output = malloc(length))) return NULL;
     for (p = output; *input; input += 2)
     {
         number[0] = input[0];
@@ -755,7 +783,7 @@ static BOOL install_registry_binary(struct assembly_entry *assembly, HKEY key, s
         ret = FALSE;
     }
 
-    heap_free(value);
+    free(value);
     return ret;
 }
 
@@ -928,7 +956,7 @@ static BOOL install_msu(const WCHAR *filename, struct installer_state *state)
     /* load all manifests from contained cabinet archives */
     if (!(path = path_combine(temp_path, L"*.cab"))) goto done;
     search = FindFirstFileW(path, &data);
-    heap_free(path);
+    free(path);
 
     if (search != INVALID_HANDLE_VALUE)
     {
@@ -939,7 +967,7 @@ static BOOL install_msu(const WCHAR *filename, struct installer_state *state)
             if (!(path = path_combine(temp_path, data.cFileName))) continue;
             if (!load_assemblies_from_cab(path, state))
                 ERR("Failed to load all manifests from %s, ignoring\n", debugstr_w(path));
-            heap_free(path);
+            free(path);
         }
         while (FindNextFileW(search, &data));
         FindClose(search);
@@ -948,7 +976,7 @@ static BOOL install_msu(const WCHAR *filename, struct installer_state *state)
     /* load all update descriptions */
     if (!(path = path_combine(temp_path, L"*.xml"))) goto done;
     search = FindFirstFileW(path, &data);
-    heap_free(path);
+    free(path);
 
     if (search != INVALID_HANDLE_VALUE)
     {
@@ -958,7 +986,7 @@ static BOOL install_msu(const WCHAR *filename, struct installer_state *state)
             if (!(path = path_combine(temp_path, data.cFileName))) continue;
             if (!load_update(path, &state->updates))
                 ERR("Failed to load all updates from %s, ignoring\n", debugstr_w(path));
-            heap_free(path);
+            free(path);
         }
         while (FindNextFileW(search, &data));
         FindClose(search);
@@ -1023,7 +1051,8 @@ static void restart_as_x86_64(void)
 
     memset(&si, 0, sizeof(si));
     si.cb = sizeof(si);
-    GetModuleFileNameW(0, filename, MAX_PATH);
+    GetSystemDirectoryW( filename, MAX_PATH );
+    wcscat( filename, L"\\wusa.exe" );
 
     Wow64DisableWow64FsRedirection(&redir);
     if (CreateProcessW(filename, GetCommandLineW(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
@@ -1034,7 +1063,7 @@ static void restart_as_x86_64(void)
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
     }
-    else ERR("Failed to restart 64-bit %s, err %u\n", wine_dbgstr_w(filename), GetLastError());
+    else ERR("Failed to restart 64-bit %s, err %lu\n", wine_dbgstr_w(filename), GetLastError());
     Wow64RevertWow64FsRedirection(redir);
 
     ExitProcess(exit_code);
