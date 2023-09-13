@@ -1408,9 +1408,9 @@ GetUserDefaultLocaleName(
 	
     ret = LCIDToLocaleName(GetUserDefaultLCID(), localename, buffersize, 0);
 	
-	DbgPrint("GetUserDefaultLocaleName :: Default Locale: %s\n", localename);
+	// DbgPrint("GetUserDefaultLocaleName :: Default Locale: %s\n", localename);
 	
-	DbgPrint("GetUserDefaultLocaleName :: Return value: %d\n", ret);
+	// DbgPrint("GetUserDefaultLocaleName :: Return value: %d\n", ret);
 	
 	return ret;
 }
