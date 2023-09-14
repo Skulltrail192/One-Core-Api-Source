@@ -79,6 +79,9 @@ public:
   //Our emulated version of Vista Common Controls TaskDialogIndirect function	
   HRESULT TaskDialogIndirect(const TASKDIALOGCONFIG* pTaskConfig, int* pnButton, int* pnRadioButton, BOOL* pfVerificationFlagChecked, int *array);
   
+  //Fixup wrong id buttons
+  UINT FixDefaultButtons(UINT nID);
+  
 //Accessors / Mutators
   void SetDoExpandoAnimation(BOOL bExpandoAnimation) { m_bDoExpandoAnimation = bExpandoAnimation; };
   BOOL GetDoExpandoAnimation() const { return m_bDoExpandoAnimation; };

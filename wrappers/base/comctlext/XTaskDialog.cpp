@@ -797,8 +797,8 @@ HRESULT CXTaskDialog::Layout(CRect& rDialog)
     m_dlgTempl.style |= DS_CENTER; //Use the DS_CENTER flag if we have been asked to center relative to a window
   if (m_pTaskConfig->dwFlags & TDF_CAN_BE_MINIMIZED)
     m_dlgTempl.style |= WS_MINIMIZEBOX;
-  if ((m_pTaskConfig->dwFlags & TDF_ALLOW_DIALOG_CANCELLATION) || (m_pTaskConfig->dwCommonButtons & TDCBF_CANCEL_BUTTON))
-    m_dlgTempl.style |= WS_SYSMENU;
+  // if ((m_pTaskConfig->dwFlags & TDF_ALLOW_DIALOG_CANCELLATION) || (m_pTaskConfig->dwCommonButtons & TDCBF_CANCEL_BUTTON))
+    // m_dlgTempl.style |= WS_SYSMENU;
   if (m_pTaskConfig->dwFlags & TDF_RTL_LAYOUT)
     m_dlgTempl.dwExtendedStyle = WS_EX_RIGHT | WS_EX_RTLREADING;
   else 
@@ -1472,6 +1472,11 @@ HRESULT CXTaskDialog::Display(int* pnButton)
 #endif //#ifdef _DEBUG
   
   int nButton = static_cast<int>(::DialogBoxIndirectParam(_AtlBaseModule.GetResourceInstance(), reinterpret_cast<LPCDLGTEMPLATE>(pBuffer), m_pTaskConfig->hwndParent, StartDialogProc, NULL));
+  
+  char msgbuf[256];	
+   
+  sprintf(msgbuf, "CXTaskDialog::TaskDialogIndirect::pressed idButton %d\n", nButton);
+  OutputDebugStringA(msgbuf); 
   if (pnButton)
     *pnButton = nButton;
 
@@ -1917,10 +1922,23 @@ HRESULT CXTaskDialog::LoadIconResources()
 
 HRESULT CXTaskDialog::TaskDialogIndirect(const TASKDIALOGCONFIG* pTaskConfig, int* pnButton, int* pnRadioButton, BOOL* pfVerificationFlagChecked, int *trueIDsArray)
 {
+   char msgbuf[256];	
   //Validate our parameters
   ATLASSUME(pTaskConfig != NULL);
   m_pTaskConfig = pTaskConfig;
   trueIDs = trueIDsArray;
+  
+  UINT nID = *pnButton;   
+ 
+  // sprintf(msgbuf, "CXTaskDialog::TaskDialogIndirect::initial idButton %d\n", nID);
+  // OutputDebugStringA(msgbuf);  
+  
+  // nID = FixDefaultButtons(nID);
+   
+  // sprintf(msgbuf, "CXTaskDialog::TaskDialogIndirect::fixed idButton %d\n", nID);
+  // OutputDebugStringA(msgbuf);     
+  
+  // OutputDebugStringA("CXTaskDialog::TaskDialogIndirect called\n");
   
   //Load up the various string resources we require  
   HRESULT hr = LoadStringResources();
@@ -1946,9 +1964,10 @@ HRESULT CXTaskDialog::TaskDialogIndirect(const TASKDIALOGCONFIG* pTaskConfig, in
   if (FAILED(hr))
     return hr;
     
-  hr = Display(pnButton);
-  UINT nID = *pnButton;
-  if(pTaskConfig->dwFlags & TDF_USE_COMMAND_LINKS || pTaskConfig->dwFlags & TDF_USE_COMMAND_LINKS_NO_ICON || pTaskConfig->dwCommonButtons & TDCBF_CLOSE_BUTTON)  
+  hr = Display(pnButton);  
+
+  //Fix index of Command Link Buttons
+  if(pTaskConfig->dwFlags & TDF_USE_COMMAND_LINKS || pTaskConfig->dwFlags & TDF_USE_COMMAND_LINKS_NO_ICON || pTaskConfig->dwCommonButtons & TDCBF_CLOSE_BUTTON )  
   {
 	  *pnButton = ConvertToRealId(nID);
   }
@@ -2070,8 +2089,8 @@ LRESULT CXTaskDialog::OnInitDialog(UINT /*nMsg*/, WPARAM /*wParam*/, LPARAM /*lP
   }
 
   //disable close button if required
-  if (((m_pTaskConfig->dwFlags & TDF_ALLOW_DIALOG_CANCELLATION) == 0) && ((m_pTaskConfig->dwCommonButtons & TDCBF_CANCEL_BUTTON) == 0))
-    EnableMenuItem(GetSystemMenu(FALSE), SC_CLOSE, MF_GRAYED);
+  // if (((m_pTaskConfig->dwFlags & TDF_ALLOW_DIALOG_CANCELLATION) == 0) && ((m_pTaskConfig->dwCommonButtons & TDCBF_CANCEL_BUTTON) == 0))
+    // EnableMenuItem(GetSystemMenu(FALSE), SC_CLOSE, MF_GRAYED);
 
   //Update the dialogs icons if necessary
   if (m_pTaskConfig->dwFlags & TDF_CAN_BE_MINIMIZED)
@@ -2509,8 +2528,8 @@ LRESULT CXTaskDialog::OnCommand(UINT /*nMsg*/, WPARAM wParam, LPARAM /*lParam*/,
   else
   {
     //Handle the TDF_ALLOW_DIALOG_CANCELLATION flag
-    if (((m_pTaskConfig->dwFlags & TDF_ALLOW_DIALOG_CANCELLATION) == 0) && (nID == IDCANCEL) && ((m_pTaskConfig->dwCommonButtons & TDCBF_CANCEL_BUTTON) == 0))
-      return 0;
+    // if (((m_pTaskConfig->dwFlags & TDF_ALLOW_DIALOG_CANCELLATION) == 0) && (nID == IDCANCEL) && ((m_pTaskConfig->dwCommonButtons & TDCBF_CANCEL_BUTTON) == 0))
+      // return 0;
   
     //Do the TDN_BUTTON_CLICKED notification
     BOOL bDisallowClose = FALSE;	

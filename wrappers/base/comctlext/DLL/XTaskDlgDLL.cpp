@@ -45,12 +45,18 @@ extern "C" HRESULT __stdcall TaskDialogIndirect(TASKDIALOGCONFIG* pTaskConfig, i
   TASKDIALOG_BUTTON buttons[100];
   int trueIDs[100];
   UINT i;
-  for(i=0;i<pTaskConfig->cButtons;i++){
-	trueIDs[i] = pTaskConfig->pButtons[i].nButtonID;
-	buttons[i].pszButtonText = pTaskConfig->pButtons[i].pszButtonText;
-	buttons[i].nButtonID = i+1;	  
+  
+  //This fix wrong renderization of Command Buttons
+  if(pTaskConfig->dwFlags & TDF_USE_COMMAND_LINKS)
+  {
+	  for(i=0;i<pTaskConfig->cButtons;i++){
+		trueIDs[i] = pTaskConfig->pButtons[i].nButtonID;
+		buttons[i].pszButtonText = pTaskConfig->pButtons[i].pszButtonText;
+		buttons[i].nButtonID = i+1;	  
+	  }
+	  pTaskConfig->pButtons = buttons;	  
   }
-  pTaskConfig->pButtons = buttons;
+
   return dlg.TaskDialogIndirect(pTaskConfig, pnButton, pnRadioButton, pfVerificationFlagChecked, trueIDs);
 }
 
