@@ -74,7 +74,7 @@ struct font_realization_info
     DWORD flags;       /* 1 for bitmap fonts, 3 for scalable fonts */
     DWORD cache_num;   /* keeps incrementing - num of fonts that have been created allowing for caching?? */
     DWORD instance_id; /* identifies a realized font instance */
-    DWORD unk;         /* unknown */
+    DWORD file_count;  /* file font count */
     WORD  face_index;  /* face index in case of font collections */
     WORD  simulations; /* 0 bit - bold simulation, 1 bit - oblique simulation */
 };
@@ -309,6 +309,13 @@ struct gdi_dc_funcs
     UINT       priority;
 };
 
+typedef struct _REALIZATION_INFO
+{
+    DWORD  iTechnology;
+    DWORD  iUniq;
+    DWORD  iFontFileId;
+} REALIZATION_INFO, *PREALIZATION_INFO;
+
 void *get_any_obj_ptr( HGDIOBJ handle, WORD *type );
 
 DC *get_dc_ptr( HDC hdc );
@@ -347,3 +354,10 @@ RegGetValueW(
     _When_((dwFlags & 0x7F) == RRF_RT_REG_MULTI_SZ || *pdwType == REG_MULTI_SZ, _Post_ _NullNull_terminated_)
       _Out_writes_bytes_to_opt_(*pcbData,*pcbData) PVOID pvData,
   _Inout_opt_ LPDWORD pcbData);					
+  
+BOOL
+WINAPI
+GdiRealizationInfo(
+	HDC hdc,
+    PREALIZATION_INFO pri
+);

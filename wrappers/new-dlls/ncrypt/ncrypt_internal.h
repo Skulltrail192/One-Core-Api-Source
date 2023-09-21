@@ -16,39 +16,27 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-enum key_algorithm
-{
-    DH,
-    DSA,
-    ECC,
-    RSA,
-};
+#include <bcrypt.h>
 
-struct rsa_key
+enum algid
 {
-    DWORD bit_length;
-    DWORD public_exp_size;
-    BYTE *public_exp;
-    DWORD modulus_size;
-    BYTE *modulus;
-    DWORD prime1_size;
-    BYTE *prime1;
-    DWORD prime2_size;
-    BYTE *prime2;
+    /* symmetric */
+    AES,
+    /* asymmetric */
+    RSA,
+    DSA,
+    ECDSA,
 };
 
 struct key
 {
-    enum key_algorithm alg;
-    union
-    {
-        struct rsa_key rsa;
-    };
+    enum algid algid;
+    BCRYPT_KEY_HANDLE bcrypt_key;
 };
 
 struct storage_provider
 {
-	PVOID unknown; //Hack, original from wine is structure empty.
+	int dummy;
 };
 
 enum object_type

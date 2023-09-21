@@ -22,45 +22,55 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(error); 
 
-ULONG
+/*
+* @implemented
+*/
+DWORD
 WINAPI
 BaseSetLastNTError(
-    IN NTSTATUS Status
-    )
-
+	IN NTSTATUS Status
+)
 {
-    ULONG dwErrorCode;
+    DWORD dwErrCode;
 
-    dwErrorCode = RtlNtStatusToDosError( Status );
-    SetLastError( dwErrorCode );
-    return( dwErrorCode );
+    /* Convert from NT to Win32, then set */
+    dwErrCode = RtlNtStatusToDosError(Status);
+    SetLastError(dwErrCode);
+    return dwErrCode;
 }
 
 UINT
 WINAPI
-GetErrorMode()
+GetErrorMode(VOID)
 {
-
-    UINT PreviousMode;
     NTSTATUS Status;
+    UINT ErrMode;
 
-    Status = NtQueryInformationProcess(
-                NtCurrentProcess(),
-                ProcessDefaultHardErrorMode,
-                (PVOID) &PreviousMode,
-                sizeof(PreviousMode),
-                NULL
-                );
-    if ( !NT_SUCCESS(Status) ) {
+    /* Query the current setting */
+    Status = NtQueryInformationProcess(NtCurrentProcess(),
+                                       ProcessDefaultHardErrorMode,
+                                       &ErrMode,
+                                       sizeof(ErrMode),
+                                       NULL);
+    if (!NT_SUCCESS(Status))
+    {
+        /* Fail if we couldn't query */
         BaseSetLastNTError(Status);
         return 0;
-        }
+    }
 
-    if (PreviousMode & 1) {
-        PreviousMode &= ~SEM_FAILCRITICALERRORS;
-        }
-    else {
-        PreviousMode |= SEM_FAILCRITICALERRORS;
-        }
-    return PreviousMode;
+    /* Check if NOT failing critical errors was requested */
+    if (ErrMode & SEM_FAILCRITICALERRORS)
+    {
+        /* Mask it out, since the native API works differently */
+        ErrMode &= ~SEM_FAILCRITICALERRORS;
+    }
+    else
+    {
+        /* OR it if the caller didn't, due to different native semantics */
+        ErrMode |= SEM_FAILCRITICALERRORS;
+    }
+
+    /* Return the mode */
+    return ErrMode;
 }

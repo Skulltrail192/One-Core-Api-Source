@@ -37,7 +37,8 @@ typedef BOOL (WINAPI *ELF_REPORT_EVENT_AND_SOURCE)(
                          PULONG,
                          PULONG);
 
-ULONG WINAPI
+ULONG 
+WINAPI
 EventWriteEndScenario(
     REGHANDLE RegHandle,
     PCEVENT_DESCRIPTOR EventDescriptor,
@@ -61,7 +62,9 @@ EventWriteStartScenario(
 }
 
 /* unimplemented*/
-ULONG WINAPI EventWriteEx(
+ULONG 
+WINAPI 
+EventWriteEx(
   _In_      REGHANDLE RegHandle,
   _In_      PCEVENT_DESCRIPTOR EventDescriptor,
   _In_      ULONG64 Filter,
@@ -75,7 +78,9 @@ ULONG WINAPI EventWriteEx(
 	return ERROR_SUCCESS;
 }
 
-ULONG WINAPI EnableTraceEx(
+ULONG 
+WINAPI 
+EnableTraceEx(
   _In_      LPCGUID ProviderId,
   _In_opt_  LPCGUID SourceId,
   _In_      TRACEHANDLE TraceHandle,
@@ -91,7 +96,9 @@ ULONG WINAPI EnableTraceEx(
 }
 
 /* unimplemented*/
-ULONG WINAPI EventAccessControl(
+ULONG 
+WINAPI 
+EventAccessControl(
   _In_  LPGUID Guid,
   _In_  ULONG Operation,
   _In_  PSID Sid,

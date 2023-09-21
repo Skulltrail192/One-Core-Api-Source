@@ -20,7 +20,9 @@ Revision History:
 
 #include "main.h"
 
-BOOL WINAPI LogonUserExExW(
+BOOL 
+WINAPI 
+LogonUserExExW(
   _In_      LPWSTR        lpszUsername,
   _In_opt_  LPWSTR        lpszDomain,
   _In_opt_  LPWSTR        lpszPassword,

@@ -163,20 +163,32 @@ BOOL
 WINAPI 
 GetFontRealizationInfo(HDC hdc, struct font_realization_info *info)
 {
-    BOOL is_v0 = info->size == FIELD_OFFSET(struct font_realization_info, unk);
-    PHYSDEV dev;
-    BOOL ret;
-    DC *dc;
+	REALIZATION_INFO reinfo;
+	//Just return GetRealizationInfo, because call internally same syscall, NtGdiGetRealizationInfo
+	if(GdiRealizationInfo(hdc, &reinfo)){
+		info->file_count = 1;
+		switch(reinfo.iTechnology)
+		{
+			case 1:
+				info->flags = 1;
+				break;
+			case 2: 
+				info->flags |= 2;
+				break;
+			default:
+				break;
+		}
+		info->instance_id = reinfo.iUniq;
+		info->face_index = reinfo.iFontFileId;
+		info->simulations = 0;
+		return TRUE;
+	}
+	
+	return FALSE;
 
-    if (info->size != sizeof(*info) && !is_v0)
-        return FALSE;
-
-    dc = get_dc_ptr(hdc);
-    if (!dc) return FALSE;
-    dev = GET_DC_PHYSDEV( dc, pGetFontRealizationInfo );
-    ret = dev->funcs->pGetFontRealizationInfo( dev, info );
-    release_dc_ptr(dc);
-    return ret;
+    // if (physdev->font->fake_bold) info->simulations |= 0x1;
+    // if (physdev->font->fake_italic) info->simulations |= 0x2;
+	
 }
 
 static DWORD get_font_data( GdiFont *font, DWORD table, DWORD offset, LPVOID buf, DWORD cbData)

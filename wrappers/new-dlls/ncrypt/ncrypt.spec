@@ -70,7 +70,7 @@
 @ stdcall NCryptEnumAlgorithms(long long ptr ptr long)
 @ stdcall NCryptEnumKeys(long wstr ptr ptr long)
 @ stub NCryptEnumStorageProviders
-@ stub NCryptExportKey
+@ stdcall NCryptExportKey(long long wstr ptr ptr long ptr long)
 @ stdcall NCryptFinalizeKey(long long)
 @ stdcall NCryptFreeBuffer(ptr)
 @ stdcall NCryptFreeObject(long)
@@ -91,7 +91,7 @@
 @ stub NCryptSecretAgreement
 @ stub NCryptSetAuditingInterface
 @ stdcall NCryptSetProperty(ptr wstr ptr long long)
-@ stub NCryptSignHash
+@ stdcall NCryptSignHash(long ptr ptr long ptr long ptr long)
 @ stub NCryptStreamClose
 @ stub NCryptStreamOpenToProtect
 @ stub NCryptStreamOpenToUnprotect
