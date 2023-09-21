@@ -19,36 +19,40 @@
  *
  */
 
-#include "config.h"
 #include <stdarg.h>
 
+#include "rtlfuncs.h"
 #define COBJMACROS
 #include "windef.h"
 #include "winbase.h"
 #include "wingdi.h"
 #include "winuser.h"
 #include "dwmapi.h"
+#include "new-winerror.h"
 #include "wine/debug.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(dwmapi);
 
 #define DWM_E_COMPOSITIONDISABLED  _HRESULT_TYPEDEF_(0x80263001)
+#define MILERR_MISMATCHED_SIZE                             _HRESULT_TYPEDEF_(0x88980090)
 
 /**********************************************************************
  *           DwmIsCompositionEnabled         (DWMAPI.@)
  */
 HRESULT WINAPI DwmIsCompositionEnabled(BOOL *enabled)
 {
-    static int once;
-    if (!once)
-    {
-        FIXME("%p\n", enabled);
-        once = 1;
-    }
-    else
-        TRACE("%p\n", enabled);
+    RTL_OSVERSIONINFOW version;
+
+    TRACE("%p\n", enabled);
+
+    if (!enabled)
+        return E_INVALIDARG;
 
     *enabled = FALSE;
+    version.dwOSVersionInfoSize = sizeof(version);
+    if (!RtlGetVersion(&version))
+        *enabled = (version.dwMajorVersion > 6 || (version.dwMajorVersion == 6 && version.dwMinorVersion >= 3));
+
     return S_OK;
 }
 
@@ -193,7 +197,7 @@ BOOL WINAPI DwmDefWindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, 
  */
 HRESULT WINAPI DwmGetWindowAttribute(HWND hwnd, DWORD attribute, PVOID pv_attribute, DWORD size)
 {
-    FIXME("(%p %d %p %d) stub\n", hwnd, attribute, pv_attribute, size);
+    //FIXME("(%p %d %p %d) stub\n", hwnd, attribute, pv_attribute, size);
 
     return E_NOTIMPL;
 }
@@ -208,16 +212,57 @@ HRESULT WINAPI DwmRegisterThumbnail(HWND dest, HWND src, PHTHUMBNAIL thumbnail_i
     return E_NOTIMPL;
 }
 
+static int get_display_frequency(void)
+{
+    DEVMODEW mode;
+    BOOL ret;
+
+    memset(&mode, 0, sizeof(mode));
+    mode.dmSize = sizeof(mode);
+    ret = EnumDisplaySettingsExW(NULL, ENUM_CURRENT_SETTINGS, &mode, 0);
+    if (ret && mode.dmFields & DM_DISPLAYFREQUENCY && mode.dmDisplayFrequency)
+    {
+        return mode.dmDisplayFrequency;
+    }
+    else
+    {
+        WARN("Failed to query display frequency, returning a fallback value.\n");
+        return 60;
+    }
+}
+
 /**********************************************************************
  *           DwmGetCompositionTimingInfo         (DWMAPI.@)
  */
 HRESULT WINAPI DwmGetCompositionTimingInfo(HWND hwnd, DWM_TIMING_INFO *info)
 {
-    static int i;
+    LARGE_INTEGER performance_frequency, qpc;
+    static int i, display_frequency;
+
+    if (!info)
+        return E_INVALIDARG;
+
+    if (info->cbSize != sizeof(DWM_TIMING_INFO))
+        return MILERR_MISMATCHED_SIZE;
 
     if(!i++) FIXME("(%p %p)\n", hwnd, info);
 
-    return E_NOTIMPL;
+    memset(info, 0, info->cbSize);
+    info->cbSize = sizeof(DWM_TIMING_INFO);
+
+    display_frequency = get_display_frequency();
+    info->rateRefresh.uiNumerator = display_frequency;
+    info->rateRefresh.uiDenominator = 1;
+    info->rateCompose.uiNumerator = display_frequency;
+    info->rateCompose.uiDenominator = 1;
+
+    QueryPerformanceFrequency(&performance_frequency);
+    info->qpcRefreshPeriod = performance_frequency.QuadPart / display_frequency;
+
+    QueryPerformanceCounter(&qpc);
+    info->qpcVBlank = (qpc.QuadPart / info->qpcRefreshPeriod) * info->qpcRefreshPeriod;
+
+    return S_OK;
 }
 
 /**********************************************************************
