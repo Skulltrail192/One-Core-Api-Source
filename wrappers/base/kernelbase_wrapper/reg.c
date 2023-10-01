@@ -588,9 +588,9 @@ LSTATUS WINAPI RegDeleteTreeA( HKEY hkey, const char *subkey )
     return ret;
 }
 
-LONG
-RegDisablePredefinedCacheEx(
-)
+LONG 
+WINAPI 
+RegDisablePredefinedCacheEx(VOID)
 {
 	return ERROR_SUCCESS;
 }

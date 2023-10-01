@@ -19,6 +19,7 @@ Revision History:
 --*/
 
 #include "main.h"
+#include "winbase.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(filehops); 
 
@@ -103,6 +104,8 @@ WINE_DEFAULT_DEBUG_CHANNEL(filehops);
 
 #define REMOTE_PROTOCOL_FLAG_LOOPBACK           0x00000001
 #define REMOTE_PROTOCOL_FLAG_OFFLINE            0x00000002
+
+#define FileRemoteProtocolInformation 0x37
 
 /*
  * @implemented
@@ -266,187 +269,577 @@ Wow64RevertWow64FsRedirection(IN PVOID OldValue)
     // return TRUE;
 // }
 
-BOOL WINAPI GetFileInformationByHandleEx( HANDLE handle, FILE_INFO_BY_HANDLE_CLASS class,
-                                          LPVOID info, DWORD size )
-{
-    NTSTATUS status;
-    IO_STATUS_BLOCK io;
-	
-	DbgPrint("GetFileInformationByHandleEx:: FileInfoClass is: %d\n",class);
-	DbgPrint("GetFileInformationByHandleEx:: FileName: ");	
-
-    switch (class)
-    {
-    case FileStreamInfo:
-    case FileCompressionInfo:
-    case FileAttributeTagInfo:
-    case FileRemoteProtocolInfo:
-    case FileFullDirectoryInfo:
-    case FileFullDirectoryRestartInfo:
-    case FileStorageInfo:
-    case FileAlignmentInfo:
-    case FileIdInfo:
-    case FileIdExtdDirectoryInfo:
-    case FileIdExtdDirectoryRestartInfo:
-        //FIXME( "%p, %u, %p, %u\n", handle, class, info, size );
-        SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
-        return FALSE;
-
-    case FileBasicInfo:
-        status = NtQueryInformationFile( handle, &io, info, size, FileBasicInformation );
-        break;
-
-    case FileStandardInfo:
-        status = NtQueryInformationFile( handle, &io, info, size, FileStandardInformation );
-        break;
-
-    case FileNameInfo:
-        status = NtQueryInformationFile( handle, &io, info, size, FileNameInformation );
-        break;
-
-    case FileIdBothDirectoryRestartInfo:
-    case FileIdBothDirectoryInfo:
-        status = NtQueryDirectoryFile( handle, NULL, NULL, NULL, &io, info, size,
-                                       FileIdBothDirectoryInformation, FALSE, NULL,
-                                       (class == FileIdBothDirectoryRestartInfo) );
-        break;
-
-    case FileRenameInfo:
-    case FileDispositionInfo:
-    case FileAllocationInfo:
-    case FileIoPriorityHintInfo:
-    case FileEndOfFileInfo:
-    default:
-        SetLastError( ERROR_INVALID_PARAMETER );
-        return FALSE;
-    }
-
-    if (status != STATUS_SUCCESS)
-    {
-        SetLastError( RtlNtStatusToDosError( status ) );
-        return FALSE;
-    }
-    return TRUE;
-}
+typedef struct _FILE_STREAM_INFO {
+  DWORD         NextEntryOffset;
+  DWORD         StreamNameLength;
+  LARGE_INTEGER StreamSize;
+  LARGE_INTEGER StreamAllocationSize;
+  WCHAR         StreamName[1];
+} FILE_STREAM_INFO, *PFILE_STREAM_INFO;
 
 /***********************************************************************
- *           SetFileInformationByHandle   (KERNEL32.@)
- */
-BOOL 
-WINAPI 
-DECLSPEC_HOTPATCH
-SetFileInformationByHandle( 
-	HANDLE file, 
-	FILE_INFO_BY_HANDLE_CLASS class, 
-	VOID *info, 
-	DWORD size 
+*             GetFileInformationByHandleEx (KERNEL32.@)
+*/
+		BOOL
+		WINAPI
+		GetFileInformationByHandleEx(
+			_In_  HANDLE hFile,
+			_In_  FILE_INFO_BY_HANDLE_CLASS FileInformationClass,
+			_Out_writes_bytes_(dwBufferSize) LPVOID lpFileInformation,
+			_In_  DWORD dwBufferSize
+			)
+		{
+			// if (auto const pGetFileInformationByHandleEx = try_get_GetFileInformationByHandleEx())
+			// {
+				// return pGetFileInformationByHandleEx(hFile, FileInformationClass, lpFileInformation, dwBufferSize);
+			// }
+
+
+			FILE_INFORMATION_CLASS NtFileInformationClass;
+			DWORD cbMinBufferSize;
+			BOOLEAN bNtQueryDirectoryFile = FALSE;
+			BOOLEAN RestartScan = FALSE;
+			IO_STATUS_BLOCK IoStatusBlock;
+			NTSTATUS Status;			
+
+			switch (FileInformationClass)
+			{
+			case FileBasicInfo:
+				NtFileInformationClass = FileBasicInformation;
+				cbMinBufferSize = sizeof(FILE_BASIC_INFO);
+				break;
+			case FileStandardInfo:
+				NtFileInformationClass = FileStandardInformation;
+				cbMinBufferSize = sizeof(FILE_STANDARD_INFO);
+				break;
+			case FileNameInfo:
+				NtFileInformationClass = FileNameInformation;
+				cbMinBufferSize = sizeof(FILE_NAME_INFO);
+				break;
+			case FileStreamInfo:
+				NtFileInformationClass = FileStreamInformation;
+				cbMinBufferSize = sizeof(FILE_STREAM_INFO);
+				break;
+			case FileCompressionInfo:
+				NtFileInformationClass = FileCompressionInformation;
+				cbMinBufferSize = sizeof(FILE_COMPRESSION_INFO);
+				break;
+			case FileAttributeTagInfo:
+				NtFileInformationClass = FileAttributeTagInformation;
+				cbMinBufferSize = sizeof(FILE_ATTRIBUTE_TAG_INFO);
+				break;
+			case FileIdBothDirectoryRestartInfo:
+				RestartScan = TRUE;
+			case FileIdBothDirectoryInfo:
+				NtFileInformationClass = FileIdBothDirectoryInformation;
+				cbMinBufferSize = sizeof(FILE_ID_BOTH_DIR_INFO);
+				bNtQueryDirectoryFile = TRUE;
+				break;
+			case FileRemoteProtocolInfo:
+				NtFileInformationClass = FileRemoteProtocolInformation;
+				cbMinBufferSize = sizeof(FILE_REMOTE_PROTOCOL_INFO);
+				break;
+			default:
+				SetLastError(ERROR_INVALID_PARAMETER);
+				return FALSE;
+				break;
+			}
+
+
+			if (cbMinBufferSize > dwBufferSize)
+			{
+				SetLastError(ERROR_BAD_LENGTH);
+				return FALSE;
+			}
+
+			if (bNtQueryDirectoryFile)
+			{
+				// auto pNtQueryDirectoryFile = try_get_NtQueryDirectoryFile();
+				// if (!pNtQueryDirectoryFile)
+				// {
+					// SetLastError(ERROR_INVALID_FUNCTION);
+					// return FALSE;
+				// }
+
+				Status = NtQueryDirectoryFile(
+					hFile,
+					NULL,
+					NULL,
+					NULL,
+					&IoStatusBlock,
+					lpFileInformation,
+					dwBufferSize,
+					NtFileInformationClass,
+					FALSE,
+					NULL,
+					RestartScan
+					);
+
+				if (STATUS_PENDING == Status)
+				{
+					if (WaitForSingleObjectEx(hFile, 0, FALSE) == WAIT_FAILED)
+					{
+						//WaitForSingleObjectEx会设置LastError
+						return FALSE;
+					}
+
+					Status = IoStatusBlock.Status;
+				}
+			}
+			else
+			{
+				// auto pNtQueryInformationFile = try_get_NtQueryInformationFile();
+
+				// if (!pNtQueryInformationFile)
+				// {
+					// SetLastError(ERROR_INVALID_FUNCTION);
+					// return FALSE;
+				// }
+
+				Status = NtQueryInformationFile(hFile, &IoStatusBlock, lpFileInformation, dwBufferSize, NtFileInformationClass);
+			}
+
+			if (Status >= STATUS_SUCCESS)
+			{
+				if (FileStreamInfo == FileInformationClass && IoStatusBlock.Information == 0)
+				{
+					SetLastError(ERROR_HANDLE_EOF);
+					return FALSE;
+				}
+				else
+				{
+					return TRUE;
+				}
+			}
+			else
+			{
+				BaseSetLastNTError(Status);
+
+				return FALSE;
+			}
+		}
+
+// BOOL WINAPI GetFileInformationByHandleEx( HANDLE handle, FILE_INFO_BY_HANDLE_CLASS class,
+                                          // LPVOID info, DWORD size )
+// {
+    // NTSTATUS status;
+    // IO_STATUS_BLOCK io;
+	
+	// DbgPrint("GetFileInformationByHandleEx:: FileInfoClass is: %d\n",class);
+	// DbgPrint("GetFileInformationByHandleEx:: FileName: ");	
+
+    // switch (class)
+    // {
+    // case FileStreamInfo:
+    // case FileCompressionInfo:
+    // case FileAttributeTagInfo:
+    // case FileRemoteProtocolInfo:
+    // case FileFullDirectoryInfo:
+    // case FileFullDirectoryRestartInfo:
+    // case FileStorageInfo:
+    // case FileAlignmentInfo:
+    // case FileIdInfo:
+    // case FileIdExtdDirectoryInfo:
+    // case FileIdExtdDirectoryRestartInfo:
+        // //FIXME( "%p, %u, %p, %u\n", handle, class, info, size );
+        // SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
+        // return FALSE;
+
+    // case FileBasicInfo:
+        // status = NtQueryInformationFile( handle, &io, info, size, FileBasicInformation );
+        // break;
+
+    // case FileStandardInfo:
+        // status = NtQueryInformationFile( handle, &io, info, size, FileStandardInformation );
+        // break;
+
+    // case FileNameInfo:
+        // status = NtQueryInformationFile( handle, &io, info, size, FileNameInformation );
+        // break;
+
+    // case FileIdBothDirectoryRestartInfo:
+    // case FileIdBothDirectoryInfo:
+        // status = NtQueryDirectoryFile( handle, NULL, NULL, NULL, &io, info, size,
+                                       // FileIdBothDirectoryInformation, FALSE, NULL,
+                                       // (class == FileIdBothDirectoryRestartInfo) );
+        // break;
+
+    // case FileRenameInfo:
+    // case FileDispositionInfo:
+    // case FileAllocationInfo:
+    // case FileIoPriorityHintInfo:
+    // case FileEndOfFileInfo:
+    // default:
+        // SetLastError( ERROR_INVALID_PARAMETER );
+        // return FALSE;
+    // }
+
+    // if (status != STATUS_SUCCESS)
+    // {
+        // SetLastError( RtlNtStatusToDosError( status ) );
+        // return FALSE;
+    // }
+    // return TRUE;
+// }
+
+// /***********************************************************************
+ // *           SetFileInformationByHandle   (KERNEL32.@)
+ // */
+// BOOL 
+// WINAPI 
+// DECLSPEC_HOTPATCH
+// SetFileInformationByHandle( 
+	// HANDLE file, 
+	// FILE_INFO_BY_HANDLE_CLASS class, 
+	// VOID *info, 
+	// DWORD size 
+// )
+// {
+    // NTSTATUS status;
+    // IO_STATUS_BLOCK io;
+
+    // switch (class)
+    // {
+		// case FileBasicInfo:
+			// status = NtSetInformationFile( file, &io, &info, size, FileBasicInformation );
+			// break;
+		// case FileNameInfo:
+		// case FileRenameInfo:
+			// status = NtSetInformationFile( file, &io, &info, size, FileRenameInformation );
+			// break;
+		// case FileAllocationInfo:
+			// status = NtSetInformationFile( file, &io, &info, size, FileAllocationInformation );
+		// case FileEndOfFileInfo:
+			// status = NtSetInformationFile( file, &io, &info, size, FileEndOfFileInformation );
+			// break;
+		// case FileDispositionInfo:
+			// status = NtSetInformationFile( file, &io, info, size, FileDispositionInformation );
+			// break;		
+		// case FileIdBothDirectoryInfo:
+		// case FileIdBothDirectoryRestartInfo:
+		// case FileIoPriorityHintInfo:
+		// case FileFullDirectoryInfo:
+		// case FileFullDirectoryRestartInfo:
+		// case FileStorageInfo:
+		// case FileAlignmentInfo:
+		// case FileIdInfo:
+		// case FileIdExtdDirectoryInfo:
+		// case FileIdExtdDirectoryRestartInfo:
+			// SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
+			// return FALSE;
+		// case FileStreamInfo:	
+		// case FileStandardInfo:
+		// case FileCompressionInfo:
+		// case FileAttributeTagInfo:
+		// case FileRemoteProtocolInfo:
+		// default:
+			// SetLastError( ERROR_INVALID_PARAMETER );
+			// return FALSE;
+    // }
+
+    // if (status != STATUS_SUCCESS)
+    // {
+        // SetLastError( RtlNtStatusToDosError( status ) );
+        // return FALSE;
+    // }
+    // return TRUE;
+// }
+
+BOOL
+WINAPI
+SetFileInformationByHandle(
+	_In_ HANDLE hFile,
+	_In_ FILE_INFO_BY_HANDLE_CLASS FileInformationClass,
+	_In_reads_bytes_(dwBufferSize) LPVOID lpFileInformation,
+	_In_ DWORD dwBufferSize
 )
 {
-    NTSTATUS status;
-    IO_STATUS_BLOCK io;
+	NTSTATUS Status;
+	IO_STATUS_BLOCK IoStatusBlock;
+	HANDLE ProcessHeap;
+	FILE_INFORMATION_CLASS NtFileInformationClass;
+	DWORD cbMinBufferSize;
+	BOOLEAN bFreeFileInformation = FALSE;
+	FILE_RENAME_INFO *pRenameInfo;
+	FILE_RENAME_INFO *NewRenameInfo;
+	DWORD dwNewBufferSize;
+	DWORD lStatus;
+	UNICODE_STRING NtName = {0};
 
-    switch (class)
-    {
+	ProcessHeap = ((TEB*)NtCurrentTeb())->ProcessEnvironmentBlock->ProcessHeap;
+
+	switch (FileInformationClass)
+	{
 		case FileBasicInfo:
-			status = NtSetInformationFile( file, &io, &info, size, FileBasicInformation );
+			NtFileInformationClass = FileBasicInformation;
+			cbMinBufferSize = sizeof(FILE_BASIC_INFO);
 			break;
-		case FileNameInfo:
 		case FileRenameInfo:
-			status = NtSetInformationFile( file, &io, &info, size, FileRenameInformation );
-			break;
-		case FileAllocationInfo:
-			status = NtSetInformationFile( file, &io, &info, size, FileAllocationInformation );
-		case FileEndOfFileInfo:
-			status = NtSetInformationFile( file, &io, &info, size, FileEndOfFileInformation );
+			NtFileInformationClass = FileRenameInformation;
+			cbMinBufferSize = sizeof(FILE_RENAME_INFO);
+
+			if (cbMinBufferSize > dwBufferSize)
+			{
+				SetLastError(ERROR_BAD_LENGTH);
+				return FALSE;
+			}
+
+			if (lpFileInformation == NULL)
+			{
+				SetLastError(ERROR_INVALID_PARAMETER);
+				return FALSE;
+			}
+			else
+			{
+				pRenameInfo = (FILE_RENAME_INFO*)lpFileInformation;
+				if (pRenameInfo->FileNameLength < sizeof(wchar_t) || pRenameInfo->FileName[0] != L':')
+				{			
+					if (!RtlDosPathNameToNtPathName_U(pRenameInfo->FileName, &NtName, NULL, NULL))
+					{
+						SetLastError(ERROR_INVALID_PARAMETER);
+
+						return FALSE;
+					}
+
+					dwNewBufferSize = sizeof(FILE_RENAME_INFO) + NtName.Length;
+
+					NewRenameInfo = (FILE_RENAME_INFO*)HeapAlloc(ProcessHeap, 0, dwNewBufferSize);
+					if (!NewRenameInfo)
+					{
+						lStatus = GetLastError();
+						RtlFreeUnicodeString(&NtName);
+						SetLastError(lStatus);
+						return FALSE;
+					}
+
+					bFreeFileInformation = TRUE;
+
+					NewRenameInfo->ReplaceIfExists = pRenameInfo->ReplaceIfExists;
+					NewRenameInfo->RootDirectory = pRenameInfo->RootDirectory;
+					NewRenameInfo->FileNameLength = NtName.Length;
+
+					memcpy(NewRenameInfo->FileName, NtName.Buffer, NtName.Length);
+
+					*(wchar_t*)((byte*)NewRenameInfo->FileName + NtName.Length) = L'\0';
+
+
+					lpFileInformation = NewRenameInfo;
+					dwBufferSize = dwNewBufferSize;
+
+					RtlFreeUnicodeString(&NtName);
+				}
+			}
 			break;
 		case FileDispositionInfo:
-			status = NtSetInformationFile( file, &io, info, size, FileDispositionInformation );
-			break;		
-		case FileIdBothDirectoryInfo:
-		case FileIdBothDirectoryRestartInfo:
+			NtFileInformationClass = FileDispositionInformation;
+			cbMinBufferSize = sizeof(FILE_DISPOSITION_INFO);
+			break;
+		case FileAllocationInfo:
+			NtFileInformationClass = FileAllocationInformation;
+			cbMinBufferSize = sizeof(FILE_ALLOCATION_INFO);
+			break;
+		case FileEndOfFileInfo:
+			NtFileInformationClass = FileEndOfFileInformation;
+			cbMinBufferSize = sizeof(FILE_END_OF_FILE_INFO);
+			break;
 		case FileIoPriorityHintInfo:
-		case FileFullDirectoryInfo:
-		case FileFullDirectoryRestartInfo:
-		case FileStorageInfo:
-		case FileAlignmentInfo:
-		case FileIdInfo:
-		case FileIdExtdDirectoryInfo:
-		case FileIdExtdDirectoryRestartInfo:
-			SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
-			return FALSE;
-		case FileStreamInfo:	
-		case FileStandardInfo:
-		case FileCompressionInfo:
-		case FileAttributeTagInfo:
-		case FileRemoteProtocolInfo:
-		default:
-			SetLastError( ERROR_INVALID_PARAMETER );
-			return FALSE;
-    }
+			NtFileInformationClass = FileIoPriorityHintInformation;
+			cbMinBufferSize = sizeof(FILE_IO_PRIORITY_HINT_INFO);
 
-    if (status != STATUS_SUCCESS)
-    {
-        SetLastError( RtlNtStatusToDosError( status ) );
-        return FALSE;
-    }
-    return TRUE;
+			//长度检查，微软原版似乎没有该安全检查
+			if (cbMinBufferSize > dwBufferSize)
+			{
+				SetLastError(ERROR_BAD_LENGTH);
+				return FALSE;
+			}
+
+			if (lpFileInformation == NULL || ((FILE_IO_PRIORITY_HINT_INFO*)lpFileInformation)->PriorityHint >= MaximumIoPriorityHintType)
+			{
+				SetLastError(ERROR_INVALID_PARAMETER);
+				return FALSE;
+			}
+
+			break;
+		default:
+			SetLastError(ERROR_INVALID_PARAMETER);
+			return FALSE;
+		break;
+	}
+
+	if (cbMinBufferSize > dwBufferSize)
+	{
+		if (bFreeFileInformation)
+		{
+			HeapFree(ProcessHeap, 0, lpFileInformation);
+		}
+
+		SetLastError(ERROR_BAD_LENGTH);
+		return FALSE;
+	}			
+
+	Status = NtSetInformationFile(hFile, &IoStatusBlock, lpFileInformation, dwBufferSize, NtFileInformationClass);
+
+	if (bFreeFileInformation)
+	{
+		HeapFree(ProcessHeap, 0, lpFileInformation);
+	}
+
+	if (Status >= STATUS_SUCCESS)
+		return TRUE;
+	
+	BaseSetLastNTError(Status);
+	return FALSE;
 }
+
+// /***********************************************************************
+ // *             OpenFileById (KERNEL32.@)
+ // */
+// HANDLE 
+// WINAPI 
+// OpenFileById( 
+	// HANDLE handle, 
+	// LPFILE_ID_DESCRIPTOR id, 
+	// DWORD access,
+    // DWORD share, 
+	// LPSECURITY_ATTRIBUTES sec_attr, 
+	// DWORD flags 
+// )
+// {
+    // UINT options;
+    // HANDLE result;
+    // OBJECT_ATTRIBUTES attr;
+    // NTSTATUS status;
+    // IO_STATUS_BLOCK io;
+    // UNICODE_STRING objectName;
+
+    // if (!id)
+    // {
+        // SetLastError( ERROR_INVALID_PARAMETER );
+        // return INVALID_HANDLE_VALUE;
+    // }
+
+    // options = FILE_OPEN_BY_FILE_ID;
+    // if (flags & FILE_FLAG_BACKUP_SEMANTICS)
+        // options |= FILE_OPEN_FOR_BACKUP_INTENT;
+    // else
+        // options |= FILE_NON_DIRECTORY_FILE;
+    // if (flags & FILE_FLAG_NO_BUFFERING) options |= FILE_NO_INTERMEDIATE_BUFFERING;
+    // if (!(flags & FILE_FLAG_OVERLAPPED)) options |= FILE_SYNCHRONOUS_IO_NONALERT;
+    // if (flags & FILE_FLAG_RANDOM_ACCESS) options |= FILE_RANDOM_ACCESS;
+    // flags &= FILE_ATTRIBUTE_VALID_FLAGS;
+
+    // objectName.Length             = sizeof(ULONGLONG);
+    // objectName.Buffer             = (WCHAR *)&id->FileId;
+    // attr.Length                   = sizeof(attr);
+    // attr.RootDirectory            = handle;
+    // attr.Attributes               = 0;
+    // attr.ObjectName               = &objectName;
+    // attr.SecurityDescriptor       = sec_attr ? sec_attr->lpSecurityDescriptor : NULL;
+    // attr.SecurityQualityOfService = NULL;
+    // if (sec_attr && sec_attr->bInheritHandle) attr.Attributes |= OBJ_INHERIT;
+
+    // status = NtCreateFile( &result, access | SYNCHRONIZE, &attr, &io, NULL, flags,
+                           // share, OPEN_EXISTING, options, NULL, 0 );
+    // if (status != STATUS_SUCCESS)
+    // {
+        // SetLastError( RtlNtStatusToDosError( status ) );
+        // return INVALID_HANDLE_VALUE;
+    // }
+    // return result;
+// }
 
 /***********************************************************************
  *             OpenFileById (KERNEL32.@)
  */
-HANDLE 
-WINAPI 
-OpenFileById( 
-	HANDLE handle, 
-	LPFILE_ID_DESCRIPTOR id, 
-	DWORD access,
-    DWORD share, 
-	LPSECURITY_ATTRIBUTES sec_attr, 
-	DWORD flags 
-)
-{
-    UINT options;
-    HANDLE result;
-    OBJECT_ATTRIBUTES attr;
-    NTSTATUS status;
-    IO_STATUS_BLOCK io;
-    UNICODE_STRING objectName;
+HANDLE WINAPI OpenFileById(
+  _In_     HANDLE                hFile,
+  _In_     LPFILE_ID_DESCRIPTOR  lpFileID,
+  _In_     DWORD                 dwDesiredAccess,
+  _In_     DWORD                 dwShareMode,
+  _In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+  _In_     DWORD                 dwFlags
+){
+	ACCESS_MASK DesiredAccess;
+	ULONG CreateOptions;
+	HANDLE result;
+	OBJECT_ATTRIBUTES attr;
+	NTSTATUS status;
+	IO_STATUS_BLOCK io;
+	UNICODE_STRING objectName;
 
-    if (!id)
-    {
-        SetLastError( ERROR_INVALID_PARAMETER );
-        return INVALID_HANDLE_VALUE;
-    }
+	if (!lpFileID || (lpFileID->dwSize < sizeof(FILE_ID_DESCRIPTOR)))
+	{
+	    SetLastError( ERROR_INVALID_PARAMETER );
+	    return INVALID_HANDLE_VALUE;
+	}
+	
+	switch(lpFileID->Type)
+	{
+	case FileIdType:
+		objectName.Length = sizeof(LARGE_INTEGER);
+		objectName.MaximumLength = sizeof(LARGE_INTEGER);
+		objectName.Buffer = (WCHAR *)&lpFileID->FileId;
+		break;
+	
+	case ObjectIdType:
+		objectName.Length = sizeof(GUID);
+		objectName.MaximumLength = sizeof(GUID);	
+		objectName.Buffer = (WCHAR *)&lpFileID->ObjectId;
+		break;
+		
+	default:
+		SetLastError( ERROR_INVALID_PARAMETER );
+		return INVALID_HANDLE_VALUE;
+	}
+	
+	
+	DesiredAccess = dwDesiredAccess | 
+		SYNCHRONIZE | FILE_READ_ATTRIBUTES;
+	CreateOptions = FILE_OPEN_BY_FILE_ID;
+	
+	if (dwFlags & FILE_FLAG_WRITE_THROUGH)
+		CreateOptions | FILE_WRITE_THROUGH;
+	
+	if (dwFlags & FILE_FLAG_NO_BUFFERING)
+		CreateOptions |= FILE_NO_INTERMEDIATE_BUFFERING;
+		
+	if (dwFlags & FILE_FLAG_SEQUENTIAL_SCAN) 
+		CreateOptions |= FILE_SEQUENTIAL_ONLY;
 
-    options = FILE_OPEN_BY_FILE_ID;
-    if (flags & FILE_FLAG_BACKUP_SEMANTICS)
-        options |= FILE_OPEN_FOR_BACKUP_INTENT;
-    else
-        options |= FILE_NON_DIRECTORY_FILE;
-    if (flags & FILE_FLAG_NO_BUFFERING) options |= FILE_NO_INTERMEDIATE_BUFFERING;
-    if (!(flags & FILE_FLAG_OVERLAPPED)) options |= FILE_SYNCHRONOUS_IO_NONALERT;
-    if (flags & FILE_FLAG_RANDOM_ACCESS) options |= FILE_RANDOM_ACCESS;
-    flags &= FILE_ATTRIBUTE_VALID_FLAGS;
+	if (dwFlags & FILE_FLAG_RANDOM_ACCESS) 
+		CreateOptions |= FILE_RANDOM_ACCESS;		
+		
+	if (dwFlags & FILE_FLAG_BACKUP_SEMANTICS)
+	    CreateOptions |= FILE_OPEN_FOR_BACKUP_INTENT;
+	
+	if (!(dwFlags & FILE_FLAG_OVERLAPPED))
+		CreateOptions |= FILE_SYNCHRONOUS_IO_NONALERT;
+		
+	if(dwFlags & FILE_FLAG_DELETE_ON_CLOSE) {
+		DesiredAccess |= DELETE;
+		CreateOptions |= FILE_DELETE_ON_CLOSE; }
+		
+	if(dwFlags & FILE_FLAG_OPEN_REPARSE_POINT)
+		CreateOptions |= FILE_OPEN_REPARSE_POINT;
+		
+	if (dwFlags & FILE_FLAG_OPEN_NO_RECALL)
+		CreateOptions |= FILE_OPEN_NO_RECALL;
 
-    objectName.Length             = sizeof(ULONGLONG);
-    objectName.Buffer             = (WCHAR *)&id->FileId;
-    attr.Length                   = sizeof(attr);
-    attr.RootDirectory            = handle;
-    attr.Attributes               = 0;
-    attr.ObjectName               = &objectName;
-    attr.SecurityDescriptor       = sec_attr ? sec_attr->lpSecurityDescriptor : NULL;
-    attr.SecurityQualityOfService = NULL;
-    if (sec_attr && sec_attr->bInheritHandle) attr.Attributes |= OBJ_INHERIT;
-
-    status = NtCreateFile( &result, access | SYNCHRONIZE, &attr, &io, NULL, flags,
-                           share, OPEN_EXISTING, options, NULL, 0 );
-    if (status != STATUS_SUCCESS)
-    {
-        SetLastError( RtlNtStatusToDosError( status ) );
-        return INVALID_HANDLE_VALUE;
-    }
-    return result;
+	attr.Length                   = sizeof(attr);
+	attr.RootDirectory            = hFile;
+	attr.Attributes               = OBJ_CASE_INSENSITIVE;
+	attr.ObjectName               = &objectName;
+	attr.SecurityDescriptor       = NULL;
+	attr.SecurityQualityOfService = NULL;
+	
+	status = NtCreateFile( &result, DesiredAccess, &attr, &io, NULL,
+	                       0, dwShareMode, FILE_OPEN, CreateOptions, NULL, 0);
+	if (status != STATUS_SUCCESS)
+	{
+		BaseSetLastNTError( status );
+	    return INVALID_HANDLE_VALUE;
+	}
+	return result;
 }
 
 BOOL

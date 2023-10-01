@@ -22,6 +22,13 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(process); 
 
+#define PF_SSSE3_INSTRUCTIONS_AVAILABLE 36
+#define PF_SSE4_1_INSTRUCTIONS_AVAILABLE 37
+#define PF_SSE4_2_INSTRUCTIONS_AVAILABLE 38
+#define PF_AVX_INSTRUCTIONS_AVAILABLE 39
+#define PF_AVX2_INSTRUCTIONS_AVAILABLE 40
+#define PF_AVX512F_INSTRUCTIONS_AVAILABLE 41
+
 typedef struct _SYSTEM_LOGICAL_INFORMATION_FILLED{
 	CACHE_DESCRIPTOR  CacheLevel1;
 	CACHE_DESCRIPTOR  CacheLevel2;
@@ -1413,14 +1420,27 @@ QueryProcessAffinityUpdateMode(
 }
 
 DWORD 
-WINAPI 
-GetMaximumProcessorCount(
-  _In_  WORD GroupNumber
-)
+WINAPI GetMaximumProcessorCount(WORD GroupNumber)
+/*
+  Some of this may seem a little odd, but I found when testing the functions on Vista systems that had
+  hyperthreading disabled in BIOS, that the output was "switched around".
+
+  GetMaximumProcessorCount seems like it should have used the variable ntoskrnl!KeNumberProcessors which is placed in the
+  SYSTEM_BASIC_INFORMATION struct at member NumberOfProcessors (KeQueryMaximumProcessorCount returns KeNumberProcessors as well).
+
+  GetActiveProcessorCount should have used the affinity mask at member ActiveProcessorsAffinityMask (ntoskrnl!KeActiveProcessors)
+
+  But the resulting output was as follows (on a 6C/12T system with HT disabled): 
+  GetMaximumProcessorCount returns 6 (logical processors)
+  GetActiveProcessorCount returns 12 (logical processors)
+
+  Not good. CPU-Z will not load with these results.
+
+  The functions were swapped around, and provided satisfactory results for CPU-Z (and presumably other
+  hardware verification software). And most importantly the results now reflect what
+  you would get with the official functions, but with lower overhead.
+*/
 {
-	//Windows XP/2003 don't support more than 64 processors, so, we have only one processor group
-	//return 64;
-	//We don't support really groups, so, we emulate to support ALL_PROCESSOR_GROUPS	
 	DWORD MaximumProcessorCount;
 	NTSTATUS Status;
 	INT i;
@@ -1466,13 +1486,9 @@ GetActiveProcessorGroupCount(void)
 	return 1;
 }
 
-DWORD 
-WINAPI 
-GetActiveProcessorCount(
-  _In_  WORD GroupNumber
-)
+
+DWORD WINAPI GetActiveProcessorCount(WORD GroupNumber)
 {
-	//We don't support really groups, so, we emulate to support ALL_PROCESSOR_GROUPS	
 	NTSTATUS Status;
 	SYSTEM_BASIC_INFORMATION sysbasic;
 	if(GroupNumber != 0 && GroupNumber != ALL_PROCESSOR_GROUPS)
@@ -1489,6 +1505,7 @@ GetActiveProcessorCount(
 		}
 		return sysbasic.NumberOfProcessors;
 	}
+
 }
 
 /***********************************************************************
@@ -1532,6 +1549,36 @@ IsProcessorFeaturePresentInternal (
 			resp = TRUE;
 			break;
 		}
+		case PF_SSSE3_INSTRUCTIONS_AVAILABLE:
+		{
+			resp = TRUE;
+			break;
+		}
+		case PF_SSE4_1_INSTRUCTIONS_AVAILABLE:
+		{
+			resp = TRUE;
+			break;
+		}
+		case PF_SSE4_2_INSTRUCTIONS_AVAILABLE:
+		{
+			resp = TRUE;
+			break;
+		}		
+		case PF_AVX_INSTRUCTIONS_AVAILABLE:
+		{
+			resp = TRUE;
+			break;
+		}
+		case PF_AVX2_INSTRUCTIONS_AVAILABLE:
+		{
+			resp = TRUE;
+			break;
+		}
+		case PF_AVX512F_INSTRUCTIONS_AVAILABLE:
+		{
+			resp = TRUE;
+			break;
+		}		
 		default:
 		{
 			resp = IsProcessorFeaturePresent(feature);
@@ -2017,30 +2064,24 @@ BOOL WINAPI GetProcessMitigationPolicy(HANDLE hProcess, PROCESS_MITIGATION_POLIC
 /***********************************************************************
  *           GetProcessGroupAffinity   (kernelbase.@)
  */
-BOOL GetProcessGroupAffinity(HANDLE hProcess, PUSHORT GroupCount, PUSHORT GroupArray)
-// Technically, all CPUs before Windows 7 were in group 0, so the function implementations are changed to reflect this reality.
+BOOL WINAPI GetProcessGroupAffinity(HANDLE hProcess, PUSHORT GroupCount, PUSHORT GroupArray)
 {
-   PROCESS_INFORMATION ProcessInfo;
-   NTSTATUS Status;
-   *GroupCount = 1;
-   if(!GroupCount)
-   {
-     SetLastError(ERROR_INSUFFICIENT_BUFFER);
-	 return FALSE;
-   }
-   
-   Status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &ProcessInfo, sizeof(PROCESS_INFORMATION), NULL);
-   // Like GetProcessId(hProcess) but with fewer steps
-   if(Status < 0) 
-   {
-	 BaseSetLastNTError(Status);
-     return FALSE;
-   }
-   
-   GroupArray[0] = 1;
-   
-   return TRUE;
-   
+	USHORT LastGroupCount;
+    if (!GroupCount) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    LastGroupCount = *GroupCount;
+    *GroupCount = 1;
+    if(LastGroupCount == 0)
+    {
+        SetLastError(ERROR_INSUFFICIENT_BUFFER);
+        return FALSE;
+    }
+    if(!GetProcessId(hProcess))
+        return FALSE;
+    GroupArray[0] = 1;
+    return TRUE;
 }
 
 /***********************************************************************

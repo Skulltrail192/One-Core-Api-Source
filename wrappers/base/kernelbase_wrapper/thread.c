@@ -421,12 +421,12 @@ ConvertThreadToFiberEx(
 
     /* Are we already a fiber? */
     Teb = NtCurrentTeb();
-    if (Teb->HasFiberData)
-    {
-        /* Fail */
-        SetLastError(ERROR_ALREADY_FIBER);
-        return NULL;
-    }
+    // if (Teb->HasFiberData)
+    // {
+        // /* Fail */
+        // SetLastError(ERROR_ALREADY_FIBER);
+        // return NULL;
+    // }
 
     /* Allocate the fiber */
     Fiber = RtlAllocateHeap(RtlGetProcessHeap(),
@@ -456,7 +456,7 @@ ConvertThreadToFiberEx(
 
     /* Associate the fiber to the current thread */
     Teb->NtTib.FiberData = Fiber;
-    Teb->HasFiberData = TRUE;
+   // Teb->HasFiberData = TRUE;
 
     /* Return opaque fiber data */
     return (LPVOID)Fiber;
@@ -696,59 +696,54 @@ CreateThreadpoolWait(
 /***********************************************************************
  *              GetThreadGroupAffinity (KERNEL32.@)
  */
-BOOL GetThreadGroupAffinity(HANDLE hThread, PGROUP_AFFINITY GroupAffinity)
-	// This is basically the same procedure as above, with regards to obtaining the "previous" affinity
+BOOL WINAPI GetThreadGroupAffinity(HANDLE hThread, PGROUP_AFFINITY GroupAffinity)
 {
-	DWORD_PTR ProcessAffinityMask;
-	DWORD_PTR SystemAffinityMask;
-	DWORD Pid;
 	HANDLE hProcess;
-		
-	Pid = GetProcessIdOfThread(hThread);
-	hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, Pid);
-	if(!hProcess)
-		return FALSE;
-
-	if(!GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask))
-		return FALSE;
-	GroupAffinity->Mask = ProcessAffinityMask;
-	GroupAffinity->Group = 0;
-    
-	CloseHandle(hProcess);
-
-	return TRUE;
+    DWORD_PTR ProcessAffinityMask;
+    DWORD_PTR SystemAffinityMask;	
+    DWORD Pid = GetProcessIdOfThread(hThread);
+    BOOL Res;
+	
+	if(!Pid)
+        return FALSE;
+    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
+    if(!hProcess)
+        return FALSE;
+    Res = GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
+    CloseHandle(hProcess);
+    if (Res) {
+        GroupAffinity->Mask = ProcessAffinityMask;
+        GroupAffinity->Group = 0;
+    }
+    return Res;
 }
 
 /***********************************************************************
  *              SetThreadGroupAffinity (KERNEL32.@)
  */
-BOOL 
-SetThreadGroupAffinity(
-	HANDLE hThread, 
-	const GROUP_AFFINITY *GroupAffinity, 
-	PGROUP_AFFINITY PreviousGroupAffinity
-)
-	// Well, process affinity is supposed to match thread group affinity at least in basic cases.
-	// That is why I rely on process affinity for obtaining the previous group affinity.
+BOOL WINAPI SetThreadGroupAffinity(HANDLE hThread, const GROUP_AFFINITY *GroupAffinity, PGROUP_AFFINITY PreviousGroupAffinity)
 {
-	DWORD_PTR ProcessAffinityMask;
-	DWORD_PTR SystemAffinityMask;
 	DWORD Pid;
 	HANDLE hProcess;
-		
-	if(PreviousGroupAffinity)
-	{		
-		Pid = GetProcessIdOfThread(hThread);
-	    hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, Pid);
-		if(!hProcess)
-			return FALSE;
-
-		GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
-		PreviousGroupAffinity->Mask = ProcessAffinityMask;
-		CloseHandle(hProcess);
-	}
-
-		return SetThreadAffinityMask(hThread, GroupAffinity->Mask);
+    DWORD_PTR ProcessAffinityMask;
+    DWORD_PTR SystemAffinityMask;
+	BOOL Res;
+	
+    if (PreviousGroupAffinity) {
+        Pid = GetProcessIdOfThread(hThread);
+        if(!Pid)
+            return FALSE;
+        hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
+        if(!hProcess)
+            return FALSE;
+        Res = GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
+        CloseHandle(hProcess);
+        if(!Res)
+            return FALSE;
+        PreviousGroupAffinity->Mask = ProcessAffinityMask;
+        PreviousGroupAffinity->Group = 0;
+    }
+    return SetThreadAffinityMask(hThread, GroupAffinity->Mask);
 }
 
 /*************************************************************************
@@ -1277,8 +1272,15 @@ BOOL WINAPI DECLSPEC_HOTPATCH QueryThreadpoolStackInformation( PTP_POOL pool, PT
 /**********************************************************************
  *            SetThreadInformation   (kernelbase.@)
  */
-BOOL WINAPI DECLSPEC_HOTPATCH SetThreadInformation( HANDLE thread, THREAD_INFORMATION_CLASS info_class,
-        VOID *info, DWORD size )
+BOOL 
+WINAPI 
+DECLSPEC_HOTPATCH 
+SetThreadInformation( 
+	HANDLE thread, 
+	THREAD_INFORMATION_CLASS info_class,
+    VOID *info, 
+	DWORD size
+)
 {
     switch (info_class)
     {

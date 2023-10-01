@@ -102,3 +102,24 @@ VirtualAllocExNuma(
 						  AllocationType,
 						  Protect);
 }
+
+/***********************************************************************
+ *             PrefetchVirtualMemory   (kernelbase.@)
+ */
+BOOL 
+WINAPI 
+DECLSPEC_HOTPATCH 
+PrefetchVirtualMemory( 
+	HANDLE process, 
+	ULONG_PTR count,
+    WIN32_MEMORY_RANGE_ENTRY *addresses, 
+	ULONG flags 
+)
+{
+    return set_ntstatus( NtSetInformationVirtualMemory( process, 
+														VmPrefetchInformation,
+                                                        count, 
+														(PMEMORY_RANGE_ENTRY)addresses,
+                                                        &flags, 
+														sizeof(flags) ));
+}

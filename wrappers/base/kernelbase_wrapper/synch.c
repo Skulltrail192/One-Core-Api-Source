@@ -815,13 +815,21 @@ BOOL getQueuedCompletionStatus(
 	// return TRUE;
 // }
 
-BOOL GetQueuedCompletionStatusEx(HANDLE CompletionPort, LPOVERLAPPED_ENTRY lpCompletionPortEntries,
-                                 ULONG ulCount, PULONG ulNumEntriesRemoved, DWORD dwMilliseconds)
+BOOL 
+GetQueuedCompletionStatusEx(
+	HANDLE CompletionPort, 
+	LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+    ULONG ulCount, 
+	PULONG ulNumEntriesRemoved, 
+	DWORD dwMilliseconds,
+	BOOL fAlertable)
 {
     ULONG numEntriesRemoved = 0;
     DWORD startTime = GetTickCount();
 	DWORD elapsedTime;
 	ULONG i;
+	
+	UNREFERENCED_PARAMETER(fAlertable);
 
     for (i = 0; i < ulCount; i++)
     {

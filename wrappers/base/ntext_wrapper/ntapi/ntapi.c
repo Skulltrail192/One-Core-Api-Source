@@ -210,7 +210,7 @@ NTAPI
 NtSetInformationVirtualMemory(HANDLE hProcess,
 							  BOOL access,
 							  ULONG_PTR NumberOfEntries, 
-							  PWIN32_MEMORY_RANGE_ENTRY VirtualAddresses, 
+							  PMEMORY_RANGE_ENTRY VirtualAddresses, 
 							  PULONG Flags,
 							  DWORD other
 )

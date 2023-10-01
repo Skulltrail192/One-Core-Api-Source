@@ -881,7 +881,7 @@
 @ stdcall WaitForSingleObjectEx(long long long)
 @ stdcall WaitNamedPipeA (str long)
 @ stdcall WaitNamedPipeW (wstr long)
-@ stdcall WideCharToMultiByte(long long wstr long ptr long ptr ptr)
+
 @ stdcall WinExec(str long)
 @ stdcall WriteConsoleA(long ptr long ptr ptr)
 @ stdcall WriteConsoleInputA(long ptr long ptr)
@@ -1002,7 +1002,7 @@
 @ stdcall GetSystemDEPPolicy() 
 @ stdcall SetProcessDEPPolicy(long) 
 
-#Own implementation only for support
+#Own implementation only for support - hooks
 @ stdcall CreateProcessA(str str ptr ptr long long ptr str ptr ptr) CreateProcessExA
 @ stdcall CreateProcessInternalA(ptr str str ptr ptr long long ptr str ptr ptr long) CreateProcessInternalExA
 @ stdcall CreateProcessInternalW(ptr wstr wstr ptr ptr long long ptr wstr ptr ptr long) CreateProcessInternalExW
@@ -1019,6 +1019,7 @@
 @ stdcall SetFileApisToOEM() SetpFileApisToOEM
 @ stdcall HeapSetInformation(ptr long ptr long) HeapSetInformationInternal
 @ stdcall SetThreadPriority(ptr long) SetThreadPriorityInternal
+@ stdcall WideCharToMultiByte(long long wstr long ptr long ptr ptr) WideCharToMultiByteInternal
 
 ; #Needed functions for Server 2003 RTM and XP
 ; @ stdcall -arch=i386 CreateVirtualBuffer(ptr long long) kernel32.CreateVirtualBuffer
@@ -1146,8 +1147,8 @@
 @ stdcall GetErrorMode()
 @ stdcall GetFileAttributesTransactedA(str long ptr ptr)
 @ stdcall GetFileAttributesTransactedW(wstr long ptr ptr)
-@ stdcall GetFileInformationByHandleEx(long long ptr long) fileextd.GetFileInformationByHandleEx
-@ stdcall GetFileInformationByHandleExW(long long ptr long) fileextd.GetFileInformationByHandleEx ;fileextd.GetFileInformationByHandleEx 
+@ stdcall GetFileInformationByHandleEx(long long ptr long) #fileextd.GetFileInformationByHandleEx
+@ stdcall GetFileInformationByHandleExW(long long ptr long) GetFileInformationByHandleEx #fileextd.GetFileInformationByHandleEx
 @ stdcall GetFinalPathNameByHandleA(ptr str long long)
 @ stdcall GetFinalPathNameByHandleW(ptr wstr long long)
 @ stdcall GetLocaleInfoEx(wstr long ptr long)
@@ -1215,7 +1216,7 @@
 @ stdcall MoveFileTransactedA(str str ptr ptr long ptr)
 @ stdcall MoveFileTransactedW(wstr wstr ptr ptr long ptr)
 @ stdcall NormalizeString(long wstr long wstr long) normaliz.NormalizeString
-@ stdcall OpenFileById(long ptr long long ptr long) fileextd.OpenFileById
+@ stdcall OpenFileById(long ptr long long ptr long) #fileextd.OpenFileById
 @ stdcall QueryActCtxSettingsW(long ptr wstr wstr ptr long ptr)
 @ stdcall QueryFullProcessImageNameA(ptr long ptr ptr) 
 @ stdcall QueryFullProcessImageNameW(ptr long ptr ptr)
@@ -1240,8 +1241,8 @@
 @ stdcall SetEventWhenCallbackReturns(ptr long) ntext.TpCallbackSetEventOnCompletion
 @ stdcall SetFileAttributesTransactedA(str long ptr)
 @ stdcall SetFileAttributesTransactedW(wstr long ptr)
-@ stdcall SetFileInformationByHandle(long long ptr long) fileextd.SetFileInformationByHandle
-@ stdcall SetFileInformationByHandleW(long long ptr long) fileextd.SetFileInformationByHandle ;fileextd.SetFileInformationByHandle
+@ stdcall SetFileInformationByHandle(long long ptr long) #fileextd.SetFileInformationByHandle
+@ stdcall SetFileInformationByHandleW(long long ptr long) SetFileInformationByHandle #fileextd.SetFileInformationByHandle
 @ stdcall SetNamedPipeAttribute(ptr long str ptr long)
 @ stdcall SetProcessAffinityUpdateMode(ptr long)
 @ stdcall SetProcessPreferredUILanguages(long wstr ptr)
@@ -1429,6 +1430,7 @@
 @ stdcall PathCchStripPrefix(wstr long)
 @ stdcall PathCchStripToRoot(wstr long)
 @ stdcall PathIsUNCEx(wstr ptr)
+@ stdcall PrefetchVirtualMemory(ptr ptr ptr long)
 @ stdcall RemoveDllDirectory(ptr)
 @ stdcall SetDefaultDllDirectories(long)
 @ stdcall SetProcessMitigationPolicy(long ptr long)
@@ -1446,6 +1448,7 @@
 @ stdcall PerfStartProviderEx(ptr ptr ptr)
 @ stdcall PerfStopProvider(long)
 @ stdcall SetProcessGroupAffinity(long ptr ptr)
+@ stdcall SetThreadInformation(long long ptr long)
 
 ; #Win10 functions
 @ stdcall GetThreadDescription(long ptr)

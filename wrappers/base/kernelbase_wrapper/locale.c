@@ -2177,3 +2177,43 @@ done:
     RegCloseKey( key );
     return ret;
 }
+
+static int wcstombs_utf8( DWORD flags, const WCHAR *src, int srclen, char *dst, int dstlen,
+                          const char *defchar, BOOL *used )
+{
+    DWORD reslen;
+    NTSTATUS status;
+
+    if (used) *used = FALSE;
+    if (!dstlen) dst = NULL;
+    status = RtlUnicodeToUTF8N( dst, dstlen, &reslen, src, srclen * sizeof(WCHAR) );
+    if (status == STATUS_SOME_NOT_MAPPED)
+    {
+        if (flags & WC_ERR_INVALID_CHARS)
+        {
+            SetLastError( ERROR_NO_UNICODE_TRANSLATION );
+            return 0;
+        }
+        if (used) *used = TRUE;
+    }
+    else if (!set_ntstatus( status )) reslen = 0;
+    return reslen;
+}
+
+/***********************************************************************
+ *	WideCharToMultiByte   (kernelbase.@)
+ */
+INT WINAPI DECLSPEC_HOTPATCH WideCharToMultiByteInternal( UINT codepage, DWORD flags, LPCWSTR src, INT srclen,
+                                                  LPSTR dst, INT dstlen, LPCSTR defchar, BOOL *used )
+{
+    int ret = 0;
+
+	if(flags & WC_ERR_INVALID_CHARS){
+		ret = wcstombs_utf8( flags, src, srclen, dst, dstlen, defchar, used );
+	}else{
+		ret = WideCharToMultiByte(codepage, flags, src, srclen, dst, dstlen, defchar, used);
+	}	
+	
+	return ret;
+}
+

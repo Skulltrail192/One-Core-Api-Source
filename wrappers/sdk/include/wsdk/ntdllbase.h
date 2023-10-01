@@ -193,6 +193,25 @@ typedef struct _DELAYLOAD_INFO
 } DELAYLOAD_INFO, *PDELAYLOAD_INFO;
 typedef PVOID (WINAPI *PDELAYLOAD_FAILURE_DLL_CALLBACK)(ULONG, PDELAYLOAD_INFO);
 
+typedef enum
+{
+    VmPrefetchInformation,
+    VmPagePriorityInformation,
+    VmCfgCallTargetInformation,
+    VmPageDirtyStateInformation,
+    VmImageHotPatchInformation,
+    VmPhysicalContiguityInformation,
+    VmVirtualMachinePrepopulateInformation,
+    VmRemoveFromWorkingSetInformation,
+} VIRTUAL_MEMORY_INFORMATION_CLASS, *PVIRTUAL_MEMORY_INFORMATION_CLASS;
+
+
+typedef struct _MEMORY_RANGE_ENTRY
+{
+    PVOID  VirtualAddress;
+    SIZE_T NumberOfBytes;
+} MEMORY_RANGE_ENTRY, *PMEMORY_RANGE_ENTRY;
+
 /* unimplemented*/
 ULONG WINAPI EtwEventRegister(
   _In_      LPCGUID ProviderId,
@@ -411,19 +430,24 @@ NTSTATUS NTAPI RtlCheckTokenCapability(
   _Out_     PBOOL HasCapability
 );
 
-NTSTATUS NTAPI RtlCheckTokenMembershipEx(
+NTSTATUS 
+NTAPI 
+RtlCheckTokenMembershipEx(
 	HANDLE TokenHandle, 
 	PSID SidToCheck, 
 	DWORD Flas, 
 	PBOOL IsMember
 );
 
-NTSTATUS NTAPI NtSetInformationVirtualMemory(HANDLE hProcess,
-											 BOOL access,
-											 ULONG_PTR NumberOfEntries, 
-											 PWIN32_MEMORY_RANGE_ENTRY VirtualAddresses, 
-											 PULONG Flags,
-											 DWORD other
+NTSTATUS 
+NTAPI 
+NtSetInformationVirtualMemory(
+	HANDLE hProcess,
+	BOOL access,
+	ULONG_PTR NumberOfEntries, 
+	PMEMORY_RANGE_ENTRY VirtualAddresses, 
+	PULONG Flags,
+	DWORD other
 );
 
 PVOID NTAPI LdrResolveDelayLoadedAPI(
@@ -659,4 +683,5 @@ NTSYSAPI NTSTATUS  WINAPI RtlConvertToAutoInheritSecurityObject(PSECURITY_DESCRI
 NTSYSAPI NTSTATUS  WINAPI NtGetNlsSectionPtr(ULONG,ULONG,void*,void**,SIZE_T*);
 NTSYSAPI NTSTATUS WINAPI RtlFlsGetValue( ULONG index, void **data );
 NTSYSAPI NTSTATUS WINAPI RtlFlsSetValue( ULONG index, void *data );
+NTSTATUS WINAPI RtlUnicodeToUTF8N( char *dst, DWORD dstlen, DWORD *reslen, const WCHAR *src, DWORD srclen );
 
