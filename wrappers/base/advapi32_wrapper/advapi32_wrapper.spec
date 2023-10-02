@@ -730,6 +730,7 @@
 @ stdcall RegSetKeyValueA(ptr str str long ptr long)
 @ stdcall RegSetKeyValueW(ptr wstr wstr long ptr long)
 @ stdcall SetSecurityAccessMask(long ptr)
+@ stdcall SetUserFileEncryptionKeyEx(ptr long long ptr)
 @ stdcall -stub TreeSetNamedSecurityInfoW(wstr long long ptr ptr ptr ptr long)
 
 #Win7+

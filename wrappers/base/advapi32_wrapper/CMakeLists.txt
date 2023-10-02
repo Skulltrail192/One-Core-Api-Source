@@ -12,6 +12,7 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/lib/evtlib)
 spec2def(advapi32_wrapper.dll advapi32_wrapper.spec ADD_IMPORTLIB)
 
 list(APPEND SOURCE
+    efs.c
     eventlog.c
 	hooks.c
 	main.c

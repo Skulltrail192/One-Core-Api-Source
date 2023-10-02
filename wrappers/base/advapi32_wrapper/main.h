@@ -18,6 +18,7 @@
 #include <wine/config.h>
 #include <accctrl.h>
 #include <aclapi.h>
+#include <winefs.h>
 
 #include <ntstatus.h>
 #define WIN32_NO_STATUS
@@ -208,3 +209,7 @@ static inline WCHAR *strdupAW( const char *src )
     }
     return dst;
 }
+
+DWORD SetUserFileEncryptionKey(
+  PENCRYPTION_CERTIFICATE pEncryptionCertificate
+);
