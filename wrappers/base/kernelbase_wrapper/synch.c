@@ -963,59 +963,77 @@ BOOL getQueuedCompletionStatus(
             // }
 		// }
 		
-BOOL 
-GetQueuedCompletionStatusEx(
-    HANDLE CompletionPort,
-    LPOVERLAPPED_ENTRY lpCompletionPortEntries,
-    ULONG ulCount,
-    PULONG ulNumEntriesRemoved,
-    DWORD dwMilliseconds,
-    BOOL fAlertable
-)
-{
-    LARGE_INTEGER TimeOut;
-    PLARGE_INTEGER pTimeOut;
-    NTSTATUS Status;
-    RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME Frame = { sizeof(Frame), RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_FORMAT_WHISTLER };
+// BOOL 
+// GetQueuedCompletionStatusEx(
+    // HANDLE CompletionPort,
+    // LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+    // ULONG ulCount,
+    // PULONG ulNumEntriesRemoved,
+    // DWORD dwMilliseconds,
+    // BOOL fAlertable
+// )
+// {
+    // LARGE_INTEGER TimeOut;
+    // PLARGE_INTEGER pTimeOut;
+    // NTSTATUS Status;
+    // RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME Frame = { sizeof(Frame), RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_FORMAT_WHISTLER };
 
-    _SEH2_TRY {
-	if ( lpCompletionPortEntries && ulNumEntriesRemoved && ulCount )
-	{
-		pTimeOut = BaseFormatTimeOut(&TimeOut,dwMilliseconds);
-		if ( fAlertable )
-		{
-			RtlActivateActivationContextUnsafeFast(&Frame, NULL);
-		}
+    // _SEH2_TRY {
+	// if ( lpCompletionPortEntries && ulNumEntriesRemoved && ulCount )
+	// {
+		// pTimeOut = BaseFormatTimeOut(&TimeOut,dwMilliseconds);
+		// if ( fAlertable )
+		// {
+			// RtlActivateActivationContextUnsafeFast(&Frame, NULL);
+		// }
 		  
-		Status = NtRemoveIoCompletionEx(CompletionPort, (FILE_IO_COMPLETION_INFORMATION *)lpCompletionPortEntries, ulCount, ulNumEntriesRemoved, pTimeOut, fAlertable);
-		if ( !NT_SUCCESS(Status) )
-		{
-	rewait:
-			if ( Status == 128 )
-				RtlSetLastWin32Error(0x2DFu);
-			else
-				BaseSetLastNTError(Status);
-			return FALSE;
-		}
-		if ( Status != 258 )
-		{
-			if ( Status != 128 )
-			{
-				return TRUE;
-			}				
-			goto rewait;
-		}
-		RtlSetLastWin32Error(0x102u);
-	  }
-	  else
-	  {
-		RtlSetLastWin32Error(0x57u);
-	  }
-    } _SEH2_FINALLY {
-		if ( fAlertable ){
-			RtlDeactivateActivationContextUnsafeFast(&Frame);
-		}
-    }
+		// Status = NtRemoveIoCompletionEx(CompletionPort, (FILE_IO_COMPLETION_INFORMATION *)lpCompletionPortEntries, ulCount, ulNumEntriesRemoved, pTimeOut, fAlertable);
+		// if ( !NT_SUCCESS(Status) )
+		// {
+	// rewait:
+			// if ( Status == 128 )
+				// RtlSetLastWin32Error(0x2DFu);
+			// else
+				// BaseSetLastNTError(Status);
+			// return FALSE;
+		// }
+		// if ( Status != 258 )
+		// {
+			// if ( Status != 128 )
+			// {
+				// return TRUE;
+			// }				
+			// goto rewait;
+		// }
+		// RtlSetLastWin32Error(0x102u);
+	  // }
+	  // else
+	  // {
+		// RtlSetLastWin32Error(0x57u);
+	  // }
+    // } _SEH2_FINALLY {
+		// if ( fAlertable ){
+			// RtlDeactivateActivationContextUnsafeFast(&Frame);
+		// }
+    // }
 	  
-	  return FALSE;
-}		
+	  // return FALSE;
+// }
+
+BOOL WINAPI DECLSPEC_HOTPATCH GetQueuedCompletionStatusEx( HANDLE port, OVERLAPPED_ENTRY *entries,
+                                                           ULONG count, ULONG *written,
+                                                           DWORD timeout, BOOL alertable )
+{
+    LARGE_INTEGER time;
+    NTSTATUS ret;
+
+    TRACE( "%p %p %lu %p %lu %u\n", port, entries, count, written, timeout, alertable );
+
+    ret = NtRemoveIoCompletionEx( port, (FILE_IO_COMPLETION_INFORMATION *)entries, count,
+                                  written, get_nt_timeout( &time, timeout ), alertable );
+    if (ret == STATUS_SUCCESS) return TRUE;
+    else if (ret == STATUS_TIMEOUT) SetLastError( WAIT_TIMEOUT );
+    else if (ret == STATUS_USER_APC) SetLastError( WAIT_IO_COMPLETION );
+    else SetLastError( RtlNtStatusToDosError(ret) );
+    return FALSE;
+}

@@ -1105,19 +1105,19 @@ NTSTATUS WINAPI NtRemoveIoCompletionEx( HANDLE handle, FILE_IO_COMPLETION_INFORM
     ULONG i = 0;
 	PVOID CompletionKey = 0;
 	PVOID CompletionValue = 0;
-	PIO_STATUS_BLOCK IoStatusBlock = {0};
+	IO_STATUS_BLOCK IoStatusBlock = {0};
 
     for (;;)
     {
         while (i < count)
         {
-			status = NtRemoveIoCompletion(handle, CompletionKey, CompletionValue, IoStatusBlock, timeout);			
+			status = NtRemoveIoCompletion(handle, &CompletionKey, &CompletionValue, &IoStatusBlock, timeout);			
             if(status == STATUS_SUCCESS)
 			{
 				info[i].KeyContext             = CompletionKey;
 				info[i].ApcContext             = CompletionValue;
-				info[i].IoStatusBlock.Information = IoStatusBlock->Information;
-				info[i].IoStatusBlock.Status    = IoStatusBlock->Status;   
+				info[i].IoStatusBlock.Information = IoStatusBlock.Information;
+				info[i].IoStatusBlock.Status    = IoStatusBlock.Status;   
 			}				
 			if (status != STATUS_SUCCESS) break;
             ++i;
