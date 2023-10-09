@@ -50,20 +50,31 @@ static const struct {
         {&IID_IShellLinkA,              "IID_IShellLinkA"},
         {&IID_IShellLinkW,              "IID_IShellLinkW"},
 	{NULL,NULL}};
+	
 
-// BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
-// {
-    // TRACE("fdwReason %u\n", fdwReason);
 
-    // switch(fdwReason)
-    // {
-        // case DLL_PROCESS_ATTACH:
-            // DisableThreadLibraryCalls(hInstDLL);
-            // break;
-    // }
+BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
+{
+	DWORD bufferSize = 65535;
+	LPWSTR AppData;
+	
+    TRACE("fdwReason %u\n", fdwReason);
 
-    // return TRUE;
-// }
+    switch(fdwReason)
+    {
+        case DLL_PROCESS_ATTACH:
+            DisableThreadLibraryCalls(hInstDLL);
+			AppData = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+			if (!AppData)
+				return E_OUTOFMEMORY;			
+			GetEnvironmentVariableW(L"APPDATA", AppData, bufferSize);
+			SetEnvironmentVariableW(L"LOCALAPPDATA", AppData);
+			HeapFree(GetProcessHeap(), 0, AppData);
+            break;
+    }
+
+    return TRUE;
+}
 
 /************************************************************************/
 

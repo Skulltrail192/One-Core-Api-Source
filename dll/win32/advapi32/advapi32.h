@@ -8,6 +8,8 @@
 #ifndef __ADVAPI32_H
 #define __ADVAPI32_H
 
+
+
 /* INCLUDES ******************************************************************/
 
 /* C Headers */
@@ -23,6 +25,8 @@
 #define _WMI_SOURCE_
 #include <aclapi.h>
 #include <winsafer.h>
+
+typedef NTSTATUS *PNTSTATUS;
 
 #define NTOS_MODE_USER
 #include <ndk/iofuncs.h>

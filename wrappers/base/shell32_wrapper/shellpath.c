@@ -4757,9 +4757,80 @@ SHSetKnownFolderPath(
 	return SHSetFolderPathW(index, hToken, dwFlags, (LPCSTR)pszPath);
 }
 
-/*************************************************************************
- * SHGetKnownFolderPath           [SHELL32.@]
- */
+// /*************************************************************************
+ // * SHGetKnownFolderPath           [SHELL32.@]
+ // */
+// HRESULT 
+// WINAPI 
+// SHGetKnownFolderPath(
+	// REFKNOWNFOLDERID rfid, 
+	// DWORD dwflags, 
+	// HANDLE token, 
+	// PWSTR *path
+// )
+// {
+    // wchar_t folder[512+1] = {0};
+    // int index = csidl_from_id( rfid );
+	// DWORD flags = SHGFP_TYPE_CURRENT;
+	// DWORD Size;
+	 
+    // DbgPrint("SHGetKnownFolderPath REFKNOWNFOLDERID GUID = {" GUID_FORMAT "}\n",  GUID_ARG(rfid));	 
+	 
+    // if (index < 0)
+        // return HRESULT_FROM_WIN32( ERROR_FILE_NOT_FOUND );
+	// if( dwflags & KF_FLAG_DEFAULT_PATH)
+		// flags = SHGFP_TYPE_DEFAULT;
+	// if (dwflags & KF_FLAG_CREATE)
+        // index |= CSIDL_FLAG_CREATE;
+
+    // if (dwflags & KF_FLAG_CREATE)
+        // index |= CSIDL_FLAG_CREATE;
+
+    // if (dwflags & KF_FLAG_DONT_VERIFY)
+        // index |= CSIDL_FLAG_DONT_VERIFY;
+
+    // if (dwflags & KF_FLAG_NO_ALIAS)
+        // index |= CSIDL_FLAG_NO_ALIAS;
+
+    // if (dwflags & KF_FLAG_INIT)
+        // index |= CSIDL_FLAG_PER_USER_INIT;
+
+    // if (dwflags & ~(KF_FLAG_CREATE|KF_FLAG_DONT_VERIFY|KF_FLAG_NO_ALIAS|KF_FLAG_INIT))
+    // {
+        // FIXME("SHGetKnownFolderPath::dwflags 0x%08x not supported\n", dwflags);
+        // return E_INVALIDARG;
+    // }
+	
+	// //FOLDERID_QuickLaunch
+	// //FOLDERID_SampleMusic
+	// //FOLDERID_SamplePictures
+	// //FOLDERID_SampleVideos
+	// //FOLDERID_SavedGames
+	// //DbgPrint("SHGetKnownFolderPath the CSLD is %d\n",index);
+	// DbgPrint("SHGetKnownFolderPath:: index is: %d\n", index);
+	// SHGetFolderPathW(NULL, index, token, flags, folder);	
+	// DbgPrint("SHGetKnownFolderPath: Folder is: %s\n",folder);
+	
+	// if(IsEqualGUID( rfid , &FOLDERID_Public ))
+	// {
+		// Size = ARRAY_SIZE(folder);
+		// GetAllUsersProfileDirectoryW(*path, &Size);
+		// // ExpandEnvironmentStringsW(L"%ALLUSERSPROFILE%", *path, MAX_PATH);
+	// }else 
+	// if(IsEqualGUID( rfid , &FOLDERID_QuickLaunch )){
+		// ExpandEnvironmentStringsW(L"%APPDATA%", *path , MAX_PATH);
+		// strcatW(*path, L"Microsoft\\Internet Explorer\\Quick");
+	// }else if(IsEqualGUID( rfid , &FOLDERID_UserProfiles )){
+		// GetProfilesDirectoryW(*path, NULL);
+	// }else if(IsEqualGUID( rfid , &FOLDERID_Downloads )){
+		// return HRESULT_FROM_WIN32( ERROR_FILE_NOT_FOUND );
+	// }else{
+		// *path = folder;
+	// }
+
+    // return S_OK;
+// }
+
 HRESULT 
 WINAPI 
 SHGetKnownFolderPath(
@@ -4769,19 +4840,18 @@ SHGetKnownFolderPath(
 	PWSTR *path
 )
 {
-    wchar_t folder[512+1] = {0};
     int index = csidl_from_id( rfid );
 	DWORD flags = SHGFP_TYPE_CURRENT;
-	DWORD Size;
+	//DWORD Size;
+	LPWSTR folder;
+	DWORD lpcchSize = MAX_PATH;
 	 
     DbgPrint("SHGetKnownFolderPath REFKNOWNFOLDERID GUID = {" GUID_FORMAT "}\n",  GUID_ARG(rfid));	 
 	 
     if (index < 0)
         return HRESULT_FROM_WIN32( ERROR_FILE_NOT_FOUND );
-	if( dwflags & KF_FLAG_DEFAULT_PATH)
-		flags = SHGFP_TYPE_DEFAULT;
-	if (dwflags & KF_FLAG_CREATE)
-        index |= CSIDL_FLAG_CREATE;
+	if (dwflags & KF_FLAG_DEFAULT_PATH)
+		flags |= SHGFP_TYPE_DEFAULT;
 
     if (dwflags & KF_FLAG_CREATE)
         index |= CSIDL_FLAG_CREATE;
@@ -4795,12 +4865,14 @@ SHGetKnownFolderPath(
     if (dwflags & KF_FLAG_INIT)
         index |= CSIDL_FLAG_PER_USER_INIT;
 
-    if (dwflags & ~(KF_FLAG_CREATE|KF_FLAG_DONT_VERIFY|KF_FLAG_NO_ALIAS|KF_FLAG_INIT))
+    if (dwflags & ~(KF_FLAG_CREATE|KF_FLAG_DEFAULT_PATH|KF_FLAG_DONT_VERIFY|KF_FLAG_NO_ALIAS|KF_FLAG_INIT))
     {
         FIXME("SHGetKnownFolderPath::dwflags 0x%08x not supported\n", dwflags);
         return E_INVALIDARG;
     }
-	
+	folder = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+	if (!folder)
+		return E_OUTOFMEMORY;
 	//FOLDERID_QuickLaunch
 	//FOLDERID_SampleMusic
 	//FOLDERID_SamplePictures
@@ -4808,21 +4880,33 @@ SHGetKnownFolderPath(
 	//FOLDERID_SavedGames
 	//DbgPrint("SHGetKnownFolderPath the CSLD is %d\n",index);
 	DbgPrint("SHGetKnownFolderPath:: index is: %d\n", index);
-	SHGetFolderPathW(NULL, index, token, flags, folder);	
-	DbgPrint("SHGetKnownFolderPath: Folder is: %s\n",folder);
+	SHGetFolderPathW(NULL, index, token, flags, folder);
+	DbgPrint("SHGetKnownFolderPath: Folder is: %s\n", folder);
 	
 	if(IsEqualGUID( rfid , &FOLDERID_Public ))
 	{
-		Size = ARRAY_SIZE(folder);
-		GetAllUsersProfileDirectoryW(*path, &Size);
+		if (!GetAllUsersProfileDirectoryW(folder, &lpcchSize)) {
+			HeapFree(GetProcessHeap(), 0, folder);
+			return HRESULT_FROM_WIN32(GetLastError());
+		};
+		*path = folder;
 		// ExpandEnvironmentStringsW(L"%ALLUSERSPROFILE%", *path, MAX_PATH);
 	}else 
 	if(IsEqualGUID( rfid , &FOLDERID_QuickLaunch )){
-		ExpandEnvironmentStringsW(L"%APPDATA%", *path , MAX_PATH);
-		strcatW(*path, L"Microsoft\\Internet Explorer\\Quick");
+		if (!ExpandEnvironmentStringsW(L"%APPDATA%", folder, MAX_PATH)) {
+			HeapFree(GetProcessHeap(), 0, folder);
+			return HRESULT_FROM_WIN32(GetLastError());
+		}
+		strcatW(folder, L"Microsoft\\Internet Explorer\\Quick");
+		*path = folder;
 	}else if(IsEqualGUID( rfid , &FOLDERID_UserProfiles )){
-		GetProfilesDirectoryW(*path, NULL);
+		if (!GetProfilesDirectoryW(folder, &lpcchSize)) {
+			HeapFree(GetProcessHeap(), 0, folder);
+			return HRESULT_FROM_WIN32(GetLastError());
+		};
+		*path = folder;
 	}else if(IsEqualGUID( rfid , &FOLDERID_Downloads )){
+		HeapFree(GetProcessHeap(), 0, folder);
 		return HRESULT_FROM_WIN32( ERROR_FILE_NOT_FOUND );
 	}else{
 		*path = folder;

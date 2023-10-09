@@ -815,46 +815,207 @@ BOOL getQueuedCompletionStatus(
 	// return TRUE;
 // }
 
+
+		// BOOL
+		// WINAPI
+		// GetQueuedCompletionStatusEx(
+			// _In_ HANDLE CompletionPort,
+			// _Out_writes_to_(ulCount,*ulNumEntriesRemoved) LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+			// _In_ ULONG ulCount,
+			// _Out_ PULONG ulNumEntriesRemoved,
+			// _In_ DWORD dwMilliseconds,
+			// _In_ BOOL fAlertable
+			// )
+		// {
+			// OVERLAPPED_ENTRY _Entry = lpCompletionPortEntries[0];
+			// ULONG index;
+			// BOOL _bRet;
+
+			// if (ulCount == 0 || lpCompletionPortEntries == NULL || ulNumEntriesRemoved == NULL)
+			// {
+				// SetLastError(ERROR_INVALID_PARAMETER);
+				// return FALSE;
+			// }
+
+			// *ulNumEntriesRemoved = 0;
+			// index = 0;
+			
+			// do{				
+				// _Entry = lpCompletionPortEntries[index];
+				// index++;
+				// *ulNumEntriesRemoved++;
+				// _bRet = GetQueuedCompletionStatus(CompletionPort, &_Entry.dwNumberOfBytesTransferred, &_Entry.lpCompletionKey, &_Entry.lpOverlapped, dwMilliseconds);
+			// }while(_bRet || index < ulCount);
+			
+			// // TODO: 已知问题：可警报状态丢失！（fAlertable）
+			// // _bRet = GetQueuedCompletionStatus(CompletionPort, &_Entry.dwNumberOfBytesTransferred, &_Entry.lpCompletionKey, &_Entry.lpOverlapped, dwMilliseconds);
+			// // if (_bRet)
+			// // {
+				// // *ulNumEntriesRemoved = 1;
+			// // }
+			// return _bRet;
+		// }
+
+		// BOOL
+		// WINAPI
+		// GetQueuedCompletionStatusEx(
+			// _In_ HANDLE CompletionPort,
+			// _Out_writes_to_(ulCount,*ulNumEntriesRemoved) LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+			// _In_ ULONG ulCount,
+			// _Out_ PULONG ulNumEntriesRemoved,
+			// _In_ DWORD dwMilliseconds,
+			// _In_ BOOL fAlertable
+			// )
+		// {
+			// BOOL _bRet;
+			// OVERLAPPED_ENTRY _Entry;
+			// DWORD _uStartTick;
+			// DWORD _uResult;
+			// DWORD _uTickSpan;
+			// // if (const auto _pfnGetQueuedCompletionStatusEx = try_get_GetQueuedCompletionStatusEx())
+			// // {
+				// // return _pfnGetQueuedCompletionStatusEx(CompletionPort, lpCompletionPortEntries, ulCount, ulNumEntriesRemoved, dwMilliseconds, fAlertable);
+			// // }
+
+			// if (ulCount == 0 || lpCompletionPortEntries == NULL || ulNumEntriesRemoved == NULL)
+			// {
+				// SetLastError(ERROR_INVALID_PARAMETER);
+				// return FALSE;
+			// }
+
+			// *ulNumEntriesRemoved = 0;
+
+			// _Entry = lpCompletionPortEntries[0];
+			
+            // if (fAlertable)
+            // {
+                // // 使用 WaitForSingleObjectEx 进行等待触发 APC
+                // _uStartTick = GetTickCount();
+                // for (;;)
+                // {
+                    // _uResult = WaitForSingleObjectEx(CompletionPort, dwMilliseconds, TRUE);
+                    // if (_uResult == WAIT_OBJECT_0)
+                    // {
+                        // // 完成端口有数据了
+                        // _bRet = GetQueuedCompletionStatus(CompletionPort, &_Entry.dwNumberOfBytesTransferred, &_Entry.lpCompletionKey, &_Entry.lpOverlapped, 0);
+                        // if (_bRet)
+                        // {
+                            // *ulNumEntriesRemoved = 1;
+                            // break;
+                        // }
+
+                        // if (GetLastError() != WAIT_TIMEOUT)
+                        // {
+                            // return FALSE;
+                        // }
+
+                        // // 无限等待时无脑继续等即可。
+                        // if (dwMilliseconds == INFINITE)
+                        // {
+                            // continue;
+                        // }
+
+                        // // 计算剩余等待时间，如果剩余等待时间归零则返回
+                        // _uTickSpan = GetTickCount() - _uStartTick;
+                        // if (_uTickSpan >= dwMilliseconds)
+                        // {
+                            // SetLastError(WAIT_TIMEOUT);
+                            // return FALSE;
+                        // }
+                        // dwMilliseconds -= _uTickSpan;
+                        // _uStartTick += _uTickSpan;
+                        // continue;
+                    // }
+                    // else if (_uResult == WAIT_IO_COMPLETION || _uResult == WAIT_TIMEOUT)
+                    // {
+                        // // 很奇怪，微软原版遇到 APC唤醒直接会设置 LastError WAIT_IO_COMPLETION
+                        // // 遇到超时，LastError WAIT_TIMEOUT（注意不是预期的 ERROR_TIMEOUT）不知道是故意还是有意。
+                        // SetLastError(_uResult);
+                        // return FALSE;
+                    // }
+                    // else if (_uResult == WAIT_ABANDONED)
+                    // {
+                        // SetLastError(ERROR_ABANDONED_WAIT_0);
+                        // return FALSE;
+                    // }
+                    // else if (_uResult == WAIT_FAILED)
+                    // {
+                        // // LastError
+                        // return FALSE;
+                    // }
+                    // else
+                    // {
+                        // // LastError ???
+                        // return FALSE;
+                    // }
+                // }
+
+                // return TRUE;
+            // }
+            // else
+            // {
+                // _bRet = GetQueuedCompletionStatus(CompletionPort, &_Entry.dwNumberOfBytesTransferred, &_Entry.lpCompletionKey, &_Entry.lpOverlapped, dwMilliseconds);
+                // if (_bRet)
+                // {
+                    // *ulNumEntriesRemoved = 1;
+                // }
+                // return _bRet;
+            // }
+		// }
+		
 BOOL 
 GetQueuedCompletionStatusEx(
-	HANDLE CompletionPort, 
-	LPOVERLAPPED_ENTRY lpCompletionPortEntries,
-    ULONG ulCount, 
-	PULONG ulNumEntriesRemoved, 
-	DWORD dwMilliseconds,
-	BOOL fAlertable)
+    HANDLE CompletionPort,
+    LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+    ULONG ulCount,
+    PULONG ulNumEntriesRemoved,
+    DWORD dwMilliseconds,
+    BOOL fAlertable
+)
 {
-    ULONG numEntriesRemoved = 0;
-    DWORD startTime = GetTickCount();
-	DWORD elapsedTime;
-	ULONG i;
-	
-	UNREFERENCED_PARAMETER(fAlertable);
+    LARGE_INTEGER TimeOut;
+    PLARGE_INTEGER pTimeOut;
+    NTSTATUS Status;
+    RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME Frame = { sizeof(Frame), RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_FORMAT_WHISTLER };
 
-    for (i = 0; i < ulCount; i++)
-    {
-        if (GetQueuedCompletionStatus(CompletionPort, &lpCompletionPortEntries[i].dwNumberOfBytesTransferred,
-                                      &lpCompletionPortEntries[i].lpCompletionKey,
-                                      &lpCompletionPortEntries[i].lpOverlapped, dwMilliseconds))
-        {
-            numEntriesRemoved++;
-        }
-        else
-        {
-            DWORD error = GetLastError();
-            if (error == WAIT_TIMEOUT)
-                break;
-            else if (error == ERROR_ABANDONED_WAIT_0)
-                continue;
-            else
-                return FALSE;
-        }
-
-        elapsedTime = GetTickCount() - startTime;
-        if (elapsedTime >= dwMilliseconds)
-            break;
+    _SEH2_TRY {
+	if ( lpCompletionPortEntries && ulNumEntriesRemoved && ulCount )
+	{
+		pTimeOut = BaseFormatTimeOut(&TimeOut,dwMilliseconds);
+		if ( fAlertable )
+		{
+			RtlActivateActivationContextUnsafeFast(&Frame, NULL);
+		}
+		  
+		Status = NtRemoveIoCompletionEx(CompletionPort, (FILE_IO_COMPLETION_INFORMATION *)lpCompletionPortEntries, ulCount, ulNumEntriesRemoved, pTimeOut, fAlertable);
+		if ( !NT_SUCCESS(Status) )
+		{
+	rewait:
+			if ( Status == 128 )
+				RtlSetLastWin32Error(0x2DFu);
+			else
+				BaseSetLastNTError(Status);
+			return FALSE;
+		}
+		if ( Status != 258 )
+		{
+			if ( Status != 128 )
+			{
+				return TRUE;
+			}				
+			goto rewait;
+		}
+		RtlSetLastWin32Error(0x102u);
+	  }
+	  else
+	  {
+		RtlSetLastWin32Error(0x57u);
+	  }
+    } _SEH2_FINALLY {
+		if ( fAlertable ){
+			RtlDeactivateActivationContextUnsafeFast(&Frame);
+		}
     }
-
-    *ulNumEntriesRemoved = numEntriesRemoved;
-    return TRUE;
-}
+	  
+	  return FALSE;
+}		

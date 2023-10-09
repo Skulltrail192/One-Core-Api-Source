@@ -434,35 +434,4 @@ GetNamedSecurityInfoWInternal(
 								 ppDacl,
 								 ppSacl,
 								 ppSecurityDescriptor);								 
-}					  
-
-BOOL WINAPI DECLSPEC_HOTPATCH ConvertStringSecurityDescriptorToSecurityDescriptorWInternal(
-        const WCHAR *string, DWORD revision, PSECURITY_DESCRIPTOR *sd, ULONG *ret_size )
-{
-	BOOL resp;
-	
-	resp = ConvertStringSecurityDescriptorToSecurityDescriptorExW(string,
-																revision,
-																sd,
-																ret_size);
-																
-	if(!resp){															
-		DbgPrint("ConvertStringSecurityDescriptorToSecurityDescriptorWInternal::ConvertStringSecurityDescriptorToSecurityDescriptorW resp: %d\n", resp);															
-	}
-	
-	return resp;
-}
-
-BOOL 
-WINAPI 
-DECLSPEC_HOTPATCH 
-ConvertStringSidToSidWInternal( const WCHAR *string, PSID *sid )
-{
-	BOOL ret;
-	
-	ret = ConvertStringSidToSidExW(string, sid);
-	
-	DbgPrint("ConvertStringSidToSidWInternal:: ConvertStringSidToSidW return: %d\n", ret);
-	
-	return ret;
 }

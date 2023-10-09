@@ -1,8 +1,8 @@
 @ stdcall PropertyLengthAsVariant(ptr long long long) ntdll.PropertyLengthAsVariant
 @ stdcall RtlConvertPropertyToVariant(ptr long ptr ptr) ntdll.RtlConvertPropertyToVariant
 @ stdcall RtlConvertVariantToProperty(ptr long ptr ptr ptr long ptr) ntdll.RtlConvertVariantToProperty
-@ stdcall RtlActivateActivationContextUnsafeFast(ptr ptr) ntdll.RtlActivateActivationContextUnsafeFast
-@ stdcall RtlDeactivateActivationContextUnsafeFast(ptr) ntdll.RtlDeactivateActivationContextUnsafeFast
+@ fastcall -arch=i386 RtlActivateActivationContextUnsafeFast(ptr ptr)
+@ fastcall -arch=i386 RtlDeactivateActivationContextUnsafeFast(ptr)
 @ stdcall RtlInterlockedPushListSList(ptr ptr ptr long) ntdll.RtlInterlockedPushListSList
 @ stdcall -arch=i386 RtlUlongByteSwap(long) ntdll.RtlUlongByteSwap
 @ stdcall -arch=i386 RtlUlonglongByteSwap(double) ntdll.RtlUlonglongByteSwap
@@ -376,6 +376,7 @@
 @ stdcall RtlAcquireResourceShared(ptr long)
 @ stdcall RtlActivateActivationContext(long ptr ptr)
 @ stdcall RtlActivateActivationContextEx(long ptr ptr ptr)
+@ stdcall -arch=x86_64,arm RtlActivateActivationContextUnsafeFast(ptr ptr)
 @ stdcall RtlAddAccessAllowedAce(ptr long long ptr)
 @ stdcall RtlAddAccessAllowedAceEx(ptr long long long ptr)
 @ stdcall RtlAddAccessAllowedObjectAce(ptr long long long ptr ptr ptr)
@@ -472,6 +473,7 @@
 @ stdcall RtlCutoverTimeToSystemTime(ptr ptr ptr long)
 @ stdcall RtlDeNormalizeProcessParams(ptr)
 @ stdcall RtlDeactivateActivationContext(long long)
+@ stdcall -arch=x86_64,arm RtlDeactivateActivationContextUnsafeFast(ptr)
 @ stdcall RtlDebugPrintTimes() ntdll.RtlDebugPrintTimes
 @ stdcall RtlDecodePointer(ptr)
 @ stdcall RtlDecodeSystemPointer(ptr) 

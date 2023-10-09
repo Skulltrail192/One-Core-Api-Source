@@ -22,6 +22,8 @@ Revision History:
 
 #include "main.h"
 
+#define THREAD_SET_LIMITED_INFORMATION   0x0400
+
 WINE_DEFAULT_DEBUG_CHANNEL(kernel32);
 WINE_DECLARE_DEBUG_CHANNEL(winedbg);
 
@@ -1292,4 +1294,50 @@ SetThreadInformation(
             FIXME("Unsupported class %u.\n", info_class);
             return FALSE;
     }
+}
+
+/*
+ * @implemented
+ */
+HANDLE
+WINAPI
+OpenThread(IN DWORD dwDesiredAccess,
+           IN BOOL bInheritHandle,
+           IN DWORD dwThreadId)
+{
+    NTSTATUS Status;
+    HANDLE ThreadHandle;
+    OBJECT_ATTRIBUTES ObjectAttributes;
+    CLIENT_ID ClientId;
+	
+	if(dwDesiredAccess & THREAD_QUERY_LIMITED_INFORMATION)
+	{
+		dwDesiredAccess |= THREAD_QUERY_INFORMATION;
+	}
+
+	if(dwDesiredAccess & THREAD_SET_LIMITED_INFORMATION)
+	{
+		dwDesiredAccess |= THREAD_SET_INFORMATION;
+	}	
+
+    ClientId.UniqueProcess = 0;
+    ClientId.UniqueThread = ULongToHandle(dwThreadId);
+
+    InitializeObjectAttributes(&ObjectAttributes,
+                               NULL,
+                               (bInheritHandle ? OBJ_INHERIT : 0),
+                               NULL,
+                               NULL);
+
+    Status = NtOpenThread(&ThreadHandle,
+                          dwDesiredAccess,
+                          &ObjectAttributes,
+                          &ClientId);
+    if (!NT_SUCCESS(Status))
+    {
+        BaseSetLastNTError(Status);
+        return NULL;
+    }
+
+    return ThreadHandle;
 }
