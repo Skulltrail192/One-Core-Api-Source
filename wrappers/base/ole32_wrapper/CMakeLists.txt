@@ -18,8 +18,9 @@ add_rpcproxy_files(
     dcom.idl)
 
 list(APPEND SOURCE
-	#apartment.c
+	apartment.c
     main.c
+	mta.c
     #marshal.c
     #rpc.c
 	version.rc
