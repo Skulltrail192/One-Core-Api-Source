@@ -32,6 +32,9 @@
 #include "wine/exception.h"
 #include "servprov.h"
 
+#define APTTYPEQUALIFIER_APPLICATION_STA 6
+#define APTTYPEQUALIFIER_RESERVED_1 7
+
 #define IRPCSS_PROTSEQ {'n','c','a','l','r','p','c',0}
 #define IRPCSS_ENDPOINT {'i','r','p','c','s','s',0}
 
@@ -242,6 +245,17 @@ struct tlsdata
     DWORD             spies_lock;
     DWORD             cancelcount;
 };
+
+typedef struct _SOleTlsData {
+  void  *pvReserved0[2];
+  DWORD dwReserved0[3];
+  void  *pvReserved1[1];
+  DWORD dwReserved1[3];
+  void  *pvReserved2[4];
+  DWORD dwReserved2[1];
+  DWORD dwFlags;
+  void  *pCurrentCtx;
+} SOleTlsData, *PSOleTlsData;
 
 extern HRESULT WINAPI InternalTlsAllocData(struct tlsdata **data);
 
