@@ -263,3 +263,36 @@ MapViewOfFileExNuma(
     /* Return the base */
     return ViewBase;
 }
+
+/***********************************************************************
+ *             CreateFileMappingFromApp   (kernelbase.@)
+ */
+HANDLE 
+WINAPI 
+DECLSPEC_HOTPATCH 
+CreateFileMappingFromApp( 
+	HANDLE file, 
+	LPSECURITY_ATTRIBUTES sa, 
+	ULONG protect,
+    ULONG64 size, 
+	LPCWSTR name 
+)
+{
+    return CreateFileMappingW( file, sa, protect, size << 32, size, name );
+}
+
+/***********************************************************************
+ *             MapViewOfFileFromApp   (kernelbase.@)
+ */
+LPVOID 
+WINAPI 
+DECLSPEC_HOTPATCH 
+MapViewOfFileFromApp( 
+	HANDLE handle, 
+	ULONG access, 
+	ULONG64 offset, 
+	SIZE_T size 
+)
+{
+    return MapViewOfFile( handle, access, offset << 32, offset, size );
+}

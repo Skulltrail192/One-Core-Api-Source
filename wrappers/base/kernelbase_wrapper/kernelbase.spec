@@ -1021,22 +1021,6 @@
 @ stdcall SetThreadPriority(ptr long) SetThreadPriorityInternal
 @ stdcall WideCharToMultiByte(long long wstr long ptr long ptr ptr) WideCharToMultiByteInternal
 
-; #Needed functions for Server 2003 RTM and XP
-; @ stdcall -arch=i386 CreateVirtualBuffer(ptr long long) kernel32.CreateVirtualBuffer
-; @ stdcall -arch=i386 ExtendVirtualBuffer(ptr) kernel32.ExtendVirtualBuffer
-; @ stdcall -arch=i386 FreeVirtualBuffer(ptr) kernel32.FreeVirtualBuffer
-; @ stdcall -arch=i386 TrimVirtualBuffer(ptr) kernel32.TrimVirtualBuffer
-; @ stdcall -arch=i386 VirtualBufferExceptionHandler(long ptr ptr) kernel32.VirtualBufferExceptionHandler
-
-; #Only for Windows XP
-; @ stdcall -arch=i386 BaseInitAppcompatCache() kernel32.BaseInitAppcompatCache
-; @ stdcall -arch=i386 BaseCleanupAppcompatCache() kernel32.BaseCleanupAppcompatCache
-; @ stdcall -arch=i386 CreateProcessInternalWSecure() kernel32.CreateProcessInternalWSecure
-; @ stdcall -arch=i386 QueryWin31IniFilesMappedToRegistry(long wstr long ptr) kernel32.QueryWin31IniFilesMappedToRegistry
-; @ stdcall -arch=i386 GetNumaAvailableMemory(ptr long ptr) kernel32.GetNumaAvailableMemory
-; @ stdcall -arch=i386 GetNumaProcessorMap(ptr long ptr) kernel32.GetNumaProcessorMap
-; @ stdcall -arch=i386 NumaVirtualQueryNode(long long long long) kernel32.NumaVirtualQueryNode
-
 #Vista Functions 
 @ stdcall AcquireSRWLockExclusive(ptr) ntext.RtlAcquireSRWLockExclusive
 @ stdcall AcquireSRWLockShared(ptr) ntext.RtlAcquireSRWLockShared
@@ -1391,6 +1375,7 @@
 @ stdcall AppPolicyGetThreadInitializationType(ptr ptr) 
 @ stdcall AppPolicyGetWindowingModel(ptr ptr)
 @ stdcall CreateFile2(wstr long long long ptr)
+@ stdcall CreateFileMappingFromApp(long ptr long int64 wstr)
 @ stdcall DeleteSynchronizationBarrier(ptr)
 @ stdcall EnterSynchronizationBarrier(ptr long)
 @ stdcall EnumDynamicTimeZoneInformation(long ptr)
@@ -1407,7 +1392,8 @@
 @ stdcall GlobalAddAtomExW(wstr long)
 @ stdcall InitializeSynchronizationBarrier(ptr long long)
 @ stdcall IsValidNLSVersion(long wstr ptr)
-@ stdcall LoadPackagedLibrary(wstr long) 
+@ stdcall LoadPackagedLibrary(wstr long)
+@ stdcall MapViewOfFileFromApp(long long int64 long)
 @ stdcall PathAllocCanonicalize(wstr long ptr)
 @ stdcall PathAllocCombine(wstr wstr long ptr)
 @ stdcall PathCchAddBackslash(wstr long)
