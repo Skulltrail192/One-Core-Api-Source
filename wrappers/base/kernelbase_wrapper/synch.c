@@ -752,68 +752,69 @@ BOOL getQueuedCompletionStatus(
 		&lpEnt->lpOverlapped, dwMilliseconds);
 }
 
-// BOOL 
-// WINAPI 
-// GetQueuedCompletionStatusEx(
-  // HANDLE             CompletionPort,
-  // LPOVERLAPPED_ENTRY lpCompletionPortEntries,
-  // ULONG              ulCount,
-  // PULONG             ulNumEntriesRemoved,
-  // DWORD              dwMilliseconds,
-  // BOOL               fAlertable
-// ) 
-// {
-	// int i = 0;
-	// LPOVERLAPPED_ENTRY currentEntry;
-    // NTSTATUS status;
-    // DWORD ret;	
-    // LARGE_INTEGER TimeOut;
-    // PLARGE_INTEGER pTimeOut;
+BOOL 
+WINAPI 
+GetQueuedCompletionStatusEx(
+  HANDLE             CompletionPort,
+  LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+  ULONG              ulCount,
+  PULONG             ulNumEntriesRemoved,
+  DWORD              dwMilliseconds,
+  BOOL               fAlertable
+) 
+{
+	int i = 0;
+	LPOVERLAPPED_ENTRY currentEntry;
+    NTSTATUS status;
+    DWORD ret;	
+    LARGE_INTEGER TimeOut;
+    PLARGE_INTEGER pTimeOut;
 	
-	// pTimeOut = BaseFormatTimeOut(&TimeOut, dwMilliseconds);	
+	pTimeOut = BaseFormatTimeOut(&TimeOut, dwMilliseconds);	
 	
-	// // validate arguments
-	// if(!lpCompletionPortEntries
-	// || !ulCount || !ulNumEntriesRemoved) {
-		// RtlSetLastWin32Error(ERROR_INVALID_PARAMETER);
-		// return FALSE; }	
+	// validate arguments
+	if(!lpCompletionPortEntries
+	|| !ulCount || !ulNumEntriesRemoved) {
+		RtlSetLastWin32Error(ERROR_INVALID_PARAMETER);
+		return FALSE; 
+	}	
 
-		// //DbgPrint("GetQueuedCompletionStatusEx: fAlertable");
+		//DbgPrint("GetQueuedCompletionStatusEx: fAlertable");
 		
-	// // retrieve multiple entries
-	// for(i = 0;i < ulCount; i++)
-	// {	
-		// currentEntry = lpCompletionPortEntries+i;
-		// status = currentEntry->Internal;
-		// if (status == STATUS_PENDING)
-		// {
-			// if (!dwMilliseconds)
-			// {
-				// SetLastError( ERROR_IO_INCOMPLETE );
-				// return FALSE;
-			// }
-			// ret = WaitForSingleObjectEx( currentEntry->lpOverlapped->hEvent ? currentEntry->lpOverlapped->hEvent : CompletionPort, dwMilliseconds, fAlertable );
-			// if (ret == WAIT_FAILED)
-				// return FALSE;
-			// else if (ret)
-			// {
-				// SetLastError( ret );
-				// return FALSE;
-			// }
+	// retrieve multiple entries
+	for(i = 0;i < ulCount; i++)
+	{	
+		currentEntry = lpCompletionPortEntries+i;
+		status = currentEntry->Internal;
+		if (status == STATUS_PENDING)
+		{
+			if (!dwMilliseconds)
+			{
+				SetLastError( ERROR_IO_INCOMPLETE );
+				return FALSE;
+			}
+			ret = WaitForSingleObjectEx( currentEntry->lpOverlapped->hEvent ? currentEntry->lpOverlapped->hEvent : CompletionPort, dwMilliseconds, fAlertable );
+			if (ret == WAIT_FAILED)
+				return FALSE;
+			else if (ret)
+			{
+				SetLastError( ret );
+				return FALSE;
+			}
 
-			// status = currentEntry->Internal;
-			// //if (status == STATUS_PENDING) status = STATUS_SUCCESS;
-			// if (status != WAIT_OBJECT_0) break;	
-		// }	
-		// if(!getQueuedCompletionStatus(CompletionPort, 
-		// currentEntry, dwMilliseconds)) break;
-		// dwMilliseconds = 0;
-	// }
+			status = currentEntry->Internal;
+			//if (status == STATUS_PENDING) status = STATUS_SUCCESS;
+			if (status != WAIT_OBJECT_0) break;	
+		}	
+		if(!getQueuedCompletionStatus(CompletionPort, 
+		currentEntry, dwMilliseconds)) break;
+		dwMilliseconds = 0;
+	}
 
-	// *ulNumEntriesRemoved = i;
+	*ulNumEntriesRemoved = i;
 
-	// return TRUE;
-// }
+	return TRUE;
+}
 
 
 		// BOOL
@@ -855,7 +856,7 @@ BOOL getQueuedCompletionStatus(
 			// // }
 			// return _bRet;
 		// }
-
+		
 		// BOOL
 		// WINAPI
 		// GetQueuedCompletionStatusEx(
@@ -869,13 +870,9 @@ BOOL getQueuedCompletionStatus(
 		// {
 			// BOOL _bRet;
 			// OVERLAPPED_ENTRY _Entry;
-			// DWORD _uStartTick;
 			// DWORD _uResult;
+			// DWORD _uStartTick;
 			// DWORD _uTickSpan;
-			// // if (const auto _pfnGetQueuedCompletionStatusEx = try_get_GetQueuedCompletionStatusEx())
-			// // {
-				// // return _pfnGetQueuedCompletionStatusEx(CompletionPort, lpCompletionPortEntries, ulCount, ulNumEntriesRemoved, dwMilliseconds, fAlertable);
-			// // }
 
 			// if (ulCount == 0 || lpCompletionPortEntries == NULL || ulNumEntriesRemoved == NULL)
 			// {
@@ -962,60 +959,3 @@ BOOL getQueuedCompletionStatus(
                 // return _bRet;
             // }
 		// }
-		
-BOOL 
-GetQueuedCompletionStatusEx(
-    HANDLE CompletionPort,
-    LPOVERLAPPED_ENTRY lpCompletionPortEntries,
-    ULONG ulCount,
-    PULONG ulNumEntriesRemoved,
-    DWORD dwMilliseconds,
-    BOOL fAlertable
-)
-{
-    LARGE_INTEGER TimeOut;
-    PLARGE_INTEGER pTimeOut;
-    NTSTATUS Status;
-    RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME Frame = { sizeof(Frame), RTL_CALLER_ALLOCATED_ACTIVATION_CONTEXT_STACK_FRAME_FORMAT_WHISTLER };
-
-    _SEH2_TRY {
-	if ( lpCompletionPortEntries && ulNumEntriesRemoved && ulCount )
-	{
-		pTimeOut = BaseFormatTimeOut(&TimeOut,dwMilliseconds);
-		if ( fAlertable )
-		{
-			RtlActivateActivationContextUnsafeFast(&Frame, NULL);
-		}
-		  
-		Status = NtRemoveIoCompletionEx(CompletionPort, (FILE_IO_COMPLETION_INFORMATION *)lpCompletionPortEntries, ulCount, ulNumEntriesRemoved, pTimeOut, fAlertable);
-		if ( !NT_SUCCESS(Status) )
-		{
-	rewait:
-			if ( Status == 128 )
-				RtlSetLastWin32Error(0x2DFu);
-			else
-				BaseSetLastNTError(Status);
-			return FALSE;
-		}
-		if ( Status != 258 )
-		{
-			if ( Status != 128 )
-			{
-				return TRUE;
-			}				
-			goto rewait;
-		}
-		RtlSetLastWin32Error(0x102u);
-	  }
-	  else
-	  {
-		RtlSetLastWin32Error(0x57u);
-	  }
-    } _SEH2_FINALLY {
-		if ( fAlertable ){
-			RtlDeactivateActivationContextUnsafeFast(&Frame);
-		}
-    }
-	  
-	  return FALSE;
-}
