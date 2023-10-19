@@ -66,6 +66,9 @@
 #define NONAMELESSUNION
 #include "propsys.h"
 
+#define IDD_ICON                0x4300
+#define IDD_MESSAGE             0x4301
+
 //DEFINITIONS
 #define IDS_DESKTOP		20
 #define CP_UNIXCP     65010 

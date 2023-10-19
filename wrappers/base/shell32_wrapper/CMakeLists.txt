@@ -21,6 +21,7 @@ list(APPEND SOURCE
 	pidl.c
 	shellitem.c
 	shellpath.c
+	#shlfileop.c
 	shlmenu.c
 	shlview_cmenu.c
 	unimplemented.c

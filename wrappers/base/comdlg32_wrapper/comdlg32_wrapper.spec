@@ -3,7 +3,7 @@
 @ stdcall ChooseFontA(ptr)
 @ stdcall ChooseFontW(ptr)
 @ stdcall CommDlgExtendedError()
-@ stdcall -private DllGetClassObject(ptr ptr ptr)
+@ stdcall DllGetClassObject(ptr ptr ptr)
 @ stdcall -private -stub DllRegisterServer()
 @ stdcall -private -stub DllUnregisterServer()
 @ stdcall FindTextA(ptr)

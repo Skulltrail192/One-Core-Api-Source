@@ -1133,119 +1133,42 @@ RtlRunOnceExecuteOnce(
 	RTL_RUN_ONCE *once, 
 	PRTL_RUN_ONCE_INIT_FN func,
     void *param, void **context 
-);
+);	
 
-typedef struct _SYNCITEM
-{
-	struct _SYNCITEM* back;	//上个插入的节点
-	struct _SYNCITEM* first;	//第一个插入的节点
-	struct _SYNCITEM* next;	//下个插入的节点
-	DWORD count;		//共享计数
-	DWORD attr;			//节点属性
-	RTL_SRWLOCK* lock;
-} SYNCITEM;
+/* Threadpool functions */
 
-typedef size_t SYNCSTATUS;
-
-//M-mask F-flag SYNC-common
-#define SYNC_Exclusive	1	//当前是独占锁在等待，而不是共享锁
-#define SYNC_Spinning	2	//当前线程即将休眠，而不是休眠中或唤醒后
-#define SYNC_SharedLock	4	//条件变量使用共享锁等待，而不是独占锁
-
-#define SRWM_FLAG	0x0000000F
-#define SRWM_ITEM	0xFFFFFFF0	//64位系统应该改成0xFFFFFFFFFFFFFFF0
-#define SRWM_COUNT	SRWM_ITEM
-
-#define SRWF_Free	0	//空闲
-#define SRWF_Hold	1	//有线程拥有了锁
-#define SRWF_Wait	2	//有线程正在等待
-#define SRWF_Link	4	//修改链表的操作进行中
-#define SRWF_Many	8	//独占请求之前有多个共享锁并存
-
-#define CVM_COUNT	0x00000007
-#define CVM_FLAG	0x0000000F
-#define CVM_ITEM	0xFFFFFFF0
-
-#define CVF_Full	7	//唤醒申请已满，全部唤醒
-#define CVF_Link	8	//修改链表的操作进行中
-
-#define SRW_COUNT_BIT	4
-#define SRW_HOLD_BIT	0
-#define SYNC_SPIN_BIT	1	//从0开始数
-
-void NTAPI RtlBackoff(DWORD* pCount);
-void NTAPI RtlpInitSRWLock(PEB* pPEB);
-void NTAPI RtlpInitConditionVariable(PEB* pPeb);
-
-HANDLE __fastcall GetGlobalKeyedEventHandle();
-
-#define CONDITION_VARIABLE_LOCKMODE_SHARED 0x1
-
-//读写锁参考了https://blog.csdn.net/yichigo/article/details/36898561
-#define YY_SRWLOCK_Locked_BIT           0
-#define YY_SRWLOCK_Waiting_BIT          1
-#define YY_SRWLOCK_Waking_BIT           2
-#define YY_SRWLOCK_MultipleShared_BIT   3
-//已经有人获得这个锁
-#define YY_SRWLOCK_Locked               0x00000001ul
-//有人正在等待锁
-#define YY_SRWLOCK_Waiting              0x00000002ul
-//有人正在唤醒锁
-#define YY_SRWLOCK_Waking               0x00000004ul
-//
-#define YY_SRWLOCK_MultipleShared       0x00000008ul
-
-#define YY_SRWLOCK_MASK    (0xF)
-#define YY_SRWLOCK_BITS    4
-#define YY_SRWLOCK_GET_BLOCK(SRWLock) ((YY_SRWLOCK_WAIT_BLOCK*)(SRWLock & (~YY_SRWLOCK_MASK)))
-
-//SRWLock自旋次数
-#define SRWLockSpinCount 1024
-
-//取自Win7
-struct _YY_RTL_SRWLOCK
-{
-	union
-	{
-		struct
-		{
-			ULONG_PTR Locked : 1;       
-			ULONG_PTR Waiting : 1;           
-			ULONG_PTR Waking : 1;            
-			ULONG_PTR MultipleShared : 1;
-#ifdef _WIN64
-			ULONG_PTR Shared : 60;
-#else
-			ULONG_PTR Shared : 28;
-#endif
-		};
-		ULONG_PTR Value;
-		VOID* Ptr;
-	};
-};
-
-typedef struct __declspec(align(16)) _YY_SRWLOCK_WAIT_BLOCK
-{
-	struct _YY_SRWLOCK_WAIT_BLOCK* back;
-	struct _YY_SRWLOCK_WAIT_BLOCK* notify;
-	struct _YY_SRWLOCK_WAIT_BLOCK* next;
-	volatile size_t         shareCount;
-	volatile size_t         flag;
-} YY_SRWLOCK_WAIT_BLOCK;
-
-//正在优化锁
-#define YY_CV_OPTIMIZE_LOCK 0x00000008ul
-#define YY_CV_MASK (0x0000000F)
-#define YY_CV_GET_BLOCK(CV) ((YY_CV_WAIT_BLOCK*)(CV & (~YY_CV_MASK)))
-
-#define ConditionVariableSpinCount 1024
-
-typedef struct __declspec(align(16)) _YY_CV_WAIT_BLOCK
-{
-	struct _YY_CV_WAIT_BLOCK* back;
-	struct _YY_CV_WAIT_BLOCK* notify;
-	struct _YY_CV_WAIT_BLOCK* next;
-	volatile size_t    shareCount;
-	volatile size_t    flag;
-	volatile PRTL_SRWLOCK  SRWLock;
-} YY_CV_WAIT_BLOCK;
+// NTSYSAPI NTSTATUS  WINAPI TpAllocCleanupGroup(TP_CLEANUP_GROUP **);
+// NTSYSAPI NTSTATUS  WINAPI TpAllocIoCompletion(TP_IO **,HANDLE,PTP_IO_CALLBACK,void *,TP_CALLBACK_ENVIRON *);
+// NTSYSAPI NTSTATUS  WINAPI TpAllocPool(TP_POOL **,PVOID);
+// NTSYSAPI NTSTATUS  WINAPI TpAllocTimer(TP_TIMER **,PTP_TIMER_CALLBACK,PVOID,TP_CALLBACK_ENVIRON *);
+// NTSYSAPI NTSTATUS  WINAPI TpAllocWait(TP_WAIT **,PTP_WAIT_CALLBACK,PVOID,TP_CALLBACK_ENVIRON *);
+// NTSYSAPI NTSTATUS  WINAPI TpAllocWork(TP_WORK **,PTP_WORK_CALLBACK,PVOID,TP_CALLBACK_ENVIRON *);
+// NTSYSAPI void      WINAPI TpCallbackLeaveCriticalSectionOnCompletion(TP_CALLBACK_INSTANCE *,RTL_CRITICAL_SECTION *);
+// NTSYSAPI NTSTATUS  WINAPI TpCallbackMayRunLong(TP_CALLBACK_INSTANCE *);
+// NTSYSAPI void      WINAPI TpCallbackReleaseMutexOnCompletion(TP_CALLBACK_INSTANCE *,HANDLE);
+// NTSYSAPI void      WINAPI TpCallbackReleaseSemaphoreOnCompletion(TP_CALLBACK_INSTANCE *,HANDLE,DWORD);
+// NTSYSAPI void      WINAPI TpCallbackSetEventOnCompletion(TP_CALLBACK_INSTANCE *,HANDLE);
+// NTSYSAPI void      WINAPI TpCallbackUnloadDllOnCompletion(TP_CALLBACK_INSTANCE *,HMODULE);
+// NTSYSAPI void      WINAPI TpCancelAsyncIoOperation(TP_IO *);
+// NTSYSAPI void      WINAPI TpDisassociateCallback(TP_CALLBACK_INSTANCE *);
+// NTSYSAPI BOOL      WINAPI TpIsTimerSet(TP_TIMER *);
+// NTSYSAPI void      WINAPI TpPostWork(TP_WORK *);
+// NTSYSAPI NTSTATUS  WINAPI TpQueryPoolStackInformation(TP_POOL *, TP_POOL_STACK_INFORMATION *stack_info);
+// NTSYSAPI void      WINAPI TpReleaseCleanupGroup(TP_CLEANUP_GROUP *);
+// NTSYSAPI void      WINAPI TpReleaseCleanupGroupMembers(TP_CLEANUP_GROUP *,BOOL,PVOID);
+// NTSYSAPI void      WINAPI TpReleaseIoCompletion(TP_IO *);
+// NTSYSAPI void      WINAPI TpReleasePool(TP_POOL *);
+// NTSYSAPI void      WINAPI TpReleaseTimer(TP_TIMER *);
+// NTSYSAPI void      WINAPI TpReleaseWait(TP_WAIT *);
+// NTSYSAPI void      WINAPI TpReleaseWork(TP_WORK *);
+// NTSYSAPI void      WINAPI TpSetPoolMaxThreads(TP_POOL *,DWORD);
+// NTSYSAPI BOOL      WINAPI TpSetPoolMinThreads(TP_POOL *,DWORD);
+// NTSYSAPI NTSTATUS  WINAPI TpSetPoolStackInformation(TP_POOL *, TP_POOL_STACK_INFORMATION *stack_info);
+// NTSYSAPI void      WINAPI TpSetTimer(TP_TIMER *, LARGE_INTEGER *,LONG,LONG);
+// NTSYSAPI void      WINAPI TpSetWait(TP_WAIT *,HANDLE,LARGE_INTEGER *);
+// NTSYSAPI NTSTATUS  WINAPI TpSimpleTryPost(PTP_SIMPLE_CALLBACK,PVOID,TP_CALLBACK_ENVIRON *);
+// NTSYSAPI void      WINAPI TpStartAsyncIoOperation(TP_IO *);
+// NTSYSAPI void      WINAPI TpWaitForIoCompletion(TP_IO *,BOOL);
+// NTSYSAPI void      WINAPI TpWaitForTimer(TP_TIMER *,BOOL);
+// NTSYSAPI void      WINAPI TpWaitForWait(TP_WAIT *,BOOL);
+// NTSYSAPI void      WINAPI TpWaitForWork(TP_WORK *,BOOL);

@@ -34,6 +34,9 @@
 #include "wine/debug.h"
 #include "wine/heap.h"
 
+#define NDEBUG
+#include <debug.h>
+
 WINE_DEFAULT_DEBUG_CHANNEL(commdlg);
 
 #include "cdlg.h"
@@ -44,6 +47,8 @@ DECLSPEC_HIDDEN HINSTANCE	COMDLG32_hInstance = 0;
 static DWORD COMDLG32_TlsIndex = TLS_OUT_OF_INDEXES;
 
 static HINSTANCE	SHELL32_hInstance;
+
+HANDLE	COMDLG32_hActCtx = INVALID_HANDLE_VALUE;
 
 /* SHELL */
 LPITEMIDLIST (WINAPI *COMDLG32_SHSimpleIDListFromPathAW)(LPCVOID) DECLSPEC_HIDDEN;
@@ -67,15 +72,26 @@ static const char GPA_string[] = "Failed to get entry point %s for hinst = %p\n"
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD Reason, LPVOID Reserved)
 {
+	ACTCTXW actctx = {0};
 	TRACE("(%p, %ld, %p)\n", hInstance, Reason, Reserved);
 
 	switch(Reason)
 	{
 	case DLL_PROCESS_ATTACH:
+		
 		COMDLG32_hInstance = hInstance;
 		DisableThreadLibraryCalls(hInstance);
 
 		SHELL32_hInstance = GetModuleHandleA("SHELL32.DLL");
+		actctx.cbSize = sizeof(actctx);
+		actctx.hModule = COMDLG32_hInstance;
+		actctx.lpResourceName = MAKEINTRESOURCEW(123);
+		actctx.dwFlags = ACTCTX_FLAG_HMODULE_VALID | ACTCTX_FLAG_RESOURCE_NAME_VALID;
+		COMDLG32_hActCtx = CreateActCtxW(&actctx);
+		if (COMDLG32_hActCtx == INVALID_HANDLE_VALUE)
+			ERR("failed to create activation context, last error %lu\n", GetLastError());
+		
+		
 
 		/* SHELL */
 		GPA(COMDLG32_SHSimpleIDListFromPathAW, SHELL32_hInstance, (LPCSTR)162);
@@ -83,7 +99,10 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD Reason, LPVOID Reserved)
 
 	case DLL_PROCESS_DETACH:
             if (Reserved) break;
+            if (Reserved) break;
             if (COMDLG32_TlsIndex != TLS_OUT_OF_INDEXES) TlsFree(COMDLG32_TlsIndex);
+            if (COMDLG32_hActCtx != INVALID_HANDLE_VALUE) ReleaseActCtx(COMDLG32_hActCtx);
+			
             break;
 	}
 	return TRUE;
@@ -220,7 +239,7 @@ HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void **ppv)
     static IClassFactoryImpl FileOpenDlgClassFactory = {{&CDLGCF_Vtbl}, FileOpenDialog_Constructor};
     static IClassFactoryImpl FileSaveDlgClassFactory = {{&CDLGCF_Vtbl}, FileSaveDialog_Constructor};
 
-    TRACE("%s, %s, %p\n", debugstr_guid(rclsid), debugstr_guid(riid), ppv);
+    DbgPrint("DllGetClassObject:: %s, %s, %p\n", debugstr_guid(rclsid), debugstr_guid(riid), ppv);
 
     if(IsEqualGUID(&CLSID_FileOpenDialog, rclsid))
         return IClassFactory_QueryInterface(&FileOpenDlgClassFactory.IClassFactory_iface, riid, ppv);

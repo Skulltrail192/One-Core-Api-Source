@@ -476,3 +476,4 @@
 @ stdcall -stub SHCreateItemFromIDList(ptr long ptr)
 @ stdcall -stub SHGetItemFromObject(ptr ptr ptr)
 @ stdcall -stub SHCreateShellItemArrayFromDataObject(ptr ptr ptr)
+@ stdcall -stub SHCreateItemFromParsingName(wstr ptr ptr ptr)

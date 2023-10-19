@@ -1040,6 +1040,9 @@ RtlSleepConditionVariableCS(IN OUT PRTL_CONDITION_VARIABLE ConditionVariable,
     interlocked_xchg_add( (int *)&ConditionVariable->Ptr, 1 );
     RtlLeaveCriticalSection( CriticalSection );
 
+	if(GlobalKeyedEventHandle==NULL){
+		 NtCreateKeyedEvent(&GlobalKeyedEventHandle, EVENT_ALL_ACCESS, NULL, 0);
+	}
     status = NtWaitForKeyedEvent( GlobalKeyedEventHandle, &ConditionVariable->Ptr, FALSE, TimeOut );
     if (status != STATUS_SUCCESS)
     {
@@ -1081,6 +1084,9 @@ NTSTATUS NTAPI RtlSleepConditionVariableSRW( RTL_CONDITION_VARIABLE *variable, R
     else
         RtlReleaseSRWLockExclusive( lock );
 
+	if(GlobalKeyedEventHandle==NULL){
+		 NtCreateKeyedEvent(&GlobalKeyedEventHandle, EVENT_ALL_ACCESS, NULL, 0);
+	}
     status = NtWaitForKeyedEvent( GlobalKeyedEventHandle, &variable->Ptr, FALSE, timeout );
     if (status != STATUS_SUCCESS)
     {

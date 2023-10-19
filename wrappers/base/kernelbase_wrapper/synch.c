@@ -124,38 +124,40 @@ InitializeCriticalSectionEx(
 /***********************************************************************
  *           SleepConditionVariableCS   (KERNEL32.@)
  */
-BOOL WINAPI SleepConditionVariableCS( CONDITION_VARIABLE *variable, CRITICAL_SECTION *crit, DWORD timeout )
+BOOL WINAPI SleepConditionVariableCS( CONDITION_VARIABLE *ConditionVariable, CRITICAL_SECTION *CriticalSection, DWORD dwMilliseconds )
 {
-    NTSTATUS status;
-    LARGE_INTEGER time;
-
-    status = RtlSleepConditionVariableCS( variable, (PRTL_CRITICAL_SECTION)crit, get_nt_timeout( &time, timeout ) );
-
-    if (status != STATUS_SUCCESS)
-    {
-        SetLastError( RtlNtStatusToDosError(status) );
-        return FALSE;
-    }
-    return TRUE;
+	LARGE_INTEGER Timeout;
+	NTSTATUS Result=RtlSleepConditionVariableCS(ConditionVariable,(PRTL_CRITICAL_SECTION)CriticalSection,BaseFormatTimeOut(&Timeout,dwMilliseconds));
+	if(Result == STATUS_INVALID_PARAMETER_1)
+	{
+		DbgPrint("SleepConditionVariableCS:: RtlSleepConditionVariableCS failed with status: %08x\n", Result);
+		SetLastError(ERROR_TIMEOUT);
+		return FALSE;
+	}	
+	BaseSetLastNTError(Result);
+	if (NT_SUCCESS(Result) && Result!=STATUS_TIMEOUT)
+		return TRUE;
+	return FALSE;	
 }
 
 /***********************************************************************
  *           SleepConditionVariableSRW   (KERNEL32.@)
  */
-BOOL WINAPI SleepConditionVariableSRW( RTL_CONDITION_VARIABLE *variable, RTL_SRWLOCK *lock, DWORD timeout, ULONG flags )
+BOOL WINAPI SleepConditionVariableSRW( RTL_CONDITION_VARIABLE *ConditionVariable, RTL_SRWLOCK *SRWLock, DWORD dwMilliseconds, ULONG Flags )
 {
-    NTSTATUS status;
-    LARGE_INTEGER time;
-
-    status = RtlSleepConditionVariableSRW( variable, lock, get_nt_timeout( &time, timeout ), flags );
-
-    if (status != STATUS_SUCCESS)
-    {
-		DbgPrint("SleepConditionVariableSRW:: RtlSleepConditionVariableSRW failed with status: %08x\n", status);
-        SetLastError( RtlNtStatusToDosError(status) );
-        return FALSE;
-    }
-    return TRUE;
+	LARGE_INTEGER Timeout;
+	NTSTATUS Result=RtlSleepConditionVariableSRW(ConditionVariable,SRWLock,BaseFormatTimeOut(&Timeout,dwMilliseconds),Flags);
+	
+	if(Result == STATUS_INVALID_PARAMETER_1)
+	{
+		DbgPrint("SleepConditionVariableSRW:: RtlSleepConditionVariableSRW failed with status: %08x\n", Result);
+		SetLastError(ERROR_TIMEOUT);
+		return FALSE;
+	}
+	BaseSetLastNTError(Result);
+	if (NT_SUCCESS(Result) && Result!=STATUS_TIMEOUT)
+		return TRUE;
+	return FALSE;	
 }
 
 /***********************************************************************
@@ -959,3 +961,43 @@ GetQueuedCompletionStatusEx(
                 // return _bRet;
             // }
 		// }
+		
+/******************************************************************************
+ *           QueryInterruptTime  (kernelbase.@)
+ */
+void WINAPI DECLSPEC_HOTPATCH QueryInterruptTime( ULONGLONG *time )
+{
+    ULONG high, low;
+
+    do
+    {
+        high = SharedUserData->InterruptTime.High1Time;
+        low = SharedUserData->InterruptTime.LowPart;
+    }
+    while (high != SharedUserData->InterruptTime.High2Time);
+    *time = (ULONGLONG)high << 32 | low;
+}
+
+
+/******************************************************************************
+ *           QueryInterruptTimePrecise  (kernelbase.@)
+ */
+void WINAPI DECLSPEC_HOTPATCH QueryInterruptTimePrecise( ULONGLONG *time )
+{
+    static int once;
+    if (!once++) FIXME( "(%p) semi-stub\n", time );
+
+    QueryInterruptTime( time );
+}
+
+
+/***********************************************************************
+ *           QueryUnbiasedInterruptTimePrecise  (kernelbase.@)
+ */
+void WINAPI DECLSPEC_HOTPATCH QueryUnbiasedInterruptTimePrecise( ULONGLONG *time )
+{
+    static int once;
+    if (!once++) FIXME( "(%p): semi-stub.\n", time );
+
+    RtlQueryUnbiasedInterruptTime( time );
+}		

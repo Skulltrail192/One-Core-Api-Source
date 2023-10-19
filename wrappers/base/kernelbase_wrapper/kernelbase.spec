@@ -1441,6 +1441,9 @@
 @ stdcall SetThreadDescription(long ptr)
 @ stdcall AppPolicyGetMediaFoundationCodecLoading(ptr ptr)
 @ stdcall IsWow64Process2(ptr ptr ptr)
+@ stdcall QueryInterruptTime(ptr)
+@ stdcall QueryInterruptTimePrecise(ptr)
+@ stdcall QueryUnbiasedInterruptTimePrecise(ptr)
 
 #Import from advapibase or registry function
 @ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) advapibase.AccessCheck
