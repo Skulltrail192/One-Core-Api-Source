@@ -47,7 +47,7 @@
 #include "shlobj.h"
 
 #include "pidl.h"
-#include "shell32_main.h"
+#include "main.h"
 #include "shlguid.h"
 #include "shlwapi.h"
 #include "msi.h"
@@ -287,7 +287,7 @@ static HRESULT WINAPI IPersistFile_fnLoad(IPersistFile* iface, LPCOLESTR pszFile
 
             /* update file path */
             free(This->filepath);
-            This->filepath = wcsdup(pszFileName);
+            This->filepath = _wcsdup(pszFileName);
 
             This->bDirty = FALSE;
         }
@@ -347,7 +347,7 @@ static BOOL StartLinkProcessor( LPCOLESTR szLink )
     if( !buffer )
         return FALSE;
 
-    swprintf( buffer, len, L" -w \"%s\"", szLink );
+    swprintf( buffer, L" -w \"%s\"", szLink );
     ret = run_winemenubuilder( buffer );
     free( buffer );
     return ret;

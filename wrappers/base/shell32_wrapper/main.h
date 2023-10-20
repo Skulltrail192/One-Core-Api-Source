@@ -57,6 +57,7 @@
 #include <wingdi.h>
 #include <commdlg.h>
 #include <wine/heap.h>
+#include <shell32_classes_p.h>
 
 #define WIN32_NO_STATUS
 #define _INC_WINDOWS
@@ -103,6 +104,7 @@
 #define IEnumAssocHandlers_AddRef( x ) \
             (x)->lpVtbl->AddRef( x )	
 			
+#define SLDF_HAS_LOGO3ID 0x00000800			
 
 typedef BYTE PIDLTYPE;
 
@@ -144,3 +146,16 @@ SHGetKnownFolderIDList(
 	HANDLE token, 
 	PIDLIST_ABSOLUTE *pidl
 );
+
+HRESULT WINAPI ApplicationAssociationRegistration_Constructor(IUnknown *outer, REFIID riid, LPVOID *ppv);
+
+HRESULT WINAPI ApplicationDestinations_Constructor(IUnknown *outer, REFIID riid, LPVOID *ppv);
+HRESULT WINAPI ApplicationDocumentLists_Constructor(IUnknown *outer, REFIID riid, LPVOID *ppv);
+HRESULT WINAPI QueryAssociations_Constructor(IUnknown *pUnkOuter, REFIID riid, LPVOID *ppOutput);
+HRESULT WINAPI IShellItem_Constructor(IUnknown * pUnkOuter, REFIID riid, LPVOID * ppv);
+HRESULT WINAPI IShellLink_Constructor(IUnknown * pUnkOuter, REFIID riid, LPVOID * ppv);
+HRESULT WINAPI ExplorerBrowser_Constructor(IUnknown *pUnkOuter, REFIID riid, LPVOID *ppv);
+HRESULT WINAPI KnownFolderManager_Constructor(IUnknown *pUnkOuter, REFIID riid, LPVOID *ppv);
+HRESULT WINAPI IFileOperation_Constructor(IUnknown *outer, REFIID riid, void **out);
+HRESULT WINAPI CustomDestinationList_Constructor(IUnknown *outer, REFIID riid, void **obj);
+HRESULT WINAPI IFileSystemBindData_Constructor(const WIN32_FIND_DATAW *pfd, LPBC *ppV);

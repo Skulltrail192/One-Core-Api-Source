@@ -20,31 +20,15 @@ Revision History:
 
 #include "main.h"
 
-BOOL WINAPI InitializeContext(PVOID Buffer, DWORD ContextFlags, PCONTEXT *Context, PDWORD ContextLength)
-/*
-  This function only exists because the size of the CONTEXT_XSTATE area can vary depending on the 
-  type of CPU features available/enabled. There is no variability in a pre-XState/AVX context, so it simply
-  initializes a regular context.
-*/
-{
-	PCONTEXT ctxint;
-	if(!Buffer || *ContextLength < sizeof(CONTEXT))
-	{
-		SetLastError(ERROR_INSUFFICIENT_BUFFER);
-		*ContextLength = sizeof(CONTEXT);
-		return FALSE;
-	}
-	
-	Buffer = (PVOID)&ctxint;
-	
-	RtlZeroMemory(ctxint, sizeof(CONTEXT));
-	
-	*Context = (PCONTEXT)Buffer;
-	
-	ctxint->ContextFlags = ContextFlags;
-	
-	return TRUE;
-}
+//Wine version
+// /***********************************************************************
+ // *             GetEnabledXStateFeatures   (kernelbase.@)
+ // */
+// DWORD64 WINAPI GetEnabledXStateFeatures(void)
+// {
+    // TRACE( "\n" );
+    // return RtlGetEnabledExtendedFeatures( ~(ULONG64)0 );
+// }
 
 DWORD64 WINAPI GetEnabledXStateFeatures()
 {
@@ -55,17 +39,85 @@ DWORD64 WINAPI GetEnabledXStateFeatures()
 	return XState;
 }
 
-BOOL WINAPI SetXStateFeaturesMask(PCONTEXT Context, DWORD64 FeatureMask)
-// AMD64 version of the function. I don't see the need to modify it for other archs for the purpose of the extended kernel yet.
+// BOOL WINAPI SetXStateFeaturesMask(PCONTEXT Context, DWORD64 FeatureMask)
+// // AMD64 version of the function. I don't see the need to modify it for other archs for the purpose of the extended kernel yet.
+// {
+	// if(!(Context->ContextFlags & CONTEXT_AMD64))
+	// {
+		// SetLastError(ERROR_INVALID_PARAMETER);
+		// return FALSE;
+	// }
+	
+	// if(FeatureMask & 3)
+		// Context->ContextFlags |= CONTEXT_FLOATING_POINT;
+	
+	// return TRUE;
+// }
+
+/***********************************************************************
+ *           LocateXStateFeature   (kernelbase.@)
+ */
+void * WINAPI LocateXStateFeature( CONTEXT *context, DWORD feature_id, DWORD *length )
 {
-	if(!(Context->ContextFlags & CONTEXT_AMD64))
-	{
-		SetLastError(ERROR_INVALID_PARAMETER);
-		return FALSE;
-	}
-	
-	if(FeatureMask & 3)
-		Context->ContextFlags |= CONTEXT_FLOATING_POINT;
-	
-	return TRUE;
+    if (!(context->ContextFlags & CONTEXT_AMD64))
+        return NULL;
+
+    if (feature_id >= 2)
+        return ((context->ContextFlags & CONTEXT_XSTATE) == CONTEXT_XSTATE)
+                ? RtlLocateExtendedFeature( (CONTEXT_EX *)(context + 1), feature_id, length ) : NULL;
+
+    if (feature_id == 1)
+    {
+        if (length)
+            *length = sizeof(M128A) * 16;
+#if defined(_X86_)
+        return &context->FloatSave.RegisterArea;
+#else
+        return &context->FltSave.XmmRegisters;	
+#endif	
+    }
+
+    if (length)
+        *length = offsetof(XSAVE_FORMAT, XmmRegisters);
+
+#if defined(_X86_)
+        return &context->FloatSave;
+#else
+        return &context->FltSave;	
+#endif
+}
+
+/***********************************************************************
+ *           SetXStateFeaturesMask (kernelbase.@)
+ */
+BOOL WINAPI SetXStateFeaturesMask( CONTEXT *context, DWORD64 feature_mask )
+{
+    if (!(context->ContextFlags & CONTEXT_AMD64))
+        return FALSE;
+
+    if (feature_mask & 0x3)
+        context->ContextFlags |= CONTEXT_FLOATING_POINT;
+
+    if ((context->ContextFlags & CONTEXT_XSTATE) != CONTEXT_XSTATE)
+        return !(feature_mask & ~(DWORD64)3);
+
+    RtlSetExtendedFeaturesMask( (CONTEXT_EX *)(context + 1), feature_mask );
+    return TRUE;
+}
+
+/***********************************************************************
+ *           GetXStateFeaturesMask (kernelbase.@)
+ */
+BOOL WINAPI GetXStateFeaturesMask( CONTEXT *context, DWORD64 *feature_mask )
+{
+    if (!(context->ContextFlags & CONTEXT_AMD64))
+        return FALSE;
+
+    *feature_mask = (context->ContextFlags & CONTEXT_FLOATING_POINT) == CONTEXT_FLOATING_POINT
+            ? 3 : 0;
+
+    if ((context->ContextFlags & CONTEXT_XSTATE) == CONTEXT_XSTATE)
+        *feature_mask |= RtlGetExtendedFeaturesMask( (CONTEXT_EX *)(context + 1) );
+
+    return TRUE;
 }

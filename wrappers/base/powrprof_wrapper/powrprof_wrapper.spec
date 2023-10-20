@@ -27,11 +27,13 @@
 @ stdcall PowerDeterminePlatformRole()
 @ stdcall PowerDeterminePlatformRoleEx(long)
 @ stdcall PowerEnumerate(long ptr ptr long long ptr ptr)
-@ stdcall PowerRegisterSuspendResumeNotification(ptr ptr ptr)
-@ stdcall PowerUnregisterSuspendResumeNotification(ptr)
 @ stdcall PowerSettingRegisterNotification(ptr long ptr ptr)
 @ stdcall PowerSettingUnregisterNotification(ptr)
 @ stdcall PowerWriteACValueIndex(ptr ptr ptr ptr long)
 @ stdcall PowerWriteDCValueIndex(ptr ptr ptr ptr long)
 @ stdcall PowerReadFriendlyName(ptr ptr ptr ptr ptr ptr)
 @ stdcall PowerReadACValue(ptr ptr ptr ptr ptr ptr ptr)
+
+#win8 functions
+@ stdcall PowerRegisterSuspendResumeNotification(long ptr ptr)
+@ stdcall PowerUnregisterSuspendResumeNotification(ptr)

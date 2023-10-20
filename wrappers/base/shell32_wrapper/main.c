@@ -17,41 +17,11 @@
  *
  */
 
-#include <main.h>
+#include "main.h"
  
 WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
 HINSTANCE shell32_hInstance = 0;
-
-static const struct {
-	REFIID riid;
-	const char *name;
-} InterfaceDesc[] = {
-	{&IID_IUnknown,			"IID_IUnknown"},
-	{&IID_IClassFactory,		"IID_IClassFactory"},
-	{&IID_IShellView,		"IID_IShellView"},
-	{&IID_IOleCommandTarget,	"IID_IOleCommandTarget"},
-	{&IID_IDropTarget,		"IID_IDropTarget"},
-	{&IID_IDropSource,		"IID_IDropSource"},
-	{&IID_IViewObject,		"IID_IViewObject"},
-	{&IID_IContextMenu,		"IID_IContextMenu"},
-	{&IID_IShellExtInit,		"IID_IShellExtInit"},
-	{&IID_IShellFolder,		"IID_IShellFolder"},
-	{&IID_IShellFolder2,		"IID_IShellFolder2"},
-	{&IID_IPersist,			"IID_IPersist"},
-	{&IID_IPersistFolder,		"IID_IPersistFolder"},
-	{&IID_IPersistFolder2,		"IID_IPersistFolder2"},
-	{&IID_IPersistFolder3,		"IID_IPersistFolder3"},
-	{&IID_IExtractIconA,		"IID_IExtractIconA"},
-	{&IID_IExtractIconW,		"IID_IExtractIconW"},
-	{&IID_IDataObject,		"IID_IDataObject"},
-	{&IID_IAutoComplete,            "IID_IAutoComplete"},
-	{&IID_IAutoComplete2,           "IID_IAutoComplete2"},
-        {&IID_IShellLinkA,              "IID_IShellLinkA"},
-        {&IID_IShellLinkW,              "IID_IShellLinkW"},
-	{NULL,NULL}};
-	
-
 
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 {
@@ -63,13 +33,14 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
     switch(fdwReason)
     {
         case DLL_PROCESS_ATTACH:
-            DisableThreadLibraryCalls(hInstDLL);
+			shell32_hInstance = hInstDLL;
+			DisableThreadLibraryCalls(shell32_hInstance);		
 			AppData = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
 			if (!AppData)
 				return E_OUTOFMEMORY;			
 			GetEnvironmentVariableW(L"APPDATA", AppData, bufferSize);
 			SetEnvironmentVariableW(L"LOCALAPPDATA", AppData);
-			HeapFree(GetProcessHeap(), 0, AppData);
+			//HeapFree(GetProcessHeap(), 0, AppData);
             break;
     }
 

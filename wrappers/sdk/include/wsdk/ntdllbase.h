@@ -205,6 +205,21 @@ typedef enum
     VmRemoveFromWorkingSetInformation,
 } VIRTUAL_MEMORY_INFORMATION_CLASS, *PVIRTUAL_MEMORY_INFORMATION_CLASS;
 
+typedef struct _CONTEXT_CHUNK
+{
+    LONG Offset;
+    ULONG Length;
+} CONTEXT_CHUNK, *PCONTEXT_CHUNK;
+
+typedef struct _CONTEXT_EX
+{
+    CONTEXT_CHUNK All;
+    CONTEXT_CHUNK Legacy;
+    CONTEXT_CHUNK XState;
+#ifdef _WIN64
+    ULONG64 align;
+#endif
+} CONTEXT_EX, *PCONTEXT_EX;
 
 typedef struct _MEMORY_RANGE_ENTRY
 {
@@ -504,29 +519,27 @@ VOID NTAPI RtlWakeConditionVariable(IN OUT PRTL_CONDITION_VARIABLE ConditionVari
 
 VOID NTAPI RtlGetCurrentProcessorNumberEx(_Out_  PPROCESSOR_NUMBER ProcNumber);
 
-PCONTEXT NTAPI RtlLocateLegacyContext(PCONTEXT oldContext, BOOL other);
+void * NTAPI RtlLocateLegacyContext( CONTEXT_EX *context_ex, ULONG *length );
 
-NTSTATUS NTAPI RtlInitializeExtendedContext(PVOID Buffer, DWORD flags, PCONTEXT *oldContext);
+NTSTATUS NTAPI RtlInitializeExtendedContext( void *context, ULONG context_flags, CONTEXT_EX **context_ex );
 
 NTSTATUS NTAPI RtlGetExtendedContextLength(DWORD flags, LPDWORD ContextFlags);
 
 ULONG64 NTAPI RtlGetEnabledExtendedFeatures(_In_  ULONG64 FeatureMask);
 
-PVOID NTAPI RtlLocateExtendedFeature(BYTE reception, DWORD FeatureId, PDWORD Length);
+void * WINAPI RtlLocateExtendedFeature( CONTEXT_EX *context_ex, ULONG feature_id, ULONG *length );
 
-VOID NTAPI RtlSetExtendedFeaturesMask(PCONTEXT Context, DWORD64 FeatureMask);
+void NTAPI RtlSetExtendedFeaturesMask( CONTEXT_EX *context_ex, ULONG64 feature_mask );
 
 VOID NTAPI 	TpCallbackSetEventOnCompletion (__inout PTP_CALLBACK_INSTANCE Instance, __in HANDLE Event);
 
 BOOL NTAPI WinSqmIsOptedInEx(ULONG number);
 
-HANDLE WINAPI RtlCreateBoundaryDescriptor(LSA_UNICODE_STRING *string, ULONG Flags);	
+HANDLE NTAPI RtlCreateBoundaryDescriptor(LSA_UNICODE_STRING *string, ULONG Flags);	
 
 NTSTATUS NTAPI RtlUnsubscribeWnfStateChangeNotification(PVOID RegistrationHandle);
 
 DWORD NTAPI RtlGetSystemTimePrecise();
-
-PDWORD64 WINAPI RtlGetExtendedFeaturesMask(UCHAR *contextLocal);
 
 typedef enum _RTL_UMS_THREAD_INFO_CLASS
 {
@@ -663,6 +676,30 @@ RtlWaitOnAddress(
     const LARGE_INTEGER *timeout 
 );
 
+typedef struct DECLSPEC_ALIGN(16) _M128A {
+  ULONGLONG Low;
+  LONGLONG High;
+} M128A, *PM128A;
+
+typedef struct _XSAVE_FORMAT {
+    WORD ControlWord;        /* 000 */
+    WORD StatusWord;         /* 002 */
+    BYTE TagWord;            /* 004 */
+    BYTE Reserved1;          /* 005 */
+    WORD ErrorOpcode;        /* 006 */
+    DWORD ErrorOffset;       /* 008 */
+    WORD ErrorSelector;      /* 00c */
+    WORD Reserved2;          /* 00e */
+    DWORD DataOffset;        /* 010 */
+    WORD DataSelector;       /* 014 */
+    WORD Reserved3;          /* 016 */
+    DWORD MxCsr;             /* 018 */
+    DWORD MxCsr_Mask;        /* 01c */
+    M128A FloatRegisters[8]; /* 020 */
+    M128A XmmRegisters[16];  /* 0a0 */
+    BYTE Reserved4[96];      /* 1a0 */
+} XSAVE_FORMAT, *PXSAVE_FORMAT;
+
 NTSTATUS WINAPI NtOpenKeyEx( HANDLE *key, ACCESS_MASK access, const OBJECT_ATTRIBUTES *attr, ULONG options );
 								  
 NTSYSAPI NTSTATUS  WINAPI LdrGetDllPath(PCWSTR,ULONG,PWSTR*,PWSTR*);								  
@@ -683,5 +720,50 @@ NTSYSAPI NTSTATUS  WINAPI RtlConvertToAutoInheritSecurityObject(PSECURITY_DESCRI
 NTSYSAPI NTSTATUS  WINAPI NtGetNlsSectionPtr(ULONG,ULONG,void*,void**,SIZE_T*);
 NTSYSAPI NTSTATUS WINAPI RtlFlsGetValue( ULONG index, void **data );
 NTSYSAPI NTSTATUS WINAPI RtlFlsSetValue( ULONG index, void *data );
-NTSTATUS WINAPI RtlUnicodeToUTF8N( char *dst, DWORD dstlen, DWORD *reslen, const WCHAR *src, DWORD srclen );
+NTSTATUS NTAPI RtlUnicodeToUTF8N( char *dst, DWORD dstlen, DWORD *reslen, const WCHAR *src, DWORD srclen );
+NTSTATUS NTAPI RtlGetExtendedContextLength2( ULONG context_flags, ULONG *length, ULONG64 compaction_mask );
+NTSTATUS NTAPI RtlInitializeExtendedContext2( void *context, ULONG context_flags, CONTEXT_EX **context_ex, ULONG64 compaction_mask );
+ULONG64 NTAPI RtlGetExtendedFeaturesMask( CONTEXT_EX *context_ex );
 
+#ifdef __i386__
+
+//#define CONTEXT_i386      0x00010000
+//#define CONTEXT_i486      0x00010000
+
+#define CONTEXT_I386_CONTROL   (CONTEXT_i386 | 0x0001) /* SS:SP, CS:IP, FLAGS, BP */
+#define CONTEXT_I386_INTEGER   (CONTEXT_i386 | 0x0002) /* AX, BX, CX, DX, SI, DI */
+#define CONTEXT_I386_SEGMENTS  (CONTEXT_i386 | 0x0004) /* DS, ES, FS, GS */
+#define CONTEXT_I386_FLOATING_POINT  (CONTEXT_i386 | 0x0008) /* 387 state */
+#define CONTEXT_I386_DEBUG_REGISTERS (CONTEXT_i386 | 0x0010) /* DB 0-3,6,7 */
+#define CONTEXT_I386_EXTENDED_REGISTERS (CONTEXT_i386 | 0x0020)
+#define CONTEXT_I386_XSTATE             (CONTEXT_i386 | 0x0040)
+#define CONTEXT_I386_FULL (CONTEXT_I386_CONTROL | CONTEXT_I386_INTEGER | CONTEXT_I386_SEGMENTS)
+#define CONTEXT_I386_ALL (CONTEXT_I386_FULL | CONTEXT_I386_FLOATING_POINT | CONTEXT_I386_DEBUG_REGISTERS | CONTEXT_I386_EXTENDED_REGISTERS)
+
+
+// #define CONTEXT_CONTROL CONTEXT_I386_CONTROL
+// #define CONTEXT_INTEGER CONTEXT_I386_INTEGER
+// #define CONTEXT_SEGMENTS CONTEXT_I386_SEGMENTS
+// #define CONTEXT_FLOATING_POINT CONTEXT_I386_FLOATING_POINT
+// #define CONTEXT_DEBUG_REGISTERS CONTEXT_I386_DEBUG_REGISTERS
+// #define CONTEXT_EXTENDED_REGISTERS CONTEXT_I386_EXTENDED_REGISTERS
+#define CONTEXT_XSTATE CONTEXT_I386_XSTATE
+// #define CONTEXT_FULL CONTEXT_I386_FULL
+// #define CONTEXT_ALL CONTEXT_I386_ALL
+//#define SIZE_OF_80387_REGISTERS I386_SIZE_OF_80387_REGISTERS
+//#define MAXIMUM_SUPPORTED_EXTENSION I386_MAXIMUM_SUPPORTED_EXTENSIO
+
+#endif  /* __i386__ */
+
+#ifdef __x86_64__
+
+#define CONTEXT_CONTROL CONTEXT_AMD64_CONTROL
+#define CONTEXT_INTEGER CONTEXT_AMD64_INTEGER
+#define CONTEXT_SEGMENTS CONTEXT_AMD64_SEGMENTS
+#define CONTEXT_FLOATING_POINT CONTEXT_AMD64_FLOATING_POINT
+#define CONTEXT_DEBUG_REGISTERS CONTEXT_AMD64_DEBUG_REGISTERS
+#define CONTEXT_XSTATE CONTEXT_AMD64_XSTATE
+#define CONTEXT_FULL CONTEXT_AMD64_FULL
+#define CONTEXT_ALL CONTEXT_AMD64_ALL
+
+#endif /* __x86_64__ */

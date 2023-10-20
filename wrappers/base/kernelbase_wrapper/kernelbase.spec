@@ -1051,6 +1051,7 @@
 @ stdcall ConvertSystemTimeToCalDateTime(ptr long ptr) 
 @ stdcall CopyFileTransactedA(str str ptr ptr ptr long ptr)
 @ stdcall CopyFileTransactedW(wstr wstr ptr ptr ptr long ptr)
+@ stdcall CreateBoundaryDescriptorW(wstr long)
 @ stdcall CreateDirectoryTransactedA(str str ptr ptr)
 @ stdcall CreateDirectoryTransactedW(wstr wstr ptr ptr)
 @ stdcall CreateEventExA(ptr str ptr long)
@@ -1280,6 +1281,7 @@
 @ stdcall BaseSetLastNTError(long)
 @ stub BaseThreadInitThunk
 @ stdcall CheckForReadOnlyResource(ptr) BasepCheckForReadOnlyResource
+@ stdcall CopyContext(ptr long ptr)
 @ stdcall CreateRemoteThreadEx(long ptr long ptr long long ptr ptr)
 @ stdcall -arch=x86_64 CreateUmsCompletionList(ptr)
 @ stdcall -arch=x86_64 CreateUmsThreadContext(ptr)
@@ -1309,12 +1311,12 @@
 @ stdcall GetThreadGroupAffinity(long ptr)
 @ stdcall GetThreadIdealProcessorEx(ptr ptr)
 @ stdcall -arch=x86_64 GetUmsCompletionListEvent(ptr ptr)
-# @ stub GetXStateFeaturesMask
+@ stdcall -arch=i386,x86_64 GetXStateFeaturesMask(ptr ptr)
 @ stdcall -arch=i386,x86_64 InitializeContext(ptr long ptr ptr)
 @ stub LoadStringBaseExW
 @ stub LoadStringByReference
 # @ stub LoadStringBaseW
-# @ stub LocateXStateFeature
+@ stdcall -arch=i386,x86_64 LocateXStateFeature(ptr long ptr)
 @ stdcall K32EmptyWorkingSet(ptr) EmptyWorkingSet
 @ stdcall K32EnumDeviceDrivers(ptr long ptr) EnumDeviceDrivers
 @ stdcall K32EnumPageFilesA(ptr ptr) EnumPageFilesA
@@ -1374,6 +1376,7 @@
 @ stdcall AppPolicyGetShowDeveloperDiagnostic(ptr ptr)
 @ stdcall AppPolicyGetThreadInitializationType(ptr ptr) 
 @ stdcall AppPolicyGetWindowingModel(ptr ptr)
+@ stdcall CopyFile2(wstr wstr ptr)
 @ stdcall CreateFile2(wstr long long long ptr)
 @ stdcall CreateFileMappingFromApp(long ptr long int64 wstr)
 @ stdcall DeleteSynchronizationBarrier(ptr)
@@ -1390,10 +1393,12 @@
 @ stdcall GetSystemTimePreciseAsFileTime(ptr)
 @ stdcall GlobalAddAtomExA(str long)
 @ stdcall GlobalAddAtomExW(wstr long)
+@ stdcall InitializeContext2(ptr long ptr ptr int64)
 @ stdcall InitializeSynchronizationBarrier(ptr long long)
 @ stdcall IsValidNLSVersion(long wstr ptr)
 @ stdcall LoadPackagedLibrary(wstr long)
 @ stdcall MapViewOfFileFromApp(long long int64 long)
+@ stdcall OpenFileMappingFromApp(long long wstr)
 @ stdcall PathAllocCanonicalize(wstr long ptr)
 @ stdcall PathAllocCombine(wstr wstr long ptr)
 @ stdcall PathCchAddBackslash(wstr long)

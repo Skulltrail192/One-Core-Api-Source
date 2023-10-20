@@ -34,22 +34,12 @@ RtlGetEnabledExtendedFeatures(
 	return FeatureMask;
 }
 
-PDWORD64 
-NTAPI
-RtlGetExtendedFeaturesMask(
-	UCHAR *contextLocal
-)
+/**********************************************************************
+ *              RtlGetExtendedFeaturesMask  (NTDLL.@)
+ */
+ULONG64 WINAPI RtlGetExtendedFeaturesMask( CONTEXT_EX *context_ex )
 {
-	return 0;
-}
+    XSTATE *xs = (XSTATE *)((BYTE *)context_ex + context_ex->XState.Offset);
 
-PVOID 
-NTAPI 
-RtlLocateExtendedFeature(
-	BYTE reception, 
-	DWORD FeatureId, 
-	PDWORD Length
-)
-{
-	return NULL;
+    return xs->Mask & ~(ULONG64)3;
 }

@@ -27,6 +27,7 @@ list(APPEND SOURCE
 	appmodel.c
 	baseinit.c
 	console.c
+	context.c
 	curdir.c
 	datetime.c	
 	dep.c

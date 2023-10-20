@@ -780,3 +780,80 @@ BOOL _ILIsUnicode(LPCITEMIDLIST pidl)
 
     return (pidl && lpPData && PT_VALUEW == lpPData->type);
 }
+
+/*************************************************************************
+ * _ILParsePathW             [internal]
+ *
+ * Creates an ItemIDList from a path and returns it.
+ *
+ * PARAMS
+ *  path         [I]   path to parse and convert into an ItemIDList
+ *  lpFindFile   [I]   pointer to buffer to initialize the FileSystem
+ *                     Bind Data object with
+ *  bBindCtx     [I]   indicates to create a BindContext and assign a
+ *                     FileSystem Bind Data object
+ *  ppidl        [O]   the newly create ItemIDList
+ *  prgfInOut    [I/O] requested attributes on input and actual
+ *                     attributes on return
+ *
+ * RETURNS
+ *  NO_ERROR on success or an OLE error code
+ *
+ * NOTES
+ *  If either lpFindFile is non-NULL or bBindCtx is TRUE, this function
+ *  creates a BindContext object and assigns a FileSystem Bind Data object
+ *  to it, passing the BindContext to IShellFolder_ParseDisplayName. Each
+ *  IShellFolder uses that FileSystem Bind Data object of the BindContext
+ *  to pass data about the current path element to the next object. This
+ *  is used to avoid having to verify the current path element on disk, so
+ *  that creating an ItemIDList from a nonexistent path still can work.
+ */
+static HRESULT _ILParsePathW(LPCWSTR path, LPWIN32_FIND_DATAW lpFindFile,
+                             BOOL bBindCtx, LPITEMIDLIST *ppidl, LPDWORD prgfInOut)
+{
+    LPSHELLFOLDER pSF = NULL;
+    LPBC pBC = NULL;
+    HRESULT ret;
+
+    TRACE("%s %p %d (%p)->%p (%p)->0x%lx\n", debugstr_w(path), lpFindFile, bBindCtx,
+                                             ppidl, ppidl ? *ppidl : NULL,
+                                             prgfInOut, prgfInOut ? *prgfInOut : 0);
+
+    ret = SHGetDesktopFolder(&pSF);
+    if (FAILED(ret))
+        return ret;
+
+    if (lpFindFile || bBindCtx)
+        ret = IFileSystemBindData_Constructor(lpFindFile, &pBC);
+
+    if (SUCCEEDED(ret))
+    {
+        ret = IShellFolder_ParseDisplayName(pSF, 0, pBC, (LPOLESTR)path, NULL, ppidl, prgfInOut);
+    }
+
+    if (pBC)
+    {
+        IBindCtx_Release(pBC);
+        pBC = NULL;
+    }
+
+    IShellFolder_Release(pSF);
+
+    if (FAILED(ret) && ppidl)
+        *ppidl = NULL;
+
+    TRACE("%s %p 0x%lx\n", debugstr_w(path), ppidl ? *ppidl : NULL, prgfInOut ? *prgfInOut : 0);
+
+    return ret;
+}
+
+LPITEMIDLIST SHSimpleIDListFromPathW(LPCWSTR lpszPath)
+{
+    LPITEMIDLIST pidl = NULL;
+
+    TRACE("%s\n", debugstr_w(lpszPath));
+
+    _ILParsePathW(lpszPath, NULL, TRUE, &pidl, NULL);
+    TRACE("%s %p\n", debugstr_w(lpszPath), pidl);
+    return pidl;
+}

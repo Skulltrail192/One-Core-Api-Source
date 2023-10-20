@@ -148,27 +148,6 @@ PowerDeterminePlatformRoleEx(
 
 DWORD 
 WINAPI 
-PowerRegisterSuspendResumeNotification(
-  _In_  DWORD         Flags,
-  _In_  HANDLE        Recipient,
-  _Out_ PHPOWERNOTIFY RegistrationHandle
-)
-{
-   return ERROR_CALL_NOT_IMPLEMENTED;
-}
-
-
-DWORD
-WINAPI 
-PowerUnregisterSuspendResumeNotification(
-  _Inout_ HPOWERNOTIFY RegistrationHandle
-)
-{
-   return ERROR_CALL_NOT_IMPLEMENTED;
-}
-
-DWORD 
-WINAPI 
 PowerReadACValue(
   _In_opt_          HKEY    RootPowerKey,
   _In_opt_    const GUID    *SchemeGuid,
@@ -182,25 +161,17 @@ PowerReadACValue(
    return ERROR_CALL_NOT_IMPLEMENTED;
 }
 
-DWORD
-WINAPI 
-PowerSettingRegisterNotification(
-  _In_  LPCGUID       SettingGuid,
-  _In_  DWORD         Flags,
-  _In_  HANDLE        Recipient,
-  _Out_ PHPOWERNOTIFY RegistrationHandle
-)
+DWORD WINAPI PowerSettingRegisterNotification(const GUID *setting, DWORD flags, HANDLE recipient, PHPOWERNOTIFY handle)
 {
-   return ERROR_CALL_NOT_IMPLEMENTED;
+    FIXME("(%s,0x%08lx,%p,%p) stub!\n", debugstr_guid(setting), flags, recipient, handle);
+    *handle = (PHPOWERNOTIFY)0xdeadbeef;
+    return ERROR_SUCCESS;
 }
 
-DWORD 
-WINAPI 
-PowerSettingUnregisterNotification(
-  _Inout_ HPOWERNOTIFY RegistrationHandle
-)
+DWORD WINAPI PowerSettingUnregisterNotification(HPOWERNOTIFY handle)
 {
-   return ERROR_CALL_NOT_IMPLEMENTED;
+    FIXME("(%p) stub!\n", handle);
+    return ERROR_SUCCESS;
 }
 
 DWORD 
@@ -245,4 +216,18 @@ DWORD WINAPI PowerEnumerate(HKEY key, const GUID *scheme, const GUID *subgroup, 
                         ULONG index, UCHAR *buffer, DWORD *buffer_size)
 {
    return ERROR_CALL_NOT_IMPLEMENTED;
+}
+
+
+DWORD WINAPI PowerRegisterSuspendResumeNotification(DWORD flags, HANDLE recipient, PHPOWERNOTIFY handle)
+{
+    FIXME("(0x%08lx,%p,%p) stub!\n", flags, recipient, handle);
+    *handle = (HPOWERNOTIFY)0xdeadbeef;
+    return ERROR_SUCCESS;
+}
+
+DWORD WINAPI PowerUnregisterSuspendResumeNotification(HPOWERNOTIFY handle)
+{
+    FIXME("(%p) stub!\n", handle);
+    return ERROR_SUCCESS;
 }

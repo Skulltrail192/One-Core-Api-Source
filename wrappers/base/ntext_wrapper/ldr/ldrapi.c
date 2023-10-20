@@ -21,6 +21,14 @@ Revision History:
 #define NDEBUG
 
 #include <main.h>
+#include <compatguid_undoc.h>
+#include <compat_undoc.h>
+#include <debug.h>
+
+typedef enum {
+  ACTCTX_COMPATIBILITY_ELEMENT_TYPE_UNKNOWN = 0,
+  ACTCTX_COMPATIBILITY_ELEMENT_TYPE_OS
+} ACTCTX_COMPATIBILITY_ELEMENT_TYPE;
 
 /* convert PE image VirtualAddress to Real Address */
 static inline void *get_rva( HMODULE module, DWORD va )
@@ -440,4 +448,154 @@ LdrAddLoadAsDataTable(
 	int a4)
 {
 	return STATUS_NOT_IMPLEMENTED;
+}
+
+
+BOOLEAN
+NTAPI
+LdrpDisableProcessCompatGuidDetection(VOID)
+{
+    UNICODE_STRING PolicyKey = RTL_CONSTANT_STRING(L"\\Registry\\MACHINE\\Software\\Policies\\Microsoft\\Windows\\AppCompat");
+    UNICODE_STRING DisableDetection = RTL_CONSTANT_STRING(L"DisableCompatGuidDetection");
+    OBJECT_ATTRIBUTES PolicyKeyAttributes = RTL_CONSTANT_OBJECT_ATTRIBUTES(&PolicyKey, OBJ_CASE_INSENSITIVE);
+    KEY_VALUE_PARTIAL_INFORMATION KeyInfo;
+    ULONG ResultLength;
+    NTSTATUS Status;
+    HANDLE KeyHandle;
+
+    Status = NtOpenKey(&KeyHandle, KEY_QUERY_VALUE, &PolicyKeyAttributes);
+    if (NT_SUCCESS(Status))
+    {
+        Status = NtQueryValueKey(KeyHandle,
+                                 &DisableDetection,
+                                 KeyValuePartialInformation,
+                                 &KeyInfo,
+                                 sizeof(KeyInfo),
+                                 &ResultLength);
+        NtClose(KeyHandle);
+        if ((NT_SUCCESS(Status)) &&
+            (KeyInfo.Type == REG_DWORD) &&
+            (KeyInfo.DataLength == sizeof(ULONG)) &&
+            (KeyInfo.Data[0] == TRUE))
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+VOID
+NTAPI
+LdrpInitializeProcessCompat(PVOID pProcessActctx, PVOID* pOldShimData)
+{
+    static const struct
+    {
+        const GUID* Guid;
+        const DWORD Version;
+    } KnownCompatGuids[] = {
+        { &COMPAT_GUID_WIN10, _WIN32_WINNT_WIN10 },
+        { &COMPAT_GUID_WIN81, _WIN32_WINNT_WINBLUE },
+        { &COMPAT_GUID_WIN8, _WIN32_WINNT_WIN8 },
+        { &COMPAT_GUID_WIN7, _WIN32_WINNT_WIN7 },
+        { &COMPAT_GUID_VISTA, _WIN32_WINNT_VISTA },
+    };
+
+    ULONG Buffer[(sizeof(COMPATIBILITY_CONTEXT_ELEMENT) * 10 + sizeof(ACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION)) / sizeof(ULONG)];
+    ACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION* ContextCompatInfo;
+    SIZE_T SizeRequired;
+    NTSTATUS Status;
+    DWORD n, cur;
+    ReactOS_ShimData* pShimData = *pOldShimData;
+
+    if (pShimData)
+    {
+        if (pShimData->dwMagic != REACTOS_SHIMDATA_MAGIC ||
+            pShimData->dwSize != sizeof(ReactOS_ShimData))
+        {
+            DPRINT1("LdrpInitializeProcessCompat: Corrupt pShimData (0x%x, %u)\n", pShimData->dwMagic, pShimData->dwSize);
+            return;
+        }
+        if (pShimData->dwRosProcessCompatVersion)
+        {
+            if (pShimData->dwRosProcessCompatVersion == REACTOS_COMPATVERSION_IGNOREMANIFEST)
+            {
+                DPRINT1("LdrpInitializeProcessCompat: ProcessCompatVersion set to ignore manifest\n");
+            }
+            else
+            {
+                DPRINT1("LdrpInitializeProcessCompat: ProcessCompatVersion already set to 0x%x\n", pShimData->dwRosProcessCompatVersion);
+            }
+            return;
+        }
+    }
+
+    SizeRequired = sizeof(Buffer);
+    Status = RtlQueryInformationActivationContext(RTL_QUERY_ACTIVATION_CONTEXT_FLAG_NO_ADDREF,
+                                                  pProcessActctx,
+                                                  NULL,
+                                                  CompatibilityInformationInActivationContext,
+                                                  Buffer,
+                                                  sizeof(Buffer),
+                                                  &SizeRequired);
+
+    if (!NT_SUCCESS(Status))
+    {
+        DPRINT1("LdrpInitializeProcessCompat: Unable to query process actctx with status %x\n", Status);
+        return;
+    }
+
+    ContextCompatInfo = (ACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION*)Buffer;
+    /* No Compatibility elements present, bail out */
+    if (ContextCompatInfo->ElementCount == 0)
+        return;
+
+    /* Search for known GUIDs, starting from oldest to newest.
+       Note that on Windows it is somewhat reversed, starting from the latest known
+       version, going down. But we are not Windows, trying to allow a lower version,
+       we are ReactOS trying to fake a higher version. So we interpret what Windows
+       does as "try the closest version to the actual version", so we start with the
+       lowest version, which is closest to Windows 2003, which we mostly are. */
+    for (cur = RTL_NUMBER_OF(KnownCompatGuids) - 1; cur != -1; --cur)
+    {
+        for (n = 0; n < ContextCompatInfo->ElementCount; ++n)
+        {
+            if (ContextCompatInfo->Elements[n].Type == ACTCTX_COMPATIBILITY_ELEMENT_TYPE_OS &&
+                RtlCompareMemory(&ContextCompatInfo->Elements[n].Id, KnownCompatGuids[cur].Guid, sizeof(GUID)) == sizeof(GUID))
+            {
+                if (LdrpDisableProcessCompatGuidDetection())
+                {
+                    DPRINT1("LdrpInitializeProcessCompat: Not applying automatic fix for winver 0x%x due to policy\n", KnownCompatGuids[cur].Version);
+                    return;
+                }
+
+                /* If this process did not need shim data before, allocate and store it */
+                if (pShimData == NULL)
+                {
+                    PPEB Peb = NtCurrentPeb();
+
+                    ASSERT(Peb->pShimData == NULL);
+                    pShimData = RtlAllocateHeap(Peb->ProcessHeap, HEAP_ZERO_MEMORY, sizeof(*pShimData));
+
+                    if (!pShimData)
+                    {
+                        DPRINT1("LdrpInitializeProcessCompat: Unable to allocated %u bytes\n", sizeof(*pShimData));
+                        return;
+                    }
+
+                    pShimData->dwSize = sizeof(*pShimData);
+                    pShimData->dwMagic = REACTOS_SHIMDATA_MAGIC;
+
+                    Peb->pShimData = pShimData;
+                    *pOldShimData = pShimData;
+                }
+
+                /* Store the lowest found version, and bail out. */
+                pShimData->dwRosProcessCompatVersion = KnownCompatGuids[cur].Version;
+                DPRINT1("LdrpInitializeProcessCompat: Found guid for winver 0x%x in manifest from %wZ\n",
+                        KnownCompatGuids[cur].Version,
+                        &(NtCurrentPeb()->ProcessParameters->ImagePathName));
+                return;
+            }
+        }
+    }
 }

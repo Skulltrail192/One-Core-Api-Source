@@ -20,6 +20,48 @@ Revision History:
 
 #include <main.h>
 
+WINE_DEFAULT_DEBUG_CHANNEL(kernelbase);
+
+/******************************************************************************
+ *           QueryInterruptTime  (kernelbase.@)
+ */
+void WINAPI DECLSPEC_HOTPATCH QueryInterruptTime( ULONGLONG *time )
+{
+    ULONG high, low;
+
+    do
+    {
+        high = SharedUserData->InterruptTime.High1Time;
+        low = SharedUserData->InterruptTime.LowPart;
+    }
+    while (high != SharedUserData->InterruptTime.High2Time);
+    *time = (ULONGLONG)high << 32 | low;
+}
+
+
+/******************************************************************************
+ *           QueryInterruptTimePrecise  (kernelbase.@)
+ */
+void WINAPI DECLSPEC_HOTPATCH QueryInterruptTimePrecise( ULONGLONG *time )
+{
+    static int once;
+    if (!once++) FIXME( "(%p) semi-stub\n", time );
+
+    QueryInterruptTime( time );
+}
+
+
+/***********************************************************************
+ *           QueryUnbiasedInterruptTimePrecise  (kernelbase.@)
+ */
+void WINAPI DECLSPEC_HOTPATCH QueryUnbiasedInterruptTimePrecise( ULONGLONG *time )
+{
+    static int once;
+    if (!once++) FIXME( "(%p): semi-stub.\n", time );
+
+    RtlQueryUnbiasedInterruptTime( time );
+}
+
 /***********************************************************************
  *           QueryUnbiasedInterruptTime   (KERNEL32.@)
  */

@@ -296,3 +296,14 @@ MapViewOfFileFromApp(
 {
     return MapViewOfFile( handle, access, offset << 32, offset, size );
 }
+
+HANDLE
+WINAPI
+OpenFileMappingFromApp(
+	_In_ ULONG DesiredAccess,
+	_In_ BOOL InheritHandle,
+	_In_ PCWSTR Name
+)
+{
+	return OpenFileMappingW(DesiredAccess, InheritHandle, Name);
+}

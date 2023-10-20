@@ -110,16 +110,75 @@ BOOL
 WINAPI 
 DECLSPEC_HOTPATCH 
 PrefetchVirtualMemory( 
-	HANDLE process, 
-	ULONG_PTR count,
-    WIN32_MEMORY_RANGE_ENTRY *addresses, 
-	ULONG flags 
+	HANDLE _hProcess, 
+	ULONG_PTR _uNumberOfEntries,
+    WIN32_MEMORY_RANGE_ENTRY *_pVirtualAddresses, 
+	ULONG _fFlags 
 )
 {
-    return set_ntstatus( NtSetInformationVirtualMemory( process, 
-														VmPrefetchInformation,
-                                                        count, 
-														(PMEMORY_RANGE_ENTRY)addresses,
-                                                        &flags, 
-														sizeof(flags) ));
+	UNREFERENCED_PARAMETER(_hProcess);
+	UNREFERENCED_PARAMETER(_uNumberOfEntries);
+	UNREFERENCED_PARAMETER(_pVirtualAddresses);
+	UNREFERENCED_PARAMETER(_fFlags);
+
+	// 假装自己预取成功
+	return TRUE;
+}
+
+/***********************************************************************
+ *             DiscardVirtualMemory   (kernelbase.@)
+ */
+DWORD WINAPI DECLSPEC_HOTPATCH DiscardVirtualMemory( void *addr, SIZE_T size )
+{
+    NTSTATUS status;
+    LPVOID ret = addr;
+
+    status = NtAllocateVirtualMemory( GetCurrentProcess(), &ret, 0, &size, MEM_RESET, PAGE_NOACCESS );
+    return RtlNtStatusToDosError( status );
+}
+
+DWORD
+WINAPI
+OfferVirtualMemory(
+	_Inout_updates_(_uSize) PVOID _pVirtualAddress,
+	_In_ SIZE_T _uSize,
+	_In_ OFFER_PRIORITY _ePriority
+)
+{
+	// 低版本系统不支持这个机制，所以暂时假装内存充足，不触发回收
+	MEMORY_BASIC_INFORMATION _Info;
+	
+	UNREFERENCED_PARAMETER(_ePriority);
+	if (VirtualQuery(_pVirtualAddress, &_Info, sizeof(_Info)) == 0)
+		return GetLastError();
+
+	if (_Info.State != MEM_COMMIT)
+		return ERROR_INVALID_PARAMETER;
+
+
+	if ((char*)_pVirtualAddress + _uSize > (char*)_Info.BaseAddress + _Info.RegionSize)
+		return ERROR_INVALID_PARAMETER;
+
+	return ERROR_SUCCESS;
+}
+
+DWORD
+WINAPI
+ReclaimVirtualMemory(
+	_In_reads_(_uSize) void const* _pVirtualAddress,
+	_In_ SIZE_T _uSize
+)
+{
+	MEMORY_BASIC_INFORMATION _Info;
+	if (VirtualQuery(_pVirtualAddress, &_Info, sizeof(_Info)) == 0)
+		return GetLastError();
+
+	if (_Info.State != MEM_COMMIT)
+		return ERROR_INVALID_PARAMETER;
+
+
+	if ((char*)_pVirtualAddress + _uSize > (char*)_Info.BaseAddress + _Info.RegionSize)
+		return ERROR_INVALID_PARAMETER;
+			
+	return ERROR_SUCCESS;
 }

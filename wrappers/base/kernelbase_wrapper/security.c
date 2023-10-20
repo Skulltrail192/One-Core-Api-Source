@@ -20,6 +20,8 @@ Revision History:
 
 #include <main.h>
 
+WINE_DEFAULT_DEBUG_CHANNEL(kernel32);
+
 /*
 * @unimplemented
 */
@@ -102,4 +104,13 @@ AccessCheckByTypeResultList(
     result = FALSE;
   }
   return result;
+}
+
+/******************************************************************************
+ * CreateBoundaryDescriptorW    (kernelbase.@)
+ */
+HANDLE WINAPI CreateBoundaryDescriptorW( LPCWSTR name, ULONG flags )
+{
+    FIXME("%s %lu - stub\n", debugstr_w(name), flags);
+    return NULL;
 }

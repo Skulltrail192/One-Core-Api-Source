@@ -203,17 +203,8 @@ typedef BOOLEAN (*PSECURE_MEMORY_CACHE_CALLBACK)(
     _In_  SIZE_T Range
 );
 
-// typedef PVOID (WINAPI *PDELAYLOAD_FAILURE_SYSTEM_ROUTINE)(LPCSTR, LPCSTR);
 
 typedef VOID (CALLBACK *PTP_WIN32_IO_CALLBACK)(PTP_CALLBACK_INSTANCE,PVOID,PVOID,ULONG,ULONG_PTR,PTP_IO);
-
-// typedef enum _NORM_FORM { 
-  // NormalizationOther  = 0,
-  // NormalizationC      = 0x1,
-  // NormalizationD      = 0x2,
-  // NormalizationKC     = 0x5,
-  // NormalizationKD     = 0x6
-// } NORM_FORM;
 
 typedef enum _TRANSACTION_INFORMATION_CLASS { 
   TransactionBasicInformation               = 0,
@@ -221,74 +212,6 @@ typedef enum _TRANSACTION_INFORMATION_CLASS {
   TransactionEnlistmentInformation,
   TransactionSuperiorEnlistmentInformation
 } TRANSACTION_INFORMATION_CLASS;
-
-// typedef struct _WIN32_MEMORY_RANGE_ENTRY {
-  // PVOID  VirtualAddress;
-  // SIZE_T NumberOfBytes;
-// } WIN32_MEMORY_RANGE_ENTRY, *PWIN32_MEMORY_RANGE_ENTRY;
-
-// typedef struct _CLAIM_SECURITY_ATTRIBUTE_OCTET_STRING_VALUE {
-  // PVOID pValue;
-  // DWORD ValueLength;
-// } CLAIM_SECURITY_ATTRIBUTE_OCTET_STRING_VALUE, *PCLAIM_SECURITY_ATTRIBUTE_OCTET_STRING_VALUE;
-
-// typedef struct _CLAIM_SECURITY_ATTRIBUTE_FQBN_VALUE {
-  // DWORD64 Version;
-  // PWSTR   Name;
-// } CLAIM_SECURITY_ATTRIBUTE_FQBN_VALUE, *PCLAIM_SECURITY_ATTRIBUTE_FQBN_VALUE;
-
-// typedef struct _CLAIM_SECURITY_ATTRIBUTE_V1 {
-  // PWSTR Name;
-  // WORD  ValueType;
-  // WORD  Reserved;
-  // DWORD Flags;
-  // DWORD ValueCount;
-  // union {
-    // PLONG64                                      pInt64;
-    // PDWORD64                                     pUint64;
-    // PWSTR                                        *ppString;
-    // PCLAIM_SECURITY_ATTRIBUTE_FQBN_VALUE         pFqbn;
-    // PCLAIM_SECURITY_ATTRIBUTE_OCTET_STRING_VALUE pOctetString;
-  // } Values;
-// } CLAIM_SECURITY_ATTRIBUTE_V1, *PCLAIM_SECURITY_ATTRIBUTE_V1;
-
-// typedef struct _CLAIM_SECURITY_ATTRIBUTES_INFORMATION {
-  // WORD  Version;
-  // WORD  Reserved;
-  // DWORD AttributeCount;
-  // union {
-    // PCLAIM_SECURITY_ATTRIBUTE_V1 pAttributeV1;
-  // } Attribute;
-// } CLAIM_SECURITY_ATTRIBUTES_INFORMATION, *PCLAIM_SECURITY_ATTRIBUTES_INFORMATION;
-
-// typedef struct _TP_POOL_STACK_INFORMATION
-// {
-   // SIZE_T StackReserve;
-   // SIZE_T StackCommit;
-// } TP_POOL_STACK_INFORMATION,*PTP_POOL_STACK_INFORMATION;
-
-// typedef enum  { 
-  // PMCCounter,
-  // MaxHardwareCounterType
-// } HARDWARE_COUNTER_TYPE;
-
-// typedef struct _HARDWARE_COUNTER_DATA {
-  // HARDWARE_COUNTER_TYPE Type;
-  // DWORD                 Reserved;
-  // DWORD64               Value;
-// } HARDWARE_COUNTER_DATA, *PHARDWARE_COUNTER_DATA;
-
-// typedef struct _PERFORMANCE_DATA {
-  // WORD                  Size;
-  // BYTE                  Version;
-  // BYTE                  HwCountersCount;
-  // DWORD                 ContextSwitchCount;
-  // DWORD64               WaitReasonBitMap;
-  // DWORD64               CycleTime;
-  // DWORD                 RetryCount;
-  // DWORD                 Reserved;
-  // HARDWARE_COUNTER_DATA HwCounters[MAX_HW_COUNTERS];
-// } PERFORMANCE_DATA, *PPERFORMANCE_DATA;
 
 typedef struct _ALPC_PORT_ATTRIBUTES
 {
@@ -354,93 +277,71 @@ typedef struct _ALPC_CONTEXT_ATTR
   ULONG CallbackId;
 } ALPC_CONTEXT_ATTR, *PALPC_CONTEXT_ATTR;
 
-// typedef struct _DELAYLOAD_PROC_DESCRIPTOR
-// {
-     // ULONG ImportDescribedByName;
-     // union {
-         // LPCSTR Name;
-         // ULONG Ordinal;
-     // } Description;
-// } DELAYLOAD_PROC_DESCRIPTOR, *PDELAYLOAD_PROC_DESCRIPTOR;
+// //
+// // This structure specifies an offset (from the beginning of CONTEXT_EX
+// // structure) and size of a single chunk of an extended context structure.
+// //
+// // N.B. Offset may be negative.
+// //
 
-// typedef struct _DELAYLOAD_INFO
-// {
-     // ULONG Size;
-     // PCIMAGE_DELAYLOAD_DESCRIPTOR DelayloadDescriptor;
-     // PIMAGE_THUNK_DATA ThunkAddress;
-     // LPCSTR TargetDllName;
-     // DELAYLOAD_PROC_DESCRIPTOR TargetApiDescriptor;
-     // PVOID TargetModuleBase;
-     // PVOID Unused;
-     // ULONG LastError;
-// } DELAYLOAD_INFO, *PDELAYLOAD_INFO;
-// typedef PVOID (WINAPI *PDELAYLOAD_FAILURE_DLL_CALLBACK)(ULONG, PDELAYLOAD_INFO);
+// typedef struct _CONTEXT_CHUNK {
+    // LONG Offset;
+    // DWORD Length;
+// } CONTEXT_CHUNK, *PCONTEXT_CHUNK;
 
-//
-// This structure specifies an offset (from the beginning of CONTEXT_EX
-// structure) and size of a single chunk of an extended context structure.
-//
-// N.B. Offset may be negative.
-//
+// //
+// // CONTEXT_EX structure is an extension to CONTEXT structure. It defines
+// // a context record as a set of disjoint variable-sized buffers (chunks)
+// // each containing a portion of processor state. Currently there are only
+// // two buffers (chunks) are defined:
+// //
+// //   - Legacy, that stores traditional CONTEXT structure;
+// //   - XState, that stores XSAVE save area buffer starting from
+// //     XSAVE_AREA_HEADER, i.e. without the first 512 bytes.
+// //
+// // There a few assumptions exists that simplify conversion of PCONTEXT
+// // pointer to PCONTEXT_EX pointer.
+// //
+// // 1. APIs that work with PCONTEXT pointers assume that CONTEXT_EX is
+// //    stored right after the CONTEXT structure. It is also assumed that
+// //    CONTEXT_EX is present if and only if corresponding CONTEXT_XXX
+// //    flags are set in CONTEXT.ContextFlags.
+// //
+// // 2. CONTEXT_EX.Legacy is always present if CONTEXT_EX structure is
+// //    present. All other chunks are optional.
+// //
+// // 3. CONTEXT.ContextFlags unambigiously define which chunks are
+// //    present. I.e. if CONTEXT_XSTATE is set CONTEXT_EX.XState is valid.
+// //
 
-typedef struct _CONTEXT_CHUNK {
-    LONG Offset;
-    DWORD Length;
-} CONTEXT_CHUNK, *PCONTEXT_CHUNK;
+// typedef struct _CONTEXT_EX {
 
-//
-// CONTEXT_EX structure is an extension to CONTEXT structure. It defines
-// a context record as a set of disjoint variable-sized buffers (chunks)
-// each containing a portion of processor state. Currently there are only
-// two buffers (chunks) are defined:
-//
-//   - Legacy, that stores traditional CONTEXT structure;
-//   - XState, that stores XSAVE save area buffer starting from
-//     XSAVE_AREA_HEADER, i.e. without the first 512 bytes.
-//
-// There a few assumptions exists that simplify conversion of PCONTEXT
-// pointer to PCONTEXT_EX pointer.
-//
-// 1. APIs that work with PCONTEXT pointers assume that CONTEXT_EX is
-//    stored right after the CONTEXT structure. It is also assumed that
-//    CONTEXT_EX is present if and only if corresponding CONTEXT_XXX
-//    flags are set in CONTEXT.ContextFlags.
-//
-// 2. CONTEXT_EX.Legacy is always present if CONTEXT_EX structure is
-//    present. All other chunks are optional.
-//
-// 3. CONTEXT.ContextFlags unambigiously define which chunks are
-//    present. I.e. if CONTEXT_XSTATE is set CONTEXT_EX.XState is valid.
-//
+    // //
+    // // The total length of the structure starting from the chunk with
+    // // the smallest offset. N.B. that the offset may be negative.
+    // //
 
-typedef struct _CONTEXT_EX {
+    // CONTEXT_CHUNK All;
 
-    //
-    // The total length of the structure starting from the chunk with
-    // the smallest offset. N.B. that the offset may be negative.
-    //
+    // //
+    // // Wrapper for the traditional CONTEXT structure. N.B. the size of
+    // // the chunk may be less than sizeof(CONTEXT) is some cases (when
+    // // CONTEXT_EXTENDED_REGISTERS is not set on x86 for instance).
+    // //
 
-    CONTEXT_CHUNK All;
+    // CONTEXT_CHUNK Legacy;
 
-    //
-    // Wrapper for the traditional CONTEXT structure. N.B. the size of
-    // the chunk may be less than sizeof(CONTEXT) is some cases (when
-    // CONTEXT_EXTENDED_REGISTERS is not set on x86 for instance).
-    //
+    // //
+    // // CONTEXT_XSTATE: Extended processor state chunk. The state is
+    // // stored in the same format XSAVE operation strores it with
+    // // exception of the first 512 bytes, i.e. staring from
+    // // XSAVE_AREA_HEADER. The lower two bits corresponding FP and
+    // // SSE state must be zero.
+    // //
 
-    CONTEXT_CHUNK Legacy;
+    // CONTEXT_CHUNK XState;
 
-    //
-    // CONTEXT_XSTATE: Extended processor state chunk. The state is
-    // stored in the same format XSAVE operation strores it with
-    // exception of the first 512 bytes, i.e. staring from
-    // XSAVE_AREA_HEADER. The lower two bits corresponding FP and
-    // SSE state must be zero.
-    //
-
-    CONTEXT_CHUNK XState;
-
-} CONTEXT_EX, *PCONTEXT_EX;
+// } CONTEXT_EX, *PCONTEXT_EX;
 
 //Windows 2000 or for new ntdll
 typedef struct _SCOPETABLE_ENTRY *PSCOPETABLE_ENTRY;
@@ -970,7 +871,13 @@ struct entity
         {
             WCHAR *name;
             WCHAR *value;
+            WCHAR *ns;
         } settings;
+        struct
+        {
+            WCHAR *name;
+            DWORD  threading_model;
+        } activatable_class;
     } u;
 };
 
@@ -1249,3 +1156,235 @@ typedef struct __declspec(align(16)) _YY_CV_WAIT_BLOCK
 	volatile size_t    flag;
 	volatile PRTL_SRWLOCK  SRWLock;
 } YY_CV_WAIT_BLOCK;
+
+#define CONTEXT_AMD64   0x00100000
+
+#define CONTEXT_AMD64_CONTROL   (CONTEXT_AMD64 | 0x0001)
+#define CONTEXT_AMD64_INTEGER   (CONTEXT_AMD64 | 0x0002)
+#define CONTEXT_AMD64_SEGMENTS  (CONTEXT_AMD64 | 0x0004)
+#define CONTEXT_AMD64_FLOATING_POINT  (CONTEXT_AMD64 | 0x0008)
+#define CONTEXT_AMD64_DEBUG_REGISTERS (CONTEXT_AMD64 | 0x0010)
+#define CONTEXT_AMD64_XSTATE          (CONTEXT_AMD64 | 0x0040)
+#define CONTEXT_AMD64_FULL (CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_FLOATING_POINT)
+#define CONTEXT_AMD64_ALL (CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_SEGMENTS | CONTEXT_AMD64_FLOATING_POINT | CONTEXT_AMD64_DEBUG_REGISTERS)
+
+typedef XSAVE_FORMAT XMM_SAVE_AREA32, *PXMM_SAVE_AREA32;
+
+typedef struct DECLSPEC_ALIGN(16) _AMD64_CONTEXT {
+    DWORD64 P1Home;          /* 000 */
+    DWORD64 P2Home;          /* 008 */
+    DWORD64 P3Home;          /* 010 */
+    DWORD64 P4Home;          /* 018 */
+    DWORD64 P5Home;          /* 020 */
+    DWORD64 P6Home;          /* 028 */
+
+    /* Control flags */
+    DWORD ContextFlags;      /* 030 */
+    DWORD MxCsr;             /* 034 */
+
+    /* Segment */
+    WORD SegCs;              /* 038 */
+    WORD SegDs;              /* 03a */
+    WORD SegEs;              /* 03c */
+    WORD SegFs;              /* 03e */
+    WORD SegGs;              /* 040 */
+    WORD SegSs;              /* 042 */
+    DWORD EFlags;            /* 044 */
+
+    /* Debug */
+    DWORD64 Dr0;             /* 048 */
+    DWORD64 Dr1;             /* 050 */
+    DWORD64 Dr2;             /* 058 */
+    DWORD64 Dr3;             /* 060 */
+    DWORD64 Dr6;             /* 068 */
+    DWORD64 Dr7;             /* 070 */
+
+    /* Integer */
+    DWORD64 Rax;             /* 078 */
+    DWORD64 Rcx;             /* 080 */
+    DWORD64 Rdx;             /* 088 */
+    DWORD64 Rbx;             /* 090 */
+    DWORD64 Rsp;             /* 098 */
+    DWORD64 Rbp;             /* 0a0 */
+    DWORD64 Rsi;             /* 0a8 */
+    DWORD64 Rdi;             /* 0b0 */
+    DWORD64 R8;              /* 0b8 */
+    DWORD64 R9;              /* 0c0 */
+    DWORD64 R10;             /* 0c8 */
+    DWORD64 R11;             /* 0d0 */
+    DWORD64 R12;             /* 0d8 */
+    DWORD64 R13;             /* 0e0 */
+    DWORD64 R14;             /* 0e8 */
+    DWORD64 R15;             /* 0f0 */
+
+    /* Counter */
+    DWORD64 Rip;             /* 0f8 */
+
+    /* Floating point */
+    union {
+        XMM_SAVE_AREA32 FltSave;  /* 100 */
+        struct {
+            M128A Header[2];      /* 100 */
+            M128A Legacy[8];      /* 120 */
+            M128A Xmm0;           /* 1a0 */
+            M128A Xmm1;           /* 1b0 */
+            M128A Xmm2;           /* 1c0 */
+            M128A Xmm3;           /* 1d0 */
+            M128A Xmm4;           /* 1e0 */
+            M128A Xmm5;           /* 1f0 */
+            M128A Xmm6;           /* 200 */
+            M128A Xmm7;           /* 210 */
+            M128A Xmm8;           /* 220 */
+            M128A Xmm9;           /* 230 */
+            M128A Xmm10;          /* 240 */
+            M128A Xmm11;          /* 250 */
+            M128A Xmm12;          /* 260 */
+            M128A Xmm13;          /* 270 */
+            M128A Xmm14;          /* 280 */
+            M128A Xmm15;          /* 290 */
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+
+    /* Vector */
+    M128A VectorRegister[26];     /* 300 */
+    DWORD64 VectorControl;        /* 4a0 */
+
+    /* Debug control */
+    DWORD64 DebugControl;         /* 4a8 */
+    DWORD64 LastBranchToRip;      /* 4b0 */
+    DWORD64 LastBranchFromRip;    /* 4b8 */
+    DWORD64 LastExceptionToRip;   /* 4c0 */
+    DWORD64 LastExceptionFromRip; /* 4c8 */
+} AMD64_CONTEXT;
+
+/* The Win32 register context */
+
+/* i386 context definitions */
+
+#define I386_SIZE_OF_80387_REGISTERS      80
+
+typedef struct _I386_FLOATING_SAVE_AREA
+{
+    DWORD   ControlWord;
+    DWORD   StatusWord;
+    DWORD   TagWord;
+    DWORD   ErrorOffset;
+    DWORD   ErrorSelector;
+    DWORD   DataOffset;
+    DWORD   DataSelector;
+    BYTE    RegisterArea[I386_SIZE_OF_80387_REGISTERS];
+    DWORD   Cr0NpxState;
+} I386_FLOATING_SAVE_AREA, WOW64_FLOATING_SAVE_AREA, *PWOW64_FLOATING_SAVE_AREA;
+
+#define I386_MAXIMUM_SUPPORTED_EXTENSION     512
+
+#include "pshpack4.h"
+typedef struct _I386_CONTEXT
+{
+    DWORD   ContextFlags;  /* 000 */
+
+    /* These are selected by CONTEXT_DEBUG_REGISTERS */
+    DWORD   Dr0;           /* 004 */
+    DWORD   Dr1;           /* 008 */
+    DWORD   Dr2;           /* 00c */
+    DWORD   Dr3;           /* 010 */
+    DWORD   Dr6;           /* 014 */
+    DWORD   Dr7;           /* 018 */
+
+    /* These are selected by CONTEXT_FLOATING_POINT */
+    I386_FLOATING_SAVE_AREA FloatSave; /* 01c */
+
+    /* These are selected by CONTEXT_SEGMENTS */
+    DWORD   SegGs;         /* 08c */
+    DWORD   SegFs;         /* 090 */
+    DWORD   SegEs;         /* 094 */
+    DWORD   SegDs;         /* 098 */
+
+    /* These are selected by CONTEXT_INTEGER */
+    DWORD   Edi;           /* 09c */
+    DWORD   Esi;           /* 0a0 */
+    DWORD   Ebx;           /* 0a4 */
+    DWORD   Edx;           /* 0a8 */
+    DWORD   Ecx;           /* 0ac */
+    DWORD   Eax;           /* 0b0 */
+
+    /* These are selected by CONTEXT_CONTROL */
+    DWORD   Ebp;           /* 0b4 */
+    DWORD   Eip;           /* 0b8 */
+    DWORD   SegCs;         /* 0bc */
+    DWORD   EFlags;        /* 0c0 */
+    DWORD   Esp;           /* 0c4 */
+    DWORD   SegSs;         /* 0c8 */
+
+    BYTE    ExtendedRegisters[I386_MAXIMUM_SUPPORTED_EXTENSION];  /* 0xcc */
+} I386_CONTEXT, WOW64_CONTEXT, *PWOW64_CONTEXT;
+
+#define XSTATE_LEGACY_FLOATING_POINT 0
+#define XSTATE_LEGACY_SSE            1
+#define XSTATE_GSSE                  2
+#define XSTATE_AVX                   XSTATE_GSSE
+#define XSTATE_MPX_BNDREGS           3
+#define XSTATE_MPX_BNDCSR            4
+#define XSTATE_AVX512_KMASK          5
+#define XSTATE_AVX512_ZMM_H          6
+#define XSTATE_AVX512_ZMM            7
+#define XSTATE_IPT                   8
+#define XSTATE_CET_U                 11
+#define XSTATE_LWP                   62
+#define MAXIMUM_XSTATE_FEATURES      64
+
+#define XSTATE_MASK_LEGACY_FLOATING_POINT   (1 << XSTATE_LEGACY_FLOATING_POINT)
+#define XSTATE_MASK_LEGACY_SSE              (1 << XSTATE_LEGACY_SSE)
+#define XSTATE_MASK_LEGACY                  (XSTATE_MASK_LEGACY_FLOATING_POINT | XSTATE_MASK_LEGACY_SSE)
+#define XSTATE_MASK_GSSE                    (1 << XSTATE_GSSE)
+
+typedef struct _XSTATE_FEATURE
+{
+    ULONG Offset;
+    ULONG Size;
+} XSTATE_FEATURE, *PXSTATE_FEATURE;
+
+typedef struct _XSTATE_CONFIGURATION
+{
+    ULONG64 EnabledFeatures;
+    ULONG64 EnabledVolatileFeatures;
+    ULONG Size;
+    ULONG OptimizedSave:1;
+    ULONG CompactionEnabled:1;
+    XSTATE_FEATURE Features[MAXIMUM_XSTATE_FEATURES];
+
+    ULONG64 EnabledSupervisorFeatures;
+    ULONG64 AlignedFeatures;
+    ULONG AllFeatureSize;
+    ULONG AllFeatures[MAXIMUM_XSTATE_FEATURES];
+    ULONG64 EnabledUserVisibleSupervisorFeatures;
+} XSTATE_CONFIGURATION, *PXSTATE_CONFIGURATION;
+
+typedef struct _YMMCONTEXT
+{
+    M128A Ymm0;
+    M128A Ymm1;
+    M128A Ymm2;
+    M128A Ymm3;
+    M128A Ymm4;
+    M128A Ymm5;
+    M128A Ymm6;
+    M128A Ymm7;
+    M128A Ymm8;
+    M128A Ymm9;
+    M128A Ymm10;
+    M128A Ymm11;
+    M128A Ymm12;
+    M128A Ymm13;
+    M128A Ymm14;
+    M128A Ymm15;
+}
+YMMCONTEXT, *PYMMCONTEXT;
+
+typedef struct _XSTATE
+{
+    ULONG64 Mask;
+    ULONG64 CompactionMask;
+    ULONG64 Reserved[6];
+    YMMCONTEXT YmmContext;
+} XSTATE, *PXSTATE;

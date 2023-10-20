@@ -244,3 +244,14 @@ CreateFile2(
 	 
    return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, pCreateExParams->lpSecurityAttributes, dwCreationDisposition, pCreateExParams->dwFileAttributes | pCreateExParams->dwFileFlags | pCreateExParams->dwSecurityQosFlags, pCreateExParams->hTemplateFile);	
 }
+
+HRESULT
+WINAPI
+CopyFile2(
+  _In_      PCWSTR                        pwszExistingFileName,
+  _In_      PCWSTR                        pwszNewFileName,
+  _In_opt_  COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters
+)
+{
+   return CopyFileW(pwszExistingFileName, pwszNewFileName, FALSE);
+}

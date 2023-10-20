@@ -20,18 +20,28 @@ list(APPEND SOURCE
 	path.c
 	pidl.c
 	shellitem.c
+	shelllink.c
+	shellole.c
 	shellpath.c
+	shlfsbind.c
 	#shlfileop.c
 	shlmenu.c
 	shlview_cmenu.c
 	unimplemented.c
 	precomp.h
 	version.rc
+	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_i.c
+	${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_p.h
     ${CMAKE_CURRENT_BINARY_DIR}/shell32_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/shell32_wrapper.def)
 
+generate_idl_iids(shell32_classes.idl)
+add_idl_headers(shell32_classes.idl)
+
+add_rpcproxy_files(
+    shell32_classes.idl)
 	
-add_library(shell32_wrapper SHARED ${SOURCE})
+add_library(shell32_wrapper SHARED ${SOURCE} ${CMAKE_CURRENT_BINARY_DIR}/shell32_classes_p.c)
 
 set_module_type(shell32_wrapper win32dll ENTRYPOINT DllMain)
 target_link_libraries(shell32_wrapper wine uuid)
