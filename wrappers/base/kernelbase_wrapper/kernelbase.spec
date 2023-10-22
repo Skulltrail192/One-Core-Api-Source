@@ -1449,6 +1449,7 @@
 @ stdcall QueryInterruptTime(ptr)
 @ stdcall QueryInterruptTimePrecise(ptr)
 @ stdcall QueryUnbiasedInterruptTimePrecise(ptr)
+@ stdcall WaitForDebugEventEx(ptr long)
 
 #Import from advapibase or registry function
 @ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) advapibase.AccessCheck

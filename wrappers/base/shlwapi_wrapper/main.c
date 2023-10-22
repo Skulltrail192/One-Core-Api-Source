@@ -145,3 +145,70 @@ StrFormatByteSizeEx(
 {
 	return PSStrFormatByteSizeEx(ull, flags, pszBuf, cchBuf);	
 }
+
+DWORD __stdcall GetLastErrorError()
+{
+  DWORD result; // eax
+
+  result = GetLastError();
+  if ( !result )
+    return 1;
+  return result;
+}
+
+signed int __stdcall HRESULTFromLastErrorError()
+{
+  signed int result; // eax
+
+  result = GetLastErrorError();
+  if ( result > 0 )
+    return (unsigned __int16)result | 0x80070000;
+  return result;
+}
+
+int GetModuleResourceData(HMODULE hModule, LPCWSTR lpName, LPCWSTR lpType, DWORD *a4, DWORD *a5)
+{
+  HRSRC ResourceW; // eax
+  HRSRC v6; // esi
+  DWORD v7; // edi
+  HGLOBAL Resource; // eax
+  LPVOID v9; // eax
+
+  ResourceW = FindResourceW(hModule, lpName, lpType);
+  v6 = ResourceW;
+  if ( !ResourceW )
+    return HRESULTFromLastErrorError();
+  v7 = SizeofResource(hModule, ResourceW);
+  if ( !v7 )
+    return HRESULTFromLastErrorError();
+  Resource = LoadResource(hModule, v6);
+  if ( !Resource )
+    return HRESULTFromLastErrorError();
+  v9 = LockResource(Resource);
+  if ( !v9 )
+    return HRESULTFromLastErrorError();
+  *a4 = (DWORD)v9;
+  *a5 = v7;
+  return 0;
+}
+
+int __stdcall CreateStreamSTOnModuleResource(HMODULE hModule, BYTE *pInit, const WCHAR *cbInit, IStream **a4)
+{
+  int ModuleResourceData; // esi
+  IStream *v5; // eax
+
+  ModuleResourceData = GetModuleResourceData(hModule, (LPCWSTR)pInit, cbInit, (DWORD*)&pInit, (DWORD*)&cbInit);
+  if ( ModuleResourceData >= 0 )
+  {
+    v5 = SHCreateMemStream(pInit, (UINT)cbInit);
+    *a4 = v5;
+    if ( !v5 )
+      return 0x8007000E;
+  }
+  return ModuleResourceData;
+}
+
+int __stdcall SHCreateStreamOnModuleResourceW(HMODULE a1, BYTE *a2, const WCHAR *a3, IStream **a4)
+{
+  return CreateStreamSTOnModuleResource(a1, a2, a3, a4);
+}

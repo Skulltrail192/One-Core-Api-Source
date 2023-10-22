@@ -59,6 +59,8 @@ static HKEY tz_key;
 
 static RTL_CRITICAL_SECTION cache_section;
 
+static const NLS_LOCALE_HEADER *locale_table;
+
 /* move to winnls*/
 
 #define LOCALE_SNAN                 0x0069
@@ -268,7 +270,7 @@ void init_locale(void)
     RegCreateKeyExW( HKEY_LOCAL_MACHINE, L"System\\CurrentControlSet\\Control\\Nls",
                      0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &nls_key, NULL );	
     RegCreateKeyExW( HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones",
-                     0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &tz_key, NULL );					 
+                     0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &tz_key, NULL );					
 }
 
 struct enum_locale_ex_data
@@ -831,8 +833,8 @@ LocaleNameToLCID(
         return GetUserDefaultLCID();
 
 	for(i=0;i<LOCALE_TABLE_SIZE;i++){
-		if(wcscmp(name, locale_table[i].localeName)==0){
-			return locale_table[i].lcid;
+		if(wcscmp(name, LocaleTable[i].localeName)==0){
+			return LocaleTable[i].lcid;
 		}
 	}
 	
@@ -854,10 +856,10 @@ LCIDToLocaleName(
 	int i;
 	int length = 0;
 	for(i=0;i<LOCALE_TABLE_SIZE;i++){
-		if(lcid == locale_table[i].lcid){
-			length = (wcslen(locale_table[i].localeName)+1);
+		if(lcid == LocaleTable[i].lcid){
+			length = (wcslen(LocaleTable[i].localeName)+1);
 			if(lpName){
-				memcpy(lpName, locale_table[i].localeName, sizeof(WCHAR)*(length));
+				memcpy(lpName, LocaleTable[i].localeName, sizeof(WCHAR)*(length));
 				lpName[length-1] = 0;
 			}			
 			return length;
@@ -1131,7 +1133,7 @@ IsValidLocaleName(
         return FALSE;
 
 	for(i=0;i<LOCALE_TABLE_SIZE;i++){
-		if(wcscmp(locale, locale_table[i].localeName)==0){
+		if(wcscmp(locale, LocaleTable[i].localeName)==0){
 			return TRUE;
 		}
 	}	
@@ -1913,16 +1915,91 @@ FindNLSStringEx(
 
     return -1;
 }
+
 /******************************************************************************
- *           ResolveLocaleName (KERNEL32.@)
+ *	ResolveLocaleName   (kernelbase.@)
  */
-
-INT WINAPI ResolveLocaleName(LPCWSTR name, LPWSTR localename, INT len)
+int
+WINAPI
+ResolveLocaleName(
+	_In_opt_                        LPCWSTR lpNameToResolve,
+	_Out_writes_opt_(cchLocaleName) LPWSTR  lpLocaleName,
+	_In_                            int     cchLocaleName
+)
 {
-    FIXME("stub: %s, %p, %d\n", wine_dbgstr_w(name), localename, len);
+	LCID lcid = 0;
+	wchar_t Buffer[LOCALE_NAME_MAX_LENGTH];
+	unsigned i = 0;
+	int result;
 
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-    return 0;
+	if (lpNameToResolve == NULL)
+	{
+		lcid = GetUserDefaultLCID();
+	}
+	else
+	{
+		for (; i != _countof(Buffer) && lpNameToResolve[i]; ++i)
+		{
+			Buffer[i] = lpNameToResolve[i];
+
+			if (i == _countof(Buffer))
+			{
+				//输入异常
+				SetLastError(ERROR_INVALID_PARAMETER);
+				return 0;
+			}
+
+			//保证 '\0' 截断
+			Buffer[i] = L'\0';
+
+			for (;;)
+			{
+				lcid = LocaleNameToLCID(Buffer, 0);
+
+				//成功找到了区域，那么停止搜索
+				if (lcid != 0 && lcid != LOCALE_CUSTOM_UNSPECIFIED)
+					break;
+
+				while(i)
+				{
+					--i;
+
+					if (Buffer[i] == L'-')
+					{
+						Buffer[i] = L'\0';
+						break;
+					}
+				}
+
+				//字符串已经达到开始位置，则停止搜索
+				if (i == 0)
+					break;
+			}
+		}
+	}
+
+	if (lcid !=0 && lcid != LOCALE_CUSTOM_UNSPECIFIED)
+	{
+		if (lpLocaleName == NULL || cchLocaleName == 0)
+		{
+			lpLocaleName = NULL;
+			cchLocaleName = 0;
+		}
+
+		//删除排序规则，然后重新转换名称。
+		result = LCIDToLocaleName(LANGIDFROMLCID(lcid), lpLocaleName, cchLocaleName, 0);
+
+		if (result)
+			return result;
+	}
+			
+	//如果找不到，那么直接设置为空字符串
+	if (lpLocaleName && cchLocaleName)
+	{
+		lpLocaleName[0] = L'\0';
+	}
+
+	return 1;
 }
 
 /******************************************************************************
@@ -1939,12 +2016,13 @@ GetUserPreferredUILanguages(
 {
 	LANGID ui_language;
 	
-	NtQueryDefaultUILanguage( &ui_language );	
-	return EnumPreferredUserUILanguages(dwFlags,
-										ui_language,
-									    pulNumLanguages,
-									    pwszLanguagesBuffer,
-									    pcchLanguagesBuffer);
+	NtQueryDefaultUILanguage( &ui_language );
+	return set_ntstatus( RtlGetUserPreferredUILanguages( dwFlags, 0, pulNumLanguages, pwszLanguagesBuffer, pcchLanguagesBuffer ));
+	// return EnumPreferredUserUILanguages(dwFlags,
+										// ui_language,
+									    // pulNumLanguages,
+									    // pwszLanguagesBuffer,
+									    // pcchLanguagesBuffer);
 }
 
 /***********************************************************************
@@ -1956,12 +2034,12 @@ BOOL WINAPI DECLSPEC_HOTPATCH GetThreadPreferredUILanguages( DWORD flags, ULONG 
 	LANGID ui_language;
 	
 	NtQueryDefaultUILanguage( &ui_language );
-    //return set_ntstatus( RtlGetThreadPreferredUILanguages( flags, count, buffer, size ));
-	return EnumPreferredThreadUILanguages(flags,
-										  ui_language,
-										  count,
-										  buffer,
-										  size);	
+    return set_ntstatus( RtlGetThreadPreferredUILanguages( flags, count, buffer, size ));
+	// return EnumPreferredThreadUILanguages(flags,
+										  // ui_language,
+										  // count,
+										  // buffer,
+										  // size);	
 }
 
 /***********************************************************************
@@ -1973,12 +2051,12 @@ BOOL WINAPI DECLSPEC_HOTPATCH GetSystemPreferredUILanguages( DWORD flags, ULONG 
 	LANGID ui_language;
 	
 	NtQueryInstallUILanguage( &ui_language );	
-    //return set_ntstatus( RtlGetSystemPreferredUILanguages( flags, 0, count, buffer, size ));
-	return EnumPreferredThreadUILanguages(flags,
-										  ui_language,
-										  count,
-										  buffer,
-										  size);		
+    return set_ntstatus( RtlGetSystemPreferredUILanguages( flags, 0, count, buffer, size ));
+	// return EnumPreferredThreadUILanguages(flags,
+										  // ui_language,
+										  // count,
+										  // buffer,
+										  // size);		
 }
 
 /***********************************************************************

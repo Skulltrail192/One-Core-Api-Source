@@ -628,7 +628,6 @@
 625 stdcall -i386 PathIsFileSpecW(wstr)
 626 stdcall -i386 PathIsLFNFileSpecA(str)
 627 stdcall -i386 PathIsLFNFileSpecW(wstr)
-628 stdcall -i386 PathIsNetworkPathA(str)
 629 stdcall -i386 PathIsNetworkPathW(wstr)
 630 stdcall -i386 PathIsPrefixA(str str)
 631 stdcall -i386 PathIsPrefixW(wstr wstr)
@@ -929,12 +928,10 @@
 625 stdcall -arch=x86_64 PathIsDirectoryA(str)
 626 stdcall -arch=x86_64 PathIsDirectoryEmptyA(str)
 627 stdcall -arch=x86_64 PathIsDirectoryEmptyW(wstr)
-628 stdcall -arch=x86_64 PathIsDirectoryW(wstr)
 629 stdcall -arch=x86_64 PathIsFileSpecA(str)
 630 stdcall -arch=x86_64 PathIsFileSpecW(wstr)
 631 stdcall -arch=x86_64 PathIsLFNFileSpecA(str)
 632 stdcall -arch=x86_64 PathIsLFNFileSpecW(wstr)
-633 stdcall -arch=x86_64 PathIsNetworkPathA(str)
 634 stdcall -arch=x86_64 PathIsNetworkPathW(wstr)
 635 stdcall -arch=x86_64 PathIsPrefixA(str str)
 636 stdcall -arch=x86_64 PathIsPrefixW(wstr wstr)
@@ -1178,3 +1175,7 @@
 
 ;@ varargs ShellMessageBoxW(long long wstr wstr long) shell32.ShellMessageBoxW
 ;@ varargs ShellMessageBoxA(long long str str long) shell32.ShellMessageBoxA
+
+628 stdcall -i386 SHCreateStreamOnModuleResourceW(ptr ptr wstr ptr) ;Change 628 ordinal from PathIsNetworkPathA to SHCreateStreamOnModuleResourceW to satisfy Windows 7 wordpad
+@ stdcall -i386 PathIsNetworkPathA(str) ;Change from ordinal 628 (x86) to standard export
+@ stdcall -arch=x86_64 PathIsDirectoryW(wstr) ;Change from ordinal 633 (x64) to standard export

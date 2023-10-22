@@ -34,10 +34,7 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(locale); 
 
-typedef BOOL (WINAPI *pGetNLSVersion)(
-    NLS_FUNCTION, 
-	LCID,
-	LPNLSVERSIONINFO);
+
 
 struct locale_name
 {
@@ -719,89 +716,6 @@ GetLocaleInfoEx(
     }
 
     return GetpLocaleInfoW(lcid, info, buffer, len);
-}
-
-/*
- * @unimplemented
-*/
-BOOL 
-WINAPI 
-GetNLSVersionEx(
-  _In_      NLS_FUNCTION function,
-  _In_opt_  LPCWSTR lpLocaleName,
-  _Inout_   LPNLSVERSIONINFOEX lpVersionInformation
-)
-{
-	NLSVERSIONINFO lpVersionInformationOld;
-	LCID lcid = LocaleNameToLCID(lpLocaleName, 0);
-	
-	lpVersionInformationOld.dwNLSVersionInfoSize = sizeof(LPNLSVERSIONINFO);
-	
-	if(GetNLSVersion(function, lcid , &lpVersionInformationOld))
-	{
-		lpVersionInformation->dwNLSVersionInfoSize = sizeof(LPNLSVERSIONINFOEX);
-		lpVersionInformation->dwNLSVersion = lpVersionInformationOld.dwNLSVersion;
-		lpVersionInformation->dwDefinedVersion = lpVersionInformationOld.dwDefinedVersion;
-		lpVersionInformation->dwEffectiveId = LocaleNameToLCID(lpLocaleName, 0);		
-		return TRUE;
-	}else{
-		return FALSE;
-	}	
-}
-
-BOOL WINAPI GetNLSVersion(
-    NLS_FUNCTION     function,
-    LCID             locale,
-    LPNLSVERSIONINFO lpVersionInformation)
-{
-	pGetNLSVersion nlsVersion;
-	
-	nlsVersion = (pGetNLSVersion) GetProcAddress(
-                            GetModuleHandleW(L"kernelex"),
-                            "GetNLSVersion");
-							
-	if(nlsVersion!=NULL){
-		return nlsVersion(function, locale, lpVersionInformation);
-	}
-	
-	lpVersionInformation->dwNLSVersionInfoSize = sizeof(NLSVERSIONINFO);
-	lpVersionInformation->dwNLSVersion = 1;
-    lpVersionInformation->dwDefinedVersion = 1;
-	return TRUE;
-}
-
-int 
-WINAPI 
-FindNLSString(
-  _In_ 		 LCID Locale,
-  _In_       DWORD dwFindNLSStringFlags,
-  _In_       LPCWSTR lpStringSource,
-  _In_       int cchSource,
-  _In_       LPCWSTR lpStringValue,
-  _In_       int cchValue,
-  _Out_opt_  LPINT pcchFound
-)
-{
-	SetLastError(50);
-	return 0;
-}
-
-int 
-WINAPI 
-FindNLSStringEx(
-  _In_opt_   LPCWSTR lpLocaleName,
-  _In_       DWORD dwFindNLSStringFlags,
-  _In_       LPCWSTR lpStringSource,
-  _In_       int cchSource,
-  _In_       LPCWSTR lpStringValue,
-  _In_       int cchValue,
-  _Out_opt_  LPINT pcchFound,
-  _In_opt_   LPNLSVERSIONINFO lpVersionInformation,
-  _In_opt_   LPVOID lpReserved,
-  _In_opt_   LPARAM sortHandle
-)
-{
-  return 0;
 }
 
 /******************************************************************************

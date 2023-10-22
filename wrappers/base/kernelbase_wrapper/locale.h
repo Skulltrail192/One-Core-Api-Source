@@ -19,7 +19,7 @@ Revision History:
 --*/
 #define LOCALE_TABLE_SIZE 460
 
-LOCALE_LCID locale_table[LOCALE_TABLE_SIZE] =
+LOCALE_LCID LocaleTable[LOCALE_TABLE_SIZE] =
 {
 	{L"ar",    0x0001},
 	{L"bg",    0x0002},	
