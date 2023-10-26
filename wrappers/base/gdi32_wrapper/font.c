@@ -30,6 +30,8 @@
 
 WINE_DEFAULT_DEBUG_CHANNEL(gdi);
 
+HDC currentHdcFont;
+
 #define FIRST_FONT_HANDLE 1
 #define MAX_FONT_HANDLES  256
 
@@ -134,6 +136,17 @@ static inline struct font_handle_entry *handle_entry( DWORD handle )
  */
 BOOL WINAPI GetFontFileInfo( DWORD instance_id, DWORD unknown, struct font_fileinfo *info, DWORD size, DWORD *needed )
 {
+    // LOGFONTW logfont;
+    // HFONT hfont;
+    // HRESULT hr;
+
+    // // *fontface = NULL;
+
+    // hfont = GetCurrentObject(currentHdcFont, OBJ_FONT);
+    // if (!hfont)
+        // return E_INVALIDARG;
+    // GetObjectW(hfont, sizeof(logfont), &logfont);
+	
     struct font_handle_entry *entry = handle_entry( instance_id );
     const GdiFont *font;
 
@@ -164,6 +177,10 @@ WINAPI
 GetFontRealizationInfo(HDC hdc, struct font_realization_info *info)
 {
 	REALIZATION_INFO reinfo;
+	
+	if(hdc){
+		currentHdcFont = hdc;
+	}
 	//Just return GetRealizationInfo, because call internally same syscall, NtGdiGetRealizationInfo
 	if(GdiRealizationInfo(hdc, &reinfo)){
 		info->file_count = 1;
@@ -238,23 +255,28 @@ static DWORD get_font_data( GdiFont *font, DWORD table, DWORD offset, LPVOID buf
  */
 BOOL WINAPI GetFontFileData( DWORD instance_id, DWORD unknown, UINT64 offset, void *buff, DWORD buff_size )
 {
-    struct font_handle_entry *entry = handle_entry( instance_id );
-    DWORD tag = 0, size;
-    GdiFont *font;
-    if (!entry)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return FALSE;
-    }
-    font = entry->obj;
-    if (font->ttc_item_offset)
-        tag = MS_TTCF_TAG;
-    size = get_font_data( font, tag, 0, NULL, 0 );
-    if (size < buff_size || offset > size - buff_size)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return FALSE;
-    }
-    /* For now this only works for SFNT case. */
-    return get_font_data( font, tag, offset, buff, buff_size ) != 0;
+    // struct font_handle_entry *entry = handle_entry( instance_id );
+    // DWORD tag = 0, size;
+    // GdiFont *font;
+    // if (!entry)
+    // {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return FALSE;
+    // }
+    // font = entry->obj;
+    // if (font->ttc_item_offset)
+        // tag = MS_TTCF_TAG;
+    // size = get_font_data( font, tag, 0, NULL, 0 );
+    // if (size < buff_size || offset > size - buff_size)
+    // {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return FALSE;
+    // }
+    // /* For now this only works for SFNT case. */
+    // return get_font_data( font, tag, offset, buff, buff_size ) != 0;
+	if(currentHdcFont){
+		return GetFontData(currentHdcFont, unknown, offset, buff, buff_size);
+	}
+	
+	return FALSE;
 }

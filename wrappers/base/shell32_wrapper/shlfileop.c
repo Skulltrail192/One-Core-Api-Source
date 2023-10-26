@@ -1463,7 +1463,8 @@ static HRESULT WINAPI file_operation_MoveItems(IFileOperation *iface, IUnknown *
 static HRESULT WINAPI file_operation_CopyItem(IFileOperation *iface, IShellItem *item, IShellItem *folder,
         LPCWSTR name, IFileOperationProgressSink *sink)
 {
-	struct file_operation *operation = impl_from_IFileOperation(iface);
+    struct file_operation *operation = impl_from_IFileOperation(iface);
+    LPWSTR srcBuffer;
     LPWSTR dstBuffer;
     
     srcBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
