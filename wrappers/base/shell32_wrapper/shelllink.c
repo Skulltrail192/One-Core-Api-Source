@@ -384,7 +384,7 @@ static HRESULT WINAPI IPersistFile_fnSave(IPersistFile* iface, LPCOLESTR pszFile
             {
                 /* update file path */
                 free(This->filepath);
-                This->filepath = wcsdup(pszFileName);
+                This->filepath = _wcsdup(pszFileName);
             }
 
             This->bDirty = FALSE;
@@ -2127,7 +2127,7 @@ static HRESULT WINAPI IShellLinkW_fnSetPath(IShellLinkW * iface, LPCWSTR pszFile
     len = lstrlenW(pszFile);
     if (pszFile[0] == '"' && pszFile[len-1] == '"')
     {
-        unquoted = wcsdup(pszFile);
+        unquoted = _wcsdup(pszFile);
         PathUnquoteSpacesW(unquoted);
         pszFile = unquoted;
     }
@@ -2505,7 +2505,7 @@ ShellLink_InvokeCommand( IContextMenu* iface, LPCMINVOKECOMMANDINFO lpici )
             return E_FAIL;
     }
     else
-        path = wcsdup( This->sPath );
+        path = _wcsdup( This->sPath );
 
     if ( lpici->cbSize == sizeof (CMINVOKECOMMANDINFOEX) &&
          ( lpici->fMask & CMIC_MASK_UNICODE ) )

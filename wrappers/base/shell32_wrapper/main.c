@@ -37,10 +37,13 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 			DisableThreadLibraryCalls(shell32_hInstance);		
 			AppData = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
 			if (!AppData)
-				return E_OUTOFMEMORY;			
-			GetEnvironmentVariableW(L"APPDATA", AppData, bufferSize);
-			SetEnvironmentVariableW(L"LOCALAPPDATA", AppData);
-			//HeapFree(GetProcessHeap(), 0, AppData);
+				return E_OUTOFMEMORY;
+			
+			if(GetEnvironmentVariableW(L"APPDATA", AppData, bufferSize) > 0 && GetEnvironmentVariableW(L"LOCALAPPDATA", AppData, bufferSize) == 0){
+				SetEnvironmentVariableW(L"LOCALAPPDATA", AppData);
+			}		
+			
+			HeapFree(GetProcessHeap(), 0, AppData);
             break;
     }
 

@@ -4,7 +4,7 @@ add_definitions(-D_WIN32_WINNT=0x600)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/lib/atl)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/psdk)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/sdk/include/psdk)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/sdk/include/psdk)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 include_directories(${REACTOS_SOURCE_DIR}/wrappers/dependencies/propsys)
 include_directories(${REACTOS_SOURCE_DIR}/wrappers/dependencies/shellbase)
@@ -14,6 +14,7 @@ list(APPEND SOURCE
 	assoc.c
 	classes.c
 	debughlp.c
+	ebrowser.c
 	iconcache.c
     main.c
 	misc.c
@@ -24,8 +25,9 @@ list(APPEND SOURCE
 	shellole.c
 	shellpath.c
 	shlfsbind.c
-	#shlfileop.c
+	shlfileop.c
 	shlmenu.c
+	#shlview.c
 	shlview_cmenu.c
 	unimplemented.c
 	precomp.h

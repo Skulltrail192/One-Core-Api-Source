@@ -474,6 +474,13 @@ enum user_obj_type
     USER_DWP          /* DeferWindowPos structure */
 };
 
+typedef enum PROCESS_DPI_AWARENESS
+{
+    PROCESS_DPI_UNAWARE,
+    PROCESS_SYSTEM_DPI_AWARE,
+    PROCESS_PER_MONITOR_DPI_AWARE
+} PROCESS_DPI_AWARENESS;
+
 struct user_object
 {
     HANDLE             handle;
@@ -482,3 +489,5 @@ struct user_object
 
 void USER_Lock(void);
 void USER_Unlock(void);
+
+BOOL WINAPI IsProcessDPIAware();

@@ -81,7 +81,7 @@ static const struct {
  * DllGetClassObject     [SHELL32.@]
  * SHDllGetClassObject   [SHELL32.128]
  */
-HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
+HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
 {
 	IClassFactory * pcf = NULL;
 	HRESULT	hres;
@@ -101,9 +101,9 @@ HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
 	    }
 	}
 
-        if (!pcf) {
+    if (!pcf) {
 	    FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));
-	    return CLASS_E_CLASSNOTAVAILABLE;
+	    return DllGetClassObject(rclsid, iid, ppv);//return DllGetClassObjectInternal;
 	}
 
 	hres = IClassFactory_QueryInterface(pcf, iid, ppv);

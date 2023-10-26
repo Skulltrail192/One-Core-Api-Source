@@ -491,20 +491,6 @@ void USER_Unlock(void)
     LeaveCriticalSection( &user_section );
 }
 
-//Move to sysparams.c
-BOOL WINAPI SetProcessDpiAwarenessInternal( DPI_AWARENESS awareness )
-{
-	return FALSE;
-}
-
-/**********************************************************************
- *              GetProcessDpiAwarenessInternal   (USER32.@)
- */
-BOOL WINAPI GetProcessDpiAwarenessInternal( HANDLE process, DPI_AWARENESS *awareness )
-{
-    return FALSE;
-}
-
 /***********************************************************************
  *           NtUserGetDpiForMonitor   (win32u.@)
  */

@@ -39,6 +39,7 @@
 #include "shresdef.h"
 #define NO_SHLWAPI_STREAM
 #include "shlwapi.h"
+#include "shell32_main.h"
 #include "main.h"
 #include "shfldr.h"
 #include "wine/debug.h"
@@ -54,6 +55,8 @@ WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
 #define DE_SAMEFILE      0x71
 #define DE_DESTSAMETREE  0x7D
+
+#define FO_NEW_ITEM 5
 
 static DWORD SHNotifyCreateDirectoryA(LPCSTR path, LPSECURITY_ATTRIBUTES sec);
 static DWORD SHNotifyCreateDirectoryW(LPCWSTR path, LPSECURITY_ATTRIBUTES sec);
@@ -251,13 +254,13 @@ static BOOL SHELL_ConfirmIDs(int nKindOfDialog, SHELL_ConfirmIDstruc *ids)
             return TRUE;
 	  case ASK_OVERWRITE_FILE:
             ids->hIconInstance = NULL;
-            ids->icon_resource_id = IDI_WARNING;
+            ids->icon_resource_id = (UINT)IDI_WARNING;
 	    ids->caption_resource_id  = IDS_OVERWRITEFILE_CAPTION;
 	    ids->text_resource_id  = IDS_OVERWRITEFILE_TEXT;
             return TRUE;
 	  case ASK_OVERWRITE_FOLDER:
             ids->hIconInstance = NULL;
-            ids->icon_resource_id = IDI_WARNING;
+            ids->icon_resource_id = (UINT)IDI_WARNING;
             ids->caption_resource_id  = IDS_OVERWRITEFILE_CAPTION;
             ids->text_resource_id  = IDS_OVERWRITEFOLDER_TEXT;
             return TRUE;
@@ -369,37 +372,6 @@ static DWORD SHELL_DeleteDirectoryW(HWND hwnd, LPCWSTR pszDir, BOOL bShowUI)
         ret;
 }
 
-/**************************************************************************
- * Win32CreateDirectory      [SHELL32.93]
- *
- * Creates a directory. Also triggers a change notify if one exists.
- *
- * PARAMS
- *  path       [I]   path to directory to create
- *
- * RETURNS
- *  TRUE if successful, FALSE otherwise
- *
- * NOTES
- *  Verified on Win98 / IE 5 (SHELL32 4.72, March 1999 build) to be ANSI.
- *  This is Unicode on NT/2000
- */
-static DWORD SHNotifyCreateDirectoryA(LPCSTR path, LPSECURITY_ATTRIBUTES sec)
-{
-	LPWSTR wPath;
-	DWORD retCode;
-
-	TRACE("(%s, %p)\n", debugstr_a(path), sec);
-
-	retCode = SHELL32_AnsiToUnicodeBuf(path, &wPath, 0);
-	if (!retCode)
-	{
-	  retCode = SHNotifyCreateDirectoryW(wPath, sec);
-	  free(wPath);
-	}
-	return retCode;
-}
-
 /**********************************************************************/
 
 static DWORD SHNotifyCreateDirectoryW(LPCWSTR path, LPSECURITY_ATTRIBUTES sec)
@@ -412,46 +384,6 @@ static DWORD SHNotifyCreateDirectoryW(LPCWSTR path, LPSECURITY_ATTRIBUTES sec)
 	  return ERROR_SUCCESS;
 	}
 	return GetLastError();
-}
-
-/**********************************************************************/
-
-BOOL WINAPI Win32CreateDirectoryAW(LPCVOID path, LPSECURITY_ATTRIBUTES sec)
-{
-	if (SHELL_OsIsUnicode())
-	  return (SHNotifyCreateDirectoryW(path, sec) == ERROR_SUCCESS);
-	return (SHNotifyCreateDirectoryA(path, sec) == ERROR_SUCCESS);
-}
-
-/************************************************************************
- * Win32RemoveDirectory      [SHELL32.94]
- *
- * Deletes a directory. Also triggers a change notify if one exists.
- *
- * PARAMS
- *  path       [I]   path to directory to delete
- *
- * RETURNS
- *  TRUE if successful, FALSE otherwise
- *
- * NOTES
- *  Verified on Win98 / IE 5 (SHELL32 4.72, March 1999 build) to be ANSI.
- *  This is Unicode on NT/2000
- */
-static DWORD SHNotifyRemoveDirectoryA(LPCSTR path)
-{
-	LPWSTR wPath;
-	DWORD retCode;
-
-	TRACE("(%s)\n", debugstr_a(path));
-
-	retCode = SHELL32_AnsiToUnicodeBuf(path, &wPath, 0);
-	if (!retCode)
-	{
-	  retCode = SHNotifyRemoveDirectoryW(wPath);
-	  free(wPath);
-	}
-	return retCode;
 }
 
 /***********************************************************************/
@@ -480,46 +412,6 @@ static DWORD SHNotifyRemoveDirectoryW(LPCWSTR path)
 
 /***********************************************************************/
 
-BOOL WINAPI Win32RemoveDirectoryAW(LPCVOID path)
-{
-	if (SHELL_OsIsUnicode())
-	  return (SHNotifyRemoveDirectoryW(path) == ERROR_SUCCESS);
-	return (SHNotifyRemoveDirectoryA(path) == ERROR_SUCCESS);
-}
-
-/************************************************************************
- * Win32DeleteFile           [SHELL32.164]
- *
- * Deletes a file. Also triggers a change notify if one exists.
- *
- * PARAMS
- *  path       [I]   path to file to delete
- *
- * RETURNS
- *  TRUE if successful, FALSE otherwise
- *
- * NOTES
- *  Verified on Win98 / IE 5 (SHELL32 4.72, March 1999 build) to be ANSI.
- *  This is Unicode on NT/2000
- */
-static DWORD SHNotifyDeleteFileA(LPCSTR path)
-{
-	LPWSTR wPath;
-	DWORD retCode;
-
-	TRACE("(%s)\n", debugstr_a(path));
-
-	retCode = SHELL32_AnsiToUnicodeBuf(path, &wPath, 0);
-	if (!retCode)
-	{
-	  retCode = SHNotifyDeleteFileW(wPath);
-	  free(wPath);
-	}
-	return retCode;
-}
-
-/***********************************************************************/
-
 static DWORD SHNotifyDeleteFileW(LPCWSTR path)
 {
 	BOOL ret;
@@ -541,15 +433,6 @@ static DWORD SHNotifyDeleteFileW(LPCWSTR path)
 	  return ERROR_SUCCESS;
 	}
 	return GetLastError();
-}
-
-/***********************************************************************/
-
-DWORD WINAPI Win32DeleteFileAW(LPCVOID path)
-{
-	if (SHELL_OsIsUnicode())
-	  return (SHNotifyDeleteFileW(path) == ERROR_SUCCESS);
-	return (SHNotifyDeleteFileA(path) == ERROR_SUCCESS);
 }
 
 /************************************************************************
@@ -634,139 +517,6 @@ static DWORD SHNotifyCopyFileW(LPCWSTR src, LPCWSTR dest, BOOL bFailIfExists)
 	return GetLastError();
 }
 
-/*************************************************************************
- * SHCreateDirectory         [SHELL32.165]
- *
- * This function creates a file system folder whose fully qualified path is
- * given by path. If one or more of the intermediate folders do not exist,
- * they will be created as well.
- *
- * PARAMS
- *  hWnd       [I]
- *  path       [I]   path of directory to create
- *
- * RETURNS
- *  ERROR_SUCCESS or one of the following values:
- *  ERROR_BAD_PATHNAME if the path is relative
- *  ERROR_FILE_EXISTS when a file with that name exists
- *  ERROR_PATH_NOT_FOUND can't find the path, probably invalid
- *  ERROR_INVALID_NAME if the path contains invalid chars
- *  ERROR_ALREADY_EXISTS when the directory already exists
- *  ERROR_FILENAME_EXCED_RANGE if the filename was too long to process
- *
- * NOTES
- *  exported by ordinal
- *  Win9x exports ANSI
- *  WinNT/2000 exports Unicode
- */
-DWORD WINAPI SHCreateDirectory(HWND hWnd, LPCVOID path)
-{
-	if (SHELL_OsIsUnicode())
-	  return SHCreateDirectoryExW(hWnd, path, NULL);
-	return SHCreateDirectoryExA(hWnd, path, NULL);
-}
-
-/*************************************************************************
- * SHCreateDirectoryExA      [SHELL32.@]
- *
- * This function creates a file system folder whose fully qualified path is
- * given by path. If one or more of the intermediate folders do not exist,
- * they will be created as well.
- *
- * PARAMS
- *  hWnd       [I]
- *  path       [I]   path of directory to create
- *  sec        [I]   security attributes to use or NULL
- *
- * RETURNS
- *  ERROR_SUCCESS or one of the following values:
- *  ERROR_BAD_PATHNAME or ERROR_PATH_NOT_FOUND if the path is relative
- *  ERROR_INVALID_NAME if the path contains invalid chars
- *  ERROR_FILE_EXISTS when a file with that name exists
- *  ERROR_ALREADY_EXISTS when the directory already exists
- *  ERROR_FILENAME_EXCED_RANGE if the filename was too long to process
- *
- *  FIXME: Not implemented yet;
- *  SHCreateDirectoryEx also verifies that the files in the directory will be visible
- *  if the path is a network path to deal with network drivers which might have a limited
- *  but unknown maximum path length. If not:
- *
- *  If hWnd is set to a valid window handle, a message box is displayed warning
- *  the user that the files may not be accessible. If the user chooses not to
- *  proceed, the function returns ERROR_CANCELLED.
- *
- *  If hWnd is set to NULL, no user interface is displayed and the function
- *  returns ERROR_CANCELLED.
- */
-int WINAPI SHCreateDirectoryExA(HWND hWnd, LPCSTR path, LPSECURITY_ATTRIBUTES sec)
-{
-	LPWSTR wPath;
-	DWORD retCode;
-
-	TRACE("(%s, %p)\n", debugstr_a(path), sec);
-
-	retCode = SHELL32_AnsiToUnicodeBuf(path, &wPath, 0);
-	if (!retCode)
-	{
-	  retCode = SHCreateDirectoryExW(hWnd, wPath, sec);
-	  free(wPath);
-	}
-	return retCode;
-}
-
-/*************************************************************************
- * SHCreateDirectoryExW      [SHELL32.@]
- *
- * See SHCreateDirectoryExA.
- */
-int WINAPI SHCreateDirectoryExW(HWND hWnd, LPCWSTR path, LPSECURITY_ATTRIBUTES sec)
-{
-	int ret = ERROR_BAD_PATHNAME;
-	TRACE("(%p, %s, %p)\n", hWnd, debugstr_w(path), sec);
-
-	if (PathIsRelativeW(path))
-	{
-	  SetLastError(ret);
-	}
-	else
-	{
-	  ret = SHNotifyCreateDirectoryW(path, sec);
-	  /* Refuse to work on certain error codes before trying to create directories recursively */
-	  if (ret != ERROR_SUCCESS &&
-	      ret != ERROR_FILE_EXISTS &&
-	      ret != ERROR_ALREADY_EXISTS &&
-	      ret != ERROR_FILENAME_EXCED_RANGE)
-	  {
-	    WCHAR *pEnd, *pSlash, szTemp[MAX_PATH + 1];  /* extra for PathAddBackslash() */
-
-	    lstrcpynW(szTemp, path, MAX_PATH);
-	    pEnd = PathAddBackslashW(szTemp);
-	    pSlash = szTemp + 3;
-
-	    while (*pSlash)
-	    {
-              while (*pSlash && *pSlash != '\\') pSlash++;
-	      if (*pSlash)
-	      {
-	        *pSlash = 0;    /* terminate path at separator */
-
-	        ret = SHNotifyCreateDirectoryW(szTemp, pSlash + 1 == pEnd ? sec : NULL);
-	      }
-	      *pSlash++ = '\\'; /* put the separator back */
-	    }
-	  }
-
-	  if (ret && hWnd &&
-	      ret != ERROR_CANCELLED &&
-	      ret != ERROR_ALREADY_EXISTS)
-	  {
-	    /* We failed and should show a dialog box */
-	    FIXME("Show system error message, creating path %s, failed with error %d\n", debugstr_w(path), ret);
-	    ret = ERROR_CANCELLED; /* Error has been already presented to user (not really yet!) */
-	  }
-	}
-	return ret;
-}
 
 /*************************************************************************
  * SHFindAttrW      [internal]
@@ -839,65 +589,6 @@ static DWORD SHNameTranslate(LPWSTR* wString, LPCWSTR* pWToFrom, BOOL more)
 	}
 	return size;
 }
-/*************************************************************************
- * SHFileOperationA          [SHELL32.@]
- *
- * Function to copy, move, delete and create one or more files with optional
- * user prompts.
- *
- * PARAMS
- *  lpFileOp   [I/O] pointer to a structure containing all the necessary information
- *
- * RETURNS
- *  Success: ERROR_SUCCESS.
- *  Failure: ERROR_CANCELLED.
- *
- * NOTES
- *  exported by name
- */
-int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
-{
-	SHFILEOPSTRUCTW nFileOp = *((LPSHFILEOPSTRUCTW)lpFileOp);
-	int retCode = 0;
-	DWORD size;
-	LPWSTR ForFree = NULL, /* we change wString in SHNameTranslate and can't use it for freeing */
-	       wString = NULL; /* we change this in SHNameTranslate */
-
-	TRACE("\n");
-	if (FO_DELETE == (nFileOp.wFunc & FO_MASK))
-	  nFileOp.pTo = NULL; /* we need a NULL or a valid pointer for translation */
-	if (!(nFileOp.fFlags & FOF_SIMPLEPROGRESS))
-	  nFileOp.lpszProgressTitle = NULL; /* we need a NULL or a valid pointer for translation */
-	while (1) /* every loop calculate size, second translate also, if we have storage for this */
-	{
-	  size = SHNameTranslate(&wString, &nFileOp.lpszProgressTitle, FALSE); /* no loop */
-	  size += SHNameTranslate(&wString, &nFileOp.pFrom, TRUE); /* internal loop */
-	  size += SHNameTranslate(&wString, &nFileOp.pTo, TRUE); /* internal loop */
-
-	  if (ForFree)
-	  {
-	    retCode = SHFileOperationW(&nFileOp);
-	    /* Windows 95/98 returns S_OK for this case. */
-	    if (retCode == ERROR_ACCESS_DENIED && (GetVersion() & 0x80000000))
-	      retCode = S_OK;
-
-	    free(ForFree); /* we cannot use wString, it was changed */
-	    break;
-	  }
-	  else
-	  {
-	    wString = ForFree = malloc(size * sizeof(WCHAR));
-	    if (ForFree) continue;
-	    retCode = ERROR_OUTOFMEMORY;
-	    nFileOp.fAnyOperationsAborted = TRUE;
-	    return retCode;
-	  }
-	}
-
-	lpFileOp->hNameMappings = nFileOp.hNameMappings;
-	lpFileOp->fAnyOperationsAborted = nFileOp.fAnyOperationsAborted;
-	return retCode;
-}
 
 #define ERROR_SHELL_INTERNAL_FILE_NOT_FOUND 1026
 
@@ -925,7 +616,8 @@ typedef struct
 
 static inline void grow_list(FILE_LIST *list)
 {
-    FILE_ENTRY *new = _recalloc(list->feFiles, list->num_alloc * 2, sizeof(*new));
+    FILE_ENTRY *new = (FILE_ENTRY *)HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, list->feFiles,
+                                  list->num_alloc * 2 * sizeof(*new) );
     list->feFiles = new;
     list->num_alloc *= 2;
 }
@@ -1305,7 +997,7 @@ static BOOL confirm_delete_list(HWND hWnd, DWORD fFlags, BOOL fTrash, const FILE
     {
         WCHAR tmp[12];
 
-        swprintf(tmp, ARRAY_SIZE(tmp), L"%d", flFrom->dwNumFiles);
+        swprintf(tmp, L"%d", flFrom->dwNumFiles);
         return SHELL_ConfirmDialogW(hWnd, (fTrash?ASK_TRASH_MULTIPLE_ITEM:ASK_DELETE_MULTIPLE_ITEM), tmp, NULL);
     }
     else
@@ -1332,7 +1024,8 @@ static int delete_files(LPSHFILEOPSTRUCTW lpFileOp, const FILE_LIST *flFrom)
         return ERROR_SUCCESS;
 
     /* Windows also checks only the first item */
-    bTrash = (lpFileOp->fFlags & FOF_ALLOWUNDO) && is_trash_available();
+    bTrash = (lpFileOp->fFlags & FOF_ALLOWUNDO);
+    //bTrash = (lpFileOp->fFlags & FOF_ALLOWUNDO) && is_trash_available();
 
     if (!(lpFileOp->fFlags & FOF_NOCONFIRMATION) || (!bTrash && lpFileOp->fFlags & FOF_WANTNUKEWARNING))
         if (!confirm_delete_list(lpFileOp->hwnd, lpFileOp->fFlags, bTrash, flFrom))
@@ -1352,8 +1045,8 @@ static int delete_files(LPSHFILEOPSTRUCTW lpFileOp, const FILE_LIST *flFrom)
         if (bTrash)
         {
             BOOL bDelete;
-            if (trash_file(fileEntry->szFullPath))
-                continue;
+            // if (trash_file(fileEntry->szFullPath))
+                // continue;
 
             /* Note: Windows silently deletes the file in such a situation, we show a dialog */
             if (!(lpFileOp->fFlags & FOF_NOCONFIRMATION) || (lpFileOp->fFlags & FOF_WANTNUKEWARNING))
@@ -1560,248 +1253,16 @@ int WINAPI SHFileOperationW(LPSHFILEOPSTRUCTW lpFileOp)
     return ret;
 }
 
-#define SHDSA_GetItemCount(hdsa) (*(int*)(hdsa))
-
-/*************************************************************************
- * SHFreeNameMappings      [shell32.246]
- *
- * Free the mapping handle returned by SHFileOperation if FOF_WANTSMAPPINGHANDLE
- * was specified.
- *
- * PARAMS
- *  hNameMapping [I] handle to the name mappings used during renaming of files
- *
- * RETURNS
- *  Nothing
- */
-void WINAPI SHFreeNameMappings(HANDLE hNameMapping)
-{
-	if (hNameMapping)
-	{
-	  int i = SHDSA_GetItemCount((HDSA)hNameMapping) - 1;
-
-	  for (; i>= 0; i--)
-	  {
-            LPSHNAMEMAPPINGW lp = DSA_GetItemPtr(hNameMapping, i);
-
-	    SHFree(lp->pszOldPath);
-	    SHFree(lp->pszNewPath);
-	  }
-          DSA_Destroy(hNameMapping);
-	}
-}
-
-/*************************************************************************
- * SheGetDirA [SHELL32.@]
- *
- * drive = 0: returns the current directory path
- * drive > 0: returns the current directory path of the specified drive
- *            drive=1 -> A:  drive=2 -> B:  ...
- * returns 0 if successful
-*/
-DWORD WINAPI SheGetDirA(DWORD drive, LPSTR buffer)
-{
-    WCHAR org_path[MAX_PATH];
-    DWORD ret;
-    char drv_path[3];
-
-    /* change current directory to the specified drive */
-    if (drive) {
-        strcpy(drv_path, "A:");
-        drv_path[0] += (char)drive-1;
-
-        GetCurrentDirectoryW(MAX_PATH, org_path);
-
-        SetCurrentDirectoryA(drv_path);
-    }
-
-    /* query current directory path of the specified drive */
-    ret = GetCurrentDirectoryA(MAX_PATH, buffer);
-
-    /* back to the original drive */
-    if (drive)
-        SetCurrentDirectoryW(org_path);
-
-    if (!ret)
-        return GetLastError();
-
-    return 0;
-}
-
-/*************************************************************************
- * SheGetDirW [SHELL32.@]
- *
- * drive = 0: returns the current directory path
- * drive > 0: returns the current directory path of the specified drive
- *            drive=1 -> A:  drive=2 -> B:  ...
- * returns 0 if successful
- */
-DWORD WINAPI SheGetDirW(DWORD drive, LPWSTR buffer)
-{
-    WCHAR org_path[MAX_PATH];
-    DWORD ret;
-    char drv_path[3];
-
-    /* change current directory to the specified drive */
-    if (drive) {
-        strcpy(drv_path, "A:");
-        drv_path[0] += (char)drive-1;
-
-        GetCurrentDirectoryW(MAX_PATH, org_path);
-
-        SetCurrentDirectoryA(drv_path);
-    }
-
-    /* query current directory path of the specified drive */
-    ret = GetCurrentDirectoryW(MAX_PATH, buffer);
-
-    /* back to the original drive */
-    if (drive)
-        SetCurrentDirectoryW(org_path);
-
-    if (!ret)
-        return GetLastError();
-
-    return 0;
-}
-
-/*************************************************************************
- * SheChangeDirA [SHELL32.@]
- *
- * changes the current directory to the specified path
- * and returns 0 if successful
- */
-DWORD WINAPI SheChangeDirA(LPSTR path)
-{
-    if (SetCurrentDirectoryA(path))
-        return 0;
-    else
-        return GetLastError();
-}
-
-/*************************************************************************
- * SheChangeDirW [SHELL32.@]
- *
- * changes the current directory to the specified path
- * and returns 0 if successful
- */
-DWORD WINAPI SheChangeDirW(LPWSTR path)
-{
-    if (SetCurrentDirectoryW(path))
-        return 0;
-    else
-        return GetLastError();
-}
-
-/*************************************************************************
- * IsNetDrive			[SHELL32.66]
- */
-int WINAPI IsNetDrive(int drive)
-{
-	char root[4];
-	strcpy(root, "A:\\");
-	root[0] += (char)drive;
-	return (GetDriveTypeA(root) == DRIVE_REMOTE);
-}
-
-
-/*************************************************************************
- * RealDriveType                [SHELL32.524]
- */
-int WINAPI RealDriveType(int drive, BOOL bQueryNet)
-{
-    char root[] = "A:\\";
-    root[0] += (char)drive;
-    return GetDriveTypeA(root);
-}
-
-/***********************************************************************
- *              SHPathPrepareForWriteA (SHELL32.@)
- */
-HRESULT WINAPI SHPathPrepareForWriteA(HWND hwnd, IUnknown *modless, LPCSTR path, DWORD flags)
-{
-    WCHAR wpath[MAX_PATH];
-    MultiByteToWideChar( CP_ACP, 0, path, -1, wpath, MAX_PATH);
-    return SHPathPrepareForWriteW(hwnd, modless, wpath, flags);
-}
-
-/***********************************************************************
- *              SHPathPrepareForWriteW (SHELL32.@)
- */
-HRESULT WINAPI SHPathPrepareForWriteW(HWND hwnd, IUnknown *modless, LPCWSTR path, DWORD flags)
-{
-    DWORD res;
-    DWORD err;
-    LPCWSTR realpath;
-    int len;
-    WCHAR* last_slash;
-    WCHAR* temppath=NULL;
-
-    TRACE("%p %p %s 0x%08lx\n", hwnd, modless, debugstr_w(path), flags);
-
-    if (flags & ~(SHPPFW_DIRCREATE|SHPPFW_ASKDIRCREATE|SHPPFW_IGNOREFILENAME))
-        FIXME("unimplemented flags 0x%08lx\n", flags);
-
-    /* cut off filename if necessary */
-    if (flags & SHPPFW_IGNOREFILENAME)
-    {
-        last_slash = StrRChrW(path, NULL, '\\');
-        if (last_slash == NULL)
-            len = 1;
-        else
-            len = last_slash - path + 1;
-        temppath = malloc(len * sizeof(WCHAR));
-        if (!temppath)
-            return E_OUTOFMEMORY;
-        StrCpyNW(temppath, path, len);
-        realpath = temppath;
-    }
-    else
-    {
-        realpath = path;
-    }
-
-    /* try to create the directory if asked to */
-    if (flags & (SHPPFW_DIRCREATE|SHPPFW_ASKDIRCREATE))
-    {
-        if (flags & SHPPFW_ASKDIRCREATE)
-            FIXME("treating SHPPFW_ASKDIRCREATE as SHPPFW_DIRCREATE\n");
-
-        SHCreateDirectoryExW(0, realpath, NULL);
-    }
-
-    /* check if we can access the directory */
-    res = GetFileAttributesW(realpath);
-
-    free(temppath);
-
-    if (res == INVALID_FILE_ATTRIBUTES)
-    {
-        err = GetLastError();
-        if (err == ERROR_FILE_NOT_FOUND)
-            return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
-        return HRESULT_FROM_WIN32(err);
-    }
-    else if (res & FILE_ATTRIBUTE_DIRECTORY)
-        return S_OK;
-    else
-        return HRESULT_FROM_WIN32(ERROR_DIRECTORY);
-}
-
-/*************************************************************************
- * SHMultiFileProperties [SHELL32.@]
- */
-
-HRESULT WINAPI SHMultiFileProperties(IDataObject *pdtobj, DWORD flags)
-{
-    FIXME("stub: %p %lu\n", pdtobj, flags);
-    return E_NOTIMPL;
-}
-
 struct file_operation
 {
     IFileOperation IFileOperation_iface;
     LONG ref;
+	SHFILEOPSTRUCTW fileOperation;
+	DWORD operationFlags;
+	UINT operation;
+	DWORD fileAttributes;
+	BOOL aborted;
+	IFileOperationProgressSink *sink;
 };
 
 static inline struct file_operation *impl_from_IFileOperation(IFileOperation *iface)
@@ -1856,148 +1317,258 @@ static ULONG WINAPI file_operation_Release(IFileOperation *iface)
 
 static HRESULT WINAPI file_operation_Advise(IFileOperation *iface, IFileOperationProgressSink *sink, DWORD *cookie)
 {
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
     FIXME("(%p, %p, %p): stub.\n", iface, sink, cookie);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_Unadvise(IFileOperation *iface, DWORD cookie)
 {
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
     FIXME("(%p, %lx): stub.\n", iface, cookie);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_SetOperationFlags(IFileOperation *iface, DWORD flags)
 {
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
     FIXME("(%p, %lx): stub.\n", iface, flags);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_SetProgressMessage(IFileOperation *iface, LPCWSTR message)
 {
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
     FIXME("(%p, %s): stub.\n", iface, debugstr_w(message));
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_SetProgressDialog(IFileOperation *iface, IOperationsProgressDialog *dialog)
 {
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
     FIXME("(%p, %p): stub.\n", iface, dialog);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_SetProperties(IFileOperation *iface, IPropertyChangeArray *array)
 {
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
     FIXME("(%p, %p): stub.\n", iface, array);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_SetOwnerWindow(IFileOperation *iface, HWND owner)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	
+	operation->fileOperation.hwnd = owner;
     FIXME("(%p, %p): stub.\n", iface, owner);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_ApplyPropertiesToItem(IFileOperation *iface, IShellItem *item)
 {
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
     FIXME("(%p, %p): stub.\n", iface, item);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_ApplyPropertiesToItems(IFileOperation *iface, IUnknown *items)
 {
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
     FIXME("(%p, %p): stub.\n", iface, items);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_RenameItem(IFileOperation *iface, IShellItem *item, LPCWSTR name,
         IFileOperationProgressSink *sink)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	operation->fileOperation.wFunc = FO_RENAME;	
     FIXME("(%p, %p, %s, %p): stub.\n", iface, item, debugstr_w(name), sink);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_RenameItems(IFileOperation *iface, IUnknown *items, LPCWSTR name)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	operation->fileOperation.wFunc = FO_RENAME;
+	operation->fileOperation.fFlags = FOF_MULTIDESTFILES;
+	operation->operation = FO_RENAME;
+	
     FIXME("(%p, %p, %s): stub.\n", iface, items, debugstr_w(name));
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_MoveItem(IFileOperation *iface, IShellItem *item, IShellItem *folder,
         LPCWSTR name, IFileOperationProgressSink *sink)
 {
-    FIXME("(%p, %p, %p, %s, %p): stub.\n", iface, item, folder, debugstr_w(name), sink);
+    struct file_operation *operation = impl_from_IFileOperation(iface);
+    LPWSTR srcBuffer;
+    LPWSTR dstBuffer;
+    
+    srcBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+    if (!srcBuffer)
+        return E_OUTOFMEMORY;
+    dstBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+    if (!dstBuffer) {
+        HeapFree(GetProcessHeap(), 0, srcBuffer);
+        return E_OUTOFMEMORY;
+    }
 
-    return E_NOTIMPL;
+    IShellItem2_GetDisplayName(item, SIGDN_FILESYSPATH, &srcBuffer);
+    IShellItem2_GetDisplayName(folder, SIGDN_FILESYSPATH, &dstBuffer);
+
+    operation->fileOperation.wFunc = FO_MOVE;
+    operation->fileOperation.fFlags = FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI |
+                     FOF_NOCONFIRMMKDIR | FOF_NOCOPYSECURITYATTRIBS;
+
+	StringCchCatW(dstBuffer, wcslen(srcBuffer) + 1, L"\\");
+	StringCchCatW(dstBuffer, wcslen(srcBuffer) + wcslen(name) + 1, name);
+    operation->fileOperation.pFrom = srcBuffer;
+    operation->fileOperation.pTo =    dstBuffer;
+
+    operation->operation = FO_MOVE;
+    operation->sink = sink;
+    IFileOperationProgressSink_FinishOperations(sink, S_OK);
+
+    FIXME("(%p, %p, %p, %s, %p): stub.\n", iface, item, folder, debugstr_w(name), sink);
+    
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_MoveItems(IFileOperation *iface, IUnknown *items, IShellItem *folder)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	operation->fileOperation.wFunc = FO_MOVE;
+	operation->fileOperation.fFlags = FOF_MULTIDESTFILES;
+	operation->operation = FO_MOVE;
+	
     FIXME("(%p, %p, %p): stub.\n", iface, items, folder);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_CopyItem(IFileOperation *iface, IShellItem *item, IShellItem *folder,
         LPCWSTR name, IFileOperationProgressSink *sink)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+    LPWSTR dstBuffer;
+    
+    srcBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+    if (!srcBuffer)
+        return E_OUTOFMEMORY;
+    dstBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+    if (!dstBuffer) {
+        HeapFree(GetProcessHeap(), 0, srcBuffer);
+        return E_OUTOFMEMORY;
+    }
+
+    IShellItem2_GetDisplayName(item, SIGDN_FILESYSPATH, &srcBuffer);
+    IShellItem2_GetDisplayName(folder, SIGDN_FILESYSPATH, &dstBuffer);
+
+    operation->fileOperation.wFunc = FO_COPY;
+    operation->fileOperation.fFlags = FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI |
+                     FOF_NOCONFIRMMKDIR | FOF_NOCOPYSECURITYATTRIBS;
+
+	StringCchCatW(dstBuffer, wcslen(srcBuffer) + 1, L"\\");
+	StringCchCatW(dstBuffer, wcslen(srcBuffer) + wcslen(name) + 1, name);
+    operation->fileOperation.pFrom = srcBuffer;
+    operation->fileOperation.pTo =    dstBuffer;
+
+    operation->operation = FO_MOVE;
+    operation->sink = sink;
+    IFileOperationProgressSink_FinishOperations(sink, S_OK);
+	
     FIXME("(%p, %p, %p, %s, %p): stub.\n", iface, item, folder, debugstr_w(name), sink);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_CopyItems(IFileOperation *iface, IUnknown *items, IShellItem *folder)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	operation->fileOperation.wFunc = FO_COPY;
+	operation->operation = FO_COPY;
+	operation->fileOperation.fFlags = FOF_NOCONFIRMMKDIR;
+	
     FIXME("(%p, %p, %p): stub.\n", iface, items, folder);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_DeleteItem(IFileOperation *iface, IShellItem *item,
         IFileOperationProgressSink *sink)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	operation->fileOperation.wFunc = FO_DELETE;
+	operation->operation = FO_DELETE;
+	
     FIXME("(%p, %p, %p): stub.\n", iface, item, sink);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_DeleteItems(IFileOperation *iface, IUnknown *items)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	operation->fileOperation.wFunc = FO_DELETE;
+	operation->fileOperation.fFlags = FOF_MULTIDESTFILES;
+	operation->operation = FO_DELETE;
+	
     FIXME("(%p, %p): stub.\n", iface, items);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_NewItem(IFileOperation *iface, IShellItem *folder, DWORD attributes,
         LPCWSTR name, LPCWSTR template, IFileOperationProgressSink *sink)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	operation->operation = FO_NEW_ITEM;	
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
+	
     FIXME("(%p, %p, %lx, %s, %s, %p): stub.\n", iface, folder, attributes,
           debugstr_w(name), debugstr_w(template), sink);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_PerformOperations(IFileOperation *iface)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	int resp;
     FIXME("(%p): stub.\n", iface);
+	
+	resp = SHFileOperationW(&operation->fileOperation);
+	operation->aborted = FALSE;	
+	
+	if(resp == 0){
+		return S_OK;
+	}
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static HRESULT WINAPI file_operation_GetAnyOperationsAborted(IFileOperation *iface, BOOL *aborted)
 {
+	struct file_operation *operation = impl_from_IFileOperation(iface);
+	
+	*aborted = operation->aborted;
     FIXME("(%p, %p): stub.\n", iface, aborted);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 static const IFileOperationVtbl file_operation_vtbl =
@@ -2031,6 +1602,12 @@ HRESULT WINAPI IFileOperation_Constructor(IUnknown *outer, REFIID riid, void **o
 {
     struct file_operation *object;
     HRESULT hr;
+	
+    SHFILEOPSTRUCTW fileOperation = {0};
+
+    ZeroMemory(&fileOperation, sizeof(fileOperation));
+
+	DbgPrint("IFileOperation_Constructor called\n");
 
     object = calloc(1, sizeof(*object));
     if (!object)
@@ -2038,6 +1615,8 @@ HRESULT WINAPI IFileOperation_Constructor(IUnknown *outer, REFIID riid, void **o
 
     object->IFileOperation_iface.lpVtbl = &file_operation_vtbl;
     object->ref = 1;
+    object->aborted = FALSE;
+    object->fileOperation = fileOperation;
 
     hr = IFileOperation_QueryInterface(&object->IFileOperation_iface, riid, out);
     IFileOperation_Release(&object->IFileOperation_iface);

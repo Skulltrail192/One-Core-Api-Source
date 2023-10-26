@@ -18,38 +18,52 @@
  */
 
 #include <main.h>
+#include <objidl.h>
  
 WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
-FORCEINLINE HRESULT IShellFolder_GetDisplayNameOf(IShellFolder* This,LPCITEMIDLIST pidl,SHGDNF uFlags,STRRET *lpName) {
+FORCEINLINE HRESULT IShellFolder_GetDisplayNameOf(IShellFolder* This,LPCITEMIDLIST pidl,SHGDNF uFlags,STRRET *lpName) 
+{
     return This->lpVtbl->GetDisplayNameOf(This,pidl,uFlags,lpName);
 }
 
-FORCEINLINE ULONG IShellFolder_Release(IShellFolder* This) {
+FORCEINLINE HRESULT IShellFolder_ParseDisplayName(IShellFolder* This,HWND hwndOwner,LPBC pbc,LPOLESTR lpszDisplayName,DWORD * pchEaten, LPITEMIDLIST * ppidl,DWORD * pdwAttributes)
+{
+    return This->lpVtbl->ParseDisplayName(This,hwndOwner,pbc,lpszDisplayName,pchEaten,ppidl,pdwAttributes);
+}
+
+FORCEINLINE ULONG IShellFolder_Release(IShellFolder* This) 
+{
     return This->lpVtbl->Release(This);
 }
 
-FORCEINLINE HRESULT IUnknown_QueryInterface(IUnknown* This,REFIID riid,void **ppvObject) {
+FORCEINLINE HRESULT IUnknown_QueryInterface(IUnknown* This,REFIID riid,void **ppvObject) 
+{
     return This->lpVtbl->QueryInterface(This,riid,ppvObject);
 }
 
-FORCEINLINE HRESULT IPersistIDList_GetIDList(IPersistIDList* This,LPITEMIDLIST *ppidl) {
+FORCEINLINE HRESULT IPersistIDList_GetIDList(IPersistIDList* This,LPITEMIDLIST *ppidl) 
+{
     return This->lpVtbl->GetIDList(This,ppidl);
 }
 
-FORCEINLINE ULONG IPersistIDList_Release(IPersistIDList* This) {
+FORCEINLINE ULONG IPersistIDList_Release(IPersistIDList* This) 
+{
     return This->lpVtbl->Release(This);
 }
 
-FORCEINLINE HRESULT IPersistFolder2_GetCurFolder(IPersistFolder2* This,LPITEMIDLIST *ppidl) {
+FORCEINLINE HRESULT IPersistFolder2_GetCurFolder(IPersistFolder2* This,LPITEMIDLIST *ppidl) 
+{
     return This->lpVtbl->GetCurFolder(This,ppidl);
 }
 
-FORCEINLINE ULONG IPersistFolder2_Release(IPersistFolder2* This) {
+FORCEINLINE ULONG IPersistFolder2_Release(IPersistFolder2* This) 
+{
     return This->lpVtbl->Release(This);
 }
 
-FORCEINLINE ULONG IShellItem_Release(IShellItem* This) {
+FORCEINLINE ULONG IShellItem_Release(IShellItem* This) 
+{
     return This->lpVtbl->Release(This);
 }
 
@@ -58,11 +72,18 @@ FORCEINLINE ULONG IDataObject_Release(IDataObject* This)
 	return This->lpVtbl->Release(This);
 } 
 
-FORCEINLINE HRESULT IFolderView_GetFolder(IFolderView* This,REFIID riid,void **ppv) {
+FORCEINLINE HRESULT IFolderView_GetFolder(IFolderView* This,REFIID riid,void **ppv) 
+{
     return This->lpVtbl->GetFolder(This,riid,ppv);
 }
 
-FORCEINLINE ULONG IFolderView_Release(IFolderView* This) {
+FORCEINLINE ULONG IFolderView_Release(IFolderView* This) 
+{
+    return This->lpVtbl->Release(This);
+}
+
+FORCEINLINE ULONG IBindCtx_Release(IBindCtx* This) 
+{
     return This->lpVtbl->Release(This);
 }
 /*************************************************************************
@@ -847,7 +868,7 @@ static HRESULT _ILParsePathW(LPCWSTR path, LPWIN32_FIND_DATAW lpFindFile,
     return ret;
 }
 
-LPITEMIDLIST SHSimpleIDListFromPathW(LPCWSTR lpszPath)
+LPITEMIDLIST WINAPI SHSimpleIDListFromPathW (LPCWSTR lpszPath)
 {
     LPITEMIDLIST pidl = NULL;
 
@@ -856,4 +877,17 @@ LPITEMIDLIST SHSimpleIDListFromPathW(LPCWSTR lpszPath)
     _ILParsePathW(lpszPath, NULL, TRUE, &pidl, NULL);
     TRACE("%s %p\n", debugstr_w(lpszPath), pidl);
     return pidl;
+}
+
+
+BOOL _ILIsDrive(LPCITEMIDLIST pidl)
+{
+    LPPIDLDATA lpPData = _ILGetDataPointer(pidl);
+
+    TRACE("(%p)\n",pidl);
+
+    return (pidl && lpPData && (PT_DRIVE == lpPData->type ||
+                    PT_DRIVE1 == lpPData->type ||
+                    PT_DRIVE2 == lpPData->type ||
+                    PT_DRIVE3 == lpPData->type));
 }

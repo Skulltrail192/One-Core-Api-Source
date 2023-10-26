@@ -25,7 +25,7 @@
 #include <wine/debug.h>
 
 #include <winbase.h>
-#include <Shobjidl.h>
+#include <shobjidl.h>
 #include <shlobj.h>
 #include <shlwapi.h>
 #include <shellapi.h>
@@ -104,7 +104,22 @@
 #define IEnumAssocHandlers_AddRef( x ) \
             (x)->lpVtbl->AddRef( x )	
 			
-#define SLDF_HAS_LOGO3ID 0x00000800			
+#define SLDF_HAS_LOGO3ID 0x00000800
+
+#define FWF_NONE 0x00000000
+
+/* file operation */
+#define ASK_DELETE_FILE           1
+#define ASK_DELETE_FOLDER         2
+#define ASK_DELETE_MULTIPLE_ITEM  3
+#define ASK_CREATE_FOLDER         4
+#define ASK_OVERWRITE_FILE        5
+#define ASK_DELETE_SELECTED       6
+#define ASK_TRASH_FILE            7
+#define ASK_TRASH_FOLDER          8
+#define ASK_TRASH_MULTIPLE_ITEM   9
+#define ASK_CANT_TRASH_ITEM      10
+#define ASK_OVERWRITE_FOLDER     11
 
 typedef BYTE PIDLTYPE;
 

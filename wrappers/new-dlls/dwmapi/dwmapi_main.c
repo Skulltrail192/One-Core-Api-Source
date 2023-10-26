@@ -61,9 +61,12 @@ HRESULT WINAPI DwmIsCompositionEnabled(BOOL *enabled)
  */
 HRESULT WINAPI DwmEnableComposition(UINT uCompositionAction)
 {
-    FIXME("(%d) stub\n", uCompositionAction);
+    //FIXME("(%d) stub\n", uCompositionAction);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -74,9 +77,12 @@ HRESULT WINAPI DwmEnableComposition(UINT uCompositionAction)
  */
 HRESULT WINAPI DwmExtendFrameIntoClientArea(HWND hwnd, const MARGINS* margins)
 {
-    FIXME("(%p, %p) stub\n", hwnd, margins);
+    //FIXME("(%p, %p) stub\n", hwnd, margins);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -87,9 +93,12 @@ HRESULT WINAPI DwmExtendFrameIntoClientArea(HWND hwnd, const MARGINS* margins)
  */
 HRESULT WINAPI DwmGetColorizationColor(DWORD *colorization, BOOL opaque_blend)
 {
-    FIXME("(%p, %d) stub\n", colorization, opaque_blend);
+    //FIXME("(%p, %d) stub\n", colorization, opaque_blend);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -100,9 +109,11 @@ HRESULT WINAPI DwmGetColorizationColor(DWORD *colorization, BOOL opaque_blend)
  */
 HRESULT WINAPI DwmFlush(void)
 {
-    FIXME("() stub\n");
-
-	if (DwmIsCompositionEnabled()) 
+    //FIXME("() stub\n");
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -114,10 +125,13 @@ HRESULT WINAPI DwmFlush(void)
 HRESULT WINAPI DwmInvalidateIconicBitmaps(HWND hwnd)
 {
     static BOOL once;
+	BOOL isCompositionEnabled;
 
-    if (!once++) FIXME("(%p) stub\n", hwnd);
-
-	if (DwmIsCompositionEnabled()) 
+    if (!once++) //FIXME("(%p) stub\n", hwnd);
+	
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -129,10 +143,13 @@ HRESULT WINAPI DwmInvalidateIconicBitmaps(HWND hwnd)
 HRESULT WINAPI DwmSetWindowAttribute(HWND hwnd, DWORD attributenum, LPCVOID attribute, DWORD size)
 {
     static BOOL once;
+	BOOL isCompositionEnabled;
 
-    if (!once++) FIXME("(%p, %x, %p, %x) stub\n", hwnd, attributenum, attribute, size);
-
-	if (DwmIsCompositionEnabled()) 
+    if (!once++) //FIXME("(%p, %x, %p, %x) stub\n", hwnd, attributenum, attribute, size);
+	
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -143,9 +160,12 @@ HRESULT WINAPI DwmSetWindowAttribute(HWND hwnd, DWORD attributenum, LPCVOID attr
  */
 HRESULT WINAPI DwmGetGraphicsStreamClient(UINT uIndex, UUID *pClientUuid)
 {
-    FIXME("(%d, %p) stub\n", uIndex, pClientUuid);
+    //FIXME("(%d, %p) stub\n", uIndex, pClientUuid);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -156,9 +176,12 @@ HRESULT WINAPI DwmGetGraphicsStreamClient(UINT uIndex, UUID *pClientUuid)
  */
 HRESULT WINAPI DwmGetTransportAttributes(BOOL *pfIsRemoting, BOOL *pfIsConnected, DWORD *pDwGeneration)
 {
-    FIXME("(%p, %p, %p) stub\n", pfIsRemoting, pfIsConnected, pDwGeneration);
+    //FIXME("(%p, %p, %p) stub\n", pfIsRemoting, pfIsConnected, pDwGeneration);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -169,9 +192,12 @@ HRESULT WINAPI DwmGetTransportAttributes(BOOL *pfIsRemoting, BOOL *pfIsConnected
  */
 HRESULT WINAPI DwmUnregisterThumbnail(HTHUMBNAIL thumbnail)
 {
-    FIXME("(%p) stub\n", thumbnail);
+    //FIXME("(%p) stub\n", thumbnail);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -182,9 +208,12 @@ HRESULT WINAPI DwmUnregisterThumbnail(HTHUMBNAIL thumbnail)
  */
 HRESULT WINAPI DwmEnableMMCSS(BOOL enableMMCSS)
 {
-    FIXME("(%d) stub\n", enableMMCSS);
+    //FIXME("(%d) stub\n", enableMMCSS);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -195,9 +224,12 @@ HRESULT WINAPI DwmEnableMMCSS(BOOL enableMMCSS)
  */
 HRESULT WINAPI DwmGetGraphicsStreamTransformHint(UINT uIndex, MilMatrix3x2D *pTransform)
 {
-    FIXME("(%d, %p) stub\n", uIndex, pTransform);
+    //FIXME("(%d, %p) stub\n", uIndex, pTransform);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -208,9 +240,12 @@ HRESULT WINAPI DwmGetGraphicsStreamTransformHint(UINT uIndex, MilMatrix3x2D *pTr
  */
 HRESULT WINAPI DwmEnableBlurBehindWindow(HWND hWnd, const DWM_BLURBEHIND *pBlurBuf)
 {
-    FIXME("%p %p\n", hWnd, pBlurBuf);
+    //FIXME("%p %p\n", hWnd, pBlurBuf);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -223,7 +258,7 @@ BOOL WINAPI DwmDefWindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, 
 {
     static int i;
 
-    if (!i++) FIXME("stub\n");
+    //if (!i++) FIXME("stub\n");
 
     return FALSE;
 }
@@ -233,9 +268,12 @@ BOOL WINAPI DwmDefWindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, 
  */
 HRESULT WINAPI DwmGetWindowAttribute(HWND hwnd, DWORD attribute, PVOID pv_attribute, DWORD size)
 {
-    //FIXME("(%p %d %p %d) stub\n", hwnd, attribute, pv_attribute, size);
+    ////FIXME("(%p %d %p %d) stub\n", hwnd, attribute, pv_attribute, size);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -246,9 +284,12 @@ HRESULT WINAPI DwmGetWindowAttribute(HWND hwnd, DWORD attribute, PVOID pv_attrib
  */
 HRESULT WINAPI DwmRegisterThumbnail(HWND dest, HWND src, PHTHUMBNAIL thumbnail_id)
 {
-    FIXME("(%p %p %p) stub\n", dest, src, thumbnail_id);
+    //FIXME("(%p %p %p) stub\n", dest, src, thumbnail_id);
 
-	if (DwmIsCompositionEnabled()) 
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -287,7 +328,7 @@ HRESULT WINAPI DwmGetCompositionTimingInfo(HWND hwnd, DWM_TIMING_INFO *info)
     if (info->cbSize != sizeof(DWM_TIMING_INFO))
         return MILERR_MISMATCHED_SIZE;
 
-    if(!i++) FIXME("(%p %p)\n", hwnd, info);
+    if(!i++) //FIXME("(%p %p)\n", hwnd, info);
 
     memset(info, 0, info->cbSize);
     info->cbSize = sizeof(DWM_TIMING_INFO);
@@ -312,8 +353,11 @@ HRESULT WINAPI DwmGetCompositionTimingInfo(HWND hwnd, DWM_TIMING_INFO *info)
  */
 HRESULT WINAPI DwmAttachMilContent(HWND hwnd)
 {
-    FIXME("(%p) stub\n", hwnd);
-	if (DwmIsCompositionEnabled()) 
+    //FIXME("(%p) stub\n", hwnd);
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -324,8 +368,11 @@ HRESULT WINAPI DwmAttachMilContent(HWND hwnd)
  */
 HRESULT WINAPI DwmDetachMilContent(HWND hwnd)
 {
-    FIXME("(%p) stub\n", hwnd);
-	if (DwmIsCompositionEnabled()) 
+    //FIXME("(%p) stub\n", hwnd);
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -336,8 +383,11 @@ HRESULT WINAPI DwmDetachMilContent(HWND hwnd)
  */
 HRESULT WINAPI DwmUpdateThumbnailProperties(HTHUMBNAIL thumbnail, const DWM_THUMBNAIL_PROPERTIES *props)
 {
-    FIXME("(%p, %p) stub\n", thumbnail, props);
-	if (DwmIsCompositionEnabled()) 
+    //FIXME("(%p, %p) stub\n", thumbnail, props);
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -348,8 +398,11 @@ HRESULT WINAPI DwmUpdateThumbnailProperties(HTHUMBNAIL thumbnail, const DWM_THUM
  */
 HRESULT WINAPI DwmSetPresentParameters(HWND hwnd, DWM_PRESENT_PARAMETERS *params)
 {
-    FIXME("(%p %p) stub\n", hwnd, params);
-	if (DwmIsCompositionEnabled()) 
+    //FIXME("(%p %p) stub\n", hwnd, params);
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -360,8 +413,11 @@ HRESULT WINAPI DwmSetPresentParameters(HWND hwnd, DWM_PRESENT_PARAMETERS *params
  */
 HRESULT WINAPI DwmSetIconicLivePreviewBitmap(HWND hwnd, HBITMAP hbmp, POINT *pos, DWORD flags)
 {
-    FIXME("(%p %p %p %x) stub\n", hwnd, hbmp, pos, flags);
-	if (DwmIsCompositionEnabled()) 
+    //FIXME("(%p %p %p %x) stub\n", hwnd, hbmp, pos, flags);
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -372,8 +428,11 @@ HRESULT WINAPI DwmSetIconicLivePreviewBitmap(HWND hwnd, HBITMAP hbmp, POINT *pos
  */
 HRESULT WINAPI DwmSetIconicThumbnail(HWND hwnd, HBITMAP hbmp, DWORD flags)
 {
-    FIXME("(%p %p %x) stub\n", hwnd, hbmp, flags);
-	if (DwmIsCompositionEnabled()) 
+    //FIXME("(%p %p %x) stub\n", hwnd, hbmp, flags);
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
@@ -384,8 +443,11 @@ HRESULT WINAPI DwmSetIconicThumbnail(HWND hwnd, HBITMAP hbmp, DWORD flags)
  */
 HRESULT WINAPI DwmpGetColorizationParameters(void *params)
 {
-    FIXME("(%p) stub\n", params);
-	if (DwmIsCompositionEnabled()) 
+    //FIXME("(%p) stub\n", params);
+	BOOL isCompositionEnabled;
+	DwmIsCompositionEnabled(&isCompositionEnabled);
+	
+	if (isCompositionEnabled) 
 		return S_OK;
 	else 
 		return DWM_E_COMPOSITIONDISABLED;
