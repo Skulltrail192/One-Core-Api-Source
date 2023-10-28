@@ -1392,8 +1392,37 @@ static HRESULT WINAPI file_operation_ApplyPropertiesToItems(IFileOperation *ifac
 static HRESULT WINAPI file_operation_RenameItem(IFileOperation *iface, IShellItem *item, LPCWSTR name,
         IFileOperationProgressSink *sink)
 {
-	struct file_operation *operation = impl_from_IFileOperation(iface);
-	operation->fileOperation.wFunc = FO_RENAME;	
+    struct file_operation *operation = impl_from_IFileOperation(iface);
+    LPWSTR srcBuffer;
+    LPWSTR dstBuffer;
+	int resp;
+    
+    srcBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+    if (!srcBuffer)
+        return E_OUTOFMEMORY;
+    dstBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+    if (!dstBuffer) {
+        HeapFree(GetProcessHeap(), 0, srcBuffer);
+        return E_OUTOFMEMORY;
+    }
+
+    IShellItem2_GetDisplayName(item, SIGDN_FILESYSPATH, &srcBuffer);
+
+    operation->fileOperation.wFunc = FO_RENAME;
+    operation->fileOperation.fFlags = FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI |
+                     FOF_NOCONFIRMMKDIR | FOF_NOCOPYSECURITYATTRIBS;
+
+	// StringCchCatW(dstBuffer, wcslen(srcBuffer) + 1, L"\\");
+	// StringCchCatW(dstBuffer, wcslen(srcBuffer) + wcslen(name) + 1, name);
+    operation->fileOperation.pFrom = srcBuffer;
+    operation->fileOperation.pTo = name;
+
+    operation->operation = FO_RENAME;
+    operation->sink = sink;
+    IFileOperationProgressSink_FinishOperations(sink, S_OK);
+	
+	resp = SHFileOperationW(&operation->fileOperation);
+	operation->aborted = FALSE;		
     FIXME("(%p, %p, %s, %p): stub.\n", iface, item, debugstr_w(name), sink);
 
     return S_OK;
@@ -1417,6 +1446,7 @@ static HRESULT WINAPI file_operation_MoveItem(IFileOperation *iface, IShellItem 
     struct file_operation *operation = impl_from_IFileOperation(iface);
     LPWSTR srcBuffer;
     LPWSTR dstBuffer;
+	int resp;
     
     srcBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
     if (!srcBuffer)
@@ -1442,6 +1472,9 @@ static HRESULT WINAPI file_operation_MoveItem(IFileOperation *iface, IShellItem 
     operation->operation = FO_MOVE;
     operation->sink = sink;
     IFileOperationProgressSink_FinishOperations(sink, S_OK);
+	
+	resp = SHFileOperationW(&operation->fileOperation);
+	operation->aborted = FALSE;		
 
     FIXME("(%p, %p, %p, %s, %p): stub.\n", iface, item, folder, debugstr_w(name), sink);
     
@@ -1491,6 +1524,9 @@ static HRESULT WINAPI file_operation_CopyItem(IFileOperation *iface, IShellItem 
     operation->operation = FO_MOVE;
     operation->sink = sink;
     IFileOperationProgressSink_FinishOperations(sink, S_OK);
+	
+	SHFileOperationW(&operation->fileOperation);
+	operation->aborted = FALSE;		
 	
     FIXME("(%p, %p, %p, %s, %p): stub.\n", iface, item, folder, debugstr_w(name), sink);
 
@@ -1548,16 +1584,16 @@ static HRESULT WINAPI file_operation_NewItem(IFileOperation *iface, IShellItem *
 
 static HRESULT WINAPI file_operation_PerformOperations(IFileOperation *iface)
 {
-	struct file_operation *operation = impl_from_IFileOperation(iface);
-	int resp;
-    FIXME("(%p): stub.\n", iface);
+	// struct file_operation *operation = impl_from_IFileOperation(iface);
+	// int resp;
+    // FIXME("(%p): stub.\n", iface);
 	
-	resp = SHFileOperationW(&operation->fileOperation);
-	operation->aborted = FALSE;	
+	// resp = SHFileOperationW(&operation->fileOperation);
+	// operation->aborted = FALSE;	
 	
-	if(resp == 0){
-		return S_OK;
-	}
+	// if(resp == 0){
+		// return S_OK;
+	// }
 
     return S_OK;
 }

@@ -1157,7 +1157,24 @@ typedef struct __declspec(align(16)) _YY_CV_WAIT_BLOCK
 	volatile PRTL_SRWLOCK  SRWLock;
 } YY_CV_WAIT_BLOCK;
 
+#if defined(_M_AMD64)
+#define CONTEXT_i386      0x00010000
+#define CONTEXT_i486      0x00010000
+
+#define CONTEXT_I386_CONTROL   (CONTEXT_i386 | 0x0001) /* SS:SP, CS:IP, FLAGS, BP */
+#define CONTEXT_I386_INTEGER   (CONTEXT_i386 | 0x0002) /* AX, BX, CX, DX, SI, DI */
+#define CONTEXT_I386_SEGMENTS  (CONTEXT_i386 | 0x0004) /* DS, ES, FS, GS */
+#define CONTEXT_I386_FLOATING_POINT  (CONTEXT_i386 | 0x0008) /* 387 state */
+#define CONTEXT_I386_DEBUG_REGISTERS (CONTEXT_i386 | 0x0010) /* DB 0-3,6,7 */
+#define CONTEXT_I386_EXTENDED_REGISTERS (CONTEXT_i386 | 0x0020)
+#define CONTEXT_I386_XSTATE             (CONTEXT_i386 | 0x0040)
+#define CONTEXT_I386_FULL (CONTEXT_I386_CONTROL | CONTEXT_I386_INTEGER | CONTEXT_I386_SEGMENTS)
+#define CONTEXT_I386_ALL (CONTEXT_I386_FULL | CONTEXT_I386_FLOATING_POINT | CONTEXT_I386_DEBUG_REGISTERS | CONTEXT_I386_EXTENDED_REGISTERS)
+#endif
+
+#ifdef _M_IX86
 #define CONTEXT_AMD64   0x00100000
+#endif
 
 #define CONTEXT_AMD64_CONTROL   (CONTEXT_AMD64 | 0x0001)
 #define CONTEXT_AMD64_INTEGER   (CONTEXT_AMD64 | 0x0002)
@@ -1168,7 +1185,9 @@ typedef struct __declspec(align(16)) _YY_CV_WAIT_BLOCK
 #define CONTEXT_AMD64_FULL (CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_FLOATING_POINT)
 #define CONTEXT_AMD64_ALL (CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_SEGMENTS | CONTEXT_AMD64_FLOATING_POINT | CONTEXT_AMD64_DEBUG_REGISTERS)
 
+#ifdef _M_IX86
 typedef XSAVE_FORMAT XMM_SAVE_AREA32, *PXMM_SAVE_AREA32;
+#endif
 
 typedef struct DECLSPEC_ALIGN(16) _AMD64_CONTEXT {
     DWORD64 P1Home;          /* 000 */
@@ -1277,47 +1296,6 @@ typedef struct _I386_FLOATING_SAVE_AREA
 } I386_FLOATING_SAVE_AREA, WOW64_FLOATING_SAVE_AREA, *PWOW64_FLOATING_SAVE_AREA;
 
 #define I386_MAXIMUM_SUPPORTED_EXTENSION     512
-
-#include "pshpack4.h"
-typedef struct _I386_CONTEXT
-{
-    DWORD   ContextFlags;  /* 000 */
-
-    /* These are selected by CONTEXT_DEBUG_REGISTERS */
-    DWORD   Dr0;           /* 004 */
-    DWORD   Dr1;           /* 008 */
-    DWORD   Dr2;           /* 00c */
-    DWORD   Dr3;           /* 010 */
-    DWORD   Dr6;           /* 014 */
-    DWORD   Dr7;           /* 018 */
-
-    /* These are selected by CONTEXT_FLOATING_POINT */
-    I386_FLOATING_SAVE_AREA FloatSave; /* 01c */
-
-    /* These are selected by CONTEXT_SEGMENTS */
-    DWORD   SegGs;         /* 08c */
-    DWORD   SegFs;         /* 090 */
-    DWORD   SegEs;         /* 094 */
-    DWORD   SegDs;         /* 098 */
-
-    /* These are selected by CONTEXT_INTEGER */
-    DWORD   Edi;           /* 09c */
-    DWORD   Esi;           /* 0a0 */
-    DWORD   Ebx;           /* 0a4 */
-    DWORD   Edx;           /* 0a8 */
-    DWORD   Ecx;           /* 0ac */
-    DWORD   Eax;           /* 0b0 */
-
-    /* These are selected by CONTEXT_CONTROL */
-    DWORD   Ebp;           /* 0b4 */
-    DWORD   Eip;           /* 0b8 */
-    DWORD   SegCs;         /* 0bc */
-    DWORD   EFlags;        /* 0c0 */
-    DWORD   Esp;           /* 0c4 */
-    DWORD   SegSs;         /* 0c8 */
-
-    BYTE    ExtendedRegisters[I386_MAXIMUM_SUPPORTED_EXTENSION];  /* 0xcc */
-} I386_CONTEXT, WOW64_CONTEXT, *PWOW64_CONTEXT;
 
 #define XSTATE_LEGACY_FLOATING_POINT 0
 #define XSTATE_LEGACY_SSE            1

@@ -20,9 +20,51 @@ Revision History:
  
 #define NDEBUG
 
-#include <main.h> 
+#include <main.h>
 
 WINE_DEFAULT_DEBUG_CHANNEL(ntext);
+
+#define CONTEXT_AMD64   0x00100000
+
+typedef struct _I386_CONTEXT
+{
+    DWORD   ContextFlags;  /* 000 */
+
+    /* These are selected by CONTEXT_DEBUG_REGISTERS */
+    DWORD   Dr0;           /* 004 */
+    DWORD   Dr1;           /* 008 */
+    DWORD   Dr2;           /* 00c */
+    DWORD   Dr3;           /* 010 */
+    DWORD   Dr6;           /* 014 */
+    DWORD   Dr7;           /* 018 */
+
+    /* These are selected by CONTEXT_FLOATING_POINT */
+    I386_FLOATING_SAVE_AREA FloatSave; /* 01c */
+
+    /* These are selected by CONTEXT_SEGMENTS */
+    DWORD   SegGs;         /* 08c */
+    DWORD   SegFs;         /* 090 */
+    DWORD   SegEs;         /* 094 */
+    DWORD   SegDs;         /* 098 */
+
+    /* These are selected by CONTEXT_INTEGER */
+    DWORD   Edi;           /* 09c */
+    DWORD   Esi;           /* 0a0 */
+    DWORD   Ebx;           /* 0a4 */
+    DWORD   Edx;           /* 0a8 */
+    DWORD   Ecx;           /* 0ac */
+    DWORD   Eax;           /* 0b0 */
+
+    /* These are selected by CONTEXT_CONTROL */
+    DWORD   Ebp;           /* 0b4 */
+    DWORD   Eip;           /* 0b8 */
+    DWORD   SegCs;         /* 0bc */
+    DWORD   EFlags;        /* 0c0 */
+    DWORD   Esp;           /* 0c4 */
+    DWORD   SegSs;         /* 0c8 */
+
+    BYTE    ExtendedRegisters[I386_MAXIMUM_SUPPORTED_EXTENSION];  /* 0xcc */
+} I386_CONTEXT;
 
 struct context_copy_range
 {

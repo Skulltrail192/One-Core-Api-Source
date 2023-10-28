@@ -219,10 +219,10 @@ interface IDWriteFontResource : IUnknown
     UINT32 GetFontFaceIndex();
     UINT32 GetFontAxisCount();
     HRESULT GetDefaultFontAxisValues(
-        DWRITE_FONT_AXIS_VALUE const *values,
+        DWRITE_FONT_AXIS_VALUE *values,
         UINT32 num_values);
     HRESULT GetFontAxisRanges(
-        DWRITE_FONT_AXIS_RANGE const *ranges,
+        DWRITE_FONT_AXIS_RANGE *ranges,
         UINT32 num_ranges);
     DWRITE_FONT_AXIS_ATTRIBUTES GetFontAxisAttributes(
         UINT32 axis);
@@ -471,6 +471,29 @@ interface IDWriteFontSet3 : IDWriteFontSet2
     DWRITE_FONT_SOURCE_TYPE GetFontSourceType(UINT32 index);
     UINT32 GetFontSourceNameLength(UINT32 index);
     HRESULT GetFontSourceName(UINT32 index, WCHAR *buffer, UINT32 buffer_size);
+}
+
+[
+    local,
+    object,
+    uuid(eec175fc-bea9-4c86-8b53-ccbdd7df0c82)
+]
+interface IDWriteFontSet4 : IDWriteFontSet3
+{
+    UINT32 ConvertWeightStretchStyleToFontAxisValues(
+        DWRITE_FONT_AXIS_VALUE const *input_axis_values,
+        UINT32 input_axis_count,
+        DWRITE_FONT_WEIGHT weight,
+        DWRITE_FONT_STRETCH stretch,
+        DWRITE_FONT_STYLE style,
+        float size,
+        DWRITE_FONT_AXIS_VALUE *output_axis_values);
+    HRESULT GetMatchingFonts(
+        WCHAR const *family_name,
+        DWRITE_FONT_AXIS_VALUE const *axis_values,
+        UINT32 axis_value_count,
+        DWRITE_FONT_SIMULATIONS allowed_simulations,
+        IDWriteFontSet4 **fonts);
 }
 
 [
@@ -795,17 +818,37 @@ interface IDWriteFontFace5 : IDWriteFontFace4
     BOOL Equals(IDWriteFontFace *fontface);
 }
 
-typedef struct DWRITE_COLOR_GLYPH_RUN1
+[
+    local,
+    object,
+    uuid(c4b1fe1b-6e84-47d5-b54c-a597981b06ad)
+]
+interface IDWriteFontFace6 : IDWriteFontFace5
 {
-    DWRITE_GLYPH_RUN glyphRun;
-    DWRITE_GLYPH_RUN_DESCRIPTION *glyphRunDescription;
-    FLOAT baselineOriginX;
-    FLOAT baselineOriginY;
-    DWRITE_COLOR_F runColor;
-    UINT16 paletteIndex;
-    DWRITE_GLYPH_IMAGE_FORMATS glyphImageFormat;
-    DWRITE_MEASURING_MODE measuringMode;
-} DWRITE_COLOR_GLYPH_RUN1;
+    HRESULT GetFamilyNames(
+        DWRITE_FONT_FAMILY_MODEL font_family_model,
+        IDWriteLocalizedStrings **names);
+    HRESULT GetFaceNames(
+        DWRITE_FONT_FAMILY_MODEL font_family_model,
+        IDWriteLocalizedStrings **names);
+}
+
+typedef struct DWRITE_COLOR_GLYPH_RUN1 DWRITE_COLOR_GLYPH_RUN1;
+
+cpp_quote("struct DWRITE_COLOR_GLYPH_RUN1")
+cpp_quote("{")
+cpp_quote("    DWRITE_GLYPH_RUN glyphRun;")
+cpp_quote("    DWRITE_GLYPH_RUN_DESCRIPTION *glyphRunDescription;")
+cpp_quote("    FLOAT baselineOriginX;")
+cpp_quote("    FLOAT baselineOriginY;")
+cpp_quote("    DWRITE_COLOR_F runColor;")
+cpp_quote("    UINT16 paletteIndex;")
+cpp_quote("#ifdef _WIN64")
+cpp_quote("    UINT32 _pad;")
+cpp_quote("#endif")
+cpp_quote("    DWRITE_GLYPH_IMAGE_FORMATS glyphImageFormat;")
+cpp_quote("    DWRITE_MEASURING_MODE measuringMode;")
+cpp_quote("};")
 
 [
     local,

@@ -20,6 +20,7 @@
 #include "windef.h"
 #include "winternl.h"
 #include "dwrite.h"
+#include "dwrite_private.h"
 #include "wine/unixlib.h"
 
 struct create_font_object_params
@@ -66,7 +67,7 @@ struct get_glyph_bbox_params
     unsigned int simulations;
     unsigned int glyph;
     float emsize;
-    DWRITE_MATRIX m;
+    MATRIX_2X2 m;
     RECT *bbox;
 };
 
@@ -77,7 +78,7 @@ struct get_glyph_bitmap_params
     unsigned int glyph;
     unsigned int mode;
     float emsize;
-    DWRITE_MATRIX m;
+    MATRIX_2X2 m;
     RECT bbox;
     int pitch;
     BYTE *bitmap;
@@ -106,8 +107,7 @@ enum font_backend_funcs
     unix_get_glyph_bbox,
     unix_get_glyph_bitmap,
     unix_get_design_glyph_metrics,
+    unix_funcs_count,
 };
 
-extern unixlib_handle_t unixlib_handle DECLSPEC_HIDDEN;
-
-#define UNIX_CALL( func, params ) __wine_unix_call( unixlib_handle, unix_ ## func, params )
+#define UNIX_CALL( func, params ) WINE_UNIX_CALL( unix_ ## func, params )

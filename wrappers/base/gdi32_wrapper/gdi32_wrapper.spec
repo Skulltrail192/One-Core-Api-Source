@@ -679,7 +679,7 @@
 @ stdcall D3DKMTWaitForVerticalBlankEvent(ptr) d3dkmt.D3DKMTWaitForVerticalBlankEvent
 
 #Win7 functions
-#@ stdcall GetFontFileData(long long int64 ptr long)
-#@ stdcall GetFontFileInfo(long long ptr long long)
-#@ stdcall GetFontRealizationInfo(long ptr)
+@ stdcall GetFontFileData(long long int64 ptr long)
+@ stdcall GetFontFileInfo(long long ptr long long)
+@ stdcall GetFontRealizationInfo(long ptr)
 @ stdcall GdiGetBitmapBitsSize(ptr) #please, be careful with this function!
