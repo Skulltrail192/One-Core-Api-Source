@@ -131,43 +131,75 @@ static inline struct font_handle_entry *handle_entry( DWORD handle )
     return NULL;
 }
 
-/*************************************************************************
- *             GetFontFileInfo   (GDI32.@)
- */
-BOOL WINAPI GetFontFileInfo( DWORD instance_id, DWORD unknown, struct font_fileinfo *info, DWORD size, DWORD *needed )
-{
-    // LOGFONTW logfont;
-    // HFONT hfont;
-    // HRESULT hr;
+LPCWSTR fontPath = L"C:\\Windows\\Fonts\\Tahoma.ttf";
 
-    // // *fontface = NULL;
+BOOL WINAPI GetFontFileInfo( DWORD instance_id, DWORD file_index, struct font_fileinfo *info, DWORD size, DWORD *needed ) {
+    struct font_fileinfo fileinfo = {0};
+	DWORD neededLength;
+    
+    ZeroMemory(&fileinfo, sizeof(fileinfo));
+    
+    neededLength = sizeof(info) + (strlenW(fontPath) + 1) * sizeof(WCHAR);
 
-    // hfont = GetCurrentObject(currentHdcFont, OBJ_FONT);
-    // if (!hfont)
-        // return E_INVALIDARG;
-    // GetObjectW(hfont, sizeof(logfont), &logfont);
-	
-    struct font_handle_entry *entry = handle_entry( instance_id );
-    const GdiFont *font;
-
-    if (!entry)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return FALSE;
-    }
-
-    font = entry->obj;
-    *needed = sizeof(*info) + strlenW(font->fileinfo->path) * sizeof(WCHAR);
+    //font = entry->obj;
+    *needed = neededLength;
     if (*needed > size)
     {
         SetLastError(ERROR_INSUFFICIENT_BUFFER);
         return FALSE;
     }
-
-    /* path is included too */
-    memcpy(info, font->fileinfo, *needed);
+    info->writetime.dwLowDateTime = 0;
+    info->writetime.dwHighDateTime = 0;
+    info->size.LowPart = 1000000; // replace with actual font size
+    info->size.HighPart = 1000000; // replace with actual font size
+    memcpy(&(info->path), fontPath, (strlenW(fontPath) + 1) * sizeof(WCHAR));
     return TRUE;
 }
+
+// /*************************************************************************
+ // *             GetFontFileInfo   (GDI32.@)
+ // */
+// BOOL WINAPI GetFontFileInfo( DWORD instance_id, DWORD unknown, struct font_fileinfo *info, DWORD size, DWORD *needed )
+// {
+    // // LOGFONTW logfont;
+    // // HFONT hfont;
+    // // HRESULT hr;
+
+    // // // *fontface = NULL;
+
+    // // hfont = GetCurrentObject(currentHdcFont, OBJ_FONT);
+    // // if (!hfont)
+        // // return E_INVALIDARG;
+    // // GetObjectW(hfont, sizeof(logfont), &logfont);
+	
+    // //struct font_handle_entry *entry = handle_entry( instance_id );
+    // //const GdiFont *font;
+
+    // // if (!entry)
+    // // {
+        // // SetLastError(ERROR_INVALID_PARAMETER);
+        // // return FALSE;
+    // // }
+	
+	// struct font_fileinfo fileinfo = {0};
+	
+	// ZeroMemory(&fileinfo, sizeof(fileinfo));
+	
+	// fileinfo.path = L"C:\\Windows\\Fonts\\Tahoma.ttf";
+	// fileinfo.size = sizeof(*info) + strlenW(fileinfo.path) * sizeof(WCHAR);
+
+    // //font = entry->obj;
+    // *needed = fileinfo.size;
+    // if (*needed > size)
+    // {
+        // SetLastError(ERROR_INSUFFICIENT_BUFFER);
+        // return FALSE;
+    // }
+
+    // /* path is included too */
+    // memcpy(info, fileinfo, *needed);
+    // return TRUE;
+// }
 
 /*************************************************************
  *           GetFontRealizationInfo    (GDI32.@)
@@ -183,29 +215,22 @@ GetFontRealizationInfo(HDC hdc, struct font_realization_info *info)
 	}
 	//Just return GetRealizationInfo, because call internally same syscall, NtGdiGetRealizationInfo
 	if(GdiRealizationInfo(hdc, &reinfo)){
-		info->file_count = 1;
-		switch(reinfo.iTechnology)
-		{
-			case 1:
-				info->flags = 1;
-				break;
-			case 2: 
-				info->flags |= 2;
-				break;
-			default:
-				break;
-		}
-		info->instance_id = reinfo.iUniq;
-		info->face_index = reinfo.iFontFileId;
-		info->simulations = 0;
+        info->flags = reinfo.iTechnology;
+        info->cache_num = 0;
+        info->instance_id = reinfo.iUniq;
+        if (info->size >= 20)
+            info->file_count = 1;
+        if (info->size >= 22)
+            info->face_index = reinfo.iFontFileId;
+        if (info->size >= 24)
+            info->simulations = 0;
+		// info->instance_id = reinfo.iUniq;
+		// info->face_index = reinfo.iFontFileId;
+		// info->simulations = 0;
 		return TRUE;
 	}
 	
-	return FALSE;
-
-    // if (physdev->font->fake_bold) info->simulations |= 0x1;
-    // if (physdev->font->fake_italic) info->simulations |= 0x2;
-	
+	return FALSE;	
 }
 
 static DWORD get_font_data( GdiFont *font, DWORD table, DWORD offset, LPVOID buf, DWORD cbData)

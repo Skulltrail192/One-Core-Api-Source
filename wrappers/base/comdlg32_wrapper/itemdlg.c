@@ -119,6 +119,7 @@ typedef struct FileDialogImpl {
 
     IShellItemArray *psia_selection;
     IShellItemArray *psia_results;
+    IShellItem *psia_result;
     IShellItem *psi_defaultfolder;
     IShellItem *psi_setfolder;
     IShellItem *psi_folder;
@@ -2459,8 +2460,8 @@ static HRESULT create_dialog(FileDialogImpl *This, HWND parent)
         ERR("Failed to show dialog (LastError: %ld)\n", GetLastError());
         return E_FAIL;
     }else{
-		// IShellItem shellItem;
-		// SHCreateItemFromParsingName(ofn.lpstrFile,NULL,&IID_IShellItem, (void**)&shellItem);
+		//IShellItem *shellItem;
+		SHCreateItemFromParsingName(ofn.lpstrFile,NULL,&IID_IShellItem, &This->psia_result);
 		// SHCreateShellItemArrayFromShellItem(&shellItem,&IID_IShellItemArray, (void**)&This->psia_results);
 	}
 
@@ -2877,27 +2878,31 @@ static HRESULT WINAPI IFileDialog2_fnSetFileNameLabel(IFileDialog2 *iface, LPCWS
 static HRESULT WINAPI IFileDialog2_fnGetResult(IFileDialog2 *iface, IShellItem **ppsi)
 {
     FileDialogImpl *This = impl_from_IFileDialog2(iface);
-    HRESULT hr;
+    //HRESULT hr;
     TRACE("%p (%p)\n", This, ppsi);
 
     if(!ppsi)
         return E_INVALIDARG;
 
-    if(This->psia_results)
-    {
-        DWORD item_count;
-        hr = IShellItemArray_GetCount(This->psia_results, &item_count);
-        if(SUCCEEDED(hr))
-        {
-            if(item_count != 1)
-                return E_FAIL;
+	if(This->psia_result){
+		*ppsi = This->psia_result;
+		return S_OK;
+	}
+    // if(This->psia_results)
+    // {
+        // DWORD item_count;
+        // hr = IShellItemArray_GetCount(This->psia_results, &item_count);
+        // if(SUCCEEDED(hr))
+        // {
+            // if(item_count != 1)
+                // return E_FAIL;
 
-            /* Adds a reference. */
-            hr = IShellItemArray_GetItemAt(This->psia_results, 0, ppsi);
-        }
+            // /* Adds a reference. */
+            // hr = IShellItemArray_GetItemAt(This->psia_results, 0, ppsi);
+        // }
 
-        return hr;
-    }
+        // return hr;
+    // }
 
     return E_UNEXPECTED;
 }

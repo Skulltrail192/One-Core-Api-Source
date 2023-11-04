@@ -67,7 +67,7 @@ static const struct {
 	// {&CLSID_ShellDesktop,	ISF_Desktop_Constructor},
 	// {&CLSID_ShellFSFolder,	IFSFolder_Constructor},
 	{&CLSID_ShellItem,	IShellItem_Constructor},
-	{&CLSID_ShellLink,	IShellLink_Constructor},
+	//{&CLSID_ShellLink,	IShellLink_Constructor},
 	{&CLSID_ExplorerBrowser,ExplorerBrowser_Constructor},
 	{&CLSID_KnownFolderManager, KnownFolderManager_Constructor},
 	// {&CLSID_Shell,          IShellDispatch_Constructor},

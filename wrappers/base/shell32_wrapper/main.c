@@ -23,6 +23,8 @@ WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
 HINSTANCE shell32_hInstance = 0;
 
+//SHFILEOPSTRUCTW fileOperation = {0};	
+
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 {
 	DWORD bufferSize = 65535;
@@ -36,6 +38,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 			shell32_hInstance = hInstDLL;
 			DisableThreadLibraryCalls(shell32_hInstance);		
 			AppData = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+			//ZeroMemory(&fileOperation, sizeof(fileOperation));	
 			if (!AppData)
 				return E_OUTOFMEMORY;
 			

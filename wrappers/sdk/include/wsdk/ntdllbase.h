@@ -728,9 +728,11 @@ NTSTATUS NTAPI RtlInitializeExtendedContext2( void *context, ULONG context_flags
 ULONG64 NTAPI RtlGetExtendedFeaturesMask( CONTEXT_EX *context_ex );
 
 #ifdef __i386__
+#define CONTEXT_I386_XSTATE             (CONTEXT_i386 | 0x0040)
 #define CONTEXT_XSTATE CONTEXT_I386_XSTATE
 #endif  /* __i386__ */
 
 #ifdef __x86_64__
+#define CONTEXT_AMD64_XSTATE          (CONTEXT_AMD64 | 0x0040)
 #define CONTEXT_XSTATE CONTEXT_AMD64_XSTATE
 #endif /* __x86_64__ */
