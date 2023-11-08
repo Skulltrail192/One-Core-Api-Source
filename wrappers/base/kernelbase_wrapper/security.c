@@ -109,8 +109,54 @@ AccessCheckByTypeResultList(
 /******************************************************************************
  * CreateBoundaryDescriptorW    (kernelbase.@)
  */
-HANDLE WINAPI CreateBoundaryDescriptorW( LPCWSTR name, ULONG flags )
+HANDLE 
+WINAPI 
+CreateBoundaryDescriptorW( 
+	LPCWSTR name, 
+	ULONG flags 
+)
 {
     FIXME("%s %lu - stub\n", debugstr_w(name), flags);
     return NULL;
+}
+
+/******************************************************************************
+ * CreateBoundaryDescriptorA    (kernelbase.@)
+ */
+HANDLE 
+WINAPI 
+CreateBoundaryDescriptorA( 
+	LPCSTR name, 
+	ULONG flags 
+)
+{
+    return NULL;
+}
+
+HANDLE 
+CreatePrivateNamespaceW(
+  LPSECURITY_ATTRIBUTES lpPrivateNamespaceAttributes,
+  LPVOID                lpBoundaryDescriptor,
+  LPCWSTR               lpAliasPrefix
+)
+{
+	return NULL;
+}
+
+HANDLE 
+OpenPrivateNamespaceW(
+  LPVOID  lpBoundaryDescriptor,
+  LPCWSTR lpAliasPrefix
+)
+{
+	return NULL;
+}
+
+BOOLEAN 
+ClosePrivateNamespace(
+  HANDLE Handle,
+  ULONG  Flags
+)
+{
+	return TRUE;
 }

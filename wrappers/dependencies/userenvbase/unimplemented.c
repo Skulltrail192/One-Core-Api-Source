@@ -208,3 +208,76 @@ HRESULT WINAPI RSoPAccessCheckByType(
 {
 	return S_OK;
 }*/
+
+DWORD
+WINAPI
+ForceSyncFgPolicy( LPWSTR szUserSid )
+{
+	return 0;
+}
+
+BOOL
+WINAPI
+GenerateRsopPolicy(
+    IN DWORD flags,
+    IN LPWSTR machName,
+    IN LPWSTR newMachSOM,
+    IN PVOID *psaMachSecGroups,
+    IN LPWSTR bstrUserName,
+    IN LPWSTR bstrNewUserSOM,
+    IN PVOID *psaUserSecGroups,
+    IN LPWSTR bstrSite,
+    IN WCHAR *pwszNameSpace,
+    IN LPVOID progress,
+    IN LPVOID pMachGpoFilter,
+    IN LPVOID pUserGpoFilter)
+{
+	return FALSE;
+}	
+
+
+/******************************************************************
+ *		DllGetClassObject (winhttp.@)
+ */
+HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv)
+{
+    return S_OK;
+}
+
+/******************************************************************
+ *              DllCanUnloadNow (winhttp.@)
+ */
+HRESULT WINAPI DllCanUnloadNow(void)
+{
+    return S_OK;
+}
+
+/***********************************************************************
+ *          DllRegisterServer (winhttp.@)
+ */
+HRESULT WINAPI DllRegisterServer(void)
+{
+    return S_OK;
+}
+
+/***********************************************************************
+ *          DllUnregisterServer (winhttp.@)
+ */
+HRESULT WINAPI DllUnregisterServer(void)
+{
+    return S_OK;
+}
+
+/*************************************************************************
+ * DllInstall         [SHELL32.@]
+ *
+ * PARAMETERS
+ *
+ *    BOOL bInstall - TRUE for install, FALSE for uninstall
+ *    LPCWSTR pszCmdLine - command line (unused by shell32?)
+ */
+
+HRESULT WINAPI DllInstall(BOOL bInstall, LPCWSTR cmdline)
+{
+    return S_OK;        /* indicate success */
+}

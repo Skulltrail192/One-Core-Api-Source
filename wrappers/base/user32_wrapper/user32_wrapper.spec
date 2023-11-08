@@ -875,7 +875,9 @@
 #Win8 functions
 @ stdcall GetDpiForMonitorInternal(long long ptr ptr) NtUserGetDpiForMonitor
 @ stdcall GetProcessDpiAwarenessInternal(long ptr)
-@ stdcall SetProcessDpiAwarenessInternal(long) 
+@ stdcall SetProcessDpiAwarenessInternal(long)
+@ stdcall RegisterSuspendResumeNotification(long long)
+@ stdcall UnregisterSuspendResumeNotification(ptr)
 
 #functions exported by user32 from Longhorn Pre-Reset
 @ stdcall HangrepRegisterPort(ptr)

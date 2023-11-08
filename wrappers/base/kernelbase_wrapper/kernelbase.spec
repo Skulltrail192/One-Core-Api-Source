@@ -1034,8 +1034,7 @@
 @ stdcall CancelThreadpoolIo(ptr) ntext.TpCancelAsyncIoOperation
 @ stdcall CheckElevation(wstr long ptr long long)
 @ stdcall CheckElevationEnabled(ptr) 
-@ stdcall -stub ClosePrivateNamespace(ptr long) 
-@ stdcall -stub CreateBoundaryDescritorW(wstr long)  
+@ stdcall ClosePrivateNamespace(ptr long)
 @ stdcall CloseThreadpool(ptr) ntext.TpReleasePool
 @ stdcall CloseThreadpoolCleanupGroup(ptr) ntext.TpReleaseCleanupGroup
 @ stdcall CloseThreadpoolCleanupGroupMembers(ptr long ptr) ntext.TpReleaseCleanupGroupMembers
@@ -1051,6 +1050,7 @@
 @ stdcall ConvertSystemTimeToCalDateTime(ptr long ptr) 
 @ stdcall CopyFileTransactedA(str str ptr ptr ptr long ptr)
 @ stdcall CopyFileTransactedW(wstr wstr ptr ptr ptr long ptr)
+@ stdcall CreateBoundaryDescriptorA(str long)
 @ stdcall CreateBoundaryDescriptorW(wstr long)
 @ stdcall CreateDirectoryTransactedA(str str ptr ptr)
 @ stdcall CreateDirectoryTransactedW(wstr wstr ptr ptr)
@@ -1064,6 +1064,7 @@
 @ stdcall CreateHardLinkTransactedW(wstr wstr ptr ptr)
 @ stdcall CreateMutexExA(ptr str long long)
 @ stdcall CreateMutexExW(ptr wstr long long)
+@ stdcall CreatePrivateNamespaceW(ptr ptr wstr)
 @ stdcall CreateSemaphoreExA(ptr long long str ptr long) 
 @ stdcall CreateSemaphoreExW(ptr long long wstr ptr long)  
 @ stdcall CreateSymbolicLinkA(str str long)
@@ -1078,6 +1079,7 @@
 @ stdcall CreateThreadpoolWork(ptr ptr ptr)
 @ stdcall CreateWaitableTimerExA(ptr str ptr long)
 @ stdcall CreateWaitableTimerExW(ptr wstr ptr long)
+@ stdcall DeleteBoundaryDescriptor(ptr) ntext.RtlDeleteBoundaryDescriptor
 @ stdcall DeleteFileTransactedA(str ptr)
 @ stdcall DeleteFileTransactedW(wstr ptr)
 @ stdcall DeleteProcThreadAttributeList(ptr)
@@ -1202,6 +1204,7 @@
 @ stdcall MoveFileTransactedW(wstr wstr ptr ptr long ptr)
 @ stdcall NormalizeString(long wstr long wstr long) normaliz.NormalizeString
 @ stdcall OpenFileById(long ptr long long ptr long) #fileextd.OpenFileById
+@ stdcall OpenPrivateNamespaceW(ptr wstr)
 @ stdcall QueryActCtxSettingsW(long ptr wstr wstr ptr long ptr)
 @ stdcall QueryFullProcessImageNameA(ptr long ptr ptr) 
 @ stdcall QueryFullProcessImageNameW(ptr long ptr ptr)
@@ -1438,8 +1441,12 @@
 @ stdcall PerfStartProvider(ptr ptr ptr)
 @ stdcall PerfStartProviderEx(ptr ptr ptr)
 @ stdcall PerfStopProvider(long)
+@ stdcall SetProcessInformation(long long ptr long)
 @ stdcall SetProcessGroupAffinity(long ptr ptr)
 @ stdcall SetThreadInformation(long long ptr long)
+
+#Win8.1 functions
+@ stdcall DiscardVirtualMemory(ptr long)
 
 ; #Win10 functions
 @ stdcall GetThreadDescription(long ptr)
@@ -1565,7 +1572,7 @@
 @ stdcall RegFlushKey(long) advapibase.RegFlushKey 
 @ stdcall RegGetKeySecurity(long long ptr ptr) advapibase.RegGetKeySecurity 
 @ stdcall RegGetValueA(long str str long ptr ptr ptr) advapibase.RegGetValueA 
-@ stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) advapibase.RegGetValueW
+@ stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) advapi32.RegGetValueW
 @ stdcall RegLoadAppKeyA(str ptr long long long)
 @ stdcall RegLoadAppKeyW(wstr ptr long long long)
 @ stdcall RegLoadKeyA(long str str) advapibase.RegLoadKeyA 

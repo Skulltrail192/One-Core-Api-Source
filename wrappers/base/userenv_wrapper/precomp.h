@@ -15,8 +15,5 @@
 #define NTOS_MODE_USER
 #include <ndk/rtlfuncs.h>
 #include <userenv.h>
-#include <strsafe.h>
-
-#include "internal.h"
 
 #endif /* _USERENV_PCH_ */

@@ -25,7 +25,7 @@
 #include "windef.h"
 #include "winbase.h"
 #include "wtypes.h"
-#include "dcom_p.h"
+#include "dcom.h"
 #include "winreg.h"
 #include "wine/winternl.h"
 #include "wine/debug.h"

@@ -29,3 +29,13 @@
 @ stdcall WinHttpTimeFromSystemTime(ptr ptr)
 @ stdcall WinHttpTimeToSystemTime(wstr ptr)
 @ stdcall WinHttpWriteData(ptr ptr long ptr)
+
+#Win8 functions
+@ stdcall WinHttpCreateProxyResolver(ptr ptr)
+@ stdcall WinHttpFreeProxyResult(ptr)
+@ stdcall WinHttpGetProxyForUrlEx(ptr wstr ptr ptr)
+@ stdcall WinHttpGetProxyResult(ptr ptr)
+@ stdcall WinHttpWebSocketCompleteUpgrade(ptr ptr)
+@ stdcall WinHttpWebSocketClose(ptr long ptr long)
+@ stdcall WinHttpWebSocketReceive(ptr ptr long ptr ptr)
+@ stdcall WinHttpWebSocketSend(ptr long ptr long)

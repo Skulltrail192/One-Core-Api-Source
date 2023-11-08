@@ -34,7 +34,7 @@
 #include <list.h>
 #include <wmistr.h>
 #include <lpcfuncs.h>
-#include <ntdllbase.h>
+#include <baseapi.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 

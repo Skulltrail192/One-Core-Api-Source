@@ -8,11 +8,12 @@ add_definitions(
     -DWINE_REGISTER_DLL)
 	
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/wine)	
+include_directories(${CMAKE_CURRENT_BINARY_DIR})	
 
-spec2def(combase.dll combase.spec)
+spec2def(combase.dll combase.spec ADD_IMPORTLIB)
 
-#generate_idl_iids(dcom.idl)
-#add_idl_headers(dcom.idl)
+generate_idl_iids(dcom.idl)
+# add_idl_headers(dcom.idl)
 
 # add_rpcproxy_files(
     # dcom.idl)
@@ -21,16 +22,18 @@ list(APPEND SOURCE
 	apartment.c
     main.c
 	mta.c
+	roapi.c
+	string.c
     #marshal.c
     #rpc.c
 	version.rc
-	${CMAKE_CURRENT_BINARY_DIR}/dcom_i.c
+	# ${CMAKE_CURRENT_BINARY_DIR}/dcom_i.c
     ${CMAKE_CURRENT_BINARY_DIR}/combase_stubs.c
-	${CMAKE_CURRENT_BINARY_DIR}/proxy.dlldata.c
+	#${CMAKE_CURRENT_BINARY_DIR}/proxy.dlldata.c
     ${CMAKE_CURRENT_BINARY_DIR}/combase.def)
 
-add_library(combase SHARED  ${SOURCE} ${CMAKE_CURRENT_BINARY_DIR}/dcom_p.c)
+add_library(combase SHARED  ${SOURCE})
 set_module_type(combase win32dll ENTRYPOINT 0)
 target_link_libraries(combase wine)
-add_importlibs(combase olebase rpcrt4 msvcrt kernel32 ntdll)
+add_importlibs(combase olebase rpcrt4 msvcrt kernel32 kernelbase ntdll)
 add_cd_file(TARGET combase DESTINATION reactos/system32 FOR all)

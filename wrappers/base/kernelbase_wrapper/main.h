@@ -23,7 +23,7 @@
 
 #include <config.h>
 #include <port.h>
-#include <ntdllbase.h>
+#include <baseapi.h>
 #include <winnls.h>
 #include <unicode.h>
 #include <base.h>

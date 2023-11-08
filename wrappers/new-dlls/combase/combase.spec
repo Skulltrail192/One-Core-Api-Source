@@ -434,3 +434,24 @@
 @ stdcall HRGN_UserMarshal(ptr ptr ptr) olebase.HRGN_UserMarshal
 @ stdcall HRGN_UserSize(ptr long ptr) olebase.HRGN_UserSize
 @ stdcall HRGN_UserUnmarshal(ptr ptr ptr) olebase.HRGN_UserUnmarshal
+
+#combase specific functions
+@ stdcall WindowsCompareStringOrdinal(ptr ptr ptr)
+@ stdcall WindowsConcatString(ptr ptr ptr)
+@ stdcall WindowsCreateString(wstr long ptr)
+@ stdcall WindowsCreateStringReference(wstr long ptr ptr)
+@ stdcall WindowsDeleteString(ptr)
+@ stdcall WindowsDeleteStringBuffer(ptr)
+@ stdcall WindowsDuplicateString(ptr ptr)
+@ stdcall WindowsGetStringLen(ptr)
+@ stdcall WindowsGetStringRawBuffer(ptr ptr)
+@ stub WindowsInspectString
+@ stdcall WindowsIsStringEmpty(ptr)
+@ stdcall WindowsPreallocateStringBuffer(long ptr ptr)
+@ stdcall WindowsPromoteStringBuffer(ptr ptr)
+@ stub WindowsReplaceString
+@ stdcall WindowsStringHasEmbeddedNull(ptr ptr)
+@ stdcall WindowsSubstring(ptr long ptr)
+@ stdcall WindowsSubstringWithSpecifiedLength(ptr long long ptr)
+@ stdcall WindowsTrimStringEnd(ptr ptr ptr)
+@ stdcall WindowsTrimStringStart(ptr ptr ptr)

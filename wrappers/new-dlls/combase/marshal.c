@@ -22,7 +22,7 @@ Revision History:
 
 #include "main.h"
 
-WINE_DEFAULT_DEBUG_CHANNEL(ole32);
+WINE_DEFAULT_DEBUG_CHANNEL(combase);
 
 static HRESULT ifproxy_release_public_refs(struct ifproxy * This)
 {

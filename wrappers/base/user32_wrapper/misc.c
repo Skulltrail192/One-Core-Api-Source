@@ -19,6 +19,8 @@
 
 #include <main.h>
 
+WINE_DEFAULT_DEBUG_CHANNEL(user32);
+
 HANDLE section = NULL;
 static BOOL (WINAPI *pIsSETEnabled)();
 
@@ -65,4 +67,22 @@ BOOL WINAPI ThemeSetCurrentSection(HANDLE Section)
 {
 	section = Section;
 	return TRUE;
+}
+
+/**********************************************************************
+ * RegisterSuspendResumeNotification (USER32.@)
+ */
+HPOWERNOTIFY WINAPI RegisterSuspendResumeNotification(HANDLE recipient, DWORD flags)
+{
+    FIXME("%p, %#lx: stub.\n", recipient, flags);
+    return (HPOWERNOTIFY)0xdeadbeef;
+}
+
+/**********************************************************************
+ * UnregisterSuspendResumeNotification (USER32.@)
+ */
+BOOL WINAPI UnregisterSuspendResumeNotification(HPOWERNOTIFY handle)
+{
+    FIXME("%p: stub.\n", handle);
+    return TRUE;
 }

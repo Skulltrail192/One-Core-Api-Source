@@ -2151,3 +2151,48 @@ int GetProcessUserModeExceptionPolicy(int a1)
   BaseSetLastNTError(STATUS_NOT_SUPPORTED);
   return 0;
 }
+
+		BOOL
+		WINAPI
+		SetProcessInformation(
+			_In_ HANDLE _hProcess,
+			_In_ PROCESS_INFORMATION_CLASS _eProcessInformationClass,
+			_In_reads_bytes_(_cbProcessInformationSize) LPVOID _pProcessInformation,
+			_In_ DWORD _cbProcessInformationSize
+			)
+		{
+			NTSTATUS Status;
+			
+			// if (const auto _pfnSetProcessInformation = try_get_SetProcessInformation())
+			// {
+				// return _pfnSetProcessInformation(_hProcess, _eProcessInformationClass, _pProcessInformation, _cbProcessInformationSize);
+			// }
+
+			if (_pProcessInformation == NULL || (DWORD)_eProcessInformationClass >= (DWORD)ProcessInformationClassMax)
+			{
+				SetLastError(ERROR_INVALID_PARAMETER);
+				return FALSE;
+			}
+			
+			if (_eProcessInformationClass == ProcessMemoryPriority)
+			{
+				if (_cbProcessInformationSize != sizeof(MEMORY_PRIORITY_INFORMATION))
+				{
+					SetLastError(ERROR_INVALID_PARAMETER);
+					return FALSE;
+				}
+				// PAGE_PRIORITY_INFORMATION
+				Status = NtSetInformationProcess(_hProcess, ProcessPagePriority, _pProcessInformation, sizeof(DWORD));
+			}
+			else
+			{
+				SetLastError(ERROR_NOT_SUPPORTED);
+				return FALSE;
+			}
+
+			if (Status >= 0)
+				return TRUE;
+
+			BaseSetLastNTError(Status);
+			return FALSE;
+		}

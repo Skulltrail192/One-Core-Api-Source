@@ -125,17 +125,17 @@ PrefetchVirtualMemory(
 	return TRUE;
 }
 
-/***********************************************************************
- *             DiscardVirtualMemory   (kernelbase.@)
- */
-DWORD WINAPI DECLSPEC_HOTPATCH DiscardVirtualMemory( void *addr, SIZE_T size )
-{
-    NTSTATUS status;
-    LPVOID ret = addr;
+// /***********************************************************************
+ // *             DiscardVirtualMemory   (kernelbase.@)
+ // */
+// DWORD WINAPI DECLSPEC_HOTPATCH DiscardVirtualMemory( void *addr, SIZE_T size )
+// {
+    // NTSTATUS status;
+    // LPVOID ret = addr;
 
-    status = NtAllocateVirtualMemory( GetCurrentProcess(), &ret, 0, &size, MEM_RESET, PAGE_NOACCESS );
-    return RtlNtStatusToDosError( status );
-}
+    // status = NtAllocateVirtualMemory( GetCurrentProcess(), &ret, 0, &size, MEM_RESET, PAGE_NOACCESS );
+    // return RtlNtStatusToDosError( status );
+// }
 
 DWORD
 WINAPI
@@ -180,5 +180,23 @@ ReclaimVirtualMemory(
 	if ((char*)_pVirtualAddress + _uSize > (char*)_Info.BaseAddress + _Info.RegionSize)
 		return ERROR_INVALID_PARAMETER;
 			
+	return ERROR_SUCCESS;
+}
+
+DWORD
+WINAPI
+DiscardVirtualMemory(
+	_Inout_updates_(_uSize) PVOID _pVirtualAddress,
+	_In_ SIZE_T _uSize
+)
+{
+	// if (const auto _pfnDiscardVirtualMemory = try_get_DiscardVirtualMemory())
+	// {
+		// return _pfnDiscardVirtualMemory(_pVirtualAddress, _uSize);
+	// }
+
+	if (!VirtualAlloc(_pVirtualAddress, _uSize, MEM_RESET, PAGE_NOACCESS))
+		return GetLastError();
+
 	return ERROR_SUCCESS;
 }
