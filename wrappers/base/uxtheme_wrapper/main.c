@@ -508,3 +508,15 @@ HRESULT WINAPI BufferedPaintStopAllAnimations(HWND hwnd)
 
     return E_NOTIMPL;
 }
+
+HTHEME WINAPI OpenThemeDataInternal(
+  HWND    hwnd,
+  LPCWSTR pszClassList
+)
+{
+	if(wcscmp(pszClassList, L"TASKDIALOG") == 0){
+		return OpenThemeData(hwnd, L"WINDOW");
+	}
+	
+	return OpenThemeData(hwnd, pszClassList);
+}

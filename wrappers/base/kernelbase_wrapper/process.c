@@ -918,6 +918,244 @@ BOOL WINAPI GetLogicalProcessorInformationEx(LOGICAL_PROCESSOR_RELATIONSHIP rela
     }
     return TRUE;
 }
+
+						// size_t BitCountTable[256] =
+						// {
+							// 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+							// 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+							// 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+							// 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+							// 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+							// 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+							// 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+							// 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+							// 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+							// 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+							// 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+							// 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+							// 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+							// 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+							// 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+							// 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8
+						// };
+
+		// BOOL
+		// WINAPI
+		// GetLogicalProcessorInformationEx(
+			// _In_ LOGICAL_PROCESSOR_RELATIONSHIP RelationshipType,
+			// _Out_writes_bytes_to_opt_(*ReturnedLength, *ReturnedLength) PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX Buffer,
+			// _Inout_ PDWORD ReturnedLength
+			// )
+		// {
+			// DWORD cbBuffer;
+			// PVOID ProcessHeap;
+			// LSTATUS lStatus;
+			// DWORD cbLogicalProcessorInformation;
+			// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfo;
+			// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfoStart;
+			// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pNewBuffer;
+			// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfoLastItem;
+			// SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX* pInfo;
+			// DWORD cbBufferUsed;
+			// DWORD cbInfoNeed;
+			// SYSTEM_INFO SystemInfo;
+			// DWORD_PTR ActiveProcessorMask;
+			// size_t ActiveProcessorCount;			
+			// // if (auto pGetLogicalProcessorInformationEx = try_get_GetLogicalProcessorInformationEx())
+			// // {
+				// // return pGetLogicalProcessorInformationEx(RelationshipType, Buffer, ReturnedLength);
+			// // }
+
+
+			// if (!ReturnedLength)
+			// {
+				// SetLastError(ERROR_INVALID_PARAMETER);
+				// return FALSE;
+			// }
+	
+			// cbBuffer = *ReturnedLength;
+
+			// if (cbBuffer != 0 && Buffer == NULL)
+			// {
+				// SetLastError(ERROR_NOACCESS);
+				// return FALSE;
+			// }
+	
+			// ProcessHeap = ((TEB*)NtCurrentTeb())->ProcessEnvironmentBlock->ProcessHeap;
+			// lStatus = ERROR_SUCCESS;
+
+			// pProcessorInfo = NULL;
+			// cbLogicalProcessorInformation = 0;
+
+	
+			// for (; GetLogicalProcessorInformation(pProcessorInfo, &cbLogicalProcessorInformation) == FALSE;)
+			// {
+				// lStatus = GetLastError();
+
+				// if (ERROR_INSUFFICIENT_BUFFER == lStatus)
+				// {
+					// if (pProcessorInfo)
+					// {
+						// pNewBuffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)HeapReAlloc(ProcessHeap, 0, pProcessorInfo, cbLogicalProcessorInformation);
+						// if (pNewBuffer)
+						// {
+							// pProcessorInfo = pNewBuffer;
+							// continue;
+						// }
+					// }
+					// else
+					// {
+						// pProcessorInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)HeapAlloc(ProcessHeap, 0, cbLogicalProcessorInformation);
+
+						// if (pProcessorInfo)
+							// continue;
+					// }
+
+					// lStatus = ERROR_NOT_ENOUGH_MEMORY;
+				// }
+
+				// goto __End;
+			// }
+
+
+			// {
+				// pProcessorInfoLastItem = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)((byte*)pProcessorInfo + cbLogicalProcessorInformation - sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION));
+
+				// cbBufferUsed = 0;
+
+
+
+				// for (pProcessorInfoStart = pProcessorInfo; pProcessorInfoStart <= pProcessorInfoLastItem; ++pProcessorInfoStart)
+				// {
+					// if (RelationshipType == RelationAll
+						// || pProcessorInfoStart->Relationship == RelationshipType)
+					// {			
+
+						// switch (pProcessorInfoStart->Relationship)
+						// {
+						// case RelationProcessorCore:
+						// case RelationProcessorPackage:
+							// cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Processor);
+							// break;
+						// case RelationNumaNode:
+							// cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, NumaNode);
+							// break;
+						// case RelationCache:
+							// cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Cache);
+							// break;
+						// default:
+							// cbInfoNeed = 0;
+							// break;
+						// }
+
+						// //不支持传输此类型
+						// if (0 == cbInfoNeed)
+							// continue;
+
+						// cbBufferUsed += cbInfoNeed;
+
+						// if (cbBuffer >= cbBufferUsed)
+						// {
+							// pInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)((byte*)Buffer + cbBufferUsed);
+
+							// memset(pInfo, 0, cbInfoNeed);
+
+							// pInfo->Size = cbInfoNeed;
+							// pInfo->Relationship = pProcessorInfoStart->Relationship;
+
+							// switch (pProcessorInfoStart->Relationship)
+							// {
+							// case RelationProcessorCore:
+							// case RelationProcessorPackage:
+								// pInfo->Processor.Flags = pProcessorInfoStart->ProcessorCore.Flags;
+								// pInfo->Processor.GroupCount = 1;
+								// pInfo->Processor.GroupMask->Mask = pProcessorInfoStart->ProcessorMask;
+								// break;
+							// case RelationNumaNode:
+								// pInfo->NumaNode.NodeNumber = pProcessorInfoStart->NumaNode.NodeNumber;
+								// pInfo->NumaNode.GroupMask.Mask = pProcessorInfoStart->ProcessorMask;
+								// break;
+							// case RelationCache:
+								// pInfo->Cache.Level = pProcessorInfoStart->Cache.Level;
+								// pInfo->Cache.Associativity = pProcessorInfoStart->Cache.Associativity;
+								// pInfo->Cache.LineSize = pProcessorInfoStart->Cache.LineSize;
+								// pInfo->Cache.CacheSize = pProcessorInfoStart->Cache.Size;
+								// pInfo->Cache.Type = pProcessorInfoStart->Cache.Type;
+								// pInfo->Cache.GroupMask.Mask= pProcessorInfoStart->ProcessorMask;
+								// break;
+							// }
+						// }
+					// }
+				// }
+
+
+				// //传输 RelationGroup 信息，这里只能假设只有一组CPU
+				// if (RelationshipType == RelationAll
+					// || RelationGroup == RelationshipType)
+				// {
+					// cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Group);
+
+					// cbBufferUsed += cbInfoNeed;
+
+					// if (cbBuffer >= cbBufferUsed)
+					// {
+						// pInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)((byte*)Buffer + cbBufferUsed);
+
+						// memset(pInfo, 0, cbInfoNeed);
+
+						// pInfo->Size = cbInfoNeed;
+						// pInfo->Relationship = RelationGroup;
+
+						// pInfo->Group.ActiveGroupCount = 1;
+						// pInfo->Group.MaximumGroupCount = 1;					
+
+						// GetSystemInfo(&SystemInfo);
+
+						// pInfo->Group.GroupInfo->ActiveProcessorMask = SystemInfo.dwActiveProcessorMask;
+
+						// ActiveProcessorMask = SystemInfo.dwActiveProcessorMask;
+
+// #if defined(_M_IX86) || defined(_M_ARM)
+						// ActiveProcessorCount = BitCountTable[((byte*)&ActiveProcessorMask)[0]] + BitCountTable[((byte*)&ActiveProcessorMask)[1]] + BitCountTable[((byte*)&ActiveProcessorMask)[2]] + BitCountTable[((byte*)&ActiveProcessorMask)[3]];
+// #elif defined(_M_AMD64) || defined(_M_IA64) || defined(_M_ARM64)
+						// ActiveProcessorCount = BitCountTable[((byte*)&ActiveProcessorMask)[0]] + BitCountTable[((byte*)&ActiveProcessorMask)[1]] + BitCountTable[((byte*)&ActiveProcessorMask)[2]] + BitCountTable[((byte*)&ActiveProcessorMask)[3]]
+							// + BitCountTable[((byte*)&ActiveProcessorMask)[4]] + BitCountTable[((byte*)&ActiveProcessorMask)[5]] + BitCountTable[((byte*)&ActiveProcessorMask)[6]] + BitCountTable[((byte*)&ActiveProcessorMask)[7]];
+// #else
+						// ActiveProcessorCount = 0;
+						// for (i = 0; i != sizeof(ActiveProcessorMask); ++i)
+						// {
+							// ActiveProcessorCount += BitCountTable[((byte*)&ActiveProcessorMask)[i]];
+						// }
+// #endif
+						// pInfo->Group.GroupInfo->ActiveProcessorCount = ActiveProcessorCount;
+						// pInfo->Group.GroupInfo->MaximumProcessorCount = SystemInfo.dwNumberOfProcessors;
+					// }
+				// }
+
+				// *ReturnedLength = cbBufferUsed;
+
+				// if (cbBufferUsed > cbBuffer)
+				// {
+					// //缓冲区不足
+					// lStatus = ERROR_INSUFFICIENT_BUFFER;
+				// }
+			// }
+
+		// __End:
+			// if (pProcessorInfo)
+				// HeapFree(ProcessHeap, 0, pProcessorInfo);
+
+			// if (lStatus != ERROR_SUCCESS)
+			// {
+				// SetLastError(lStatus);
+
+				// return FALSE;
+			// }
+			// else
+			// {
+				// return TRUE;
+			// }
+		// }
  
 /***********************************************************************
  *           InitializeProcThreadAttributeList   (kernelbase.@)
@@ -2152,47 +2390,47 @@ int GetProcessUserModeExceptionPolicy(int a1)
   return 0;
 }
 
-		BOOL
-		WINAPI
-		SetProcessInformation(
-			_In_ HANDLE _hProcess,
-			_In_ PROCESS_INFORMATION_CLASS _eProcessInformationClass,
-			_In_reads_bytes_(_cbProcessInformationSize) LPVOID _pProcessInformation,
-			_In_ DWORD _cbProcessInformationSize
-			)
+BOOL
+WINAPI
+SetProcessInformation(
+	_In_ HANDLE _hProcess,
+	_In_ PROCESS_INFORMATION_CLASS _eProcessInformationClass,
+	_In_reads_bytes_(_cbProcessInformationSize) LPVOID _pProcessInformation,
+	_In_ DWORD _cbProcessInformationSize
+)
+{
+	NTSTATUS Status;
+			
+	// if (const auto _pfnSetProcessInformation = try_get_SetProcessInformation())
+	// {
+		// return _pfnSetProcessInformation(_hProcess, _eProcessInformationClass, _pProcessInformation, _cbProcessInformationSize);
+	// }
+
+	if (_pProcessInformation == NULL || (DWORD)_eProcessInformationClass >= (DWORD)ProcessInformationClassMax)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+			
+	if (_eProcessInformationClass == ProcessMemoryPriority)
+	{
+		if (_cbProcessInformationSize != sizeof(MEMORY_PRIORITY_INFORMATION))
 		{
-			NTSTATUS Status;
-			
-			// if (const auto _pfnSetProcessInformation = try_get_SetProcessInformation())
-			// {
-				// return _pfnSetProcessInformation(_hProcess, _eProcessInformationClass, _pProcessInformation, _cbProcessInformationSize);
-			// }
-
-			if (_pProcessInformation == NULL || (DWORD)_eProcessInformationClass >= (DWORD)ProcessInformationClassMax)
-			{
-				SetLastError(ERROR_INVALID_PARAMETER);
-				return FALSE;
-			}
-			
-			if (_eProcessInformationClass == ProcessMemoryPriority)
-			{
-				if (_cbProcessInformationSize != sizeof(MEMORY_PRIORITY_INFORMATION))
-				{
-					SetLastError(ERROR_INVALID_PARAMETER);
-					return FALSE;
-				}
-				// PAGE_PRIORITY_INFORMATION
-				Status = NtSetInformationProcess(_hProcess, ProcessPagePriority, _pProcessInformation, sizeof(DWORD));
-			}
-			else
-			{
-				SetLastError(ERROR_NOT_SUPPORTED);
-				return FALSE;
-			}
-
-			if (Status >= 0)
-				return TRUE;
-
-			BaseSetLastNTError(Status);
+			SetLastError(ERROR_INVALID_PARAMETER);
 			return FALSE;
 		}
+		// PAGE_PRIORITY_INFORMATION
+		Status = NtSetInformationProcess(_hProcess, ProcessPagePriority, _pProcessInformation, sizeof(DWORD));
+	}
+	else
+	{
+		SetLastError(ERROR_NOT_SUPPORTED);
+		return FALSE;
+	}
+
+	if (Status >= 0)
+		return TRUE;
+
+	BaseSetLastNTError(Status);
+	return FALSE;
+}

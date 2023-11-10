@@ -873,10 +873,12 @@
 1552  stdcall -noname DwmGetRedirSurfacePresentFlags(ptr ptr) 
 
 #Win8 functions
+@ stdcall GetPointerPenInfo(long ptr)
 @ stdcall GetDpiForMonitorInternal(long long ptr ptr) NtUserGetDpiForMonitor
 @ stdcall GetProcessDpiAwarenessInternal(long ptr)
-@ stdcall SetProcessDpiAwarenessInternal(long)
 @ stdcall RegisterSuspendResumeNotification(long long)
+@ stdcall SetProcessDpiAwarenessContext(ptr)
+@ stdcall SetProcessDpiAwarenessInternal(long)
 @ stdcall UnregisterSuspendResumeNotification(ptr)
 
 #functions exported by user32 from Longhorn Pre-Reset

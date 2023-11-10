@@ -600,3 +600,11 @@ RegisterTouchHitTestingWindow(
 	DbgPrint("RegisterTouchHitTestingWindow is UNIMPLEMENTED\n");		
 	return TRUE;
 }
+
+BOOL GetPointerPenInfo(
+  UINT32           pointerId,
+  POINTER_PEN_INFO *penInfo
+)
+{
+	return FALSE;
+}

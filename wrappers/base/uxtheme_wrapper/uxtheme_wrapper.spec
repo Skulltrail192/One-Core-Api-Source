@@ -93,7 +93,7 @@
 89 stdcall IsThemeBackgroundPartiallyTransparent(ptr long long)
 90 stdcall IsThemeDialogTextureEnabled(ptr)
 91 stdcall IsThemePartDefined(ptr long long)
-92 stdcall OpenThemeData(ptr wstr)
+92 stdcall OpenThemeData(ptr wstr) OpenThemeDataInternal
 93 stdcall SetThemeAppProperties(long)
 94 stdcall SetWindowTheme(ptr wstr wstr)
 95 stdcall ThemeInitApiHook(long ptr) uxthemebase.ThemeInitApiHook

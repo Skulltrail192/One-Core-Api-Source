@@ -436,6 +436,10 @@
 @ stdcall HRGN_UserUnmarshal(ptr ptr ptr) olebase.HRGN_UserUnmarshal
 
 #combase specific functions
+@ stdcall RoInitialize(long)
+@ stdcall RoUninitialize()
+@ stdcall RoActivateInstance(ptr ptr)
+@ stdcall RoGetActivationFactory(ptr ptr ptr)
 @ stdcall WindowsCompareStringOrdinal(ptr ptr ptr)
 @ stdcall WindowsConcatString(ptr ptr ptr)
 @ stdcall WindowsCreateString(wstr long ptr)

@@ -129,3 +129,72 @@ BOOL WINAPI GetProcessDpiAwarenessInternal(HANDLE hProcess, PROCESS_DPI_AWARENES
         *value = DPI_AWARENESS_UNAWARE;
     return TRUE;
 }
+
+		BOOL
+		WINAPI
+		SetProcessDpiAwarenessContext(
+			_In_ DPI_AWARENESS_CONTEXT value
+			)
+		{
+			// if (auto const pSetProcessDpiAwarenessContext = try_get_SetProcessDpiAwarenessContext())
+			// {
+				// return pSetProcessDpiAwarenessContext(value);
+			// }
+
+			LSTATUS lStatus;
+			HRESULT hr;
+
+			do
+			{
+				PROCESS_DPI_AWARENESS DpiAwareness;
+
+				if (DPI_AWARENESS_CONTEXT_UNAWARE == value
+					|| DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED == value)
+				{
+					DpiAwareness = PROCESS_DPI_UNAWARE;
+				}
+				else if (DPI_AWARENESS_CONTEXT_SYSTEM_AWARE == value)
+				{
+					DpiAwareness = PROCESS_SYSTEM_DPI_AWARE;
+				}
+				else if (DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE == value
+					|| DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == value)
+				{
+					DpiAwareness = PROCESS_PER_MONITOR_DPI_AWARE;
+				}
+				else
+				{
+					lStatus = ERROR_INVALID_PARAMETER;
+					break;
+				}
+
+				hr = SetProcessDpiAwareness(DpiAwareness);
+
+				if (SUCCEEDED(hr))
+				{
+					return TRUE;
+				}
+
+				//将 HRESULT 错误代码转换到 LSTATUS
+				if (hr & 0xFFFF0000)
+				{
+					if (HRESULT_FACILITY(hr) == FACILITY_WIN32)
+					{
+						lStatus = HRESULT_CODE(hr);
+					}
+					else
+					{
+						lStatus = ERROR_FUNCTION_FAILED;
+					}
+				}
+				else
+				{
+					lStatus = hr;
+				}
+
+			} while (FALSE);
+
+			
+			SetLastError(lStatus);
+			return FALSE;
+		}

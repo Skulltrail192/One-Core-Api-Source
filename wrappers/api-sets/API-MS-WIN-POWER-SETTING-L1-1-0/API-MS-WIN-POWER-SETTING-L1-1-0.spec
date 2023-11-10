@@ -1,5 +1,5 @@
 @ stdcall PowerGetActiveScheme(ptr ptr) powrprof.PowerGetActiveScheme
-@ stdcall PowerReadDCValue(ptr ptr ptr ptr ptr ptr ptr) powrprof.PowerReadDCValue
+@ stdcall PowerReadACValue(ptr ptr ptr ptr ptr ptr ptr) powrprof.PowerReadACValue
 @ stdcall PowerReadDCValue(ptr ptr ptr ptr ptr ptr ptr) powrprof.PowerReadDCValue
 @ stdcall PowerSetActiveScheme(ptr ptr) powrprof.PowerSetActiveScheme
 @ stdcall PowerSettingRegisterNotification(ptr long ptr ptr) powrprof.PowerSettingRegisterNotification

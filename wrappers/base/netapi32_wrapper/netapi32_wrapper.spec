@@ -362,3 +362,7 @@
 ; @ stdcall NetServerAliasAdd(wstr long ptr)
 ; @ stdcall NetServerAliasDel(wstr long ptr)
 ; @ stdcall NetServerAliasEnum(wstr long ptr long ptr ptr ptr)
+
+#Win10 functions
+@ stdcall NetGetAadJoinInformation(wstr ptr)
+@ stdcall NetFreeAadJoinInformation(ptr)

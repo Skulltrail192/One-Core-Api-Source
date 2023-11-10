@@ -1391,12 +1391,12 @@
 @ stdcall GetCurrentThreadStackLimits(ptr ptr)
 @ stdcall GetDynamicTimeZoneInformationEffectiveYears(ptr ptr ptr)
 @ stdcall GetFirmwareType(ptr)
+@ stdcall GetPackageFamilyName(long ptr ptr)
 @ stdcall GetPackageFullName(long ptr ptr)
 @ stdcall GetProcessMitigationPolicy(long long ptr long)
 @ stdcall GetSystemTimePreciseAsFileTime(ptr)
 @ stdcall GlobalAddAtomExA(str long)
 @ stdcall GlobalAddAtomExW(wstr long)
-@ stdcall InitializeContext2(ptr long ptr ptr int64)
 @ stdcall InitializeSynchronizationBarrier(ptr long long)
 @ stdcall IsValidNLSVersion(long wstr ptr)
 @ stdcall LoadPackagedLibrary(wstr long)
@@ -1447,15 +1447,17 @@
 
 #Win8.1 functions
 @ stdcall DiscardVirtualMemory(ptr long)
+@ stdcall FindPackagesByPackageFamily(wstr long ptr ptr ptr ptr ptr)
 
 ; #Win10 functions
-@ stdcall GetThreadDescription(long ptr)
-@ stdcall SetThreadDescription(long ptr)
 @ stdcall AppPolicyGetMediaFoundationCodecLoading(ptr ptr)
+@ stdcall GetThreadDescription(long ptr)
+@ stdcall InitializeContext2(ptr long ptr ptr int64)
 @ stdcall IsWow64Process2(ptr ptr ptr)
 @ stdcall QueryInterruptTime(ptr)
 @ stdcall QueryInterruptTimePrecise(ptr)
 @ stdcall QueryUnbiasedInterruptTimePrecise(ptr)
+@ stdcall SetThreadDescription(long ptr)
 @ stdcall WaitForDebugEventEx(ptr long)
 
 #Import from advapibase or registry function

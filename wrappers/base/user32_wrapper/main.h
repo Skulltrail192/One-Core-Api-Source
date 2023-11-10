@@ -481,6 +481,70 @@ typedef enum PROCESS_DPI_AWARENESS
     PROCESS_PER_MONITOR_DPI_AWARE
 } PROCESS_DPI_AWARENESS;
 
+
+typedef enum tagPOINTER_BUTTON_CHANGE_TYPE
+{
+    POINTER_CHANGE_NONE,
+    POINTER_CHANGE_FIRSTBUTTON_DOWN,
+    POINTER_CHANGE_FIRSTBUTTON_UP,
+    POINTER_CHANGE_SECONDBUTTON_DOWN,
+    POINTER_CHANGE_SECONDBUTTON_UP,
+    POINTER_CHANGE_THIRDBUTTON_DOWN,
+    POINTER_CHANGE_THIRDBUTTON_UP,
+    POINTER_CHANGE_FOURTHBUTTON_DOWN,
+    POINTER_CHANGE_FOURTHBUTTON_UP,
+    POINTER_CHANGE_FIFTHBUTTON_DOWN,
+    POINTER_CHANGE_FIFTHBUTTON_UP,
+} POINTER_BUTTON_CHANGE_TYPE;
+
+typedef UINT32 POINTER_FLAGS;
+
+typedef struct tagPOINTER_INFO
+{
+    POINTER_INPUT_TYPE pointerType;
+    UINT32 pointerId;
+    UINT32 frameId;
+    POINTER_FLAGS pointerFlags;
+    HANDLE sourceDevice;
+    HWND hwndTarget;
+    POINT ptPixelLocation;
+    POINT ptHimetricLocation;
+    POINT ptPixelLocationRaw;
+    POINT ptHimetricLocationRaw;
+    DWORD dwTime;
+    UINT32 historyCount;
+    INT32 InputData;
+    DWORD dwKeyStates;
+    UINT64 PerformanceCount;
+    POINTER_BUTTON_CHANGE_TYPE ButtonChangeType;
+} POINTER_INFO;
+
+typedef UINT32 PEN_FLAGS;
+#define PEN_FLAG_NONE      0x00000000
+#define PEN_FLAG_BARREL    0x00000001
+#define PEN_FLAG_INVERTED  0x00000002
+#define PEN_FLAG_ERASER    0x00000004
+
+typedef UINT32 PEN_MASK;
+#define PEN_MASK_NONE      0x00000000
+#define PEN_MASK_PRESSURE  0x00000001
+#define PEN_MASK_ROTATION  0x00000002
+#define PEN_MASK_TILT_X    0x00000004
+#define PEN_MASK_TILT_Y    0x00000008
+
+
+
+typedef struct tagPOINTER_PEN_INFO
+{
+    POINTER_INFO pointerInfo;
+    PEN_FLAGS penFlags;
+    PEN_MASK penMask;
+    UINT32 pressure;
+    UINT32 rotation;
+    INT32 tiltX;
+    INT32 tiltY;
+} POINTER_PEN_INFO;
+
 struct user_object
 {
     HANDLE             handle;

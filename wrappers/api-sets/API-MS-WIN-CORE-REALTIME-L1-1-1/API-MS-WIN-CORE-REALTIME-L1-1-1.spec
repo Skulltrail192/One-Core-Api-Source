@@ -1,3 +1,3 @@
-@ stub QueryInterruptTime
-@ stub QueryInterruptTimePrecise
-@ stub QueryUnbiasedInterruptTimePrecise
+@ stdcall QueryInterruptTime(ptr) kernelbase.QueryInterruptTime
+@ stdcall QueryInterruptTimePrecise(ptr) kernelbase.QueryInterruptTimePrecise
+@ stdcall QueryUnbiasedInterruptTimePrecise(ptr) kernelbase.QueryUnbiasedInterruptTimePrecise
