@@ -12,5 +12,5 @@ list(APPEND SOURCE
 add_library(userenv_wrapper SHARED ${SOURCE})
 set_module_type(userenv_wrapper win32dll)
 target_link_libraries(userenv_wrapper wine)
-add_importlibs(userenv_wrapper userenvbase msvcrt kernel32 ntdll userenvbase)
+add_importlibs(userenv_wrapper userenvbase msvcrt kernel32 ntdll)
 add_cd_file(TARGET userenv_wrapper DESTINATION reactos/system32 FOR all)

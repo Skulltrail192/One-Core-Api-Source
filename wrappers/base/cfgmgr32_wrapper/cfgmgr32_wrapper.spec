@@ -10,7 +10,7 @@
 @ stdcall CM_Add_IDW(ptr wstr long) setupapi.CM_Add_IDW
 @ stdcall CM_Add_ID_ExA(ptr str long ptr) setupapi.CM_Add_ID_ExA
 @ stdcall CM_Add_ID_ExW(ptr wstr long ptr) setupapi.CM_Add_ID_ExW
-@ stdcall CM_Add_Range(long long long long) # setupapi.CM_Add_Range
+@ stdcall CM_Add_Range(long long long long) setupapi.CM_Add_Range
 @ stdcall CM_Add_Res_Des(ptr ptr long ptr long long) setupapi.CM_Add_Res_Des
 @ stdcall CM_Add_Res_Des_Ex(ptr ptr long ptr long long long) setupapi.CM_Add_Res_Des_Ex
 @ stdcall CM_Connect_MachineA(str ptr) setupapi.CM_Connect_MachineA
@@ -40,15 +40,15 @@
 @ stdcall CM_Enumerate_Enumerators_ExA(long str ptr long long) setupapi.CM_Enumerate_Enumerators_ExA
 @ stdcall CM_Enumerate_Enumerators_ExW(long wstr ptr long long) setupapi.CM_Enumerate_Enumerators_ExW
 @ stdcall CM_Find_Range(ptr long long long long ptr long) setupapi.CM_Find_Range
-@ stub CM_First_Range # setupapi.CM_First_Range
+@ stdcall CM_First_Range(ptr ptr ptr ptr long) setupapi.CM_First_Range
 @ stdcall CM_Free_Log_Conf(ptr long) setupapi.CM_Free_Log_Conf
 @ stdcall CM_Free_Log_Conf_Ex(ptr long ptr) setupapi.CM_Free_Log_Conf_Ex
 @ stdcall CM_Free_Log_Conf_Handle(ptr) setupapi.CM_Free_Log_Conf_Handle
-@ stub CM_Free_Range_List # setupapi.CM_Free_Range_List
+@ stdcall CM_Free_Range_List(ptr long) setupapi.CM_Free_Range_List
 @ stdcall CM_Free_Res_Des(ptr ptr long) setupapi.CM_Free_Res_Des
 @ stdcall CM_Free_Res_Des_Ex(ptr ptr long long) setupapi.CM_Free_Res_Des_Ex
 @ stdcall CM_Free_Res_Des_Handle(ptr) setupapi.CM_Free_Res_Des_Handle
-@ stub CM_Free_Resource_Conflict_Handle # setupapi.CM_Free_Resource_Conflict_Handle
+@ stdcall CM_Free_Resource_Conflict_Handle(ptr) setupapi.CM_Free_Resource_Conflict_Handle
 @ stdcall CM_Get_Child(ptr long long) setupapi.CM_Get_Child
 @ stdcall CM_Get_Child_Ex(ptr long long long) setupapi.CM_Get_Child_Ex
 @ stdcall CM_Get_Class_Key_NameA(ptr str ptr long) setupapi.CM_Get_Class_Key_NameA
@@ -197,3 +197,6 @@
 
 #Vista functions
 @ stdcall CM_Get_DevNode_PropertyW(long ptr ptr ptr ptr long) setupapi.CM_Get_DevNode_PropertyW
+
+#Windows 7 functions
+@ stdcall CM_MapCrToWin32Err(long long)

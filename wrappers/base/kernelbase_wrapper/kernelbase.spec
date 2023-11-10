@@ -1449,7 +1449,7 @@
 @ stdcall DiscardVirtualMemory(ptr long)
 @ stdcall FindPackagesByPackageFamily(wstr long ptr ptr ptr ptr ptr)
 
-; #Win10 functions
+#Win10 functions
 @ stdcall AppPolicyGetMediaFoundationCodecLoading(ptr ptr)
 @ stdcall GetThreadDescription(long ptr)
 @ stdcall InitializeContext2(ptr long ptr ptr int64)
@@ -1459,6 +1459,10 @@
 @ stdcall QueryUnbiasedInterruptTimePrecise(ptr)
 @ stdcall SetThreadDescription(long ptr)
 @ stdcall WaitForDebugEventEx(ptr long)
+
+#Windows Server 2022 functions
+@ stdcall GetTempPath2A(long str)
+@ stdcall GetTempPath2W(long wstr)
 
 #Import from advapibase or registry function
 @ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) advapibase.AccessCheck

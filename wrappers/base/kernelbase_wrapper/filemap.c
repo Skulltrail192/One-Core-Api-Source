@@ -20,6 +20,212 @@ Revision History:
 
 #include "main.h"
 
+typedef BOOLEAN (WINAPI *pRtlGenRandomPtr)(PVOID RandomBuffer, ULONG RandomBufferLength);
+
+#define ConvertAnsiToUnicodePrologue                                            \
+{                                                                               \
+    NTSTATUS Status;                                                            \
+    PUNICODE_STRING UnicodeCache;                                               \
+    ANSI_STRING AnsiName;
+#define ConvertAnsiToUnicodeBody(name)                                          \
+    UnicodeCache = &NtCurrentTeb()->StaticUnicodeString;                        \
+    RtlInitAnsiString(&AnsiName, name);                                         \
+    Status = RtlAnsiStringToUnicodeString(UnicodeCache, &AnsiName, FALSE);
+#define ConvertAnsiToUnicodeEpilogue                                            \
+    if (Status == STATUS_BUFFER_OVERFLOW)                                       \
+        SetLastError(ERROR_FILENAME_EXCED_RANGE);                               \
+    else                                                                        \
+        BaseSetLastNTError(Status);                                           \
+    return FALSE;                                                               \
+}
+
+//
+// This macro uses the ConvertAnsiToUnicode macros above to convert a CreateXxxA
+// Win32 API into its equivalent CreateXxxW API.
+//
+#define ConvertWin32AnsiObjectApiToUnicodeApi(obj, name, ...)                   \
+    ConvertAnsiToUnicodePrologue                                                \
+    if (!name) return Create##obj##W(__VA_ARGS__, NULL);                        \
+    ConvertAnsiToUnicodeBody(name)                                              \
+    if (NT_SUCCESS(Status)) return Create##obj##W(__VA_ARGS__, UnicodeCache->Buffer);  \
+    ConvertAnsiToUnicodeEpilogue
+
+
+/*
+ * @implemented
+ */
+HANDLE
+NTAPI
+CreateFileMappingA(IN HANDLE hFile,
+                   IN LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+                   IN DWORD flProtect,
+                   IN DWORD dwMaximumSizeHigh,
+                   IN DWORD dwMaximumSizeLow,
+                   IN LPCSTR lpName)
+{
+    /* Call the W(ide) function */
+    ConvertWin32AnsiObjectApiToUnicodeApi(FileMapping,
+                                          lpName,
+                                          hFile,
+                                          lpFileMappingAttributes,
+                                          flProtect,
+                                          dwMaximumSizeHigh,
+                                          dwMaximumSizeLow);
+}
+
+LPWSTR CreateNewFallbackMappingName() {
+    unsigned char j;
+	WCHAR* chr;
+	HMODULE mod;
+	pRtlGenRandomPtr paddr;
+	int i;
+	LPWSTR res = RtlAllocateHeap(GetProcessHeap(), 0, 34); // The chance of collision is 1 in 50 sextillion or 1 in 220 billion depending on the context. So we should be fine
+    if (!res)
+        return NULL;
+    ZeroMemory(res, sizeof(WCHAR) * 17);
+    chr = (WCHAR*)((char*)res + 1);
+    mod = LoadLibraryW(L"ADVAPI32.DLL");
+    paddr = (pRtlGenRandomPtr) GetProcAddress(mod, "SystemFunction036");
+    
+    for (i = 0; i < 16; i++) {
+        j = 0;
+        paddr(&j, 1);
+        *chr = 65 + j % 26;
+        chr++;
+    }
+    return res;
+}
+
+/*
+ * @implemented
+ */
+HANDLE
+NTAPI
+CreateFileMappingW(HANDLE hFile,
+                   LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+                   DWORD flProtect,
+                   DWORD dwMaximumSizeHigh,
+                   DWORD dwMaximumSizeLow,
+                   LPCWSTR lpName)
+{
+    NTSTATUS Status;
+    HANDLE SectionHandle;
+    OBJECT_ATTRIBUTES LocalAttributes;
+    POBJECT_ATTRIBUTES ObjectAttributes;
+    UNICODE_STRING SectionName;
+    ACCESS_MASK DesiredAccess;
+    LARGE_INTEGER LocalSize;
+    PLARGE_INTEGER SectionSize = NULL;
+    ULONG Attributes;
+	LPCWSTR newName;
+	
+	//Hack for chrome 110+ work
+	if(hFile == INVALID_HANDLE_VALUE && 
+	   lpFileMappingAttributes != NULL &&
+	   flProtect == PAGE_READWRITE &&
+	   dwMaximumSizeHigh == 0 &&
+	   lpName == NULL)
+	{
+		newName = CreateNewFallbackMappingName();
+		lpName = newName;
+		//HeapFree(GetProcessHeap(), 0, newName);	
+	}	
+
+    /* Set default access */
+    DesiredAccess = STANDARD_RIGHTS_REQUIRED | SECTION_QUERY | SECTION_MAP_READ;
+
+    /* Get the attributes for the actual allocation and cleanup flProtect */
+    Attributes = flProtect & (SEC_FILE | SEC_IMAGE | SEC_RESERVE | SEC_NOCACHE | SEC_COMMIT | SEC_LARGE_PAGES);
+    flProtect ^= Attributes;
+
+    /* If the caller didn't say anything, assume SEC_COMMIT */
+    if (!Attributes) Attributes = SEC_COMMIT;
+
+    /* Now check if the caller wanted write access */
+    if (flProtect == PAGE_READWRITE)
+    {
+        /* Give it */
+        DesiredAccess |= SECTION_MAP_WRITE;
+    }
+    else if (flProtect == PAGE_EXECUTE_READWRITE)
+    {
+        /* Give it */
+        DesiredAccess |= (SECTION_MAP_WRITE | SECTION_MAP_EXECUTE);
+    }
+    else if (flProtect == PAGE_EXECUTE_READ)
+    {
+        /* Give it */
+        DesiredAccess |= SECTION_MAP_EXECUTE;
+    }
+    else if ((flProtect == PAGE_EXECUTE_WRITECOPY) &&
+             (NtCurrentPeb()->OSMajorVersion >= 6))
+    {
+        /* Give it */
+        DesiredAccess |= (SECTION_MAP_WRITE | SECTION_MAP_EXECUTE);
+    }
+    else if ((flProtect != PAGE_READONLY) && (flProtect != PAGE_WRITECOPY))
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return NULL;
+    }
+
+    /* Now check if we got a name */
+    if (lpName) RtlInitUnicodeString(&SectionName, lpName);
+
+    /* Now convert the object attributes */
+    ObjectAttributes = BaseFormatObjectAttributes(&LocalAttributes,
+                                                    lpFileMappingAttributes,
+                                                    lpName ? &SectionName : NULL);
+
+    /* Check if we got a size */
+    if (dwMaximumSizeLow || dwMaximumSizeHigh)
+    {
+        /* Use a LARGE_INTEGER and convert */
+        SectionSize = &LocalSize;
+        SectionSize->LowPart = dwMaximumSizeLow;
+        SectionSize->HighPart = dwMaximumSizeHigh;
+    }
+
+    /* Make sure the handle is valid */
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        /* It's not, we'll only go on if we have a size */
+        hFile = NULL;
+        if (!SectionSize)
+        {
+            /* No size, so this isn't a valid non-mapped section */
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return NULL;
+        }
+    }
+
+    /* Now create the actual section */
+    Status = NtCreateSection(&SectionHandle,
+                             DesiredAccess,
+                             ObjectAttributes,
+                             SectionSize,
+                             flProtect,
+                             Attributes,
+                             hFile);
+    if (!NT_SUCCESS(Status))
+    {
+        /* We failed */
+        BaseSetLastNTError(Status);
+        return NULL;
+    }
+    else if (Status == STATUS_OBJECT_NAME_EXISTS)
+    {
+        SetLastError(ERROR_ALREADY_EXISTS);
+    }
+    else
+    {
+        SetLastError(ERROR_SUCCESS);
+    }
+
+    /* Return the section */
+    return SectionHandle;
+}
+
 /*
  * @implemented
  */
