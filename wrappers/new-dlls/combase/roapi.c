@@ -30,6 +30,8 @@ WINE_DEFAULT_DEBUG_CHANNEL(combase);
 
 #define COINIT_DISABLEOLE1DDE 4
 
+const GUID GUID_NULL = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
+
 /***********************************************************************
  *      CleanupTlsOleState (combase.@)
  */
@@ -91,4 +93,97 @@ RoActivateInstance(
 		*instance = NULL;
 
 	return E_NOTIMPL;
+}
+
+/***********************************************************************
+ *      RoGetParameterizedTypeInstanceIID (combase.@)
+ */
+HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, const WCHAR **name_elements,
+                                                 const IRoMetaDataLocator *meta_data_locator, GUID *iid,
+                                                 ROPARAMIIDHANDLE *hiid)
+{
+    FIXME("stub: %d %p %p %p %p\n", name_element_count, name_elements, meta_data_locator, iid, hiid);
+    if (iid) *iid = GUID_NULL;
+    if (hiid) *hiid = INVALID_HANDLE_VALUE;
+    return E_NOTIMPL;
+}
+
+/***********************************************************************
+ *      RoGetApartmentIdentifier (combase.@)
+ */
+HRESULT WINAPI RoGetApartmentIdentifier(UINT64 *identifier)
+{
+    FIXME("(%p): stub\n", identifier);
+
+    if (!identifier)
+        return E_INVALIDARG;
+
+    *identifier = 0xdeadbeef;
+    return S_OK;
+}
+
+/***********************************************************************
+ *      RoGetServerActivatableClasses (combase.@)
+ */
+HRESULT WINAPI RoGetServerActivatableClasses(HSTRING name, HSTRING **classes, DWORD *count)
+{
+    FIXME("(%p, %p, %p): stub\n", name, classes, count);
+
+    if (count)
+        *count = 0;
+    return S_OK;
+}
+
+		HRESULT
+		WINAPI
+		RoRegisterActivationFactories(
+			_In_reads_(count) HSTRING* activatableClassIds,
+			_In_reads_(count) PFNGETACTIVATIONFACTORY* activationFactoryCallbacks,
+			_In_ UINT32 count,
+			_Out_ RO_REGISTRATION_COOKIE* cookie
+			)
+		{
+			// if (auto const pRoRegisterActivationFactories = try_get_RoRegisterActivationFactories())
+			// {
+				// return pRoRegisterActivationFactories(activatableClassIds, activationFactoryCallbacks, count, cookie);
+			// }
+
+			if (cookie)
+				*cookie = NULL;
+
+			return E_NOTIMPL;
+		}
+		
+/***********************************************************************
+ *      RoRegisterForApartmentShutdown (combase.@)
+ */
+HRESULT WINAPI RoRegisterForApartmentShutdown(IApartmentShutdown *callback,
+        UINT64 *identifier, APARTMENT_SHUTDOWN_REGISTRATION_COOKIE *cookie)
+{
+    HRESULT hr;
+	
+	// if (pRoRegisterForApartmentShutdown = try_get_RoRegisterForApartmentShutdown())
+	// {
+		// return pRoRegisterForApartmentShutdown(callbackObject, apartmentIdentifier, regCookie);
+	// }	
+
+    FIXME("(%p, %p, %p): stub\n", callback, identifier, cookie);
+
+    hr = RoGetApartmentIdentifier(identifier);
+    if (FAILED(hr))
+        return hr;
+
+    if (cookie)
+        *cookie = (void *)0xcafecafe;
+    return S_OK;
+}
+
+
+/***********************************************************************
+ *      RoOriginateError (combase.@)
+ */
+BOOL WINAPI RoOriginateError(HRESULT error, HSTRING message)
+{
+    FIXME("%#lx, %s: stub\n", error,message);
+    return FALSE;
 }

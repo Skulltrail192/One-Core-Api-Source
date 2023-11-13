@@ -58,7 +58,11 @@ typedef struct _CACHE_DESCRIPTOR {
 typedef struct _NUMA_NODE_RELATIONSHIP {
   ULONG NodeNumber;
   UCHAR Reserved[20];
-  GROUP_AFFINITY GroupMask;
+  USHORT GroupCount;
+  union {
+    GROUP_AFFINITY GroupMask;
+    GROUP_AFFINITY GroupMasks[ANYSIZE_ARRAY];
+  } DUMMYUNIONNAME;
 } NUMA_NODE_RELATIONSHIP, *PNUMA_NODE_RELATIONSHIP;
 
 typedef struct _CACHE_RELATIONSHIP {

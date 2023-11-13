@@ -143,23 +143,6 @@ NtCreateSemaphoreEx(
 
 NTSTATUS 
 NTAPI 
-NtQuerySystemInformationEx(
-	SYSTEM_INFORMATION_CLASS SystemInformationClass,
-	PVOID SystemInformation, 
-	ULONG QueryInformationLength, 
-	PVOID SystemInformatiom, 
-	ULONG BufferLength, 
-	PULONG ReturnLength
-)
-{
-	return NtQuerySystemInformation(SystemInformationClass,
-									SystemInformation,
-									BufferLength,
-									ReturnLength);
-}
-
-NTSTATUS 
-NTAPI 
 NtCreateKeyTransacted(
 	__out PHANDLE KeyHandle, 
 	__in ACCESS_MASK DesiredAccess, 

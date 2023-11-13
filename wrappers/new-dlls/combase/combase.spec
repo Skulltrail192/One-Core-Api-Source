@@ -437,6 +437,12 @@
 
 #combase specific functions
 @ stdcall RoInitialize(long)
+@ stdcall RoGetApartmentIdentifier(ptr)
+@ stdcall RoGetParameterizedTypeInstanceIID(long ptr ptr ptr ptr)
+@ stdcall RoGetServerActivatableClasses(ptr ptr ptr)
+@ stdcall RoOriginateError(long ptr)
+@ stdcall RoRegisterActivationFactories(ptr ptr long ptr)
+@ stdcall RoRegisterForApartmentShutdown(ptr ptr ptr)
 @ stdcall RoUninitialize()
 @ stdcall RoActivateInstance(ptr ptr)
 @ stdcall RoGetActivationFactory(ptr ptr ptr)

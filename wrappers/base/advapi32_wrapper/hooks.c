@@ -407,22 +407,7 @@ GetNamedSecurityInfoWInternal(
 	//This is a hack, for now is enabled because need a truly implementation of LABEL_SECURITY_INFORMATION (for Chrome and Chromium Framework)
 	if(SecurityInfo & LABEL_SECURITY_INFORMATION)
 	{
-		// resp = GetNamedSecurityInfoW(pObjectName,
-									 // ObjectType,
-									 // SecurityInfo,
-									 // ppsidOwner,
-									 // ppsidGroup,
-									 // ppDacl,
-									 // ppSacl,
-									 // ppSecurityDescriptor);
-												 
-									 
-		// if(resp != ERROR_SUCCESS)
-		// {		
-			//DbgPrint("GetNamedSecurityInfoWInternal::GetNamedSecurityInfoW return: %d\n", resp);	
-			SecurityInfo = OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION | SACL_SECURITY_INFORMATION;
-			//goto tryAgain;			
-		//}	
+		SecurityInfo = OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION | SACL_SECURITY_INFORMATION;
 	}	
 	
 //tryAgain:	
