@@ -147,3 +147,22 @@ GetFileAttributesTransactedA(
 {
     return GetFileAttributesExA(lpFileName, fInfoLevelId, lpFileInformation);
 }
+
+HANDLE FindFirstFileNameW(
+  LPCWSTR lpFileName,
+  DWORD   dwFlags,
+  LPDWORD StringLength,
+  PWSTR   LinkName
+)
+{
+	return (HANDLE)-1;
+}
+
+BOOL FindNextFileNameW(
+  HANDLE  hFindStream,
+  LPDWORD StringLength,
+  PWSTR   LinkName
+)
+{
+	return FALSE;
+}

@@ -1095,12 +1095,12 @@
 @ stdcall EnumResourceTypesExW(ptr ptr long long long)
 @ stdcall EnumSystemLocalesEx(ptr long ptr ptr)
 @ stdcall EnumTimeFormatsEx(ptr wstr long ptr)
-# @ stub FindFirstFileNameW
+@ stdcall FindFirstFileNameW(wstr long ptr wstr)
 @ stdcall FindFirstFileTransactedA(str long ptr long ptr long ptr)
 @ stdcall FindFirstFileTransactedW(wstr long ptr long ptr long ptr)
 # @ stub FindFirstFileNameTransactedW
 @ stdcall FindFirstStreamTransactedW(wstr long ptr long ptr)
-# @ stub FindNextFileNameW
+@ stdcall FindNextFileNameW(long ptr wstr)
 @ stdcall FindNLSString(long long ptr long wstr long ptr)
 @ stdcall FindNLSStringEx(wstr long wstr long wstr long ptr ptr ptr ptr)
 @ stdcall FlushProcessWriteBuffers()
@@ -1461,8 +1461,8 @@
 @ stdcall WaitForDebugEventEx(ptr long)
 
 #Windows Server 2022 functions
-@ stdcall GetTempPath2A(long str)
-@ stdcall GetTempPath2W(long wstr)
+#@ stdcall GetTempPath2A(long str)
+#@ stdcall GetTempPath2W(long wstr)
 
 #Import from advapibase or registry function
 @ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) advapibase.AccessCheck

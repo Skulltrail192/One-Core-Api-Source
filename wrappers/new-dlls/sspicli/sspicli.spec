@@ -79,8 +79,8 @@
 @ stdcall SetContextAttributesW(ptr long ptr long) secur32.SetContextAttributesW
 @ stdcall -stub SetCredentialsAttributesA(ptr long ptr long) secur32.SetCredentialsAttributesA
 @ stdcall -stub SetCredentialsAttributesW(ptr long ptr long) secur32.SetCredentialsAttributesW
-@ stub SspiCompareAuthIdentities
-@ stub SspiCopyAuthIdentity
+@ stdcall -stub SspiCompareAuthIdentities(ptr ptr ptr ptr)
+@ stdcall -stub SspiCopyAuthIdentity(ptr ptr)
 @ stub SspiDecryptAuthIdentity
 @ stub SspiDecryptAuthIdentityEx
 @ stdcall SspiEncodeAuthIdentityAsStrings(ptr ptr ptr ptr)
@@ -93,10 +93,10 @@
 @ stub SspiGetTargetHostName
 @ stub SspiIsAuthIdentityEncrypted
 @ stdcall SspiLocalFree(ptr)
-@ stub SspiMarshalAuthIdentity
+@ stdcall -stub SspiMarshalAuthIdentity(ptr ptr ptr)
 @ stub SspiPrepareForCredRead
 @ stdcall SspiPrepareForCredWrite(ptr wstr ptr ptr ptr ptr ptr)
-@ stub SspiUnmarshalAuthIdentity
+@ stdcall -stub SspiUnmarshalAuthIdentity(long str ptr)
 @ stub SspiUnmarshalAuthIdentityInternal
 @ stub SspiValidateAuthIdentity
 @ stdcall SspiZeroAuthIdentity(ptr)

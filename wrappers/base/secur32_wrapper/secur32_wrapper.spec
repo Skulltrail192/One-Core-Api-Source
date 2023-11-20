@@ -100,3 +100,9 @@
 
 #Only on XP x64
 @ stdcall -arch=x86_64 SupportsChannelBinding() securbase.SupportsChannelBinding
+
+#sspicli functions
+@ stdcall SspiCompareAuthIdentities(ptr ptr ptr ptr) sspicli.SspiCompareAuthIdentities
+@ stdcall SspiCopyAuthIdentity(ptr ptr) sspicli.SspiCopyAuthIdentity
+@ stdcall SspiMarshalAuthIdentity(ptr ptr ptr) sspicli.SspiMarshalAuthIdentity
+@ stdcall SspiUnmarshalAuthIdentity(long str ptr) sspicli.SspiUnmarshalAuthIdentity
