@@ -8,6 +8,8 @@ list(APPEND SOURCE
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/userenv_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/userenv_wrapper.def)
+	
+set(baseaddress_userenv_wrapper     0x77920000)	
 
 add_library(userenv_wrapper SHARED ${SOURCE})
 set_module_type(userenv_wrapper win32dll)

@@ -7,6 +7,8 @@ list(APPEND SOURCE
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/rpcrt4_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/rpcrt4_wrapper.def)
+	
+set(baseaddress_rpcrt4_wrapper     0x7c270000)		
 
 add_library(rpcrt4_wrapper SHARED ${SOURCE})
 set_module_type(rpcrt4_wrapper win32dll)

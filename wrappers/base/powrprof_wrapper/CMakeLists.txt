@@ -9,6 +9,8 @@ list(APPEND SOURCE
 
 add_library(powrprof_wrapper SHARED ${SOURCE})
 
+set(baseaddress_powrprof_wrapper     0x7aea0000)
+
 set_module_type(powrprof_wrapper win32dll ENTRYPOINT 0)
 add_importlibs(powrprof_wrapper advapi32 powrprofbase user32 comctl32 msvcrt kernel32 ntdll)
 add_dependencies(powrprof_wrapper psdk)

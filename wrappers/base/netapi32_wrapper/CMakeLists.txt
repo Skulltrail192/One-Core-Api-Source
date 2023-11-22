@@ -8,6 +8,8 @@ list(APPEND SOURCE
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/netapi32_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/netapi32_wrapper.def)
+	
+set(baseaddress_netapi32_wrapper     0x7aec0000)	
 
 add_library(netapi32_wrapper SHARED ${SOURCE})
 set_module_type(netapi32_wrapper win32dll)

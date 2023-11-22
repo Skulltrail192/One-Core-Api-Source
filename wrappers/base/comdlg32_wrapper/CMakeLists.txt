@@ -11,6 +11,8 @@ list(APPEND SOURCE
 	version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/comdlg32_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/comdlg32_wrapper.def)
+	
+set(baseaddress_comdlg32_wrapper     0x7be10000)	
 
 add_library(comdlg32_wrapper SHARED ${SOURCE})
 set_module_type(comdlg32_wrapper win32dll ENTRYPOINT 0)

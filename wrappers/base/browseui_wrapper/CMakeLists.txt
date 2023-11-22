@@ -11,6 +11,8 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/browseui_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/browseui_wrapper.def)
 
+set(baseaddress_browseui_wrapper 0x79f90000)
+
 add_library(browseui_wrapper SHARED ${SOURCE})
 set_module_type(browseui_wrapper win32dll ENTRYPOINT 0)
 

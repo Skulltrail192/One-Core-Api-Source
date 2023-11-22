@@ -3,6 +3,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 spec2def(winhttp_wrapper.dll winhttp_wrapper.spec)
 
+set(baseaddress_winhttp_wrapper     0x74c30000)	
+
 list(APPEND SOURCE
     main.c
     version.rc

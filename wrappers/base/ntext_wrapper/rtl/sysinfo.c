@@ -669,7 +669,7 @@ SYSTEM_LOGICAL_INFORMATION_FILLED GetLogicalInfo()
 
                 if (NULL == buffer) 
                 {
-                    DbgPrint(TEXT("\nError: Allocation failure\n"));
+                    DbgPrint("\nError: Allocation failure\n");
                     return fill;
                 }
             } 
@@ -731,7 +731,7 @@ SYSTEM_LOGICAL_INFORMATION_FILLED GetLogicalInfo()
             break;
 
         default:
-            DbgPrint(TEXT("\nError: Unsupported LOGICAL_PROCESSOR_RELATIONSHIP value.\n"));
+            DbgPrint("\nError: Unsupported LOGICAL_PROCESSOR_RELATIONSHIP value.\n");
             break;
         }
         byteOffset += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);

@@ -8,6 +8,8 @@ list(APPEND SOURCE
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/uxtheme_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/uxtheme_wrapper.def)
+	
+set(baseaddress_uxtheme_wrapper     0x7aac0000)		
 
 add_library(uxtheme_wrapper SHARED ${SOURCE})
 set_module_type(uxtheme_wrapper win32dll ENTRYPOINT 0)

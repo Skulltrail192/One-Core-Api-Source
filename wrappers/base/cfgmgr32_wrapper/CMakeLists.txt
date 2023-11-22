@@ -7,6 +7,8 @@ list(APPEND SOURCE
     cfgmgr32_wrapper.rc
     ${CMAKE_CURRENT_BINARY_DIR}/cfgmgr32_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/cfgmgr32_wrapper.def)
+	
+set(baseaddress_cfgmgr32_wrapper     0x79e90000)	
 
 add_library(cfgmgr32_wrapper SHARED ${SOURCE})
 set_module_type(cfgmgr32_wrapper win32dll)

@@ -118,8 +118,8 @@
 172 stdcall -noname ReadGPExtensions(ptr)                                     #stdcall -noname ReadGPExtensions(4)
 173 stdcall -noname CheckForSkippedExtensions(ptr long)                            #stdcall -noname CheckForSkippedExtensions(8)
 174 stdcall -noname SetupGPOFilter(ptr)                                       #stdcall -noname SetupGPOFilter(4)
-175 stdcall -arch=i386 CheckXForestLogon(ptr)                                    #stdcall -noname CheckXForestLogon(4)
-175 stdcall -noname -arch=x86_64 CheckXForestLogon(ptr)                       #stdcall -noname CheckXForestLogon(4)
+175 stdcall -arch=i386 -noname CheckXForestLogon(ptr)                                    #stdcall -noname CheckXForestLogon(4)
+#175 stdcall -noname -arch=x86_64 CheckXForestLogon(ptr)                       #stdcall -noname CheckXForestLogon(4)
 200 stdcall -noname CreateURLFile(wstr long ptr wstr long long long ptr ptr)                                        #stdcall -noname CreateURLFile(36)
 201 stdcall -noname DeleteURLFile(ptr wstr wstr ptr)                                        #stdcall -noname DeleteURLFile(16)
 

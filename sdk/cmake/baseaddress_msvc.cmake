@@ -391,3 +391,5 @@ set(baseaddress_xinput9_1_0                    0x74900000)
 set(baseaddress_xmllite                        0x748d0000)
 set(baseaddress_xolehlp                        0x748b0000)
 set(baseaddress_zipfldr                        0x74850000)
+
+set(baseaddress_ntext 0x7C910000)

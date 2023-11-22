@@ -7,7 +7,9 @@ add_definitions(
     -DPROXY_CLSID=CLSID_PSFactoryBuffer
     -DWINE_REGISTER_DLL)
 	
-include_directories(${REACTOS_SOURCE_DIR}/sdk/include/wine)	
+include_directories(${REACTOS_SOURCE_DIR}/sdk/include/wine)
+
+set(baseaddress_ole32_wrapper 0x7bfd0000)
 
 spec2def(ole32_wrapper.dll ole32_wrapper.spec)
 

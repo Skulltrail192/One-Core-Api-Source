@@ -8,6 +8,8 @@ list(APPEND SOURCE
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/shlwapi_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/shlwapi_wrapper.def)
+	
+set(baseaddress_shlwapi_wrapper     0x7c310000)		
 
 add_library(shlwapi_wrapper SHARED ${SOURCE})
 set_module_type(shlwapi_wrapper win32dll)
