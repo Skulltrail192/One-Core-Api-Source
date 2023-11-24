@@ -67,7 +67,7 @@ static const struct {
 	// {&CLSID_ShellDesktop,	ISF_Desktop_Constructor},
 	// {&CLSID_ShellFSFolder,	IFSFolder_Constructor},
 	{&CLSID_ShellItem,	IShellItem_Constructor},
-	//{&CLSID_ShellLink,	IShellLink_Constructor},
+	{&CLSID_ShellLink,	IShellLink_Constructor},
 	{&CLSID_ExplorerBrowser,ExplorerBrowser_Constructor},
 	{&CLSID_KnownFolderManager, KnownFolderManager_Constructor},
 	// {&CLSID_Shell,          IShellDispatch_Constructor},
@@ -86,6 +86,17 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	IClassFactory * pcf = NULL;
 	HRESULT	hres;
 	int i;
+    OSVERSIONINFO osvi;
+    BOOL bIsWindowsVistaorLater;
+
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+
+    GetVersionEx(&osvi);
+
+    bIsWindowsVistaorLater = 
+       ( (osvi.dwMajorVersion > 6) ||
+       ( (osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 0) ));	
 
 	TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
 
@@ -96,10 +107,20 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	for(i=0;InterfaceTable[i].clsid;i++) {
 	    if(IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
 	        TRACE("index[%u]\n", i);
-	        pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
-	        break;
-	    }
-	}
+			if(IsEqualIID(&CLSID_ShellLink, rclsid))
+			{
+				if(bIsWindowsVistaorLater){
+					pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
+					break;
+				}else{
+					continue;
+				}				
+			}else{
+				pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
+				break;				
+			}
+	    }			
+	}		
 
     if (!pcf) {
 	    FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));

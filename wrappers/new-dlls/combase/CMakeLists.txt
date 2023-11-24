@@ -12,6 +12,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 spec2def(combase.dll combase.spec ADD_IMPORTLIB)
 
+set(baseaddress_combase     0x7C680000)
+
 generate_idl_iids(dcom.idl)
 # add_idl_headers(dcom.idl)
 

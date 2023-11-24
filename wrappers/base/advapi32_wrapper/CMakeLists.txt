@@ -11,11 +11,7 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/lib/evtlib)
 
 spec2def(advapi32_wrapper.dll advapi32_wrapper.spec ADD_IMPORTLIB)
 
-if(ARCH STREQUAL "amd64")
-	set(baseaddress_advapi32_wrapper     0x7c3e0000)
-elseif(ARCH STREQUAL "i386")
-	set(baseaddress_advapi32_wrapper     0x7c520000)
-endif()
+set(baseaddress_advapi32_wrapper     0x7c520000)
 
 list(APPEND SOURCE
     efs.c

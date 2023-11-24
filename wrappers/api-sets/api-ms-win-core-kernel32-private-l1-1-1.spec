@@ -1,0 +1,1 @@
+@ stdcall PrivCopyFileExW(wstr wstr ptr ptr long long) kernelbase.PrivCopyFileExW

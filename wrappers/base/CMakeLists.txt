@@ -1,5 +1,5 @@
 add_subdirectory(advapi32_wrapper)
-add_subdirectory(browseui_wrapper)
+#add_subdirectory(browseui_wrapper)
 add_subdirectory(comdlg32_wrapper)
 add_subdirectory(cfgmgr32_wrapper)
 add_subdirectory(cryptex_wrapper)
