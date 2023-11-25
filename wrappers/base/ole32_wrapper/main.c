@@ -26,6 +26,10 @@ WINE_DEFAULT_DEBUG_CHANNEL(ole32);
 
 static struct list registered_classes = LIST_INIT(registered_classes);
 
+typedef interface IUnknown IActivationFilter;
+
+IActivationFilter globalActivationFilter = {0};
+
 static CRITICAL_SECTION registered_classes_cs;
 static CRITICAL_SECTION_DEBUG registered_classes_cs_debug =
 {
@@ -67,4 +71,20 @@ HRESULT WINAPI CoGetActivationState(GUID guid, DWORD unknown, DWORD *unknown2)
 HRESULT WINAPI CoGetCallState(int unknown, PULONG unknown2)
 {
     return E_NOTIMPL;
+}
+
+HRESULT WINAPI CoRegisterActivationFilter(IActivationFilter *pActivationFilter)
+{
+  IActivationFilter *activationFilter; // rax
+
+  if ( !pActivationFilter )
+    return 0x80070057;
+  activationFilter = (IActivationFilter *)_InterlockedCompareExchange64(
+                                            (signed __int64*)&globalActivationFilter,
+                                            (signed __int64)pActivationFilter,
+                                            0i64);
+  if ( !activationFilter || activationFilter == pActivationFilter )
+    return 0;
+  else
+    return 0x80004021;
 }

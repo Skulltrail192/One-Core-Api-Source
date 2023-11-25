@@ -156,7 +156,7 @@ DWORD __stdcall GetLastErrorError()
   return result;
 }
 
-signed int __stdcall HRESULTFromLastErrorError()
+HRESULT WINAPI HRESULTFromLastErrorError()
 {
   signed int result; // eax
 
@@ -166,7 +166,7 @@ signed int __stdcall HRESULTFromLastErrorError()
   return result;
 }
 
-int GetModuleResourceData(HMODULE hModule, LPCWSTR lpName, LPCWSTR lpType, DWORD *a4, DWORD *a5)
+HRESULT GetModuleResourceData(HMODULE hModule, LPCWSTR lpName, LPCWSTR lpType, DWORD *a4, DWORD *a5)
 {
   HRSRC ResourceW; // eax
   HRSRC v6; // esi
@@ -192,23 +192,41 @@ int GetModuleResourceData(HMODULE hModule, LPCWSTR lpName, LPCWSTR lpType, DWORD
   return 0;
 }
 
-int __stdcall CreateStreamSTOnModuleResource(HMODULE hModule, BYTE *pInit, const WCHAR *cbInit, IStream **a4)
+HRESULT WINAPI CreateStreamSTOnModuleResource(HMODULE hModule, BYTE *pInit, const WCHAR *cbInit, IStream **a4)
 {
-  int ModuleResourceData; // esi
-  IStream *v5; // eax
+  HRESULT ModuleResourceData; // esi
+  IStream *Stream; // eax
 
   ModuleResourceData = GetModuleResourceData(hModule, (LPCWSTR)pInit, cbInit, (DWORD*)&pInit, (DWORD*)&cbInit);
   if ( ModuleResourceData >= 0 )
   {
-    v5 = SHCreateMemStream(pInit, (UINT)cbInit);
-    *a4 = v5;
-    if ( !v5 )
+    Stream = SHCreateMemStream(pInit, (UINT)cbInit);
+    *a4 = Stream;
+    if ( !Stream )
       return 0x8007000E;
   }
   return ModuleResourceData;
 }
 
-int __stdcall SHCreateStreamOnModuleResourceW(HMODULE a1, BYTE *a2, const WCHAR *a3, IStream **a4)
+#ifdef _M_IX86
+HRESULT WINAPI SHCreateStreamOnModuleResourceW(HMODULE a1, BYTE *a2, const WCHAR *a3, IStream **a4)
 {
-  return CreateStreamSTOnModuleResource(a1, a2, a3, a4);
+	return CreateStreamSTOnModuleResource(a1, a2, a3, a4); 
 }
+#else
+HRESULT WINAPI SHCreateStreamOnModuleResourceW(HMODULE hModule, BYTE *pInit, const WCHAR *cbInit, PVOID **Cstream)
+{
+  HRESULT ModuleResourceData; // esi
+  PVOID *Stream; // eax
+
+  ModuleResourceData = GetModuleResourceData(hModule, (LPCWSTR)pInit, cbInit, (DWORD*)&pInit, (DWORD*)&cbInit);
+  if ( ModuleResourceData >= 0 )
+  {
+    Stream = (PVOID*)SHCreateMemStream(pInit, (UINT)cbInit);
+    *Cstream = Stream;
+    if ( !Stream )
+      return 0x8007000E;
+  }
+  return ModuleResourceData;
+}
+#endif

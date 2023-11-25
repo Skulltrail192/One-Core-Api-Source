@@ -1176,6 +1176,6 @@
 ;@ varargs ShellMessageBoxW(long long wstr wstr long) shell32.ShellMessageBoxW
 ;@ varargs ShellMessageBoxA(long long str str long) shell32.ShellMessageBoxA
 
-628 stdcall -i386 SHCreateStreamOnModuleResourceW(ptr ptr wstr ptr) ;Change 628 ordinal from PathIsNetworkPathA to SHCreateStreamOnModuleResourceW to satisfy Windows 7 wordpad
+628 stdcall -noname SHCreateStreamOnModuleResourceW(ptr ptr wstr ptr) ;Change 628 ordinal from PathIsNetworkPathA to SHCreateStreamOnModuleResourceW to satisfy Windows 7 wordpad
 @ stdcall -i386 PathIsNetworkPathA(str) ;Change from ordinal 628 (x86) to standard export
 @ stdcall -arch=x86_64 PathIsDirectoryW(wstr) ;Change from ordinal 633 (x64) to standard export

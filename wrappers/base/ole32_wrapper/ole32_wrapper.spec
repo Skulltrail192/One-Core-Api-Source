@@ -361,7 +361,7 @@
 @ stdcall ComPs_NdrCStdStubBuffer_Release(ptr ptr) olebase.ComPs_NdrCStdStubBuffer_Release
 @ stdcall ComPs_NdrStubCall2(ptr ptr ptr ptr) olebase.ComPs_NdrStubCall2
 @ stdcall ComPs_NdrStubForwardingFunction(ptr ptr ptr ptr) olebase.ComPs_NdrStubForwardingFunction 
-@ stdcall CoRegisterActivationFilter(ptr) olebase.CoRegisterActivationFilter
+@ stdcall CoRegisterActivationFilter(ptr)
 
 #for XP x64
 @ stdcall -arch=x86_64 CLIPFORMAT_UserFree64(ptr ptr) olebase.CLIPFORMAT_UserFree64
