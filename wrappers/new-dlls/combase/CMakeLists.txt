@@ -14,11 +14,15 @@ spec2def(combase.dll combase.spec ADD_IMPORTLIB)
 
 set(baseaddress_combase     0x7C680000)
 
-generate_idl_iids(dcom.idl)
-# add_idl_headers(dcom.idl)
-
-# add_rpcproxy_files(
-    # dcom.idl)
+generate_idl_iids(activation.idl dcomcombase.idl inspectable.idl hstring.idl restrictederrorinfo.idl roparameterizediid.idl)
+add_idl_headers(combaseidl activation.idl dcomcombase.idl inspectable.idl hstring.idl restrictederrorinfo.idl roparameterizediid.idl)
+add_rpcproxy_files(
+    activation.idl
+    dcomcombase.idl
+	inspectable.idl
+	hstring.idl
+	restrictederrorinfo.idl
+	roparameterizediid.idl)
 
 list(APPEND SOURCE
 	apartment.c
@@ -38,4 +42,5 @@ add_library(combase SHARED  ${SOURCE})
 set_module_type(combase win32dll ENTRYPOINT 0)
 target_link_libraries(combase wine)
 add_importlibs(combase olebase rpcrt4 msvcrt kernel32 kernelbase ntdll)
+add_dependencies(combase combaseidl)
 add_cd_file(TARGET combase DESTINATION reactos/system32 FOR all)

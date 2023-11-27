@@ -64,6 +64,7 @@ list(APPEND SOURCE
 	wpcapi.idl
 	)
 	
+	
 add_iid_library(dxgi_uuids dxgi.idl dxgi1_2.idl dxgi1_3.idl dxgi1_4.idl dxgi1_5.idl dxgi1_6.idl d3d12.idl dxgi_internal.idl)	
 add_iid_library(d2d1_uuids d2d1.idl d2d1_1.idl d2d1_2.idl)
 add_iid_library(d3d10_uuids d3d10.idl d3d10_1.idl d3d10sdklayers.idl)

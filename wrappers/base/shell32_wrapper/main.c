@@ -44,7 +44,9 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 			
 			if(GetEnvironmentVariableW(L"APPDATA", AppData, bufferSize) > 0 && GetEnvironmentVariableW(L"LOCALAPPDATA", AppData, bufferSize) == 0){
 				SetEnvironmentVariableW(L"LOCALAPPDATA", AppData);
-			}		
+			}
+			//Hack to disable sandbox for Firefox 73+
+			SetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", L"1");	
 			
 			HeapFree(GetProcessHeap(), 0, AppData);
             break;

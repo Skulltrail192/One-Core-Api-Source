@@ -1567,6 +1567,7 @@
 @ stdcall RtlIdnToNameprepUnicode(long wstr long ptr ptr)
 @ stdcall RtlIdnToUnicode(long wstr long ptr ptr)
 @ stdcall RtlInitializeConditionVariable(ptr)
+@ stdcall RtlInitializeCriticalSectionEx(ptr long long)
 @ stdcall RtlInitializeSRWLock(ptr) 
 @ stdcall RtlInternString(long long) ; to review
 @ stdcall RtlpIsValidUILanguage(ptr)
@@ -1653,7 +1654,7 @@
 @ stdcall WinSqmStartSession(long long long)
 @ stdcall ZwQueryLicenseValue(ptr ptr ptr long ptr) NtQueryLicenseValue
 
-#win7
+#Win7 functions
 @ stdcall LdrQueryModuleServiceTags(ptr ptr long)
 @ stdcall RtlGetCurrentProcessorNumberEx(ptr)
 @ stdcall RtlGetSystemTimePrecise()
@@ -1673,7 +1674,7 @@
 @ stdcall ZwOpenKeyEx(ptr long ptr long) NtOpenKeyEx
 @ stdcall WinSqmAddToAverageDWORD(long long long)
 
-#win8
+#Win8 functions
 @ stdcall EtwEventSetInformation(int64 long ptr long)
 @ stdcall LdrAddDllDirectory(ptr ptr)
 @ stdcall LdrGetDllDirectory(ptr)
@@ -1708,8 +1709,11 @@
 @ stdcall RtlUnsubscribeWnfStateChangeNotification(ptr)
 @ stdcall RtlWaitOnAddress(ptr ptr long ptr)
 @ stdcall RtlWakeAddressAll(ptr)
-@ stdcall RtlWakeAddressSingle(ptr) 
+@ stdcall RtlWakeAddressSingle(ptr)
 @ stdcall WinSqmIsOptedInEx(long)
+
+#Win10
+@ stdcall RtlGetDeviceFamilyInfoEnum(ptr ptr ptr)
 
 #Unimplemented
 @ stdcall NtCommitTransaction(ptr long)
@@ -1751,7 +1755,6 @@
 @ stdcall -stub RtlCreateProcessParametersEx() ntdll.RtlCreateProcessParametersEx
 @ stdcall -stub RtlExitUserProcess() ntdll.RtlExitUserProcess
 @ stdcall -stub RtlExpandEnvironmentStrings() ntdll.RtlExpandEnvironmentStrings
-@ stdcall -stub RtlInitializeCriticalSectionEx() ntdll.RtlInitializeCriticalSectionEx
 @ stdcall -stub RtlInitializeExceptionChain() ntdll.RtlInitializeExceptionChain
 @ stdcall -stub RtlLocaleNameToLcid() ntdll.RtlLocaleNameToLcid
 @ stdcall -stub RtlQueryElevationFlags() ntdll.RtlQueryElevationFlags

@@ -24,6 +24,14 @@ BOOLEAN globalVerificationTablet = TRUE;
 BOOLEAN globalVerificationMediaCenter = TRUE;
 BOOLEAN globalVerificationAppliance = TRUE;
 
+#define DEVICEFAMILYINFOENUM_DESKTOP 		0x00000003
+#define DEVICEFAMILYINFOENUM_XBOX 			0x00000005
+#define DEVICEFAMILYINFOENUM_TEAM 			0x00000006
+#define DEVICEFAMILYINFOENUM_SERVER 		0x00000009
+#define DEVICEFAMILYINFOENUM_HOLOGRAPHIC 	0x0000000A
+#define DEVICEFAMILYINFOENUM_SERVER_NANO 	0x0000000D
+#define DEVICEFAMILYINFOENUM_WINDOWS_CORE 	0x00000010
+
 #define SystemLogicalProcessorInformationEx 107
 
 typedef struct _SYSTEM_LOGICAL_INFORMATION_FILLED{
@@ -937,4 +945,25 @@ NtQuerySystemInformationEx(
         *ResultLength = len;
 
     return ret;
+}
+
+VOID
+NTAPI
+RtlGetDeviceFamilyInfoEnum(
+    _Out_opt_ ULONGLONG *pullUAPInfo,
+    _Out_opt_ DWORD *pulDeviceFamily,
+    _Out_opt_ DWORD *pulDeviceForm
+)
+{
+	if(pullUAPInfo){
+		*pullUAPInfo = 0x000A000038391770;
+	}
+	
+	if(pulDeviceFamily){
+		*pulDeviceFamily = DEVICEFAMILYINFOENUM_DESKTOP;
+	}
+	
+	if(pulDeviceForm){
+		*pulDeviceForm = 0;
+	}	
 }

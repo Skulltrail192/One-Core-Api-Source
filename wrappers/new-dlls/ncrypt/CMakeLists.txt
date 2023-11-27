@@ -3,6 +3,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(ncrypt.dll ncrypt.spec)
 
+set(baseaddress_ncrypt 0x729d0000)
+
 list(APPEND SOURCE
     main.c	
     version.rc

@@ -2,6 +2,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(bcrypt_new.dll bcrypt_new.spec)
 
+set(baseaddress_bcrypt_new 0x71ad0000)
+
 list(APPEND SOURCE
     bcrypt_main.c
     gnutls.c

@@ -21,30 +21,25 @@
 #include <assert.h>
 #include <evntprov.h>
 #include <winnls.h>
-
-/*
- * Copyright 2009 Henri Verbeet for CodeWeavers
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- */
 #include <Ntsecapi.h>
 #include <evntprov.h>
 #include <ntdef.h>
 
 #define MAX_HW_COUNTERS 16
+
+#define RTL_CRITICAL_SECTION_FLAG_NO_DEBUG_INFO    0x01000000
+#define RTL_CRITICAL_SECTION_FLAG_DYNAMIC_SPIN     0x02000000
+#define RTL_CRITICAL_SECTION_FLAG_STATIC_INIT      0x04000000
+#define RTL_CRITICAL_SECTION_FLAG_RESOURCE_TYPE    0x08000000
+#define RTL_CRITICAL_SECTION_FLAG_FORCE_DEBUG_INFO 0x10000000
+#define RTL_CRITICAL_SECTION_ALL_FLAG_BITS         0xFF000000
+#define RTL_CRITICAL_SECTION_FLAG_RESERVED \
+    (RTL_CRITICAL_SECTION_ALL_FLAG_BITS & \
+    (~(RTL_CRITICAL_SECTION_FLAG_NO_DEBUG_INFO | \
+       RTL_CRITICAL_SECTION_FLAG_DYNAMIC_SPIN | \
+       RTL_CRITICAL_SECTION_FLAG_STATIC_INIT | \
+       RTL_CRITICAL_SECTION_FLAG_RESOURCE_TYPE | \
+       RTL_CRITICAL_SECTION_FLAG_FORCE_DEBUG_INFO)))
 
 typedef ULONG LOGICAL;
 
@@ -756,3 +751,11 @@ ULONG64 NTAPI RtlGetExtendedFeaturesMask( CONTEXT_EX *context_ex );
 #define CONTEXT_AMD64_XSTATE          (CONTEXT_AMD64 | 0x0040)
 #define CONTEXT_XSTATE CONTEXT_AMD64_XSTATE
 #endif /* __x86_64__ */
+
+
+NTSTATUS
+NTAPI
+RtlInitializeCriticalSectionEx(
+    _Out_ PRTL_CRITICAL_SECTION CriticalSection,
+    _In_ ULONG SpinCount,
+    _In_ ULONG Flags);

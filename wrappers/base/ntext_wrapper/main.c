@@ -22,8 +22,10 @@ Revision History:
 
 VOID RtlpInitializeKeyedEvent(VOID);
 VOID RtlpCloseKeyedEvent(VOID);
+VOID NTAPI RtlpInitDeferredCriticalSection(VOID);
 void load_global_options(void);
 void init_locale();
+void NTAPI RtlpInitSRWLock();
 
 /*****************************************************
  *      DllMain
@@ -46,6 +48,9 @@ LdrInitialize(
 		init_locale();
         // LdrDisableThreadCalloutsForDll(hDll);
         RtlpInitializeKeyedEvent();
+        RtlpInitDeferredCriticalSection();
+		RtlpInitSRWLock(NtCurrentTeb()->ProcessEnvironmentBlock);
+		RtlpInitConditionVariable(NtCurrentTeb()->ProcessEnvironmentBlock);
     }
     else if (dwReason == DLL_PROCESS_DETACH)
     {

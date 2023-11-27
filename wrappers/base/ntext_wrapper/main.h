@@ -1107,8 +1107,6 @@ HANDLE __fastcall GetGlobalKeyedEventHandle();
 #define YY_SRWLOCK_GET_BLOCK(SRWLock) ((YY_SRWLOCK_WAIT_BLOCK*)(SRWLock & (~YY_SRWLOCK_MASK)))
 
 //SRWLock自旋次数
-#define SRWLockSpinCount 1024
-
 //取自Win7
 struct _YY_RTL_SRWLOCK
 {
@@ -1144,8 +1142,6 @@ typedef struct __declspec(align(16)) _YY_SRWLOCK_WAIT_BLOCK
 #define YY_CV_OPTIMIZE_LOCK 0x00000008ul
 #define YY_CV_MASK (0x0000000F)
 #define YY_CV_GET_BLOCK(CV) ((YY_CV_WAIT_BLOCK*)(CV & (~YY_CV_MASK)))
-
-#define ConditionVariableSpinCount 1024
 
 typedef struct __declspec(align(16)) _YY_CV_WAIT_BLOCK
 {

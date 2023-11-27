@@ -25,6 +25,7 @@ Revision History:
 #include "main.h"
 #include <stdlib.h>
 #include <malloc.h>
+#include <winnt.h>
 
 WINE_DEFAULT_DEBUG_CHANNEL(synch); 
 
@@ -91,73 +92,56 @@ HANDLE get_BaseNamedObjects_handle(void)
     return handle;
 }
 
-/*
- * @implemented
+/***********************************************************************
+ *           InitializeCriticalSectionEx   (kernelbase.@)
  */
-BOOL 
-WINAPI 
-InitializeCriticalSectionEx(
-	OUT LPCRITICAL_SECTION lpCriticalSection,
-    IN DWORD dwSpinCount,
-    IN DWORD flags 
-)
+BOOL WINAPI InitializeCriticalSectionEx(LPCRITICAL_SECTION lpCriticalSection,DWORD dwSpinCount,DWORD Flags)
 {
-    NTSTATUS Status;
-
-    /* FIXME: Flags ignored */
-
-    /* Initialize the critical section */
-    Status = RtlInitializeCriticalSectionAndSpinCount(
-        (PRTL_CRITICAL_SECTION)lpCriticalSection,
-        dwSpinCount);
-    if (!NT_SUCCESS(Status))
-    {
-        /* Set failure code */
-        SetLastError(Status);
-        return FALSE;
-    }
-
-    /* Success */
-    return TRUE;
+	NTSTATUS RtlStatus=STATUS_SUCCESS;
+	if (Flags&RTL_CRITICAL_SECTION_FLAG_RESERVED)
+		RtlStatus=STATUS_INVALID_PARAMETER_3;
+	if (dwSpinCount&0xFF000000)	//dwSpinCount>0x00FFFFFF
+		RtlStatus=STATUS_INVALID_PARAMETER_2;
+	if (NT_SUCCESS(RtlStatus))
+	{
+		if (Flags&RTL_CRITICAL_SECTION_FLAG_DYNAMIC_SPIN)
+			dwSpinCount=dwSpinCount&0x00FFFFFF;
+		else
+			dwSpinCount=2000;
+		//RTL_CRITICAL_SECTION_FLAG_STATIC_INIT的效果是不初始化直接返回
+		//RTL_CRITICAL_SECTION_FLAG_NO_DEBUG_INFO的效果是不分配DebugInfo的内存
+		//由于不知道XP是否支持这些行为，稳妥起见不应用标记
+		RtlStatus=RtlInitializeCriticalSectionAndSpinCount((PRTL_CRITICAL_SECTION)lpCriticalSection,dwSpinCount);
+	}
+	if (NT_SUCCESS(RtlStatus))
+		return TRUE;
+	BaseSetLastNTError(RtlStatus);
+	return FALSE;
 }
-
 /***********************************************************************
  *           SleepConditionVariableCS   (KERNEL32.@)
  */
-BOOL WINAPI SleepConditionVariableCS( CONDITION_VARIABLE *ConditionVariable, CRITICAL_SECTION *CriticalSection, DWORD dwMilliseconds )
+BOOL WINAPI SleepConditionVariableCS(PCONDITION_VARIABLE ConditionVariable,PCRITICAL_SECTION CriticalSection,DWORD dwMilliseconds)
 {
 	LARGE_INTEGER Timeout;
 	NTSTATUS Result=RtlSleepConditionVariableCS(ConditionVariable,(PRTL_CRITICAL_SECTION)CriticalSection,BaseFormatTimeOut(&Timeout,dwMilliseconds));
-	if(Result == STATUS_INVALID_PARAMETER_1)
-	{
-		DbgPrint("SleepConditionVariableCS:: RtlSleepConditionVariableCS failed with status: %08x\n", Result);
-		SetLastError(ERROR_TIMEOUT);
-		return FALSE;
-	}	
 	BaseSetLastNTError(Result);
 	if (NT_SUCCESS(Result) && Result!=STATUS_TIMEOUT)
 		return TRUE;
-	return FALSE;	
+	return FALSE;
 }
 
 /***********************************************************************
  *           SleepConditionVariableSRW   (KERNEL32.@)
  */
-BOOL WINAPI SleepConditionVariableSRW( RTL_CONDITION_VARIABLE *ConditionVariable, RTL_SRWLOCK *SRWLock, DWORD dwMilliseconds, ULONG Flags )
+BOOL WINAPI SleepConditionVariableSRW(PCONDITION_VARIABLE ConditionVariable,PSRWLOCK SRWLock,DWORD dwMilliseconds,ULONG Flags)
 {
 	LARGE_INTEGER Timeout;
 	NTSTATUS Result=RtlSleepConditionVariableSRW(ConditionVariable,SRWLock,BaseFormatTimeOut(&Timeout,dwMilliseconds),Flags);
-	
-	if(Result == STATUS_INVALID_PARAMETER_1)
-	{
-		DbgPrint("SleepConditionVariableSRW:: RtlSleepConditionVariableSRW failed with status: %08x\n", Result);
-		SetLastError(ERROR_TIMEOUT);
-		return FALSE;
-	}
 	BaseSetLastNTError(Result);
 	if (NT_SUCCESS(Result) && Result!=STATUS_TIMEOUT)
 		return TRUE;
-	return FALSE;	
+	return FALSE;
 }
 
 /***********************************************************************
@@ -844,148 +828,4 @@ BOOL WINAPI DECLSPEC_HOTPATCH WaitForDebugEventEx( DEBUG_EVENT *event, DWORD tim
             return set_ntstatus( status );
         }
     }
-}
-
-		// BOOL
-		// WINAPI
-		// GetQueuedCompletionStatusEx(
-			// _In_ HANDLE CompletionPort,
-			// _Out_writes_to_(ulCount,*ulNumEntriesRemoved) LPOVERLAPPED_ENTRY lpCompletionPortEntries,
-			// _In_ ULONG ulCount,
-			// _Out_ PULONG ulNumEntriesRemoved,
-			// _In_ DWORD dwMilliseconds,
-			// _In_ BOOL fAlertable
-			// )
-		// {
-			// OVERLAPPED_ENTRY _Entry = lpCompletionPortEntries[0];
-			// ULONG index;
-			// BOOL _bRet;
-
-			// if (ulCount == 0 || lpCompletionPortEntries == NULL || ulNumEntriesRemoved == NULL)
-			// {
-				// SetLastError(ERROR_INVALID_PARAMETER);
-				// return FALSE;
-			// }
-
-			// *ulNumEntriesRemoved = 0;
-			// index = 0;
-			
-			// do{				
-				// _Entry = lpCompletionPortEntries[index];
-				// index++;
-				// *ulNumEntriesRemoved++;
-				// _bRet = GetQueuedCompletionStatus(CompletionPort, &_Entry.dwNumberOfBytesTransferred, &_Entry.lpCompletionKey, &_Entry.lpOverlapped, dwMilliseconds);
-			// }while(_bRet || index < ulCount);
-			
-			// // TODO: 已知问题：可警报状态丢失！（fAlertable）
-			// // _bRet = GetQueuedCompletionStatus(CompletionPort, &_Entry.dwNumberOfBytesTransferred, &_Entry.lpCompletionKey, &_Entry.lpOverlapped, dwMilliseconds);
-			// // if (_bRet)
-			// // {
-				// // *ulNumEntriesRemoved = 1;
-			// // }
-			// return _bRet;
-		// }
-		
-		// BOOL
-		// WINAPI
-		// GetQueuedCompletionStatusEx(
-			// _In_ HANDLE CompletionPort,
-			// _Out_writes_to_(ulCount,*ulNumEntriesRemoved) LPOVERLAPPED_ENTRY lpCompletionPortEntries,
-			// _In_ ULONG ulCount,
-			// _Out_ PULONG ulNumEntriesRemoved,
-			// _In_ DWORD dwMilliseconds,
-			// _In_ BOOL fAlertable
-			// )
-		// {
-			// BOOL _bRet;
-			// OVERLAPPED_ENTRY _Entry;
-			// DWORD _uResult;
-			// DWORD _uStartTick;
-			// DWORD _uTickSpan;
-
-			// if (ulCount == 0 || lpCompletionPortEntries == NULL || ulNumEntriesRemoved == NULL)
-			// {
-				// SetLastError(ERROR_INVALID_PARAMETER);
-				// return FALSE;
-			// }
-
-			// *ulNumEntriesRemoved = 0;
-
-			// _Entry = lpCompletionPortEntries[0];
-			
-            // if (fAlertable)
-            // {
-                // // 使用 WaitForSingleObjectEx 进行等待触发 APC
-                // _uStartTick = GetTickCount();
-                // for (;;)
-                // {
-                    // _uResult = WaitForSingleObjectEx(CompletionPort, dwMilliseconds, TRUE);
-                    // if (_uResult == WAIT_OBJECT_0)
-                    // {
-                        // // 完成端口有数据了
-                        // _bRet = GetQueuedCompletionStatus(CompletionPort, &_Entry.dwNumberOfBytesTransferred, &_Entry.lpCompletionKey, &_Entry.lpOverlapped, 0);
-                        // if (_bRet)
-                        // {
-                            // *ulNumEntriesRemoved = 1;
-                            // break;
-                        // }
-
-                        // if (GetLastError() != WAIT_TIMEOUT)
-                        // {
-                            // return FALSE;
-                        // }
-
-                        // // 无限等待时无脑继续等即可。
-                        // if (dwMilliseconds == INFINITE)
-                        // {
-                            // continue;
-                        // }
-
-                        // // 计算剩余等待时间，如果剩余等待时间归零则返回
-                        // _uTickSpan = GetTickCount() - _uStartTick;
-                        // if (_uTickSpan >= dwMilliseconds)
-                        // {
-                            // SetLastError(WAIT_TIMEOUT);
-                            // return FALSE;
-                        // }
-                        // dwMilliseconds -= _uTickSpan;
-                        // _uStartTick += _uTickSpan;
-                        // continue;
-                    // }
-                    // else if (_uResult == WAIT_IO_COMPLETION || _uResult == WAIT_TIMEOUT)
-                    // {
-                        // // 很奇怪，微软原版遇到 APC唤醒直接会设置 LastError WAIT_IO_COMPLETION
-                        // // 遇到超时，LastError WAIT_TIMEOUT（注意不是预期的 ERROR_TIMEOUT）不知道是故意还是有意。
-                        // SetLastError(_uResult);
-                        // return FALSE;
-                    // }
-                    // else if (_uResult == WAIT_ABANDONED)
-                    // {
-                        // SetLastError(ERROR_ABANDONED_WAIT_0);
-                        // return FALSE;
-                    // }
-                    // else if (_uResult == WAIT_FAILED)
-                    // {
-                        // // LastError
-                        // return FALSE;
-                    // }
-                    // else
-                    // {
-                        // // LastError ???
-                        // return FALSE;
-                    // }
-                // }
-
-                // return TRUE;
-            // }
-            // else
-            // {
-                // _bRet = GetQueuedCompletionStatus(CompletionPort, &_Entry.dwNumberOfBytesTransferred, &_Entry.lpCompletionKey, &_Entry.lpOverlapped, dwMilliseconds);
-                // if (_bRet)
-                // {
-                    // *ulNumEntriesRemoved = 1;
-                // }
-                // return _bRet;
-            // }
-		// }	
-	
+}	

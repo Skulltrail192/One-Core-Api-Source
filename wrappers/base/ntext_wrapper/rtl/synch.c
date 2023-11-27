@@ -35,12 +35,17 @@ Revision History:
 #define InterlockedOrPointer(ptr,val) InterlockedOr((PLONG)ptr,(LONG)val)
 #endif
 
+#define InterlockedExchangeAdd16 _InterlockedExchangeAdd16 
+
 #define COND_VAR_UNUSED_FLAG         ((ULONG_PTR)1)
 #define COND_VAR_LOCKED_FLAG         ((ULONG_PTR)2)
 #define COND_VAR_FLAGS_MASK          ((ULONG_PTR)3)
 #define COND_VAR_ADDRESS_MASK        (~COND_VAR_FLAGS_MASK)
 
 #define RtlpWaitOnAddressSpinCount 1024
+
+DWORD ConditionVariableSpinCount=1024;
+DWORD SRWLockSpinCount=1024;
 
 typedef SIZE_T SYNCSTATUS;
 
@@ -76,7 +81,11 @@ typedef struct _ADDRESS_WAIT_BLOCK
 	
 #define ADDRESS_GET_BLOCK(AW) ((ADDRESS_WAIT_BLOCK*)((SIZE_T)(AW) & (~(SIZE_T)(0x3))))
 
-HANDLE _GlobalKeyedEventHandle = 0;
+//HANDLE _GlobalKeyedEventHandle = NULL;
+
+BOOL NTAPI RtlpWaitCouldDeadlock();
+
+BOOL NTAPI RtlDllShutdownInProgress(VOID);
 
 static 
 NTSTATUS 
@@ -141,7 +150,7 @@ RtlpInitializeKeyedEvent(VOID)
     NtCreateKeyedEvent(&GlobalKeyedEventHandle, EVENT_ALL_ACCESS, NULL, 0);
 }
 
-static DWORD WINAPI
+static DWORD NTAPI
 RtlpInitializeWaitOnAddressKeyedEvent( RTL_RUN_ONCE *once, void *param, void **context )
 {
     NtCreateKeyedEvent(&WaitOnAddressKeyedEventHandle, GENERIC_READ|GENERIC_WRITE, NULL, 0);
@@ -165,40 +174,33 @@ static ULONG_PTR* GetBlockByWaitOnAddressHashTable(LPVOID Address)
 	return &WaitOnAddressHashTable[Index];
 }
 
-static HANDLE __fastcall GetGlobalKeyedEventHandle()
-{
-	HANDLE KeyedEventHandle;
-	//Windows XP等平台则 使用系统自身的 CritSecOutOfMemoryEvent，Vista或者更高平台 我们直接返回 nullptr 即可。
-	if (NtCurrentTeb()->ProcessEnvironmentBlock->OSMajorVersion < 6)
-	{
-		if (_GlobalKeyedEventHandle == 0)
-		{
-			const wchar_t Name[] = L"\\KernelObjects\\CritSecOutOfMemoryEvent";
+// static HANDLE __fastcall GetGlobalKeyedEventHandle()
+// {
+	// HANDLE KeyedEventHandle;
+	// //Windows XP等平台则 使用系统自身的 CritSecOutOfMemoryEvent，Vista或者更高平台 我们直接返回 nullptr 即可。
+	// if (_GlobalKeyedEventHandle == NULL)
+	// {
+		// const wchar_t Name[] = L"\\KernelObjects\\CritSecOutOfMemoryEvent";
 
-			UNICODE_STRING ObjectName = {sizeof(Name) - sizeof(wchar_t),sizeof(Name) - sizeof(wchar_t) ,(PWSTR)Name };
-			OBJECT_ATTRIBUTES attr = { sizeof(attr),0,&ObjectName };
+		// UNICODE_STRING ObjectName = {sizeof(Name) - sizeof(wchar_t),sizeof(Name) - sizeof(wchar_t) ,(PWSTR)Name };
+		// OBJECT_ATTRIBUTES attr = { sizeof(attr),0,&ObjectName };
 
-			if (NtOpenKeyedEvent(&KeyedEventHandle, MAXIMUM_ALLOWED, &attr) < 0)
-			{
-				RtlRaiseStatus(STATUS_RESOURCE_NOT_OWNED);
-			}
+		// if (NtOpenKeyedEvent(&KeyedEventHandle, MAXIMUM_ALLOWED, &attr) < 0)
+		// {
+			// RtlRaiseStatus(STATUS_RESOURCE_NOT_OWNED);
+		// }
 
-			if (InterlockedCompareExchange((volatile long *)&_GlobalKeyedEventHandle, (size_t)KeyedEventHandle, (size_t)0))
-			{
-				RtlFreeHeap( RtlGetProcessHeap(), 0, KeyedEventHandle );
-			}
-		}
-
-		return _GlobalKeyedEventHandle;
-	}
-
-	return 0;
-}
+		// if (InterlockedCompareExchange((volatile long *)&_GlobalKeyedEventHandle, (size_t)KeyedEventHandle, (size_t)0))
+		// {
+			// RtlFreeHeap( RtlGetProcessHeap(), 0, KeyedEventHandle );
+		// }
+	// }
+	
+	// return _GlobalKeyedEventHandle;
+// }
 
 static void RtlpWaitOnAddressWakeEntireList(ADDRESS_WAIT_BLOCK* pBlock)
 {
-	HANDLE GlobalKeyedEventHandle = GetGlobalKeyedEventHandle();
-
 	for (; pBlock;)
 	{
 		ADDRESS_WAIT_BLOCK* Tmp = pBlock->back;
@@ -299,38 +301,7 @@ static void RtlpAddWaitBlockToWaitList(ADDRESS_WAIT_BLOCK* pWaitBlock)
 /***********************************************************************
  *           RtlWaitOnAddress   (NTDLL.@)
  */
-// NTSTATUS WINAPI RtlWaitOnAddress( const void *addr, const void *cmp, SIZE_T size,
-                                  // const LARGE_INTEGER *timeout )
-// {
-    // // switch (size)
-    // // {
-        // // case 1:
-            // // if (*(const UCHAR *)addr != *(const UCHAR *)cmp)
-                // // return STATUS_SUCCESS;
-            // // break;
-        // // case 2:
-            // // if (*(const USHORT *)addr != *(const USHORT *)cmp)
-                // // return STATUS_SUCCESS;
-            // // break;
-        // // case 4:
-            // // if (*(const ULONG *)addr != *(const ULONG *)cmp)
-                // // return STATUS_SUCCESS;
-            // // break;
-        // // case 8:
-            // // if (*(const ULONG64 *)addr != *(const ULONG64 *)cmp)
-                // // return STATUS_SUCCESS;
-            // // break;
-        // // default:
-            // // return STATUS_INVALID_PARAMETER;
-    // // }
 
-    // // RtlRunOnceExecuteOnce( &init_once_woa, 
-						// // RtlpInitializeWaitOnAddressKeyedEvent, NULL, NULL );
-    // // return NtWaitForKeyedEvent( WaitOnAddressKeyedEventHandle, addr, 0, timeout );
-			//参数检查，AddressSize 只能 为 1,2,4,8
-// NTSTATUS WINAPI RtlWaitOnAddress( const void *addr, const void *cmp, SIZE_T size,
-                                  // const LARGE_INTEGER *timeout )
-	
 static 
 NTSTATUS 
 RtlpWaitOnAddressWithTimeout(
@@ -340,7 +311,6 @@ RtlpWaitOnAddressWithTimeout(
 {
 	NTSTATUS Status;
 	ULONG SpinCount;
-	HANDLE GlobalKeyedEventHandle;
 	//单核 我们无需自旋，直接进入等待过程即可
 	if (NtCurrentTeb()->ProcessEnvironmentBlock->NumberOfProcessors > 1 && RtlpWaitOnAddressSpinCount)
 	{
@@ -362,8 +332,6 @@ RtlpWaitOnAddressWithTimeout(
 		return STATUS_SUCCESS;
 	}
 
-	GlobalKeyedEventHandle = GetGlobalKeyedEventHandle();
-
 	Status = NtWaitForKeyedEvent(GlobalKeyedEventHandle, pWaitBlock, 0, TimeOut);
 
 	if (Status == STATUS_TIMEOUT)
@@ -383,8 +351,6 @@ RtlpWaitOnAddressWithTimeout(
 	
 static void RtlpWaitOnAddressRemoveWaitBlock(ADDRESS_WAIT_BLOCK* pWaitBlock)
 {
-	HANDLE GlobalKeyedEventHandle = GetGlobalKeyedEventHandle();
-
 	ULONG_PTR* ppFirstBlock = GetBlockByWaitOnAddressHashTable((LPVOID)pWaitBlock->Address);
 	ULONG_PTR Current = *ppFirstBlock;
 	size_t Last;
@@ -512,7 +478,7 @@ static void RtlpWaitOnAddressRemoveWaitBlock(ADDRESS_WAIT_BLOCK* pWaitBlock)
 }  
 								  
 NTSTATUS 
-WINAPI
+NTAPI
 RtlWaitOnAddress( 
 	const void *Address, 
 	const void *CompareAddress, 
@@ -573,25 +539,25 @@ RtlWaitOnAddress(
 /***********************************************************************
  *           RtlWakeAddressAll    (NTDLL.@)
  */
-void WINAPI RtlWakeAddressAll( const void *addr )
+void NTAPI RtlWakeAddressAll( const void *addr )
 {
     LARGE_INTEGER now;
 
     RtlRunOnceExecuteOnce( &init_once_woa, RtlpInitializeWaitOnAddressKeyedEvent, NULL, NULL );
     NtQuerySystemTime( &now );
-    while (NtReleaseKeyedEvent( WaitOnAddressKeyedEventHandle, addr, 0, &now ) == STATUS_SUCCESS) {}
+    while (NtReleaseKeyedEvent( GlobalKeyedEventHandle, addr, 0, &now ) == STATUS_SUCCESS) {}
 }
 
 /***********************************************************************
  *           RtlWakeAddressSingle (NTDLL.@)
  */
-void WINAPI RtlWakeAddressSingle( const void *addr )
+void NTAPI RtlWakeAddressSingle( const void *addr )
 {
     LARGE_INTEGER now;
 
     RtlRunOnceExecuteOnce( &init_once_woa, RtlpInitializeWaitOnAddressKeyedEvent, NULL, NULL );
     NtQuerySystemTime( &now );
-    NtReleaseKeyedEvent( WaitOnAddressKeyedEventHandle, addr, 0, &now );
+    NtReleaseKeyedEvent( GlobalKeyedEventHandle, addr, 0, &now );
 }  
 
 /******************************************************************
@@ -732,240 +698,452 @@ RtlRunOnceInitialize(
     once->Ptr = NULL;
 }
 
-/************************************************************* Condition Variable API *********************************************************************/
-
-/* SRW locks implementation
- *
- * The memory layout used by the lock is:
- *
- * 32 31            16               0
- *  ________________ ________________
- * | X| #exclusive  |    #shared     |
- *  ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
- * Since there is no space left for a separate counter of shared access
- * threads inside the locked section the #shared field is used for multiple
- * purposes. The following table lists all possible states the lock can be
- * in, notation: [X, #exclusive, #shared]:
- *
- * [0,   0,   N] -> locked by N shared access threads, if N=0 it's unlocked
- * [0, >=1, >=1] -> threads are requesting exclusive locks, but there are
- * still shared access threads inside. #shared should not be incremented
- * anymore!
- * [1, >=1, >=0] -> lock is owned by an exclusive thread and the #shared
- * counter can be used again to count the number of threads waiting in the
- * queue for shared access.
- *
- * the following states are invalid and will never occur:
- * [0, >=1,   0], [1,   0, >=0]
- *
- * The main problem arising from the fact that we have no separate counter
- * of shared access threads inside the locked section is that in the state
- * [0, >=1, >=1] above we cannot add additional waiting threads to the
- * shared access queue - it wouldn't be possible to distinguish waiting
- * threads and those that are still inside. To solve this problem the lock
- * uses the following approach: a thread that isn't able to allocate a
- * shared lock just uses the exclusive queue instead. As soon as the thread
- * is woken up it is in the state [1, >=1, >=0]. In this state it's again
- * possible to use the shared access queue. The thread atomically moves
- * itself to the shared access queue and releases the exclusive lock, so
- * that the "real" exclusive access threads have a chance. As soon as they
- * are all ready the shared access threads are processed.
- */
-
-#define SRWLOCK_MASK_IN_EXCLUSIVE     0x80000000
-#define SRWLOCK_MASK_EXCLUSIVE_QUEUE  0x7fff0000
-#define SRWLOCK_MASK_SHARED_QUEUE     0x0000ffff
-#define SRWLOCK_RES_EXCLUSIVE         0x00010000
-#define SRWLOCK_RES_SHARED            0x00000001
-
-#ifdef WORDS_BIGENDIAN
-#define srwlock_key_exclusive(lock)   (&lock->Ptr)
-#define srwlock_key_shared(lock)      ((void *)((char *)&lock->Ptr + 2))
-#else
-#define srwlock_key_exclusive(lock)   ((void *)((char *)&lock->Ptr + 2))
-#define srwlock_key_shared(lock)      (&lock->Ptr)
-#endif
-
-static inline void srwlock_check_invalid( unsigned int val )
+//New SRW implementation
+void NTAPI RtlpInitSRWLock(PEB* pPEB)
 {
-    /* Throw exception if it's impossible to acquire/release this lock. */
-    if ((val & SRWLOCK_MASK_EXCLUSIVE_QUEUE) == SRWLOCK_MASK_EXCLUSIVE_QUEUE ||
-            (val & SRWLOCK_MASK_SHARED_QUEUE) == SRWLOCK_MASK_SHARED_QUEUE)
-        RtlRaiseStatus(STATUS_RESOURCE_NOT_OWNED);
+	if (pPEB->NumberOfProcessors==1)
+		SRWLockSpinCount=0;
 }
 
-static inline unsigned int srwlock_lock_exclusive( unsigned int *dest, int incr )
+void NTAPI RtlInitializeSRWLock(RTL_SRWLOCK* SRWLock)
 {
-    unsigned int val, tmp;
-    /* Atomically modifies the value of *dest by adding incr. If the shared
-     * queue is empty and there are threads waiting for exclusive access, then
-     * sets the mark SRWLOCK_MASK_IN_EXCLUSIVE to signal other threads that
-     * they are allowed again to use the shared queue counter. */
-    for (val = *dest;; val = tmp)
-    {
-        tmp = val + incr;
-        srwlock_check_invalid( tmp );
-        if ((tmp & SRWLOCK_MASK_EXCLUSIVE_QUEUE) && !(tmp & SRWLOCK_MASK_SHARED_QUEUE))
-            tmp |= SRWLOCK_MASK_IN_EXCLUSIVE;
-        if ((tmp = interlocked_cmpxchg( (int *)dest, tmp, val )) == val)
-            break;
-    }
-    return val;
+	SRWLock->Ptr=NULL;
 }
 
-static inline unsigned int srwlock_unlock_exclusive( unsigned int *dest, int incr )
+void NTAPI RtlpWakeSRWLock(RTL_SRWLOCK* SRWLock,SYNCSTATUS OldStatus)
 {
-    unsigned int val, tmp;
-    /* Atomically modifies the value of *dest by adding incr. If the queue of
-     * threads waiting for exclusive access is empty, then remove the
-     * SRWLOCK_MASK_IN_EXCLUSIVE flag (only the shared queue counter will
-     * remain). */
-    for (val = *dest;; val = tmp)
-    {
-        tmp = val + incr;
-        srwlock_check_invalid( tmp );
-        if (!(tmp & SRWLOCK_MASK_EXCLUSIVE_QUEUE))
-            tmp &= SRWLOCK_MASK_SHARED_QUEUE;
-        if ((tmp = interlocked_cmpxchg( (int *)dest, tmp, val )) == val)
-            break;
-    }
-    return val;
+	SYNCSTATUS CurrStatus;
+	SYNCITEM* last;
+	SYNCITEM* first;	
+	
+	while (1)
+	{
+		//已经有线程抢先获取了锁，取消唤醒操作
+		if (OldStatus&SRWF_Hold)	//编译器将while(...)编译成if (...) do {} while(...)
+		{
+			do 
+			{
+				CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus-SRWF_Link,OldStatus);	//清除链表操作标记
+				//状态被其它线程更新，设置状态失败
+				//本次分析失效，更新状态重新分析
+				//下面有大量类似代码，不再重复说明
+				if (CurrStatus==OldStatus)
+					return ;
+				OldStatus=CurrStatus;
+			} while (OldStatus&SRWF_Hold);
+		}
+
+		last=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+		first=last->first;
+		if (first==NULL)
+		{
+			SYNCITEM* curr=last;
+			do 
+			{
+				curr->back->next=curr;	//补全链表
+				curr=curr->back;		//遍历链表
+				first=curr->first;		//更新查找结果
+			} while (first==NULL);		//找一个有效的first
+			//first指针提前到最近的地方
+			//优化链表里没有这个判断，大概是插入多个节点需要优化时，first一定不为last
+			if (last!=curr)	
+				last->first=first;
+		}
+
+		//如果后续还有节点等待，且这个是独占请求
+		if ((first->next!=NULL) && (first->attr&SYNC_Exclusive))
+		{
+			last->first=first->next;	//从链表中删除这个节点（删除和优化每次都用最近的first指针）
+			first->next=NULL;			//first从原链表脱离
+			_InterlockedAnd((long*)SRWLock,(~SRWF_Link));	//链表操作全部完成，去掉标记
+			break;
+		}
+		//否则，可能只有这一个节点等待，或这个是共享请求，全部唤醒
+		else
+		{
+			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,0,OldStatus);	//将状态重置为空闲
+			if (OldStatus==CurrStatus)
+				break;
+			last->first=first;	//将找到的first放到最近的位置
+			OldStatus=CurrStatus;
+		}
+	}
+
+	//依次唤醒线程，可能仅有first一个，也可能是first链上的全部
+	//如果是全部唤醒，接下来线程会再次争夺锁，抢不到的再次循环，构建链表并阻塞
+	//好处是省掉了各种情况的分析，后面几个共享锁将成功获得锁，直到遇到独占锁
+	do 
+	{
+		//抢到锁的线程会返回，栈上的item失效，必须先保存next
+		SYNCITEM* next=first->next;
+		//如果有SYNC_Spinning标记，表示还在自旋等待，即将进入休眠
+		//下面的lock btr将其置0，目标线程发现后跳过休眠
+		//如果没有SYNC_Spinning标记，说明目标线程清掉了此标记，正式进入休眠
+		//下面的lock btr没有影响，本线程负责将目标线程唤醒
+		//需要注意的是，NtReleaseKeyedEvent发现key并没有休眠时，会阻塞当前线程
+		//直到有线程用此key调用了NtWaitForKeyedEvent，才会唤醒，因此不会丢失通知
+		if (InterlockedBitTestAndReset((LONG*)&(first->attr),SYNC_SPIN_BIT)==0)
+			NtReleaseKeyedEvent(GlobalKeyedEventHandle,first,FALSE,NULL);
+		first=next;	//遍历链表
+	} while (first!=NULL);
 }
 
-static inline void srwlock_leave_exclusive( RTL_SRWLOCK *lock, unsigned int val )
+void NTAPI RtlpOptimizeSRWLockList(RTL_SRWLOCK* SRWLock,SYNCSTATUS OldStatus)
 {
-    /* Used when a thread leaves an exclusive section. If there are other
-     * exclusive access threads they are processed first, followed by
-     * the shared waiters. */
-    if (val & SRWLOCK_MASK_EXCLUSIVE_QUEUE)
-        NtReleaseKeyedEvent( GlobalKeyedEventHandle, srwlock_key_exclusive(lock), FALSE, NULL );
-    else
-    {
-        val &= SRWLOCK_MASK_SHARED_QUEUE; /* remove SRWLOCK_MASK_IN_EXCLUSIVE */
-        while (val--)
-            NtReleaseKeyedEvent( GlobalKeyedEventHandle, srwlock_key_shared(lock), FALSE, NULL );
-    }
+	SYNCSTATUS CurrStatus;
+	if (OldStatus&SRWF_Hold)
+	{
+		do 
+		{
+			SYNCITEM* last=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+			if (last!=NULL)
+			{
+				SYNCITEM* curr=last;
+				while (curr->first==NULL)
+				{
+					curr->back->next=curr;	//补全链表
+					curr=curr->back;		//遍历链表
+				}
+				last->first=curr->first;	//将first放到离容器入口最近的位置，加速下次查找
+			}
+			//链表操作结束，清除标记
+			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus-SRWF_Link,OldStatus);
+			if (CurrStatus==OldStatus)
+				return ;
+			OldStatus=CurrStatus;
+		} while (OldStatus&SRWF_Hold);
+	}
+	//有人释放了锁，停止优化，改为唤醒
+	RtlpWakeSRWLock(SRWLock,OldStatus);
 }
 
-static inline void srwlock_leave_shared( RTL_SRWLOCK *lock, unsigned int val )
+void NTAPI RtlAcquireSRWLockExclusive(RTL_SRWLOCK* SRWLock)
 {
-    /* Wake up one exclusive thread as soon as the last shared access thread
-     * has left. */
-    if ((val & SRWLOCK_MASK_EXCLUSIVE_QUEUE) && !(val & SRWLOCK_MASK_SHARED_QUEUE))
-        NtReleaseKeyedEvent( GlobalKeyedEventHandle, srwlock_key_exclusive(lock), FALSE, NULL );
+	//volatile
+	__declspec(align(16)) SYNCITEM item;
+	BOOL IsOptimize;
+	SYNCSTATUS NewStatus;
+	DWORD dwBackOffCount=0;
+	SYNCSTATUS CurrStatus;
+	SYNCSTATUS OldStatus;
+	int i;
+
+	//如果当前状态为空闲，直接获取锁
+	//甚至某个线程刚释放锁，仅清除了Hold标记，其它线程还没来得及获取锁
+	//本线程也可以趁机获取锁，设置标记，令唤醒操作取消或唤醒后再次进入等待
+	if (InterlockedBitTestAndSet((LONG*)SRWLock,SRW_HOLD_BIT)==0)
+		return ;
+
+	OldStatus=(SYNCSTATUS)(SRWLock->Ptr);
+	
+	while (1)
+	{
+		//如果当前已有线程持有锁，本线程将构建节点，将自己加入链表
+		if (OldStatus&SRWF_Hold)
+		{
+			if (RtlpWaitCouldDeadlock())
+			{
+				//GetCurrentProcess(),STATUS_THREAD_IS_TERMINATING
+				NtTerminateProcess((HANDLE)0xFFFFFFFF,0xC000004B);
+			}
+
+			item.attr=SYNC_Exclusive|SYNC_Spinning;
+			item.next=NULL;
+			IsOptimize=FALSE;
+
+			//如果有线程已经在前面等待了，就把之前的节点设为back
+			if (OldStatus&SRWF_Wait)
+			{
+				item.first=NULL;
+				item.count=0;
+				item.back=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+				NewStatus=((SYNCSTATUS)&item)|(OldStatus&SRWF_Many)|(SRWF_Link|SRWF_Wait|SRWF_Hold);
+
+				if (!(OldStatus&SRWF_Link))	//当前没人操作链表，就优化链表
+					IsOptimize=TRUE;
+			}
+			//如果本线程是第一个等待的线程，first指向自己
+			//查找时以first指针为准，不需要设置back
+			else
+			{
+				item.first=&item;
+				//如果锁的拥有者以独占方式持有，共享计数为0
+				//如果锁的拥有者以共享方式持有，共享计数为1或更多
+				item.count=OldStatus>>SRW_COUNT_BIT;
+				if (item.count>1)
+					NewStatus=((SYNCSTATUS)&item)|(SRWF_Many|SRWF_Wait|SRWF_Hold);
+				else
+					NewStatus=((SYNCSTATUS)&item)|(SRWF_Wait|SRWF_Hold);
+			}
+			//提交新状态
+			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			if (CurrStatus==OldStatus)
+			{
+				if (IsOptimize)
+					RtlpOptimizeSRWLockList(SRWLock,NewStatus);
+				//进入内核的代价太高，先进行一段自旋等待
+				for (i=SRWLockSpinCount;i>0;i--)
+				{
+					if (!(item.attr&SYNC_Spinning))	//其它线程可能唤醒本线程，清除标记
+						break;
+					_mm_pause();
+				}
+				//如果一直没能等到唤醒，就进入内核休眠
+				if (InterlockedBitTestAndReset((LONG*)(&item.attr),SYNC_SPIN_BIT))
+					NtWaitForKeyedEvent(GlobalKeyedEventHandle,&item,FALSE,NULL);
+				//被唤醒后再次循环检测条件
+				OldStatus=CurrStatus;
+			}
+			else
+			{
+				//线程处于激烈的竞争中，退避一段时间
+				RtlBackoff(&dwBackOffCount);
+				OldStatus=(SYNCSTATUS)(SRWLock->Ptr);
+			}
+		}
+		//别的线程可能做了什么，反正现在没有线程持有锁了，尝试获取锁
+		else
+		{
+			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus+SRWF_Hold,OldStatus);
+			if (CurrStatus==OldStatus)
+				return ;
+			RtlBackoff(&dwBackOffCount);
+			OldStatus=(SYNCSTATUS)(SRWLock->Ptr);
+		}
+	}
 }
 
-/***********************************************************************
- *              RtlInitializeSRWLock (NTDLL.@)
- *
- * NOTES
- *  Please note that SRWLocks do not keep track of the owner of a lock.
- *  It doesn't make any difference which thread for example unlocks an
- *  SRWLock (see corresponding tests). This implementation uses two
- *  keyed events (one for the exclusive waiters and one for the shared
- *  waiters) and is limited to 2^15-1 waiting threads.
- */
-void WINAPI RtlInitializeSRWLock( RTL_SRWLOCK *lock )
+void NTAPI RtlAcquireSRWLockShared(RTL_SRWLOCK* SRWLock)
 {
-    lock->Ptr = NULL;
+	//volatile
+	__declspec(align(16)) SYNCITEM item;
+	BOOL IsOptimize;
+	DWORD dwBackOffCount=0;
+	int i;
+
+	SYNCSTATUS NewStatus;
+	SYNCSTATUS CurrStatus;
+	SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,(1<<SRW_COUNT_BIT)|SRWF_Hold,0);
+	//如果当前状态为空闲，直接获取锁
+	if (OldStatus==0)
+		return ;
+
+	while (1)
+	{
+		//因独占锁需要等待的情况
+		//出于公平性考虑，只要有独占锁请求，后续的所有共享锁请求都要排队（即使当前正处于共享状态）
+		//有了wait标记，说明：1.当前是独占锁，后续无论什么类型的请求都要排队
+		//2.当前是共享锁，但是队列里有独占锁请求，后来的共享锁也应该排队
+		//作为对比，若当前是共享锁，紧接着的共享请求可以直接获取锁，不会阻塞和添加wait标记
+		//另有一种特殊情况，当前是独占锁，后续没有线程请求锁，也就没有wait标记
+		//但是这种情况的share count为0（作为对比，只有单个共享锁时share count为1）
+		//一旦后续有请求，请求者就会等待，变成有wait标记的情况
+		if ((OldStatus&SRWF_Hold) && ((OldStatus&SRWF_Wait) || ((OldStatus&SRWM_ITEM)==(SYNCSTATUS)NULL)))
+		{
+			if (RtlpWaitCouldDeadlock())
+				NtTerminateProcess((HANDLE)0xFFFFFFFF,0xC000004B);
+
+			item.attr=SYNC_Spinning;
+			item.count=0;
+			IsOptimize=FALSE;
+			item.next=NULL;
+
+			if (OldStatus&SRWF_Wait)
+			{
+				item.back=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+				//原汇编就是这么写的，但是刚才SRWF_Hold已经检测到了
+				NewStatus=((SYNCSTATUS)&item)|(OldStatus&(SRWF_Many|SRWF_Hold))|(SRWF_Link|SRWF_Wait);
+				item.first=NULL;
+
+				if (!(OldStatus&SRWF_Link))
+					IsOptimize=TRUE;
+			}
+			else
+			{
+				item.first=&item;
+				//当前一定是独占锁，所以不用考虑SRWF_Many
+				NewStatus=((SYNCSTATUS)&item)|(SRWF_Wait|SRWF_Hold);
+			}
+
+			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			if (CurrStatus==OldStatus)
+			{
+				if (IsOptimize)
+					RtlpOptimizeSRWLockList(SRWLock,NewStatus);
+
+				for (i=SRWLockSpinCount;i>0;i--)
+				{
+					if (!(item.attr&SYNC_Spinning))
+						break;
+					_mm_pause();
+				}
+
+				if (InterlockedBitTestAndReset((LONG*)&(item.attr),SYNC_SPIN_BIT))
+					NtWaitForKeyedEvent(GlobalKeyedEventHandle,&item,FALSE,NULL);
+				OldStatus=CurrStatus;
+			}
+			else
+			{
+				RtlBackoff(&dwBackOffCount);
+				OldStatus=(SYNCSTATUS)SRWLock->Ptr;
+			}
+		}
+		else
+		{
+			//某个线程刚释放锁，仅清除了Hold标记，其它线程还没来得及获取锁
+			//本线程可以趁机获取锁，设置标记，令唤醒操作取消或唤醒后再次抢占锁
+			//这里有点小问题，如果刚刚是独占锁释放，即使后续是共享请求
+			//也有可能取消唤醒操作，而不是和当前的共享线程一起获取锁
+			if (OldStatus&SRWF_Wait)
+				NewStatus=OldStatus+SRWF_Hold;
+			//当前处于共享状态，可以获取锁，增加共享计数
+			else
+				NewStatus=(OldStatus+(1<<SRW_COUNT_BIT))|SRWF_Hold;
+			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			if (CurrStatus==OldStatus)
+				return ;
+			RtlBackoff(&dwBackOffCount);
+			OldStatus=(SYNCSTATUS)SRWLock->Ptr;
+		}
+	}
 }
 
-/***********************************************************************
- *              RtlAcquireSRWLockExclusive (NTDLL.@)
- *
- * NOTES
- *  Unlike RtlAcquireResourceExclusive this function doesn't allow
- *  nested calls from the same thread. "Upgrading" a shared access lock
- *  to an exclusive access lock also doesn't seem to be supported.
- */
-void WINAPI RtlAcquireSRWLockExclusive( RTL_SRWLOCK *lock )
+void NTAPI RtlReleaseSRWLockExclusive(RTL_SRWLOCK* SRWLock)
 {
-    if (srwlock_lock_exclusive( (unsigned int *)&lock->Ptr, SRWLOCK_RES_EXCLUSIVE ))
-        NtWaitForKeyedEvent( GlobalKeyedEventHandle, srwlock_key_exclusive(lock), FALSE, NULL );
+	//去掉Hold标记
+	SYNCSTATUS CurrStatus;
+	SYNCSTATUS OldStatus=InterlockedExchangeAdd((volatile long*)SRWLock,-SRWF_Hold);
+	if (!(OldStatus&SRWF_Hold))
+		RtlRaiseStatus(0xC0000264);	//STATUS_RESOURCE_NOT_OWNED
+	//有线程在等待，且没有线程正在操作链表，执行唤醒操作
+	//否则当前操作链表的线程检测到状态改变，执行唤醒操作
+	if ((OldStatus&SRWF_Wait) && !(OldStatus&SRWF_Link))
+	{
+		OldStatus-=SRWF_Hold;
+		CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,OldStatus+SRWF_Link,OldStatus);
+		if (OldStatus==CurrStatus)
+			RtlpWakeSRWLock(SRWLock,OldStatus+SRWF_Link);
+	}
 }
 
-/***********************************************************************
- *              RtlAcquireSRWLockShared (NTDLL.@)
- *
- * NOTES
- *   Do not call this function recursively - it will only succeed when
- *   there are no threads waiting for an exclusive lock!
- */
-void WINAPI RtlAcquireSRWLockShared( RTL_SRWLOCK *lock )
+void NTAPI RtlReleaseSRWLockShared(RTL_SRWLOCK* SRWLock)
 {
-    unsigned int val, tmp;
-    /* Acquires a shared lock. If it's currently not possible to add elements to
-     * the shared queue, then request exclusive access instead. */
-    for (val = *(unsigned int *)&lock->Ptr;; val = tmp)
-    {
-        if ((val & SRWLOCK_MASK_EXCLUSIVE_QUEUE) && !(val & SRWLOCK_MASK_IN_EXCLUSIVE))
-            tmp = val + SRWLOCK_RES_EXCLUSIVE;
-        else
-            tmp = val + SRWLOCK_RES_SHARED;
-        if ((tmp = interlocked_cmpxchg( (int *)&lock->Ptr, tmp, val )) == val)
-            break;
-    }
+	SYNCSTATUS CurrStatus,NewStatus;
+	DWORD count;
+	SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,0,((1<<SRW_COUNT_BIT)|SRWF_Hold));
+	//如果共享计数为1，且标记仅为Hold
+	//说明仅有一个共享锁，恢复至空闲状态就可以了
+	if (OldStatus==((1<<SRW_COUNT_BIT)|SRWF_Hold))
+		return ;
 
-    /* Drop exclusive access again and instead requeue for shared access. */
-    if ((val & SRWLOCK_MASK_EXCLUSIVE_QUEUE) && !(val & SRWLOCK_MASK_IN_EXCLUSIVE))
-    {
-        NtWaitForKeyedEvent( GlobalKeyedEventHandle, srwlock_key_exclusive(lock), FALSE, NULL );
-        val = srwlock_unlock_exclusive( (unsigned int *)&lock->Ptr, (SRWLOCK_RES_SHARED
-                                        - SRWLOCK_RES_EXCLUSIVE) ) - SRWLOCK_RES_EXCLUSIVE;
-        srwlock_leave_exclusive( lock, val );
-    }
+	if (!(OldStatus&SRWF_Hold))
+		RtlRaiseStatus(0xC0000264);
 
-    if (val & SRWLOCK_MASK_EXCLUSIVE_QUEUE)
-        NtWaitForKeyedEvent( GlobalKeyedEventHandle, srwlock_key_shared(lock), FALSE, NULL );
+	//只存在共享锁
+	if (!(OldStatus&SRWF_Wait))
+	{
+		do 
+		{
+			//共享计数为1，清空为空闲状态
+			if ((OldStatus&SRWM_COUNT)<=(1<<SRW_COUNT_BIT))
+				NewStatus=0;
+			//共享计数大于0，将其-1
+			else
+				NewStatus=OldStatus-(1<<SRW_COUNT_BIT);
+			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			if (CurrStatus==OldStatus)
+				return ;
+			OldStatus=CurrStatus;
+		} while (!(OldStatus&SRWF_Wait));
+	}
+
+	//有独占请求等待时
+	//如果有多个共享锁，计数-1
+	if (OldStatus&SRWF_Many)
+	{
+		SYNCITEM* curr=(SYNCITEM*)(OldStatus&SRWM_ITEM);
+		//寻找最近的first节点，查询共享计数
+		//共享锁接共享锁不会阻塞，也不会新增等待节点
+		//共享锁接独占锁，独占锁会等待，并且其item记录共享计数
+		//特殊的，独占锁接独占锁，或独占锁接共享锁，记录的共享计数为0
+		while (curr->first==NULL)
+			curr=curr->back;	
+		curr=curr->first;
+
+		//共享计数-1，如果共享计数大于0，说明现在仍有线程占有共享锁
+		count=InterlockedDecrement(&curr->count);
+		if (count>0)
+			return ;
+	}
+
+	//共享锁完全释放，唤醒下个等待者
+	while (1)
+	{
+		NewStatus=OldStatus&(~(SRWF_Many|SRWF_Hold));
+		//有线程在操作链表，让它去唤醒吧
+		if (OldStatus&SRWF_Link)
+		{
+			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			if (CurrStatus==OldStatus)
+				return ;
+		}
+		else
+		{
+			NewStatus|=SRWF_Link;
+			CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+			if (CurrStatus==OldStatus)
+			{
+				RtlpWakeSRWLock(SRWLock,NewStatus);
+				return ;
+			}
+		}
+		OldStatus=CurrStatus;
+	}
 }
 
-/***********************************************************************
- *              RtlReleaseSRWLockExclusive (NTDLL.@)
- */
-void WINAPI RtlReleaseSRWLockExclusive( RTL_SRWLOCK *lock )
+BOOL NTAPI RtlTryAcquireSRWLockExclusive(RTL_SRWLOCK* SRWLock)
 {
-    srwlock_leave_exclusive( lock, srwlock_unlock_exclusive( (unsigned int *)&lock->Ptr,
-                             - SRWLOCK_RES_EXCLUSIVE ) - SRWLOCK_RES_EXCLUSIVE );
+	BOOL IsLocked=InterlockedBitTestAndSet((LONG*)SRWLock,SRW_HOLD_BIT);
+	return !(IsLocked==TRUE);
 }
 
-/***********************************************************************
- *              RtlReleaseSRWLockShared (NTDLL.@)
- */
-void WINAPI RtlReleaseSRWLockShared( RTL_SRWLOCK *lock )
+BOOL NTAPI RtlTryAcquireSRWLockShared(RTL_SRWLOCK* SRWLock)
 {
-    srwlock_leave_shared( lock, srwlock_lock_exclusive( (unsigned int *)&lock->Ptr,
-                          - SRWLOCK_RES_SHARED ) - SRWLOCK_RES_SHARED );
+	DWORD dwBackOffCount=0;
+	SYNCSTATUS NewStatus;
+	SYNCSTATUS CurrStatus;
+	SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,(1<<SRW_COUNT_BIT)|SRWF_Hold,0);
+	if (OldStatus==0)
+		return TRUE;
+	while (1) 
+	{
+		if ((OldStatus&SRWF_Hold) && ((OldStatus&SRWF_Wait) || (OldStatus&SRWM_ITEM)==(SYNCSTATUS)NULL))
+			return FALSE;		
+		if (OldStatus&SRWF_Wait)
+			NewStatus=OldStatus+SRWF_Hold;
+		else
+			NewStatus=OldStatus+(1<<SRW_COUNT_BIT);
+		CurrStatus=InterlockedCompareExchange((volatile long*)SRWLock,NewStatus,OldStatus);
+		if (CurrStatus==OldStatus)
+			return TRUE;
+		RtlBackoff(&dwBackOffCount);
+		OldStatus=(SYNCSTATUS)SRWLock->Ptr;
+	}
 }
 
-/***********************************************************************
- *              RtlTryAcquireSRWLockExclusive (NTDLL.@)
- *
- * NOTES
- *  Similar to AcquireSRWLockExclusive recusive calls are not allowed
- *  and will fail with return value FALSE.
- */
-BOOLEAN WINAPI RtlTryAcquireSRWLockExclusive( RTL_SRWLOCK *lock )
+BOOL NTAPI RtlpWaitCouldDeadlock()
 {
-    return interlocked_cmpxchg( (int *)&lock->Ptr, SRWLOCK_MASK_IN_EXCLUSIVE |
-                                SRWLOCK_RES_EXCLUSIVE, 0 ) == 0;
+	//byte_77F978A8极有可能是LdrpShutdownInProgress
+	//进程退出时，各种资源即将被销毁，继续等待将会出现错误的结果
+	return RtlDllShutdownInProgress()!=0;
 }
 
-/***********************************************************************
- *              RtlTryAcquireSRWLockShared (NTDLL.@)
- */
-BOOLEAN WINAPI RtlTryAcquireSRWLockShared( RTL_SRWLOCK *lock )
+//New ConditionVariable API
+void NTAPI RtlpInitConditionVariable(PEB* pPeb)
 {
-    unsigned int val, tmp;
-    for (val = *(unsigned int *)&lock->Ptr;; val = tmp)
-    {
-        if (val & SRWLOCK_MASK_EXCLUSIVE_QUEUE)
-            return FALSE;
-        if ((tmp = interlocked_cmpxchg( (int *)&lock->Ptr, val + SRWLOCK_RES_SHARED, val )) == val)
-            break;
-    }
-    return TRUE;
+	if (pPeb->NumberOfProcessors==1)
+		ConditionVariableSpinCount=0; 
 }
-
 /***********************************************************************
  *           RtlInitializeConditionVariable   (NTDLL.@)
  *
@@ -977,165 +1155,601 @@ BOOLEAN WINAPI RtlTryAcquireSRWLockShared( RTL_SRWLOCK *lock )
  * RETURNS
  *  Nothing.
  */
-void WINAPI RtlInitializeConditionVariable( RTL_CONDITION_VARIABLE *variable )
+void NTAPI RtlInitializeConditionVariable( RTL_CONDITION_VARIABLE *variable )
 {
     variable->Ptr = NULL;
 }
 
-/***********************************************************************
- *           RtlWakeConditionVariable   (NTDLL.@)
- *
- * Wakes up one thread waiting on the condition variable.
- *
- * PARAMS
- *  variable [I/O] condition variable to wake up.
- *
- * RETURNS
- *  Nothing.
- *
- * NOTES
- *  The calling thread does not have to own any lock in order to call
- *  this function.
- */
-void WINAPI RtlWakeConditionVariable( RTL_CONDITION_VARIABLE *variable )
+//将等待块插入 SRWLock 中
+static BOOL __fastcall RtlpQueueWaitBlockToSRWLock(YY_CV_WAIT_BLOCK* pBolck, RTL_SRWLOCK *SRWLock, ULONG SRWLockMark)
 {
-    if (interlocked_dec_if_nonzero( (int *)&variable->Ptr ))
-        NtReleaseKeyedEvent( GlobalKeyedEventHandle, &variable->Ptr, FALSE, NULL );
+	size_t shareCount;
+	size_t Current;
+	size_t New;
+	ULONG backoff;
+				
+	for (;;)
+	{
+		Current = *(volatile size_t*)SRWLock;
+
+		if ((Current & 0x1) == 0)
+			break;
+
+
+		if (SRWLockMark == 0)
+		{
+			pBolck->flag |= 0x1;
+		}
+		else if ((Current & 0x2) == 0 && YY_SRWLOCK_GET_BLOCK(Current))
+		{
+			return FALSE;
+		}
+
+		pBolck->next = NULL;					
+
+		if (Current & 0x2)
+		{
+			pBolck->notify = NULL;
+			pBolck->shareCount = 0;
+
+			//_YY_CV_WAIT_BLOCK 结构体跟 _YY_SRWLOCK_WAIT_BLOCK兼容，所以能这样强转
+			pBolck->back = (YY_CV_WAIT_BLOCK*)YY_SRWLOCK_GET_BLOCK(Current);
+
+			New = (size_t)(pBolck) | (Current & YY_CV_MASK);
+		}
+		else
+		{
+			shareCount = Current >> 4;
+
+			pBolck->shareCount = shareCount;
+			pBolck->notify = pBolck;
+			New = shareCount <= 1 ? (size_t)(pBolck) | 0x3 : (size_t)(pBolck) | 0xB;
+		}
+
+		//清泠 发现的Bug，我们应该返回 TRUE，减少必要的内核等待。
+		if (InterlockedCompareExchange((volatile size_t*)SRWLock, New, Current) == Current)
+			return TRUE;
+
+		RtlBackoff(&backoff);
+		//YieldProcessor();
+	}
+
+	return FALSE;
 }
 
-/***********************************************************************
- *           RtlWakeAllConditionVariable   (NTDLL.@)
- *
- * See WakeConditionVariable, wakes up all waiting threads.
- */
-void NTAPI RtlWakeAllConditionVariable( RTL_CONDITION_VARIABLE *variable )
+static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *ConditionVariable, size_t ConditionVariableStatus, size_t WakeCount)
 {
-    int val = interlocked_xchg( (int *)&variable->Ptr, 0 );
-    while (val-- > 0)
-        NtReleaseKeyedEvent( GlobalKeyedEventHandle, &variable->Ptr, FALSE, NULL );
+	//v16
+	YY_CV_WAIT_BLOCK* notify = NULL;
+	YY_CV_WAIT_BLOCK* pWake = NULL;
+	YY_CV_WAIT_BLOCK* pWaitBlock;
+	YY_CV_WAIT_BLOCK* pBlock;
+	YY_CV_WAIT_BLOCK* tmp;
+	YY_CV_WAIT_BLOCK* next;
+	YY_CV_WAIT_BLOCK* back;
+	YY_CV_WAIT_BLOCK** ppInsert = &pWake;
+	size_t LastStatus;
+	size_t MaxWakeCount;
+	size_t Count = 0;
+
+	for (;;)
+	{
+		pWaitBlock = YY_CV_GET_BLOCK(ConditionVariableStatus);
+
+		if ((ConditionVariableStatus & 0x7) == 0x7)
+		{
+			ConditionVariableStatus = InterlockedExchange((volatile size_t*)ConditionVariable, 0);
+
+			*ppInsert = YY_CV_GET_BLOCK(ConditionVariableStatus);
+
+			break;
+		}
+
+		MaxWakeCount = WakeCount + (ConditionVariableStatus & 7);
+
+		pBlock = pWaitBlock;
+
+		for (; pBlock->notify == NULL;)
+		{
+			tmp = pBlock;
+			pBlock = pBlock->back;
+			pBlock->next = tmp;
+		}
+
+		if (MaxWakeCount <= Count)
+		{
+			LastStatus = InterlockedCompareExchange((volatile size_t*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
+
+			if (LastStatus == ConditionVariableStatus)
+			{
+				break;
+			}
+
+			ConditionVariableStatus = LastStatus;
+		}
+		else
+		{
+			notify = pBlock->notify;
+
+			for (; MaxWakeCount > Count && notify->next;)
+			{
+				++Count;
+				*ppInsert = notify;
+				notify->back = NULL;
+
+				next = notify->next;
+
+				pWaitBlock->notify = next;
+				next->back = NULL;
+
+				ppInsert = &notify->back;
+
+				notify = next;
+
+			}
+
+			if (MaxWakeCount <= Count)
+			{
+				LastStatus = InterlockedCompareExchange((volatile size_t*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
+
+				if (LastStatus == ConditionVariableStatus)
+				{
+					break;
+				}
+
+				ConditionVariableStatus = LastStatus;
+			}
+			else
+			{
+				LastStatus = InterlockedCompareExchange((volatile size_t*)ConditionVariable, 0, ConditionVariableStatus);
+
+
+				if (LastStatus == ConditionVariableStatus)
+				{
+					*ppInsert = notify;
+					notify->back = 0;
+
+					break;
+				}
+
+				ConditionVariableStatus = LastStatus;
+			}
+		}
+	}
+
+	for (; pWake;)
+	{
+		back = pWake->back;
+
+		if (!InterlockedBitTestAndReset((volatile LONG*)&pWake->flag, 1))
+		{
+			if (pWake->SRWLock == NULL || RtlpQueueWaitBlockToSRWLock(pWake, pWake->SRWLock, (pWake->flag >> 2) & 0x1) == FALSE)
+			{
+				NtReleaseKeyedEvent(GlobalKeyedEventHandle, pWake, 0, NULL);
+			}
+		}
+
+		pWake = back;
+	}
+
+	return;
 }
 
-/***********************************************************************
- *           RtlSleepConditionVariableCS   (NTDLL.@)
- *
- * Atomically releases the critical section and suspends the thread,
- * waiting for a Wake(All)ConditionVariable event. Afterwards it enters
- * the critical section again and returns.
- *
- * PARAMS
- *  variable  [I/O] condition variable
- *  crit      [I/O] critical section to leave temporarily
- *  timeout   [I]   timeout
- *
- * RETURNS
- *  see NtWaitForKeyedEvent for all possible return values.
- */
+VOID
+NTAPI
+RtlWakeConditionVariable(
+	_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable
+)
+{
+	size_t Current;
+	size_t Last;
+
+	Current = *(volatile size_t*)ConditionVariable;
+
+	for (; Current; Current = Last)
+	{
+		if (Current & 0x8)
+		{
+			if ((Current & 0x7) == 0x7)
+			{
+				return;
+			}
+
+			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, Current + 1, Current);
+			if (Last == Current)
+				return;
+		}
+		else
+		{
+			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, Current | 0x8, Current);
+			if (Last == Current)
+			{
+				RtlpWakeConditionVariable(ConditionVariable, Current + 8, 1);
+				return;
+			}
+		}
+	}
+}
+		
+VOID
+NTAPI
+RtlWakeAllConditionVariable(
+	_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable
+)
+{
+	size_t Current = *(volatile size_t*)ConditionVariable;
+	size_t Last;
+	YY_CV_WAIT_BLOCK* pBlock;
+	YY_CV_WAIT_BLOCK* Tmp;
+
+	for (; Current && (Current & 0x7) != 0x7; Current = Last)
+	{
+		if (Current & 0x8)
+		{
+			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, Current | 0x7, Current);
+			if (Last == Current)
+				return;
+		}
+		else
+		{
+			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, 0, Current);
+			if (Last == Current)
+			{
+
+				for (pBlock = YY_CV_GET_BLOCK(Current); pBlock;)
+				{
+					Tmp = pBlock->back;
+
+					if (!InterlockedBitTestAndReset((volatile LONG*)&pBlock->flag, 1))
+					{
+						NtReleaseKeyedEvent(GlobalKeyedEventHandle, pBlock, FALSE, NULL);
+					}
+
+					pBlock = Tmp;
+				}
+
+				return;
+			}
+		}
+	}
+}
+		
+static void __fastcall RtlpOptimizeConditionVariableWaitList(RTL_CONDITION_VARIABLE *ConditionVariable, size_t ConditionVariableStatus)
+{
+	YY_CV_WAIT_BLOCK *pWaitBlock;
+	YY_CV_WAIT_BLOCK *pItem;
+	YY_CV_WAIT_BLOCK *temp;
+	size_t LastStatus;
+				
+	for (;;)
+	{
+		pWaitBlock = YY_CV_GET_BLOCK(ConditionVariableStatus);
+		pItem = pWaitBlock;
+
+		for (; pItem->notify == NULL;)
+		{
+			temp = pItem;
+			pItem = pItem->back;
+			pItem->next = temp;
+		}
+
+		pWaitBlock->notify = pItem->notify;
+
+		LastStatus = InterlockedCompareExchange((volatile size_t*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
+
+		if (LastStatus == ConditionVariableStatus)
+			break;
+
+		ConditionVariableStatus = LastStatus;
+
+		if (ConditionVariableStatus & 7)
+		{
+			RtlpWakeConditionVariable(ConditionVariable, ConditionVariableStatus, 0);
+			return;
+		}
+	}
+}
+
+static BOOL __fastcall RtlpWakeSingle(RTL_CONDITION_VARIABLE *ConditionVariable, YY_CV_WAIT_BLOCK* pBlock)
+{
+	volatile size_t Current = *(volatile size_t*)ConditionVariable;
+	YY_CV_WAIT_BLOCK *pWaitBlock;
+	YY_CV_WAIT_BLOCK *pSuccessor;
+	size_t Last;
+	size_t New;
+	size_t back;
+	YY_CV_WAIT_BLOCK* notify;
+	BOOL bRet;				
+
+	for (; Current && (Current & 0x7) != 0x7;)
+	{
+		if (Current & 0x8)
+		{
+			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, Current | 0x7, Current);
+
+			if (Last == Current)
+				return FALSE;
+
+			Current = Last;
+		}
+		else
+		{
+			New = Current | 0x8;
+
+			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, New, Current);
+
+			if (Last == Current)
+			{
+				Current = New;
+
+				notify = NULL;
+				bRet = FALSE;
+
+				pWaitBlock = YY_CV_GET_BLOCK(Current);
+				pSuccessor = pWaitBlock;
+
+				if (pWaitBlock)
+				{
+					for (; pWaitBlock;)
+					{
+						if (pWaitBlock == pBlock)
+						{
+							if (notify)
+							{
+								pWaitBlock = pWaitBlock->back;
+								bRet = TRUE;
+
+								notify->back = pWaitBlock;
+
+								if (!pWaitBlock)
+									break;
+
+								pWaitBlock->next = notify;
+							}
+							else
+							{
+								back = (size_t)(pWaitBlock->back);
+
+								New = back == 0 ? back : back ^ ((New ^ back) & 0xF);
+
+								Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, New, Current);
+
+								if (Last == Current)
+								{
+									Current = New;
+									if (back == 0)
+										return TRUE;
+
+									bRet = TRUE;
+								}
+								else
+								{
+									Current = Last;
+								}
+
+								pSuccessor = pWaitBlock = YY_CV_GET_BLOCK(Current);
+								notify = NULL;
+							}
+						}
+						else
+						{
+							pWaitBlock->next = notify;
+							notify = pWaitBlock;
+							pWaitBlock = pWaitBlock->back;
+						}
+					}
+
+					if (pSuccessor)
+						pSuccessor->notify = notify;
+				}
+
+				RtlpWakeConditionVariable(ConditionVariable, Current, 0);
+				return bRet;
+			}
+
+			Current = Last;
+		}
+	}
+
+	return FALSE;
+}			
+
 NTSTATUS
 NTAPI
-RtlSleepConditionVariableCS(IN OUT PRTL_CONDITION_VARIABLE ConditionVariable,
-                            IN OUT PRTL_CRITICAL_SECTION CriticalSection,
-                            IN const LARGE_INTEGER * TimeOut OPTIONAL)
+RtlSleepConditionVariableCS(
+	_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable,
+	_Inout_ PRTL_CRITICAL_SECTION   CriticalSection,
+	_In_    const LARGE_INTEGER *   dwMilliseconds
+)
 {
-    NTSTATUS status;
-    interlocked_xchg_add( (int *)&ConditionVariable->Ptr, 1 );
-    RtlLeaveCriticalSection( CriticalSection );
+	YY_CV_WAIT_BLOCK StackWaitBlock;
+	size_t OldConditionVariable;
+	size_t NewConditionVariable;
+	size_t LastConditionVariable;
+	size_t SpinCount;
+	NTSTATUS Status = STATUS_SUCCESS;
 
-	if(GlobalKeyedEventHandle==NULL){
-		 NtCreateKeyedEvent(&GlobalKeyedEventHandle, EVENT_ALL_ACCESS, NULL, 0);
+	StackWaitBlock.next = NULL;
+	StackWaitBlock.flag = 2;
+	StackWaitBlock.SRWLock = NULL;
+	OldConditionVariable = *(size_t*)ConditionVariable;			
+
+	for (;;)
+	{
+		NewConditionVariable = (size_t)(&StackWaitBlock) | (OldConditionVariable & YY_CV_MASK);
+		StackWaitBlock.back = YY_CV_GET_BLOCK(OldConditionVariable);
+
+		if (StackWaitBlock.back)
+		{
+			StackWaitBlock.notify = NULL;
+
+			NewConditionVariable |= 0x8;
+		}
+		else
+		{
+			StackWaitBlock.notify = &StackWaitBlock;
+		}
+
+		LastConditionVariable = InterlockedCompareExchange((volatile size_t*)ConditionVariable, NewConditionVariable, OldConditionVariable);
+
+		if (LastConditionVariable == OldConditionVariable)
+			break;
+
+		OldConditionVariable = LastConditionVariable;
 	}
-    status = NtWaitForKeyedEvent( GlobalKeyedEventHandle, &ConditionVariable->Ptr, FALSE, TimeOut );
-    if (status != STATUS_SUCCESS)
-    {
-        if (!interlocked_dec_if_nonzero( (int *)&ConditionVariable->Ptr ))
-            status = NtWaitForKeyedEvent( GlobalKeyedEventHandle, &ConditionVariable->Ptr, FALSE, NULL );
-    }
 
-    RtlEnterCriticalSection( CriticalSection );
-    return status;
+	RtlLeaveCriticalSection(CriticalSection);
+
+	//0x8 标记新增时，才进行优化 ConditionVariableWaitList
+	if ((OldConditionVariable ^ NewConditionVariable) & 0x8)
+	{
+		RtlpOptimizeConditionVariableWaitList(ConditionVariable, NewConditionVariable);
+	}
+
+	//自旋
+	for (SpinCount = ConditionVariableSpinCount; SpinCount; --SpinCount)
+	{
+		if (!(StackWaitBlock.flag & 2))
+			break;
+
+		YieldProcessor();
+	}			
+
+	if (InterlockedBitTestAndReset((volatile LONG*)&StackWaitBlock.flag, 1))
+	{	
+		Status = NtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, dwMilliseconds);
+
+		if (Status == STATUS_TIMEOUT && RtlpWakeSingle(ConditionVariable, &StackWaitBlock) == FALSE)
+		{
+			NtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, NULL);
+			Status = STATUS_SUCCESS;
+		}
+	}
+
+	RtlEnterCriticalSection(CriticalSection);
+
+	return Status;
+}	
+
+
+NTSTATUS
+NTAPI
+RtlSleepConditionVariableSRW(
+	_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable,
+	_Inout_ RTL_SRWLOCK *SRWLock,
+	_In_ PLARGE_INTEGER dwMilliseconds,
+	_In_ ULONG Flags
+)
+{
+	size_t SpinCount;
+	YY_CV_WAIT_BLOCK StackWaitBlock;			
+	size_t Current;
+	size_t New;
+	size_t Last;
+	NTSTATUS Status = STATUS_SUCCESS;
+
+	if (Flags & ~RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
+	{
+		return STATUS_INVALID_PARAMETER_2;
+	}
+
+	StackWaitBlock.next = NULL;
+	StackWaitBlock.flag = 2;
+	StackWaitBlock.SRWLock = NULL;
+
+	if (Flags& RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
+	{
+		StackWaitBlock.flag |= 0x4;
+	}
+
+	Current = *(volatile size_t*)ConditionVariable;
+
+	for (;;)
+	{
+		New = (size_t)(&StackWaitBlock) | (Current & YY_CV_MASK);
+
+		if (StackWaitBlock.back = YY_CV_GET_BLOCK(Current))
+		{
+			StackWaitBlock.notify = NULL;
+
+			New |= 0x8;
+		}
+		else
+		{
+			StackWaitBlock.notify = &StackWaitBlock;
+		}
+
+		Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, New, Current);
+
+		if (Last == Current)
+		{
+			break;
+		}
+
+		Current = Last;
+	}
+
+	if (Flags& RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
+		RtlReleaseSRWLockShared(SRWLock);
+	else
+		RtlReleaseSRWLockExclusive(SRWLock);
+
+	if ((Current ^ New) & 0x8)
+	{
+		//新增0x8 标记位才调用 RtlpOptimizeConditionVariableWaitList
+		RtlpOptimizeConditionVariableWaitList(ConditionVariable, New);
+	}
+
+	//自旋
+	for (SpinCount = ConditionVariableSpinCount; SpinCount; --SpinCount)
+	{
+		if (!(StackWaitBlock.flag & 2))
+			break;
+
+		YieldProcessor();
+	}
+
+	if (InterlockedBitTestAndReset((volatile LONG*)&StackWaitBlock.flag, 1))
+	{
+		Status = NtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, dwMilliseconds);
+
+		if (Status == STATUS_TIMEOUT && RtlpWakeSingle(ConditionVariable, &StackWaitBlock) == FALSE)
+		{
+			NtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, NULL);
+			Status = STATUS_SUCCESS;
+		}
+	}
+
+	if (Flags& RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
+		RtlAcquireSRWLockShared(SRWLock);
+	else
+		RtlAcquireSRWLockExclusive(SRWLock);
+
+	return Status;
 }
 
-/***********************************************************************
- *           RtlSleepConditionVariableSRW   (NTDLL.@)
- *
- * Atomically releases the SRWLock and suspends the thread,
- * waiting for a Wake(All)ConditionVariable event. Afterwards it enters
- * the SRWLock again with the same access rights and returns.
- *
- * PARAMS
- *  variable  [I/O] condition variable
- *  lock      [I/O] SRWLock to leave temporarily
- *  timeout   [I]   timeout
- *  flags     [I]   type of the current lock (exclusive / shared)
- *
- * RETURNS
- *  see NtWaitForKeyedEvent for all possible return values.
- *
- * NOTES
- *  the behaviour is undefined if the thread doesn't own the lock.
- */
-NTSTATUS NTAPI RtlSleepConditionVariableSRW( RTL_CONDITION_VARIABLE *variable, RTL_SRWLOCK *lock,
-                                              PLARGE_INTEGER timeout, ULONG flags )
+//通过延时来暂时退避竞争
+void NTAPI RtlBackoff(DWORD* pCount)
 {
-    NTSTATUS status;
-    interlocked_xchg_add( (int *)&variable->Ptr, 1 );
-
-    if (flags & RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
-        RtlReleaseSRWLockShared( lock );
-    else
-        RtlReleaseSRWLockExclusive( lock );
-
-	if(GlobalKeyedEventHandle==NULL){
-		 NtCreateKeyedEvent(&GlobalKeyedEventHandle, EVENT_ALL_ACCESS, NULL, 0);
+	DWORD nBackCount=*pCount;
+	if (nBackCount==0)
+	{
+		if (NtCurrentTeb()->ProcessEnvironmentBlock->NumberOfProcessors==1)
+			return ;
+		nBackCount=0x40;
+		nBackCount*=2;
 	}
-    status = NtWaitForKeyedEvent( GlobalKeyedEventHandle, &variable->Ptr, FALSE, timeout );
-    if (status != STATUS_SUCCESS)
-    {
-        if (!interlocked_dec_if_nonzero( (int *)&variable->Ptr ))
-            status = NtWaitForKeyedEvent( GlobalKeyedEventHandle, &variable->Ptr, FALSE, NULL );
-    }
-
-    if (flags & RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
-        RtlAcquireSRWLockShared( lock );
-    else
-        RtlAcquireSRWLockExclusive( lock );
-    return status;
-}
-
-/***********************************************************************
- *             NtRemoveIoCompletionEx (NTDLL.@)
- */
-NTSTATUS WINAPI NtRemoveIoCompletionEx( HANDLE handle, FILE_IO_COMPLETION_INFORMATION *info, ULONG count,
-                                        ULONG *written, LARGE_INTEGER *timeout, BOOLEAN alertable )
-{
-    NTSTATUS status;
-    ULONG i = 0;
-	PVOID CompletionKey = 0;
-	PVOID CompletionValue = 0;
-	PIO_STATUS_BLOCK IoStatusBlock = {0};
-
-    for (;;)
-    {
-        while (i < count)
-        {
-			status = NtRemoveIoCompletion(handle, CompletionKey, CompletionValue, IoStatusBlock, timeout);			
-            if(status == STATUS_SUCCESS)
-			{
-				info[i].KeyContext             = CompletionKey;
-				info[i].ApcContext             = CompletionValue;
-				info[i].IoStatusBlock.Information = IoStatusBlock->Information;
-				info[i].IoStatusBlock.Status    = IoStatusBlock->Status;   
-			}				
-			if (status != STATUS_SUCCESS) break;
-            ++i;
-        }
-        if (i || status != STATUS_PENDING)
-        {
-            if (status == STATUS_PENDING) status = STATUS_SUCCESS;
-            break;
-        }
-        status = NtWaitForSingleObject( handle, alertable, timeout );
-        if (status != WAIT_OBJECT_0) break;
-    }
-    *written = i ? i : 1;
-    return status;
+	else
+	{
+		if (nBackCount<0x1FFF)
+			nBackCount=nBackCount+nBackCount;
+	}
+	nBackCount=(__rdtsc()&(nBackCount-1))+nBackCount;
+	//Win7原代码借用参数来计数，省去局部变量
+	pCount=0;
+	while ((DWORD)pCount<nBackCount)
+	{
+		YieldProcessor();
+		(DWORD)pCount++;
+	}
 }
