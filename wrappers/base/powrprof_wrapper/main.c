@@ -231,3 +231,8 @@ DWORD WINAPI PowerUnregisterSuspendResumeNotification(HPOWERNOTIFY handle)
     DbgPrint("(%p) stub!\n", handle);
     return ERROR_SUCCESS;
 }
+
+DWORD WINAPI PowerWriteSettingAttributes(const GUID *SubGroupGuid, const GUID *PowerSettingGuid, DWORD Attributes)
+{
+	return ERROR_SUCCESS;
+}

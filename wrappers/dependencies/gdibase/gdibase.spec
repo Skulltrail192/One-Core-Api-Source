@@ -610,3 +610,8 @@
 
 #missing functions
 @ stdcall GdiGetBitmapBitsSize(ptr)
+
+#win7 functions
+@ stdcall -stub D3DKMTCreateDCFromMemory(ptr)
+@ stdcall -stub D3DKMTDestroyDCFromMemory(ptr)
+@ stdcall -stub CreateBitmapFromDxSurface(long long long long ptr)

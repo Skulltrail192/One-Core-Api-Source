@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
  
-#define WINE_FILEVERSION 6,0,6003,180343
-#define WINE_FILEVERSION_STR "3.0.4.canary.b1"
+#define WINE_FILEVERSION 6,0,6003,18034
+#define WINE_FILEVERSION_STR "3.0.4"
 #define WINE_PRODUCTVERSION 3,0,4
 #define WINE_PRODUCTVERSION_STR "6.0.6003.18034"
 

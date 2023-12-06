@@ -610,6 +610,7 @@
 
 #Vista functions
 @ stdcall D3DKMTCheckMonitorPowerState(ptr)
+@ stdcall D3DKMTCheckSharedResourceAccess(ptr)
 @ stdcall D3DKMTCheckVidPnExclusiveOwnership(ptr)
 #@ stdcall D3DKMTCloseAdapter(ptr)
 @ stdcall D3DKMTCreateDCFromMemory(ptr) gdibase.D3DKMTCreateDCFromMemory
@@ -679,6 +680,9 @@
 @ stdcall D3DKMTWaitForVerticalBlankEvent(ptr) d3dkmt.D3DKMTWaitForVerticalBlankEvent
 
 #Win7 functions
+@ stdcall BeginGdiRendering(long long) NtGdiBeginGdiRendering
+@ stdcall EndGdiRendering(long long ptr) NtGdiEndGdiRendering
+@ stdcall CreateBitmapFromDxSurface(long long long long ptr) gdibase.CreateBitmapFromDxSurface
 @ stdcall GetFontFileData(long long int64 ptr long)
 @ stdcall GetFontFileInfo(long long ptr long long)
 @ stdcall GetFontRealizationInfo(long ptr)

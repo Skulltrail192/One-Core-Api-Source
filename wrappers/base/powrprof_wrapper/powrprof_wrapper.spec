@@ -34,6 +34,9 @@
 @ stdcall PowerReadFriendlyName(ptr ptr ptr ptr ptr ptr)
 @ stdcall PowerReadACValue(ptr ptr ptr ptr ptr ptr ptr)
 
-#win8 functions
+#Vista Functions
+@ stdcall PowerWriteSettingAttributes(ptr ptr long)
+
+#Win8 Functions
 @ stdcall PowerRegisterSuspendResumeNotification(long ptr ptr)
 @ stdcall PowerUnregisterSuspendResumeNotification(ptr)

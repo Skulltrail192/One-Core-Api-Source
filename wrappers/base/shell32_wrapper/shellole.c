@@ -40,6 +40,13 @@
 
 WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
+DWORD WINAPI GetModuleFileNameExW(
+  HANDLE  hProcess,
+  HMODULE hModule,
+  LPWSTR lpFilename,
+  DWORD nSize
+);
+
 /**************************************************************************
  * Default ClassFactory types
  */
@@ -77,6 +84,30 @@ static const struct {
 	{NULL, NULL}
 };
 
+BOOLEAN CheckIfIsExplorer(){
+    // Obter o identificador do processo atual
+    DWORD currentProcessId = GetCurrentProcessId();
+
+    // Abrir o processo
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, currentProcessId);
+
+    // Buffer para armazenar o caminho do executável
+    WCHAR exePath[MAX_PATH];
+    
+    // Obter o caminho do executável associado ao processo
+    DWORD size = GetModuleFileNameExW(hProcess, NULL, exePath, MAX_PATH);
+    if (size == 0) {
+        return FALSE;
+    }
+
+    // Comparar o nome do executável com "explorer.exe"
+    if (wcsicmp(exePath, L"explorer.exe") == 0) {
+        return TRUE;
+    } else {
+		return FALSE;
+    }	
+}
+
 /*************************************************************************
  * DllGetClassObject     [SHELL32.@]
  * SHDllGetClassObject   [SHELL32.128]
@@ -109,7 +140,7 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	        TRACE("index[%u]\n", i);
 			if(IsEqualIID(&CLSID_ShellLink, rclsid))
 			{
-				if(bIsWindowsVistaorLater){
+				if(bIsWindowsVistaorLater && !CheckIfIsExplorer()){
 					pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
 					break;
 				}else{

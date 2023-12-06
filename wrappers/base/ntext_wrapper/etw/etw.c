@@ -26,7 +26,7 @@ Revision History:
 typedef HANDLE TRACEHANDLE;
 
 typedef void (
-WINAPI
+NTAPI
 *NOTIFICATIONCALLBACK)(
     PVOID Wnode,
     UINT_PTR NotificationContext
@@ -571,7 +571,7 @@ EtwpIsProcessExiting()
 /******************************************************************************
  *                  EtwEventActivityIdControl (NTDLL.@)
  */
-ULONG WINAPI EtwEventActivityIdControl(ULONG code, GUID *guid)
+ULONG NTAPI EtwEventActivityIdControl(ULONG code, GUID *guid)
 {
     static int once;
 
@@ -583,7 +583,7 @@ ULONG WINAPI EtwEventActivityIdControl(ULONG code, GUID *guid)
 /******************************************************************************
  *                  EtwEventProviderEnabled (NTDLL.@)
  */
-BOOLEAN WINAPI EtwEventProviderEnabled( REGHANDLE handle, UCHAR level, ULONGLONG keyword )
+BOOLEAN NTAPI EtwEventProviderEnabled( REGHANDLE handle, UCHAR level, ULONGLONG keyword )
 {
     DbgPrint("%s, %u, %s: stub\n", handle, level, keyword);
     return FALSE;
@@ -592,7 +592,7 @@ BOOLEAN WINAPI EtwEventProviderEnabled( REGHANDLE handle, UCHAR level, ULONGLONG
 /*********************************************************************
  *                  EtwEventSetInformation   (NTDLL.@)
  */
-ULONG WINAPI EtwEventSetInformation( REGHANDLE handle, EVENT_INFO_CLASS class, void *info,
+ULONG NTAPI EtwEventSetInformation( REGHANDLE handle, EVENT_INFO_CLASS class, void *info,
                                      ULONG length )
 {
     DbgPrint("(%s, %u, %p, %u) stub\n", handle, class, info, length);
@@ -602,7 +602,7 @@ ULONG WINAPI EtwEventSetInformation( REGHANDLE handle, EVENT_INFO_CLASS class, v
 /******************************************************************************
  *                  EtwEventWriteString   (NTDLL.@)
  */
-ULONG WINAPI EtwEventWriteString( REGHANDLE handle, UCHAR level, ULONGLONG keyword, PCWSTR string )
+ULONG NTAPI EtwEventWriteString( REGHANDLE handle, UCHAR level, ULONGLONG keyword, PCWSTR string )
 {
     DbgPrint("%s, %u, %s, %s: stub\n", handle, level,
           keyword, string);
@@ -612,7 +612,7 @@ ULONG WINAPI EtwEventWriteString( REGHANDLE handle, UCHAR level, ULONGLONG keywo
 /******************************************************************************
  *                  EtwEventWriteTransfer   (NTDLL.@)
  */
-ULONG WINAPI EtwEventWriteTransfer( REGHANDLE handle, PCEVENT_DESCRIPTOR descriptor, LPCGUID activity,
+ULONG NTAPI EtwEventWriteTransfer( REGHANDLE handle, PCEVENT_DESCRIPTOR descriptor, LPCGUID activity,
                                     LPCGUID related, ULONG count, PEVENT_DATA_DESCRIPTOR data )
 {
     DbgPrint("%s, %p, %s, %s, %u, %p: stub\n", handle, descriptor,
@@ -620,7 +620,16 @@ ULONG WINAPI EtwEventWriteTransfer( REGHANDLE handle, PCEVENT_DESCRIPTOR descrip
     return ERROR_SUCCESS;
 }
 
-ULONG WINAPI EtwTraceUserEvent(int a1, int a2, __int64 a3, __int64 *a4, __int64 *a5, int a6, char a7)
+ULONG NTAPI EtwTraceUserEvent(int a1, int a2, __int64 a3, __int64 *a4, __int64 *a5, int a6, char a7)
 {
 	return 0;
+}
+
+ULONG NTAPI EtwEventWriteNoRegistration (
+    GUID const *ProviderId,
+    EVENT_DESCRIPTOR const *EventDescriptor,
+    ULONG UserDataCount,
+    EVENT_DATA_DESCRIPTOR *UserData) 
+{
+    return 0;
 }

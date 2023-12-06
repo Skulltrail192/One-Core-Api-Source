@@ -10,8 +10,12 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/iphlpapi_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/iphlpapi_wrapper.def)
 	
-set(baseaddress_iphlpapi_wrapper     0x7c3e0000)	
-
+if(ARCH STREQUAL "amd64")
+	set(baseaddress_iphlpapi_wrapper     0x76CF0000)
+elseif(ARCH STREQUAL "i386")
+	set(baseaddress_iphlpapi_wrapper     0x7c3e0000)
+endif()
+	
 add_library(iphlpapi_wrapper SHARED ${SOURCE})
 set_module_type(iphlpapi_wrapper win32dll)
 target_link_libraries(iphlpapi_wrapper wine tdilib)

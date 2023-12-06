@@ -22,6 +22,48 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(kernel32);
 
+VOID BaseRestoreImpersonation(HANDLE ThreadInformation)
+{
+  NTSTATUS Status; // eax
+
+  if ( ThreadInformation )
+  {
+    Status = NtSetInformationThread((HANDLE)0xFFFFFFFE, ThreadImpersonationToken, &ThreadInformation, 4u);
+    if ( !NT_SUCCESS(Status) )
+      RtlRaiseStatus(Status);
+  }
+}
+
+NTSTATUS __stdcall BaseRevertToSelf(void **a1)
+{
+  struct _TEB *Teb; // eax
+  NTSTATUS Status; // ebx
+  int ThreadInformation; // [esp+Ch] [ebp-8h] BYREF
+  void *TokenHandle; // [esp+10h] [ebp-4h] BYREF
+
+  Teb = NtCurrentTeb();
+  Status = 0;
+  TokenHandle = 0;
+  ThreadInformation = 0;
+  *a1 = 0;
+  if ( Teb->IsImpersonating )
+  {
+    Status = NtOpenThreadToken((HANDLE)0xFFFFFFFE, 0x2000004u, 1u, &TokenHandle);
+    if ( Status >= 0 )
+    {
+      Status = NtSetInformationThread((HANDLE)0xFFFFFFFE, ThreadImpersonationToken, &ThreadInformation, 4u);
+      if ( Status >= 0 )
+      {
+        *a1 = TokenHandle;
+        TokenHandle = 0;
+      }
+    }
+    if ( TokenHandle )
+      NtClose(TokenHandle);
+  }
+  return Status;
+}
+
 /*
 * @unimplemented
 */
@@ -48,6 +90,9 @@ CheckElevation(
    PDWORD pdwReason
 )
 {
+	HANDLE ThreadHandle =0;
+	*pdwRunLevel = 0;
+	BaseRestoreImpersonation(ThreadHandle);
 	return S_OK;
 }
 

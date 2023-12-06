@@ -28,15 +28,17 @@ AlpcGetHeaderSize(
 	DWORD Buffer
 )
 {
-  DWORD result; // eax@1
+  DWORD result; // eax
 
   result = 8;
   if ( Buffer < 0 )
     result = 20;
-  if ( Buffer & 0x40000000 )
+  if ( (Buffer & 0x40000000) != 0 )
     result += 16;
-  if ( Buffer & 0x8000000 )
-    result += 24;
+  if ( (Buffer & 0x20000000) != 0 )
+    result += 20;
+  if ( (Buffer & 0x10000000) != 0 )
+    result += 16;
   return result;
 }
 

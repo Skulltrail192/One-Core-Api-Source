@@ -6,7 +6,7 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/lib/3rdparty/freetype/include/free
 spec2def(gdi32_wrapper.dll gdi32_wrapper.spec)
 
 if(ARCH STREQUAL "amd64")
-	set(baseaddress_gdi32_wrapper     0x7c3e0000)
+	set(baseaddress_gdi32_wrapper     0x7FC90000)
 elseif(ARCH STREQUAL "i386")
 	set(baseaddress_gdi32_wrapper     0x7c4c0000)
 endif()

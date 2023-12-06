@@ -26,6 +26,7 @@
 #define COBJMACROS
 
 #include "dwrite_private.h"
+#include "unixlib.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(dwrite);
 WINE_DECLARE_DEBUG_CHANNEL(dwrite_file);
@@ -127,7 +128,7 @@ static struct cache_entry * fontface_get_cache_entry(struct dwrite_fontface *fon
 static int fontface_get_glyph_advance(struct dwrite_fontface *fontface, float fontsize, unsigned short glyph,
         unsigned short mode, BOOL *has_contours)
 {
-    struct cache_key key = { .size = fontsize, .glyph = glyph, .mode = mode };
+    struct cache_key key = {  fontsize, glyph, mode };
     struct get_glyph_advance_params params;
     struct cache_entry *entry;
     unsigned int value;
@@ -1295,7 +1296,7 @@ static HRESULT WINAPI dwritefontface_GetGdiCompatibleGlyphMetrics(IDWriteFontFac
         if (FAILED(hr))
             break;
 
-        ret->advanceWidth = fontface_get_glyph_advance(fontface, size, glyphs[i], mode, &has_contours);
+        ret->advanceWidth = (fontface, size, glyphs[i], mode, &has_contours);
         if (has_contours)
             ret->advanceWidth = round_metric(ret->advanceWidth * fontface->metrics.designUnitsPerEm / size + adjustment);
         else

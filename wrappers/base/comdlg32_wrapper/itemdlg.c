@@ -2460,8 +2460,8 @@ static HRESULT create_dialog(FileDialogImpl *This, HWND parent)
         ERR("Failed to show dialog (LastError: %ld)\n", GetLastError());
         return E_FAIL;
     }else{
-		//IShellItem *shellItem;
-		SHCreateItemFromParsingName(ofn.lpstrFile,NULL,&IID_IShellItem, &This->psia_result);
+		IShellItem *shellItem;
+		SHCreateItemFromParsingName(ofn.lpstrFile,NULL,&IID_IShellItem, IID_PPV_ARGS(&shellItem));
 		// SHCreateShellItemArrayFromShellItem(&shellItem,&IID_IShellItemArray, (void**)&This->psia_results);
 	}
 

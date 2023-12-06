@@ -21,9 +21,7 @@
  
 WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
-HINSTANCE shell32_hInstance = 0;
-
-//SHFILEOPSTRUCTW fileOperation = {0};	
+HINSTANCE shell32_hInstance = 0;	
 
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 {
@@ -38,7 +36,6 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 			shell32_hInstance = hInstDLL;
 			DisableThreadLibraryCalls(shell32_hInstance);		
 			AppData = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
-			//ZeroMemory(&fileOperation, sizeof(fileOperation));	
 			if (!AppData)
 				return E_OUTOFMEMORY;
 			
@@ -46,7 +43,9 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 				SetEnvironmentVariableW(L"LOCALAPPDATA", AppData);
 			}
 			//Hack to disable sandbox for Firefox 73+
-			SetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", L"1");	
+			if(GetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", AppData, bufferSize) == 0){
+				SetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", L"1");
+			}
 			
 			HeapFree(GetProcessHeap(), 0, AppData);
             break;

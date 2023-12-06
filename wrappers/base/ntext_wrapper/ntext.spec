@@ -1655,16 +1655,17 @@
 @ stdcall ZwQueryLicenseValue(ptr ptr ptr long ptr) NtQueryLicenseValue
 
 #Win7 functions
+@ stdcall EtwEventWriteNoRegistration(ptr ptr long ptr)
 @ stdcall LdrQueryModuleServiceTags(ptr ptr long)
-@ stdcall RtlGetCurrentProcessorNumberEx(ptr)
-@ stdcall RtlGetSystemTimePrecise()
-@ stdcall RtlCompareUnicodeStrings(ptr long ptr long long)
 @ stdcall RtlCopyContext(ptr long ptr)
 @ stdcall RtlCopyExtendedContext(ptr long ptr)
-@ stdcall RtlInitializeExtendedContext(ptr long ptr)
+@ stdcall RtlCompareUnicodeStrings(ptr long ptr long long)
+@ stdcall RtlGetCurrentProcessorNumberEx(ptr)
 @ stdcall RtlGetEnabledExtendedFeatures(long long)
 @ stdcall RtlGetExtendedContextLength(long ptr)
 @ stdcall RtlGetExtendedFeaturesMask(ptr)
+@ stdcall RtlGetSystemTimePrecise()
+@ stdcall RtlInitializeExtendedContext(ptr long ptr)
 @ stdcall RtlLocateLegacyContext(ptr long)
 @ stdcall RtlLocateExtendedFeature(long long ptr)
 @ stdcall RtlQueryDynamicTimeZoneInformation(ptr)

@@ -33,6 +33,11 @@
 
 #define D3DKMT_MAX_ADAPTER_NAME_LENGTH 32
 
+typedef struct _D3DKMT_CHECKSHAREDRESOURCEACCESS {
+  D3DKMT_HANDLE hResource;
+  UINT          ClientPid;
+} D3DKMT_CHECKSHAREDRESOURCEACCESS;
+
 /*Hack, i don't know how require these funcions really*/
 DWORD
 APIENTRY
@@ -654,4 +659,38 @@ D3DKMTQueryVideoMemoryInfo(
     }
 
     return Ret;	
+}
+
+NTSTATUS
+WINAPI
+D3DKMTCheckSharedResourceAccess(
+  const D3DKMT_CHECKSHAREDRESOURCEACCESS *unnamedParam1
+)
+{
+	if(unnamedParam1->ClientPid == GetCurrentProcessId())
+		return STATUS_SUCCESS;
+	else
+		return STATUS_INVALID_PARAMETER;
+}
+
+BOOL
+WINAPI
+NtGdiBeginGdiRendering(
+    HBITMAP hbm,
+    BOOL bDiscard
+)
+{
+	return TRUE;
+}
+
+BOOL
+WINAPI
+NtGdiEndGdiRendering(
+    HBITMAP hbm,
+    BOOL bDiscard,
+    BOOL* pbDeviceRemoved
+)
+{
+	*pbDeviceRemoved = TRUE;
+	return TRUE;	
 }

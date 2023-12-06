@@ -73,7 +73,7 @@ typedef struct _ADDRESS_WAIT_BLOCK
 	struct _ADDRESS_WAIT_BLOCK* notify;
 	// 似乎指向Root，但是Root时才指向自己，其余情况为 nullptr，这是一种安全性？
 	struct _ADDRESS_WAIT_BLOCK* next;
-	volatile size_t         flag;
+	volatile long         flag;
 } ADDRESS_WAIT_BLOCK;
 
 #define CONTAINING_COND_VAR_WAIT_ENTRY(address, field) \
@@ -1170,7 +1170,7 @@ static BOOL __fastcall RtlpQueueWaitBlockToSRWLock(YY_CV_WAIT_BLOCK* pBolck, RTL
 				
 	for (;;)
 	{
-		Current = *(volatile size_t*)SRWLock;
+		Current = *(volatile long*)SRWLock;
 
 		if ((Current & 0x1) == 0)
 			break;
@@ -1207,7 +1207,7 @@ static BOOL __fastcall RtlpQueueWaitBlockToSRWLock(YY_CV_WAIT_BLOCK* pBolck, RTL
 		}
 
 		//清泠 发现的Bug，我们应该返回 TRUE，减少必要的内核等待。
-		if (InterlockedCompareExchange((volatile size_t*)SRWLock, New, Current) == Current)
+		if (InterlockedCompareExchange((volatile long*)SRWLock, New, Current) == Current)
 			return TRUE;
 
 		RtlBackoff(&backoff);
@@ -1238,7 +1238,7 @@ static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *Conditi
 
 		if ((ConditionVariableStatus & 0x7) == 0x7)
 		{
-			ConditionVariableStatus = InterlockedExchange((volatile size_t*)ConditionVariable, 0);
+			ConditionVariableStatus = InterlockedExchange((volatile long*)ConditionVariable, 0);
 
 			*ppInsert = YY_CV_GET_BLOCK(ConditionVariableStatus);
 
@@ -1258,7 +1258,7 @@ static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *Conditi
 
 		if (MaxWakeCount <= Count)
 		{
-			LastStatus = InterlockedCompareExchange((volatile size_t*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
+			LastStatus = InterlockedCompareExchange((volatile long*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
 
 			if (LastStatus == ConditionVariableStatus)
 			{
@@ -1290,7 +1290,7 @@ static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *Conditi
 
 			if (MaxWakeCount <= Count)
 			{
-				LastStatus = InterlockedCompareExchange((volatile size_t*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
+				LastStatus = InterlockedCompareExchange((volatile long*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
 
 				if (LastStatus == ConditionVariableStatus)
 				{
@@ -1301,7 +1301,7 @@ static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *Conditi
 			}
 			else
 			{
-				LastStatus = InterlockedCompareExchange((volatile size_t*)ConditionVariable, 0, ConditionVariableStatus);
+				LastStatus = InterlockedCompareExchange((volatile long*)ConditionVariable, 0, ConditionVariableStatus);
 
 
 				if (LastStatus == ConditionVariableStatus)
@@ -1344,7 +1344,7 @@ RtlWakeConditionVariable(
 	size_t Current;
 	size_t Last;
 
-	Current = *(volatile size_t*)ConditionVariable;
+	Current = *(volatile long*)ConditionVariable;
 
 	for (; Current; Current = Last)
 	{
@@ -1355,13 +1355,13 @@ RtlWakeConditionVariable(
 				return;
 			}
 
-			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, Current + 1, Current);
+			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, Current + 1, Current);
 			if (Last == Current)
 				return;
 		}
 		else
 		{
-			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, Current | 0x8, Current);
+			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, Current | 0x8, Current);
 			if (Last == Current)
 			{
 				RtlpWakeConditionVariable(ConditionVariable, Current + 8, 1);
@@ -1377,7 +1377,7 @@ RtlWakeAllConditionVariable(
 	_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable
 )
 {
-	size_t Current = *(volatile size_t*)ConditionVariable;
+	size_t Current = *(volatile long*)ConditionVariable;
 	size_t Last;
 	YY_CV_WAIT_BLOCK* pBlock;
 	YY_CV_WAIT_BLOCK* Tmp;
@@ -1386,13 +1386,13 @@ RtlWakeAllConditionVariable(
 	{
 		if (Current & 0x8)
 		{
-			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, Current | 0x7, Current);
+			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, Current | 0x7, Current);
 			if (Last == Current)
 				return;
 		}
 		else
 		{
-			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, 0, Current);
+			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, 0, Current);
 			if (Last == Current)
 			{
 
@@ -1435,7 +1435,7 @@ static void __fastcall RtlpOptimizeConditionVariableWaitList(RTL_CONDITION_VARIA
 
 		pWaitBlock->notify = pItem->notify;
 
-		LastStatus = InterlockedCompareExchange((volatile size_t*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
+		LastStatus = InterlockedCompareExchange((volatile long*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
 
 		if (LastStatus == ConditionVariableStatus)
 			break;
@@ -1452,7 +1452,7 @@ static void __fastcall RtlpOptimizeConditionVariableWaitList(RTL_CONDITION_VARIA
 
 static BOOL __fastcall RtlpWakeSingle(RTL_CONDITION_VARIABLE *ConditionVariable, YY_CV_WAIT_BLOCK* pBlock)
 {
-	volatile size_t Current = *(volatile size_t*)ConditionVariable;
+	volatile long Current = *(volatile long*)ConditionVariable;
 	YY_CV_WAIT_BLOCK *pWaitBlock;
 	YY_CV_WAIT_BLOCK *pSuccessor;
 	size_t Last;
@@ -1465,7 +1465,7 @@ static BOOL __fastcall RtlpWakeSingle(RTL_CONDITION_VARIABLE *ConditionVariable,
 	{
 		if (Current & 0x8)
 		{
-			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, Current | 0x7, Current);
+			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, Current | 0x7, Current);
 
 			if (Last == Current)
 				return FALSE;
@@ -1476,7 +1476,7 @@ static BOOL __fastcall RtlpWakeSingle(RTL_CONDITION_VARIABLE *ConditionVariable,
 		{
 			New = Current | 0x8;
 
-			Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, New, Current);
+			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, New, Current);
 
 			if (Last == Current)
 			{
@@ -1512,7 +1512,7 @@ static BOOL __fastcall RtlpWakeSingle(RTL_CONDITION_VARIABLE *ConditionVariable,
 
 								New = back == 0 ? back : back ^ ((New ^ back) & 0xF);
 
-								Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, New, Current);
+								Last = InterlockedCompareExchange((volatile long*)ConditionVariable, New, Current);
 
 								if (Last == Current)
 								{
@@ -1590,7 +1590,7 @@ RtlSleepConditionVariableCS(
 			StackWaitBlock.notify = &StackWaitBlock;
 		}
 
-		LastConditionVariable = InterlockedCompareExchange((volatile size_t*)ConditionVariable, NewConditionVariable, OldConditionVariable);
+		LastConditionVariable = InterlockedCompareExchange((volatile long*)ConditionVariable, NewConditionVariable, OldConditionVariable);
 
 		if (LastConditionVariable == OldConditionVariable)
 			break;
@@ -1662,7 +1662,7 @@ RtlSleepConditionVariableSRW(
 		StackWaitBlock.flag |= 0x4;
 	}
 
-	Current = *(volatile size_t*)ConditionVariable;
+	Current = *(volatile long*)ConditionVariable;
 
 	for (;;)
 	{
@@ -1679,7 +1679,7 @@ RtlSleepConditionVariableSRW(
 			StackWaitBlock.notify = &StackWaitBlock;
 		}
 
-		Last = InterlockedCompareExchange((volatile size_t*)ConditionVariable, New, Current);
+		Last = InterlockedCompareExchange((volatile long*)ConditionVariable, New, Current);
 
 		if (Last == Current)
 		{

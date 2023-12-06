@@ -760,72 +760,31 @@ extern BOOL WINAPI GetFontRealizationInfo(HDC hdc, struct font_realization_info 
 extern BOOL WINAPI GetFontFileInfo(DWORD instance_id, DWORD file_index, struct font_fileinfo *info, SIZE_T size, SIZE_T *needed);
 extern BOOL WINAPI GetFontFileData(DWORD instance_id, DWORD file_index, UINT64 offset, void *buff, SIZE_T buff_size);
 
-static HRESULT WINAPI gdiinterop_CreateFontFaceFromHdc(IDWriteGdiInterop1 *iface,
+static HRESULT WINAPI gdiinterop_CreateFontFaceFromHdc(IDWriteGdiInterop *iface,
     HDC hdc, IDWriteFontFace **fontface)
 {
-    struct gdiinterop *interop = impl_from_IDWriteGdiInterop1(iface);
-    struct font_realization_info info;
-    struct font_fileinfo *fileinfo;
-    DWRITE_FONT_FILE_TYPE filetype;
-    DWRITE_FONT_FACE_TYPE facetype;
-    IDWriteFontFile *file;
-    BOOL is_supported;
-    UINT32 facenum;
-    SIZE_T needed;
+    struct gdiinterop *This = impl_from_IDWriteGdiInterop(iface);
+    IDWriteFont *font;
+    LOGFONTW logfont;
+    HFONT hfont;
     HRESULT hr;
 
-    TRACE("%p, %p, %p.\n", iface, hdc, fontface);
+    TRACE("(%p)->(%p %p)\n", This, hdc, fontface);
 
     *fontface = NULL;
 
-    if (!hdc)
+    hfont = GetCurrentObject(hdc, OBJ_FONT);
+    if (!hfont)
         return E_INVALIDARG;
+    GetObjectW(hfont, sizeof(logfont), &logfont);
 
-    /* get selected font id  */
-    info.size = sizeof(info);
-    if (!GetFontRealizationInfo(hdc, &info)) {
-        WARN("failed to get selected font id\n");
-        return E_FAIL;
-    }
-
-    needed = 0;
-    GetFontFileInfo(info.instance_id, 0, NULL, 0, &needed);
-    if (needed == 0) {
-        WARN("failed to get font file info size\n");
-        return E_FAIL;
-    }
-
-    if (!(fileinfo = malloc(needed)))
-        return E_OUTOFMEMORY;
-
-    if (!GetFontFileInfo(info.instance_id, 0, fileinfo, needed, &needed))
-    {
-        free(fileinfo);
-        return E_FAIL;
-    }
-
-    if (*fileinfo->path)
-        hr = IDWriteFactory7_CreateFontFileReference(interop->factory, fileinfo->path, &fileinfo->writetime, &file);
-    else
-        hr = IDWriteFactory7_CreateCustomFontFileReference(interop->factory, &info.instance_id,
-                sizeof(info.instance_id), &interop->IDWriteFontFileLoader_iface, &file);
-
-    free(fileinfo);
+    hr = IDWriteGdiInterop_CreateFontFromLOGFONT(iface, &logfont, &font);
     if (FAILED(hr))
         return hr;
 
-    is_supported = FALSE;
-    hr = IDWriteFontFile_Analyze(file, &is_supported, &filetype, &facetype, &facenum);
-    if (SUCCEEDED(hr)) {
-        if (is_supported)
-            /* Simulations flags values match DWRITE_FONT_SIMULATIONS */
-            hr = IDWriteFactory7_CreateFontFace(interop->factory, facetype, 1, &file, info.face_index,
-                    info.simulations, fontface);
-        else
-            hr = DWRITE_E_FILEFORMAT;
-    }
+    hr = IDWriteFont_CreateFontFace(font, fontface);
+    IDWriteFont_Release(font);
 
-    IDWriteFontFile_Release(file);
     return hr;
 }
 

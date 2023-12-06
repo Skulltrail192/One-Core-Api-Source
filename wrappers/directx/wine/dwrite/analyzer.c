@@ -25,6 +25,7 @@
 
 #include "dwrite_private.h"
 #include "scripts.h"
+#include "wine/debug.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(dwrite);
 
@@ -553,7 +554,7 @@ struct dwrite_fontfallback_builder
 
 static struct fallback_data system_fallback =
 {
-    .locales = LIST_INIT(system_fallback.locales),
+    LIST_INIT(system_fallback.locales)
 };
 
 static void release_fallback_mapping(struct fallback_mapping *mapping)
