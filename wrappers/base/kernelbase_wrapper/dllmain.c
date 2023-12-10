@@ -45,6 +45,8 @@ BaseDllInitialize(
     {
         case DLL_PROCESS_ATTACH:
         {
+			int i;
+			LPACVAHASHTABLEENTRY lpHashTableEntry;
             /* Insert more dll attach stuff here! */
 			kernel32_handle = GetModuleHandleW(L"kernel32");
 			InitializeCriticalForLocaleInfo();
@@ -67,7 +69,13 @@ BaseDllInitialize(
                                        L"VDM\0"
                                      );			
 			
-            DllInitialized = TRUE;			
+            DllInitialized = TRUE;
+
+			for (i = 0; i < ARRAYSIZE(WaitOnAddressHashTable); ++i) {
+				lpHashTableEntry = &WaitOnAddressHashTable[i];
+				InitializeCriticalSection(&lpHashTableEntry->Lock);
+				InitializeListHead(&lpHashTableEntry->Addresses);
+			}			
             break;
         }
 

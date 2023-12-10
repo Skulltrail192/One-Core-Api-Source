@@ -741,6 +741,13 @@ NTSTATUS NTAPI RtlUnicodeToUTF8N( char *dst, DWORD dstlen, DWORD *reslen, const 
 NTSTATUS NTAPI RtlGetExtendedContextLength2( ULONG context_flags, ULONG *length, ULONG64 compaction_mask );
 NTSTATUS NTAPI RtlInitializeExtendedContext2( void *context, ULONG context_flags, CONTEXT_EX **context_ex, ULONG64 compaction_mask );
 ULONG64 NTAPI RtlGetExtendedFeaturesMask( CONTEXT_EX *context_ex );
+VOID NTAPI RtlWakeConditionVariable(_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable);
+VOID NTAPI RtlWakeAllConditionVariable(_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable);
+void NTAPI RtlInitializeConditionVariable( RTL_CONDITION_VARIABLE *variable);
+VOID NTAPI RtlReleaseSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
+VOID NTAPI RtlAcquireSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
+VOID NTAPI RtlReleaseSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
+VOID NTAPI RtlAcquireSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
 
 #ifdef __i386__
 #define CONTEXT_I386_XSTATE             (CONTEXT_i386 | 0x0040)

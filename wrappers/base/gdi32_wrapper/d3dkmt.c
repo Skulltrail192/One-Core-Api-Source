@@ -38,6 +38,12 @@ typedef struct _D3DKMT_CHECKSHAREDRESOURCEACCESS {
   UINT          ClientPid;
 } D3DKMT_CHECKSHAREDRESOURCEACCESS;
 
+typedef BOOL (WINAPI *pD3DKMTCreateDCFromMemory)(
+    D3DKMT_CREATEDCFROMMEMORY*);
+	
+typedef BOOL (WINAPI *pD3DKMTDestroyDCFromMemory)(
+    D3DKMT_DESTROYDCFROMMEMORY*);	
+
 /*Hack, i don't know how require these funcions really*/
 DWORD
 APIENTRY
@@ -215,104 +221,113 @@ NTSTATUS WINAPI D3DKMTCloseAdapter( const D3DKMT_CLOSEADAPTER *desc )
  */
 NTSTATUS WINAPI D3DKMTCreateDCFromMemory( D3DKMT_CREATEDCFROMMEMORY *desc )
 {
-    const struct d3dddi_format_info
-    {
-        D3DDDIFORMAT format;
-        unsigned int bit_count;
-        DWORD compression;
-        unsigned int palette_size;
-        DWORD mask_r, mask_g, mask_b;
-    } *format = NULL;
-    BITMAPINFO *bmpInfo = NULL;
-    BITMAPV5HEADER *bmpHeader = NULL;
-    HBITMAP bitmap;
-    unsigned int i;
-    HDC dc;
-
-    static const struct d3dddi_format_info format_info[] =
-    {
-        { D3DDDIFMT_R8G8B8,   24, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
-        { D3DDDIFMT_A8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
-        { D3DDDIFMT_X8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
-        { D3DDDIFMT_R5G6B5,   16, BI_BITFIELDS, 0,   0x0000f800, 0x000007e0, 0x0000001f },
-        { D3DDDIFMT_X1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
-        { D3DDDIFMT_A1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
-        { D3DDDIFMT_A4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
-        { D3DDDIFMT_X4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
-        { D3DDDIFMT_P8,       8,  BI_RGB,       256, 0x00000000, 0x00000000, 0x00000000 },
-    };
+	pD3DKMTCreateDCFromMemory pD3dCreateDC;
 	
-	DbgPrint("D3DKMTCreateDCFromMemory:: calling function\n");
+    pD3dCreateDC = (pD3DKMTCreateDCFromMemory) GetProcAddress(
+                            GetModuleHandle(TEXT("gdibase")),
+                            "D3DKMTCreateDCFromMemory");	
 
-    if (!desc) return STATUS_INVALID_PARAMETER;
+	if(pD3dCreateDC){
+		return pD3dCreateDC(desc);
+	}else{
+		const struct d3dddi_format_info
+		{
+			D3DDDIFORMAT format;
+			unsigned int bit_count;
+			DWORD compression;
+			unsigned int palette_size;
+			DWORD mask_r, mask_g, mask_b;
+		} *format = NULL;
+		BITMAPINFO *bmpInfo = NULL;
+		BITMAPV5HEADER *bmpHeader = NULL;
+		HBITMAP bitmap;
+		unsigned int i;
+		HDC dc;	
+		static const struct d3dddi_format_info format_info[] =
+		{
+			{ D3DDDIFMT_R8G8B8,   24, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
+			{ D3DDDIFMT_A8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
+			{ D3DDDIFMT_X8R8G8B8, 32, BI_RGB,       0,   0x00000000, 0x00000000, 0x00000000 },
+			{ D3DDDIFMT_R5G6B5,   16, BI_BITFIELDS, 0,   0x0000f800, 0x000007e0, 0x0000001f },
+			{ D3DDDIFMT_X1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
+			{ D3DDDIFMT_A1R5G5B5, 16, BI_BITFIELDS, 0,   0x00007c00, 0x000003e0, 0x0000001f },
+			{ D3DDDIFMT_A4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
+			{ D3DDDIFMT_X4R4G4B4, 16, BI_BITFIELDS, 0,   0x00000f00, 0x000000f0, 0x0000000f },
+			{ D3DDDIFMT_P8,       8,  BI_RGB,       256, 0x00000000, 0x00000000, 0x00000000 },
+		};
+		
+		DbgPrint("D3DKMTCreateDCFromMemory:: calling function\n");
 
-    if (!desc->pMemory) return STATUS_INVALID_PARAMETER;
+		if (!desc) return STATUS_INVALID_PARAMETER;
 
-    for (i = 0; i < sizeof(format_info) / sizeof(*format_info); ++i)
-    {
-        if (format_info[i].format == desc->Format)
-        {
-            format = &format_info[i];
-            break;
-        }
-    }
-    if (!format) return STATUS_INVALID_PARAMETER;
+		if (!desc->pMemory) return STATUS_INVALID_PARAMETER;
 
-    if (desc->Width > (UINT_MAX & ~3) / (format->bit_count / 8) ||
-        !desc->Pitch || desc->Pitch < (((desc->Width * format->bit_count + 31) >> 3) & ~3) ||
-        !desc->Height || desc->Height > UINT_MAX / desc->Pitch) return STATUS_INVALID_PARAMETER;
+		for (i = 0; i < sizeof(format_info) / sizeof(*format_info); ++i)
+		{
+			if (format_info[i].format == desc->Format)
+			{
+				format = &format_info[i];
+				break;
+			}
+		}
+		if (!format) return STATUS_INVALID_PARAMETER;
 
-    if (!desc->hDeviceDc || !(dc = CreateCompatibleDC( desc->hDeviceDc ))) return STATUS_INVALID_PARAMETER;
+		if (desc->Width > (UINT_MAX & ~3) / (format->bit_count / 8) ||
+			!desc->Pitch || desc->Pitch < (((desc->Width * format->bit_count + 31) >> 3) & ~3) ||
+			!desc->Height || desc->Height > UINT_MAX / desc->Pitch) return STATUS_INVALID_PARAMETER;
 
-    if (!(bmpInfo = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*bmpInfo) + (format->palette_size * sizeof(RGBQUAD)) ))) goto error;
-    if (!(bmpHeader = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*bmpHeader) ))) goto error;
+		if (!desc->hDeviceDc || !(dc = CreateCompatibleDC( desc->hDeviceDc ))) return STATUS_INVALID_PARAMETER;
 
-	
-    bmpHeader->bV5Size        = sizeof(*bmpHeader);
-    bmpHeader->bV5Width       = desc->Width;
-    bmpHeader->bV5Height      = desc->Height;
-    bmpHeader->bV5SizeImage   = desc->Pitch;
-    bmpHeader->bV5Planes      = 1;
-    bmpHeader->bV5BitCount    = format->bit_count;
-    bmpHeader->bV5Compression = BI_BITFIELDS;
-    bmpHeader->bV5RedMask     = format->mask_r;
-    bmpHeader->bV5GreenMask   = format->mask_g;
-    bmpHeader->bV5BlueMask    = format->mask_b;
+		if (!(bmpInfo = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*bmpInfo) + (format->palette_size * sizeof(RGBQUAD)) ))) goto error;
+		if (!(bmpHeader = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*bmpHeader) ))) goto error;
 
-    bmpInfo->bmiHeader.biSize         = sizeof(BITMAPINFOHEADER);
-    bmpInfo->bmiHeader.biWidth        = desc->Width;
-    bmpInfo->bmiHeader.biHeight       = -(LONG)desc->Height;
-    bmpInfo->bmiHeader.biPlanes       = 1;
-    bmpInfo->bmiHeader.biBitCount     = format->bit_count;
-    bmpInfo->bmiHeader.biCompression  = format->compression;
-    bmpInfo->bmiHeader.biClrUsed      = format->palette_size;
-    bmpInfo->bmiHeader.biClrImportant = format->palette_size;
+		
+		bmpHeader->bV5Size        = sizeof(*bmpHeader);
+		bmpHeader->bV5Width       = desc->Width;
+		bmpHeader->bV5Height      = desc->Height;
+		bmpHeader->bV5SizeImage   = desc->Pitch;
+		bmpHeader->bV5Planes      = 1;
+		bmpHeader->bV5BitCount    = format->bit_count;
+		bmpHeader->bV5Compression = BI_BITFIELDS;
+		bmpHeader->bV5RedMask     = format->mask_r;
+		bmpHeader->bV5GreenMask   = format->mask_g;
+		bmpHeader->bV5BlueMask    = format->mask_b;
 
-    if (desc->pColorTable)
-    {
-        for (i = 0; i < format->palette_size; ++i)
-        {
-             bmpInfo->bmiColors[i].rgbRed   = desc->pColorTable[i].peRed;
-             bmpInfo->bmiColors[i].rgbGreen = desc->pColorTable[i].peGreen;
-             bmpInfo->bmiColors[i].rgbBlue = desc->pColorTable[i].peBlue;
-             bmpInfo->bmiColors[i].rgbReserved = 0;
-        }
-    }
+		bmpInfo->bmiHeader.biSize         = sizeof(BITMAPINFOHEADER);
+		bmpInfo->bmiHeader.biWidth        = desc->Width;
+		bmpInfo->bmiHeader.biHeight       = -(LONG)desc->Height;
+		bmpInfo->bmiHeader.biPlanes       = 1;
+		bmpInfo->bmiHeader.biBitCount     = format->bit_count;
+		bmpInfo->bmiHeader.biCompression  = format->compression;
+		bmpInfo->bmiHeader.biClrUsed      = format->palette_size;
+		bmpInfo->bmiHeader.biClrImportant = format->palette_size;
 
-    if (!(bitmap = CreateBitmap(desc->Width, desc->Height, 1, format->bit_count, desc->pMemory))) goto error;
+		if (desc->pColorTable)
+		{
+			for (i = 0; i < format->palette_size; ++i)
+			{
+				 bmpInfo->bmiColors[i].rgbRed   = desc->pColorTable[i].peRed;
+				 bmpInfo->bmiColors[i].rgbGreen = desc->pColorTable[i].peGreen;
+				 bmpInfo->bmiColors[i].rgbBlue = desc->pColorTable[i].peBlue;
+				 bmpInfo->bmiColors[i].rgbReserved = 0;
+			}
+		}
 
-    desc->hDc = dc;
-    desc->hBitmap = bitmap;
-    SelectObject( dc, bitmap );
-	DbgPrint("D3DKMTCreateDCFromMemory:: return STATUS_SUCCESS\n");
-    return STATUS_SUCCESS;
+		if (!(bitmap = CreateBitmap(desc->Width, desc->Height, 1, format->bit_count, desc->pMemory))) goto error;
 
-error:
-    if (bmpInfo)  HeapFree( GetProcessHeap(), 0, bmpInfo );
-    if (bmpHeader) HeapFree( GetProcessHeap(), 0, bmpHeader );
+		desc->hDc = dc;
+		desc->hBitmap = bitmap;
+		SelectObject( dc, bitmap );
+		DbgPrint("D3DKMTCreateDCFromMemory:: return STATUS_SUCCESS\n");
+		return STATUS_SUCCESS;
 
-    DeleteDC( dc );
-    return STATUS_INVALID_PARAMETER;
+	error:
+		if (bmpInfo)  HeapFree( GetProcessHeap(), 0, bmpInfo );
+		if (bmpHeader) HeapFree( GetProcessHeap(), 0, bmpHeader );
+
+		DeleteDC( dc );
+		return STATUS_INVALID_PARAMETER;		
+	}
 }
 
 
@@ -321,16 +336,26 @@ error:
  */
 NTSTATUS WINAPI D3DKMTDestroyDCFromMemory( const D3DKMT_DESTROYDCFROMMEMORY *desc )
 {
-    if (!desc) return STATUS_INVALID_PARAMETER;
+	pD3DKMTDestroyDCFromMemory pD3dDestroyDC;
+	
+    pD3dDestroyDC = (pD3DKMTDestroyDCFromMemory) GetProcAddress(
+                            GetModuleHandle(TEXT("gdibase")),
+                            "D3DKMTDestroyDCFromMemory");	
 
-    TRACE("dc %p, bitmap %p.\n", desc->hDc, desc->hBitmap);
+	if(pD3dDestroyDC){
+		return pD3dDestroyDC(desc);
+	}else{
+		if (!desc) return STATUS_INVALID_PARAMETER;
 
-    if (GetObjectType( desc->hDc ) != OBJ_MEMDC ||
-        GetObjectType( desc->hBitmap ) != OBJ_BITMAP) return STATUS_INVALID_PARAMETER;
-    DeleteObject( desc->hBitmap );
-    DeleteDC( desc->hDc );
+		TRACE("dc %p, bitmap %p.\n", desc->hDc, desc->hBitmap);
 
-    return STATUS_SUCCESS;
+		if (GetObjectType( desc->hDc ) != OBJ_MEMDC ||
+			GetObjectType( desc->hBitmap ) != OBJ_BITMAP) return STATUS_INVALID_PARAMETER;
+		DeleteObject( desc->hBitmap );
+		DeleteDC( desc->hDc );
+
+		return STATUS_SUCCESS;	
+	}
 }
 
 NTSTATUS 

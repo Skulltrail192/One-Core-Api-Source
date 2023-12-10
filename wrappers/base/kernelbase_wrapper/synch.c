@@ -27,42 +27,7 @@ Revision History:
 #include <malloc.h>
 #include <winnt.h>
 
-WINE_DEFAULT_DEBUG_CHANNEL(synch); 
-
-typedef CRITICAL_SECTION pthread_mutex_t;
-
-VOID
-NTAPI
-RtlReleaseSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
-
-VOID
-NTAPI
-RtlAcquireSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
-
-VOID
-NTAPI
-RtlReleaseSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
-
-VOID
-NTAPI
-RtlAcquireSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
-
-typedef struct win32_cond_t {
-    pthread_mutex_t mtx_broadcast;
-    pthread_mutex_t mtx_waiter_count;
-    volatile int waiter_count;
-    HANDLE semaphore;
-    HANDLE waiters_done;
-    volatile int is_broadcast;
-} win32_cond_t;
-
-typedef struct _RW_LOCK {
-    CRITICAL_SECTION countsLock;
-    CRITICAL_SECTION writerLock;
-    HANDLE noReaders;
-    int readerCount;
-    BOOL waitingWriter;
-} RW_LOCK, *PRW_LOCK;
+WINE_DEFAULT_DEBUG_CHANNEL(synch);
 
 /* returns directory handle to \\BaseNamedObjects */
 HANDLE get_BaseNamedObjects_handle(void)
@@ -108,7 +73,7 @@ BOOL WINAPI InitializeCriticalSectionEx(LPCRITICAL_SECTION lpCriticalSection,DWO
 			dwSpinCount=dwSpinCount&0x00FFFFFF;
 		else
 			dwSpinCount=2000;
-		//RTL_CRITICAL_SECTION_FLAG_STATIC_INIT的效果是不初始化直接返回
+		//RTL_CRITICAL_SECTION_FLAG_static_INIT的效果是不初始化直接返回
 		//RTL_CRITICAL_SECTION_FLAG_NO_DEBUG_INFO的效果是不分配DebugInfo的内存
 		//由于不知道XP是否支持这些行为，稳妥起见不应用标记
 		RtlStatus=RtlInitializeCriticalSectionAndSpinCount((PRTL_CRITICAL_SECTION)lpCriticalSection,dwSpinCount);
@@ -661,29 +626,6 @@ DeleteSynchronizationBarrier(
 }
 
 /***********************************************************************
- *           WaitOnAddress   (kernelbase.@)
- */
-BOOL WINAPI DECLSPEC_HOTPATCH WaitOnAddress(
-  volatile VOID *Address,
-  PVOID         CompareAddress,
-  SIZE_T        AddressSize,
-  DWORD         dwMilliseconds
-)
-{
-  LARGE_INTEGER timeout; 
-  NTSTATUS Status; 
-  BOOL result;
-
-  BaseFormatTimeOut(&timeout, dwMilliseconds);
-  Status = RtlWaitOnAddress((const void*)Address, CompareAddress, AddressSize, &timeout);
-  BaseSetLastNTError(Status);
-  result = FALSE;
-  if ( NT_SUCCESS( Status) )
-    result = Status != 0x102;
-  return result;
-}
-
-/***********************************************************************
  *	GetOverlappedResultEx   (kernelbase.@)
  */
 BOOL WINAPI DECLSPEC_HOTPATCH GetOverlappedResultEx( HANDLE file, OVERLAPPED *overlapped,
@@ -829,3 +771,183 @@ BOOL WINAPI DECLSPEC_HOTPATCH WaitForDebugEventEx( DEBUG_EVENT *event, DWORD tim
         }
     }
 }	
+
+// /***********************************************************************
+ // *           WaitOnAddress   (kernelbase.@)
+ // */
+// BOOL WINAPI DECLSPEC_HOTPATCH WaitOnAddress(
+  // volatile VOID *Address,
+  // PVOID         CompareAddress,
+  // SIZE_T        AddressSize,
+  // DWORD         dwMilliseconds
+// )
+// {
+  // LARGE_INTEGER timeout; 
+  // NTSTATUS Status; 
+  // BOOL result;
+
+  // BaseFormatTimeOut(&timeout, dwMilliseconds);
+  // Status = RtlWaitOnAddress((const void*)Address, CompareAddress, AddressSize, &timeout);
+  // BaseSetLastNTError(Status);
+  // result = FALSE;
+  // if ( NT_SUCCESS( Status) )
+    // result = Status != 0x102;
+  // return result;
+// }
+
+static inline INT HashAddress(
+	IN	LPVOID	lpAddr)
+{
+	return (((ULONG_PTR) lpAddr) >> 4) % ARRAYSIZE(WaitOnAddressHashTable);
+}
+
+// Return TRUE if memory is the same. FALSE if memory is different.
+#pragma warning(disable:4715) // not all control paths return a value
+static inline BOOL CompareVolatileMemory(
+	IN	const volatile LPVOID A1,
+	IN	const LPVOID A2,
+	IN	SIZE_T size)
+{
+	ASSERT(size == 1 || size == 2 || size == 4 || size == 8);
+
+	switch (size) {
+	case 1:		return (*(const LPBYTE)A1 == *(const LPBYTE)A2);
+	case 2:		return (*(const LPWORD)A1 == *(const LPWORD)A2);
+	case 4:		return (*(const LPDWORD)A1 == *(const LPDWORD)A2);
+	case 8:		return (*(const LPQWORD)A1 == *(const LPQWORD)A2);
+	}
+}
+#pragma warning(default:4715)
+
+static LPACVAHASHTABLEADDRESSLISTENTRY FindACVAListEntryForAddress(
+	IN	LPACVAHASHTABLEENTRY	lpHashTableEntry,
+	IN	LPVOID					lpAddr)
+{
+	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
+
+	ForEachListEntry(&lpHashTableEntry->Addresses, lpListEntry) {
+		if (lpListEntry->lpAddr == lpAddr) {
+			return lpListEntry;
+		}
+	}
+
+	return NULL;
+}
+
+static inline LPACVAHASHTABLEADDRESSLISTENTRY CreateACVAListEntryForAddress(
+	IN	LPACVAHASHTABLEENTRY	lpHashTableEntry,
+	IN	LPVOID					lpAddr)
+{
+	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
+	lpListEntry = (LPACVAHASHTABLEADDRESSLISTENTRY) HeapAlloc(GetProcessHeap(), 0, sizeof(ACVAHASHTABLEADDRESSLISTENTRY));
+
+	if (!lpListEntry) {
+		return NULL;
+	}
+
+	lpListEntry->lpAddr = lpAddr;
+	lpListEntry->dwWaiters = 0;
+	RtlInitializeConditionVariable(&lpListEntry->CVar);
+	InsertHeadList(&lpHashTableEntry->Addresses, (PLIST_ENTRY) lpListEntry);
+
+	return lpListEntry;
+}
+
+static inline LPACVAHASHTABLEADDRESSLISTENTRY FindOrCreateACVAListEntryForAddress(
+	IN	LPACVAHASHTABLEENTRY	lpHashTableEntry,
+	IN	LPVOID					lpAddr)
+{
+	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
+
+	if (!lpListEntry) {
+		lpListEntry = CreateACVAListEntryForAddress(lpHashTableEntry, lpAddr);
+	}
+
+	return lpListEntry;
+}
+
+static inline VOID DeleteACVAListEntry(
+	IN	LPACVAHASHTABLEADDRESSLISTENTRY	lpListEntry)
+{
+	RemoveEntryList((PLIST_ENTRY) lpListEntry);
+	HeapFree(GetProcessHeap(), 0, lpListEntry);
+}
+
+WINBASEAPI BOOL WINAPI WaitOnAddress(
+	IN	volatile LPVOID	lpAddr,					// address to wait on
+	IN	LPVOID			lpCompare,				// pointer to location of old value of lpAddr
+	IN	SIZE_T			cb,						// number of bytes to compare
+	IN	DWORD			dwMilliseconds OPTIONAL)// maximum number of milliseconds to wait
+{
+	LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
+	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
+	DWORD dwLastError;
+	BOOL bSuccess;
+
+	DbgPrint("(%p, %p, %Iu, %I32u)", lpAddr, lpCompare, cb, dwMilliseconds);
+
+	if (!lpAddr || !lpCompare) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	} else if (!(cb == 1 || cb == 2 || cb == 4 || cb == 8)) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+
+	EnterCriticalSection(&lpHashTableEntry->Lock);
+	
+	if (!CompareVolatileMemory(lpAddr, lpCompare, cb)) {
+		LeaveCriticalSection(&lpHashTableEntry->Lock);
+		SetLastError(ERROR_SUCCESS);
+		return TRUE;
+	}
+
+	lpListEntry = FindOrCreateACVAListEntryForAddress(lpHashTableEntry, lpAddr);
+	lpListEntry->dwWaiters++;
+	bSuccess = SleepConditionVariableCS(&lpListEntry->CVar, &lpHashTableEntry->Lock, dwMilliseconds);
+	dwLastError = GetLastError();
+
+	if (--lpListEntry->dwWaiters == 0) {
+		DeleteACVAListEntry(lpListEntry);
+	}
+
+	LeaveCriticalSection(&lpHashTableEntry->Lock);
+	SetLastError(dwLastError);
+	return bSuccess;
+}
+
+WINBASEAPI VOID WINAPI WakeByAddressSingle(
+	IN	LPVOID	lpAddr)
+{
+	LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
+	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
+	
+	DbgPrint("(%p)", lpAddr);
+
+	EnterCriticalSection(&lpHashTableEntry->Lock);
+	lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
+
+	if (lpListEntry) {
+		RtlWakeConditionVariable(&lpListEntry->CVar);
+	}
+
+	LeaveCriticalSection(&lpHashTableEntry->Lock);
+}
+
+WINBASEAPI VOID WINAPI WakeByAddressAll(
+	IN	LPVOID	lpAddr)
+{
+	LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
+	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
+
+	DbgPrint("(%p)", lpAddr);
+	
+	EnterCriticalSection(&lpHashTableEntry->Lock);
+	lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
+
+	if (lpListEntry) {
+		RtlWakeAllConditionVariable(&lpListEntry->CVar);
+	}
+
+	LeaveCriticalSection(&lpHashTableEntry->Lock);
+}

@@ -613,9 +613,9 @@
 @ stdcall D3DKMTCheckSharedResourceAccess(ptr)
 @ stdcall D3DKMTCheckVidPnExclusiveOwnership(ptr)
 #@ stdcall D3DKMTCloseAdapter(ptr)
-@ stdcall D3DKMTCreateDCFromMemory(ptr) gdibase.D3DKMTCreateDCFromMemory
+@ stdcall D3DKMTCreateDCFromMemory(ptr)
 #@ stdcall D3DKMTCreateDevice(ptr)
-@ stdcall D3DKMTDestroyDCFromMemory(ptr) gdibase.D3DKMTDestroyDCFromMemory
+@ stdcall D3DKMTDestroyDCFromMemory(ptr)
 #@ stdcall D3DKMTDestroyDevice(ptr)
 #@ stdcall D3DKMTEscape(ptr)
 #@ stdcall D3DKMTOpenAdapterFromGdiDisplayName(ptr)

@@ -1033,11 +1033,11 @@ void NTAPI RtlReleaseSRWLockShared(RTL_SRWLOCK* SRWLock)
 	SYNCSTATUS OldStatus=InterlockedCompareExchange((volatile long*)SRWLock,0,((1<<SRW_COUNT_BIT)|SRWF_Hold));
 	//如果共享计数为1，且标记仅为Hold
 	//说明仅有一个共享锁，恢复至空闲状态就可以了
-	if (OldStatus==((1<<SRW_COUNT_BIT)|SRWF_Hold))
+	if (OldStatus==0x11)//((1<<SRW_COUNT_BIT)|SRWF_Hold))
 		return ;
 
-	if (!(OldStatus&SRWF_Hold))
-		RtlRaiseStatus(0xC0000264);
+	// if ((OldStatus&SRWF_Hold) == 0)
+		// RtlRaiseStatus(0xC0000264);
 
 	//只存在共享锁
 	if (!(OldStatus&SRWF_Wait))
