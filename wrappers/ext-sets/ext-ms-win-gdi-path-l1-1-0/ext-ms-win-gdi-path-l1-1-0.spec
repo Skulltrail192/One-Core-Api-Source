@@ -1,0 +1,5 @@
+@ stdcall BeginPath(long)
+@ stdcall CloseFigure(ptr)
+@ stdcall EndPath(ptr)
+@ stdcall FillPath(ptr)
+@ stdcall PathToRegion(long)

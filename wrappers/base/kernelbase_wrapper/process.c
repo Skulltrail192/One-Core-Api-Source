@@ -409,228 +409,228 @@ size_t BitCountTable[256] =
 };
 
 #ifdef _X86_ //Using wine implementation for x86, work fine with cpu-z, chromium, etc
-BOOL
-WINAPI
-GetLogicalProcessorInformationEx(
-	_In_ LOGICAL_PROCESSOR_RELATIONSHIP RelationshipType,
-	_Out_writes_bytes_to_opt_(*ReturnedLength, *ReturnedLength) PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX Buffer,
-	_Inout_ PDWORD ReturnedLength
-)
-{
-	DWORD cbBuffer;
-	PVOID ProcessHeap;
-	LSTATUS lStatus;
-	DWORD cbLogicalProcessorInformation;
-	SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfo;
-	SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfoStart;
-	SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pNewBuffer;
-	SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfoLastItem;
-	SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX* pInfo;
-	DWORD cbBufferUsed;
-	DWORD cbInfoNeed;
-	SYSTEM_INFO SystemInfo;
-#ifdef _X86_
-	long ActiveProcessorMask;
-	long ActiveProcessorCount;
-#else
-	__int64 ActiveProcessorMask;
-	__int64 ActiveProcessorCount;
-#endif			
-	// if (auto pGetLogicalProcessorInformationEx = try_get_GetLogicalProcessorInformationEx())
+// BOOL
+// WINAPI
+// GetLogicalProcessorInformationEx(
+	// _In_ LOGICAL_PROCESSOR_RELATIONSHIP RelationshipType,
+	// _Out_writes_bytes_to_opt_(*ReturnedLength, *ReturnedLength) PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX Buffer,
+	// _Inout_ PDWORD ReturnedLength
+// )
+// {
+	// DWORD cbBuffer;
+	// PVOID ProcessHeap;
+	// LSTATUS lStatus;
+	// DWORD cbLogicalProcessorInformation;
+	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfo;
+	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfoStart;
+	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pNewBuffer;
+	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfoLastItem;
+	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX* pInfo;
+	// DWORD cbBufferUsed;
+	// DWORD cbInfoNeed;
+	// SYSTEM_INFO SystemInfo;
+// #ifdef _X86_
+	// long ActiveProcessorMask;
+	// long ActiveProcessorCount;
+// #else
+	// __int64 ActiveProcessorMask;
+	// __int64 ActiveProcessorCount;
+// #endif			
+	// // if (auto pGetLogicalProcessorInformationEx = try_get_GetLogicalProcessorInformationEx())
+	// // {
+		// // return pGetLogicalProcessorInformationEx(RelationshipType, Buffer, ReturnedLength);
+	// // }
+
+
+	// if (!ReturnedLength)
 	// {
-		// return pGetLogicalProcessorInformationEx(RelationshipType, Buffer, ReturnedLength);
+		// SetLastError(ERROR_INVALID_PARAMETER);
+		// return FALSE;
 	// }
-
-
-	if (!ReturnedLength)
-	{
-		SetLastError(ERROR_INVALID_PARAMETER);
-		return FALSE;
-	}
 	
-			cbBuffer = *ReturnedLength;
+			// cbBuffer = *ReturnedLength;
 
-			// if (cbBuffer != 0 && Buffer == NULL)
+			// // if (cbBuffer != 0 && Buffer == NULL)
+			// // {
+				// // SetLastError(ERROR_NOACCESS);
+				// // return FALSE;
+			// // }
+	
+			// ProcessHeap = ((TEB*)NtCurrentTeb())->ProcessEnvironmentBlock->ProcessHeap;
+			// lStatus = ERROR_SUCCESS;
+
+			// pProcessorInfo = NULL;
+			// cbLogicalProcessorInformation = 0;
+
+	
+			// for (; GetLogicalProcessorInformation(pProcessorInfo, &cbLogicalProcessorInformation) == FALSE;)
 			// {
-				// SetLastError(ERROR_NOACCESS);
+				// lStatus = GetLastError();
+
+				// if (ERROR_INSUFFICIENT_BUFFER == lStatus)
+				// {
+					// if (pProcessorInfo)
+					// {
+						// pNewBuffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)HeapReAlloc(ProcessHeap, 0, pProcessorInfo, cbLogicalProcessorInformation);
+						// if (pNewBuffer)
+						// {
+							// pProcessorInfo = pNewBuffer;
+							// continue;
+						// }
+					// }
+					// else
+					// {
+						// pProcessorInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)HeapAlloc(ProcessHeap, 0, cbLogicalProcessorInformation);
+
+						// if (pProcessorInfo)
+							// continue;
+					// }
+
+					// lStatus = ERROR_NOT_ENOUGH_MEMORY;
+				// }
+
+				// goto __End;
+			// }
+
+
+			// {
+				// pProcessorInfoLastItem = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)((byte*)pProcessorInfo + cbLogicalProcessorInformation - sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION));
+
+				// cbBufferUsed = 0;
+
+
+
+				// for (pProcessorInfoStart = pProcessorInfo; pProcessorInfoStart <= pProcessorInfoLastItem; ++pProcessorInfoStart)
+				// {
+					// if (RelationshipType == RelationAll
+						// || pProcessorInfoStart->Relationship == RelationshipType)
+					// {			
+
+						// switch (pProcessorInfoStart->Relationship)
+						// {
+						// case RelationProcessorCore:
+						// case RelationProcessorPackage:
+							// cbInfoNeed = log_proc_ex_size_plus(sizeof(PROCESSOR_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Processor);
+							// break;
+						// case RelationNumaNode:
+							// cbInfoNeed = log_proc_ex_size_plus(sizeof(NUMA_NODE_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, NumaNode);
+							// break;
+						// case RelationCache:
+							// cbInfoNeed = log_proc_ex_size_plus(sizeof(CACHE_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Cache);
+							// break;
+						// default:
+							// cbInfoNeed = 0;
+							// break;
+						// }
+
+						// //不支持传输此类型
+						// if (0 == cbInfoNeed)
+							// continue;
+
+						// cbBufferUsed += cbInfoNeed;
+
+						// if (cbBuffer >= cbBufferUsed)
+						// {
+							// pInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)((byte*)Buffer + cbBufferUsed);
+
+							// memset(pInfo, 0, cbInfoNeed);
+
+							// pInfo->Size = cbInfoNeed;
+							// pInfo->Relationship = pProcessorInfoStart->Relationship;
+
+							// switch (pProcessorInfoStart->Relationship)
+							// {
+							// case RelationProcessorCore:
+							// case RelationProcessorPackage:
+								// pInfo->Processor.Flags = pProcessorInfoStart->ProcessorCore.Flags;
+								// pInfo->Processor.GroupCount = 1;
+								// pInfo->Processor.GroupMask->Mask = pProcessorInfoStart->ProcessorMask;
+								// break;
+							// case RelationNumaNode:
+								// pInfo->NumaNode.NodeNumber = pProcessorInfoStart->NumaNode.NodeNumber;
+								// pInfo->NumaNode.GroupMask.Mask = pProcessorInfoStart->ProcessorMask;
+								// break;
+							// case RelationCache:
+								// pInfo->Cache.Level = pProcessorInfoStart->Cache.Level;
+								// pInfo->Cache.Associativity = pProcessorInfoStart->Cache.Associativity;
+								// pInfo->Cache.LineSize = pProcessorInfoStart->Cache.LineSize;
+								// pInfo->Cache.CacheSize = pProcessorInfoStart->Cache.Size;
+								// pInfo->Cache.Type = pProcessorInfoStart->Cache.Type;
+								// pInfo->Cache.GroupMask.Mask= pProcessorInfoStart->ProcessorMask;
+								// break;
+							// }
+						// }
+					// }
+				// }
+
+
+				// //传输 RelationGroup 信息，这里只能假设只有一组CPU
+				// if (RelationshipType == RelationAll
+					// || RelationGroup == RelationshipType)
+				// {
+					// cbInfoNeed = log_proc_ex_size_plus(sizeof(GROUP_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Group);
+
+					// cbBufferUsed += cbInfoNeed;
+
+					// if (cbBuffer >= cbBufferUsed)
+					// {
+						// pInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)((byte*)Buffer + cbBufferUsed);
+
+						// memset(pInfo, 0, cbInfoNeed);
+
+						// pInfo->Size = cbInfoNeed;
+						// pInfo->Relationship = RelationGroup;
+
+						// pInfo->Group.ActiveGroupCount = 1;
+						// pInfo->Group.MaximumGroupCount = 1;					
+
+						// GetSystemInfo(&SystemInfo);
+
+						// pInfo->Group.GroupInfo->ActiveProcessorMask = SystemInfo.dwActiveProcessorMask;
+
+						// ActiveProcessorMask = SystemInfo.dwActiveProcessorMask;
+
+// #if defined(_M_IX86) || defined(_M_ARM)
+						// ActiveProcessorCount = BitCountTable[((byte*)&ActiveProcessorMask)[0]] + BitCountTable[((byte*)&ActiveProcessorMask)[1]] + BitCountTable[((byte*)&ActiveProcessorMask)[2]] + BitCountTable[((byte*)&ActiveProcessorMask)[3]];
+// #elif defined(_M_AMD64) || defined(_M_IA64) || defined(_M_ARM64)
+						// ActiveProcessorCount = BitCountTable[((byte*)&ActiveProcessorMask)[0]] + BitCountTable[((byte*)&ActiveProcessorMask)[1]] + BitCountTable[((byte*)&ActiveProcessorMask)[2]] + BitCountTable[((byte*)&ActiveProcessorMask)[3]]
+							// + BitCountTable[((byte*)&ActiveProcessorMask)[4]] + BitCountTable[((byte*)&ActiveProcessorMask)[5]] + BitCountTable[((byte*)&ActiveProcessorMask)[6]] + BitCountTable[((byte*)&ActiveProcessorMask)[7]];
+// #else
+						// ActiveProcessorCount = 0;
+						// for (i = 0; i != sizeof(ActiveProcessorMask); ++i)
+						// {
+							// ActiveProcessorCount += BitCountTable[((byte*)&ActiveProcessorMask)[i]];
+						// }
+// #endif
+						// pInfo->Group.GroupInfo->ActiveProcessorCount = ActiveProcessorCount;
+						// pInfo->Group.GroupInfo->MaximumProcessorCount = SystemInfo.dwNumberOfProcessors;
+					// }
+				// }
+
+				// *ReturnedLength = cbBufferUsed;
+
+				// if (cbBufferUsed > cbBuffer)
+				// {
+					// //缓冲区不足
+					// lStatus = ERROR_INSUFFICIENT_BUFFER;
+				// }
+			// }
+
+		// __End:
+			// if (pProcessorInfo)
+				// HeapFree(ProcessHeap, 0, pProcessorInfo);
+
+			// if (lStatus != ERROR_SUCCESS)
+			// {
+				// SetLastError(lStatus);
+
 				// return FALSE;
 			// }
-	
-			ProcessHeap = ((TEB*)NtCurrentTeb())->ProcessEnvironmentBlock->ProcessHeap;
-			lStatus = ERROR_SUCCESS;
-
-			pProcessorInfo = NULL;
-			cbLogicalProcessorInformation = 0;
-
-	
-			for (; GetLogicalProcessorInformation(pProcessorInfo, &cbLogicalProcessorInformation) == FALSE;)
-			{
-				lStatus = GetLastError();
-
-				if (ERROR_INSUFFICIENT_BUFFER == lStatus)
-				{
-					if (pProcessorInfo)
-					{
-						pNewBuffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)HeapReAlloc(ProcessHeap, 0, pProcessorInfo, cbLogicalProcessorInformation);
-						if (pNewBuffer)
-						{
-							pProcessorInfo = pNewBuffer;
-							continue;
-						}
-					}
-					else
-					{
-						pProcessorInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)HeapAlloc(ProcessHeap, 0, cbLogicalProcessorInformation);
-
-						if (pProcessorInfo)
-							continue;
-					}
-
-					lStatus = ERROR_NOT_ENOUGH_MEMORY;
-				}
-
-				goto __End;
-			}
-
-
-			{
-				pProcessorInfoLastItem = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)((byte*)pProcessorInfo + cbLogicalProcessorInformation - sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION));
-
-				cbBufferUsed = 0;
-
-
-
-				for (pProcessorInfoStart = pProcessorInfo; pProcessorInfoStart <= pProcessorInfoLastItem; ++pProcessorInfoStart)
-				{
-					if (RelationshipType == RelationAll
-						|| pProcessorInfoStart->Relationship == RelationshipType)
-					{			
-
-						switch (pProcessorInfoStart->Relationship)
-						{
-						case RelationProcessorCore:
-						case RelationProcessorPackage:
-							cbInfoNeed = log_proc_ex_size_plus(sizeof(PROCESSOR_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Processor);
-							break;
-						case RelationNumaNode:
-							cbInfoNeed = log_proc_ex_size_plus(sizeof(NUMA_NODE_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, NumaNode);
-							break;
-						case RelationCache:
-							cbInfoNeed = log_proc_ex_size_plus(sizeof(CACHE_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Cache);
-							break;
-						default:
-							cbInfoNeed = 0;
-							break;
-						}
-
-						//不支持传输此类型
-						if (0 == cbInfoNeed)
-							continue;
-
-						cbBufferUsed += cbInfoNeed;
-
-						if (cbBuffer >= cbBufferUsed)
-						{
-							pInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)((byte*)Buffer + cbBufferUsed);
-
-							memset(pInfo, 0, cbInfoNeed);
-
-							pInfo->Size = cbInfoNeed;
-							pInfo->Relationship = pProcessorInfoStart->Relationship;
-
-							switch (pProcessorInfoStart->Relationship)
-							{
-							case RelationProcessorCore:
-							case RelationProcessorPackage:
-								pInfo->Processor.Flags = pProcessorInfoStart->ProcessorCore.Flags;
-								pInfo->Processor.GroupCount = 1;
-								pInfo->Processor.GroupMask->Mask = pProcessorInfoStart->ProcessorMask;
-								break;
-							case RelationNumaNode:
-								pInfo->NumaNode.NodeNumber = pProcessorInfoStart->NumaNode.NodeNumber;
-								pInfo->NumaNode.GroupMask.Mask = pProcessorInfoStart->ProcessorMask;
-								break;
-							case RelationCache:
-								pInfo->Cache.Level = pProcessorInfoStart->Cache.Level;
-								pInfo->Cache.Associativity = pProcessorInfoStart->Cache.Associativity;
-								pInfo->Cache.LineSize = pProcessorInfoStart->Cache.LineSize;
-								pInfo->Cache.CacheSize = pProcessorInfoStart->Cache.Size;
-								pInfo->Cache.Type = pProcessorInfoStart->Cache.Type;
-								pInfo->Cache.GroupMask.Mask= pProcessorInfoStart->ProcessorMask;
-								break;
-							}
-						}
-					}
-				}
-
-
-				//传输 RelationGroup 信息，这里只能假设只有一组CPU
-				if (RelationshipType == RelationAll
-					|| RelationGroup == RelationshipType)
-				{
-					cbInfoNeed = log_proc_ex_size_plus(sizeof(GROUP_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Group);
-
-					cbBufferUsed += cbInfoNeed;
-
-					if (cbBuffer >= cbBufferUsed)
-					{
-						pInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)((byte*)Buffer + cbBufferUsed);
-
-						memset(pInfo, 0, cbInfoNeed);
-
-						pInfo->Size = cbInfoNeed;
-						pInfo->Relationship = RelationGroup;
-
-						pInfo->Group.ActiveGroupCount = 1;
-						pInfo->Group.MaximumGroupCount = 1;					
-
-						GetSystemInfo(&SystemInfo);
-
-						pInfo->Group.GroupInfo->ActiveProcessorMask = SystemInfo.dwActiveProcessorMask;
-
-						ActiveProcessorMask = SystemInfo.dwActiveProcessorMask;
-
-#if defined(_M_IX86) || defined(_M_ARM)
-						ActiveProcessorCount = BitCountTable[((byte*)&ActiveProcessorMask)[0]] + BitCountTable[((byte*)&ActiveProcessorMask)[1]] + BitCountTable[((byte*)&ActiveProcessorMask)[2]] + BitCountTable[((byte*)&ActiveProcessorMask)[3]];
-#elif defined(_M_AMD64) || defined(_M_IA64) || defined(_M_ARM64)
-						ActiveProcessorCount = BitCountTable[((byte*)&ActiveProcessorMask)[0]] + BitCountTable[((byte*)&ActiveProcessorMask)[1]] + BitCountTable[((byte*)&ActiveProcessorMask)[2]] + BitCountTable[((byte*)&ActiveProcessorMask)[3]]
-							+ BitCountTable[((byte*)&ActiveProcessorMask)[4]] + BitCountTable[((byte*)&ActiveProcessorMask)[5]] + BitCountTable[((byte*)&ActiveProcessorMask)[6]] + BitCountTable[((byte*)&ActiveProcessorMask)[7]];
-#else
-						ActiveProcessorCount = 0;
-						for (i = 0; i != sizeof(ActiveProcessorMask); ++i)
-						{
-							ActiveProcessorCount += BitCountTable[((byte*)&ActiveProcessorMask)[i]];
-						}
-#endif
-						pInfo->Group.GroupInfo->ActiveProcessorCount = ActiveProcessorCount;
-						pInfo->Group.GroupInfo->MaximumProcessorCount = SystemInfo.dwNumberOfProcessors;
-					}
-				}
-
-				*ReturnedLength = cbBufferUsed;
-
-				if (cbBufferUsed > cbBuffer)
-				{
-					//缓冲区不足
-					lStatus = ERROR_INSUFFICIENT_BUFFER;
-				}
-			}
-
-		__End:
-			if (pProcessorInfo)
-				HeapFree(ProcessHeap, 0, pProcessorInfo);
-
-			if (lStatus != ERROR_SUCCESS)
-			{
-				SetLastError(lStatus);
-
-				return FALSE;
-			}
-			else
-			{
-				return TRUE;
-			}
-		}
+			// else
+			// {
+				// return TRUE;
+			// }
+		// }
 		
 		
 
@@ -1136,35 +1136,35 @@ NTSTATUS WINAPI NtQuerySystemInformationExInternal(
     return ret;
 }
 
-// /***********************************************************************
- // *           GetLogicalProcessorInformationEx   (KERNEL32.@)
- // */
-// BOOL WINAPI GetLogicalProcessorInformationEx(LOGICAL_PROCESSOR_RELATIONSHIP relationship, SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer, DWORD *len)
-// {
-    // NTSTATUS status;
+/***********************************************************************
+ *           GetLogicalProcessorInformationEx   (KERNEL32.@)
+ */
+BOOL WINAPI GetLogicalProcessorInformationEx(LOGICAL_PROCESSOR_RELATIONSHIP relationship, SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buffer, DWORD *len)
+{
+    NTSTATUS status;
 
-    // DbgPrint("(%u,%p,%p)\n", relationship, buffer, len);
+    DbgPrint("(%u,%p,%p)\n", relationship, buffer, len);
 
-    // if (!len)
-    // {
-        // SetLastError( ERROR_INVALID_PARAMETER );
-        // return FALSE;
-    // }
+    if (!len)
+    {
+        SetLastError( ERROR_INVALID_PARAMETER );
+        return FALSE;
+    }
 
-    // status = NtQuerySystemInformationExInternal( 1, &relationship, sizeof(relationship),
-        // buffer, *len, len );
-    // if (status == STATUS_INFO_LENGTH_MISMATCH)
-    // {
-        // SetLastError( ERROR_INSUFFICIENT_BUFFER );
-        // return FALSE;
-    // }
-    // if (status != STATUS_SUCCESS)
-    // {
-        // SetLastError( RtlNtStatusToDosError( status ) );
-        // return FALSE;
-    // }
-    // return TRUE;
-// }
+    status = NtQuerySystemInformationExInternal( 1, &relationship, sizeof(relationship),
+        buffer, *len, len );
+    if (status == STATUS_INFO_LENGTH_MISMATCH)
+    {
+        SetLastError( ERROR_INSUFFICIENT_BUFFER );
+        return FALSE;
+    }
+    if (status != STATUS_SUCCESS)
+    {
+        SetLastError( RtlNtStatusToDosError( status ) );
+        return FALSE;
+    }
+    return TRUE;
+}
 #else
 //#else //Using wine implementation for x86, work fine with cpu-z, chromium, etc 	 
 BOOL GetLogicalProcessorInformationEx(LOGICAL_PROCESSOR_RELATIONSHIP RelationshipType, PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX Buffer, PDWORD ReturnedLength)
