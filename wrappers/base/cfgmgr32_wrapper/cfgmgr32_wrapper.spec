@@ -199,4 +199,4 @@
 @ stdcall CM_Get_DevNode_PropertyW(long ptr ptr ptr ptr long) setupapi.CM_Get_DevNode_PropertyW
 
 #Windows 7 functions
-@ stdcall CM_MapCrToWin32Err(long long)
+@ stdcall CM_MapCrToWin32Err(long long) setupapi.CM_MapCrToWin32Err

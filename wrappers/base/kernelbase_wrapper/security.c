@@ -90,9 +90,16 @@ CheckElevation(
    PDWORD pdwReason
 )
 {
-	HANDLE ThreadHandle =0;
+	HANDLE TokenHandle =0;
+	NTSTATUS Status;
+	HANDLE QueryToken;
+	
 	*pdwRunLevel = 0;
-	BaseRestoreImpersonation(ThreadHandle);
+	
+    if ( BaseRevertToSelf(&QueryToken) < 0 || !QueryToken )
+		TokenHandle = 0;
+    Status = NtOpenProcessToken(hChildToken, 0x80u, &TokenHandle);
+    BaseRestoreImpersonation(hChildToken);
 	return S_OK;
 }
 

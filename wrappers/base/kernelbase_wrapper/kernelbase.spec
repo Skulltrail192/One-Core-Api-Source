@@ -1393,6 +1393,8 @@
 @ stdcall GetFirmwareType(ptr)
 @ stdcall GetPackageFamilyName(long ptr ptr)
 @ stdcall GetPackageFullName(long ptr ptr)
+@ stdcall GetPackagePathByFullName(wstr ptr wstr)
+@ stdcall GetPackagesByPackageFamily(wstr ptr ptr ptr ptr)
 @ stdcall GetProcessMitigationPolicy(long long ptr long)
 @ stdcall GetSystemTimePreciseAsFileTime(ptr)
 @ stdcall GlobalAddAtomExA(str long)

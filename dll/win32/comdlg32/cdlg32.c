@@ -153,7 +153,7 @@ DWORD WINAPI CommDlgExtendedError(void)
 	  return 0; /* we never set an error, so there isn't one */
 }
 
-#ifndef __REACTOS__ /* Win 7 */
+//#ifndef __REACTOS__ /* Win 7 */
 
 /*************************************************************************
  * Implement the CommDlg32 class factory
@@ -248,7 +248,7 @@ HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void **ppv)
     static IClassFactoryImpl FileOpenDlgClassFactory = {{&CDLGCF_Vtbl}, FileOpenDialog_Constructor};
     static IClassFactoryImpl FileSaveDlgClassFactory = {{&CDLGCF_Vtbl}, FileSaveDialog_Constructor};
 
-    Dbgprint("DllGetClassObject called %s, %s, %p\n", debugstr_guid(rclsid), debugstr_guid(riid), ppv);
+    //DbgPrint("DllGetClassObject called %s, %s, %p\n", debugstr_guid(rclsid), debugstr_guid(riid), ppv);
 
     if(IsEqualGUID(&CLSID_FileOpenDialog, rclsid))
         return IClassFactory_QueryInterface(&FileOpenDlgClassFactory.IClassFactory_iface, riid, ppv);
@@ -283,4 +283,4 @@ HRESULT WINAPI DllUnregisterServer(void)
 #endif
 }
 
-#endif /* Win 7 */
+//#endif /* Win 7 */

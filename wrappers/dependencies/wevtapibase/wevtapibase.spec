@@ -27,6 +27,7 @@
 @ stub EvtIntOpenPublisherEnum
 @ stub EvtIntOpenPublisherMetadata
 @ stub EvtIntQueryLog
+@ stub EvtIntRegisterPublisher
 @ stub EvtIntRegisterSubscription
 @ stub EvtIntRender
 @ stub EvtIntRenderBookmark

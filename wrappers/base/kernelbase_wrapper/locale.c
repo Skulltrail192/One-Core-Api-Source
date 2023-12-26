@@ -2224,12 +2224,12 @@ GetUserPreferredUILanguages(
 	LANGID ui_language;
 	
 	NtQueryDefaultUILanguage( &ui_language );
-	return set_ntstatus( RtlGetUserPreferredUILanguages( dwFlags, 0, pulNumLanguages, pwszLanguagesBuffer, pcchLanguagesBuffer ));
-	// return EnumPreferredUserUILanguages(dwFlags,
-										// ui_language,
-									    // pulNumLanguages,
-									    // pwszLanguagesBuffer,
-									    // pcchLanguagesBuffer);
+	// return set_ntstatus( RtlGetUserPreferredUILanguages( dwFlags, 0, pulNumLanguages, pwszLanguagesBuffer, pcchLanguagesBuffer ));
+	return EnumPreferredUserUILanguages(dwFlags,
+										ui_language,
+									    pulNumLanguages,
+									    pwszLanguagesBuffer,
+									    pcchLanguagesBuffer);
 }
 
 /***********************************************************************
@@ -2241,12 +2241,12 @@ BOOL WINAPI DECLSPEC_HOTPATCH GetThreadPreferredUILanguages( DWORD flags, ULONG 
 	LANGID ui_language;
 	
 	NtQueryDefaultUILanguage( &ui_language );
-    return set_ntstatus( RtlGetThreadPreferredUILanguages( flags, count, buffer, size ));
-	// return EnumPreferredThreadUILanguages(flags,
-										  // ui_language,
-										  // count,
-										  // buffer,
-										  // size);	
+    // return set_ntstatus( RtlGetThreadPreferredUILanguages( flags, count, buffer, size ));
+	return EnumPreferredThreadUILanguages(flags,
+										  ui_language,
+										  count,
+										  buffer,
+										  size);	
 }
 
 /***********************************************************************
@@ -2258,12 +2258,12 @@ BOOL WINAPI DECLSPEC_HOTPATCH GetSystemPreferredUILanguages( DWORD flags, ULONG 
 	LANGID ui_language;
 	
 	NtQueryInstallUILanguage( &ui_language );	
-    return set_ntstatus( RtlGetSystemPreferredUILanguages( flags, 0, count, buffer, size ));
-	// return EnumPreferredThreadUILanguages(flags,
-										  // ui_language,
-										  // count,
-										  // buffer,
-										  // size);		
+    // return set_ntstatus( RtlGetSystemPreferredUILanguages( flags, 0, count, buffer, size ));
+	return EnumPreferredThreadUILanguages(flags,
+										  ui_language,
+										  count,
+										  buffer,
+										  size);		
 }
 
 /***********************************************************************

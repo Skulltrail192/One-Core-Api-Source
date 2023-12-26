@@ -175,3 +175,17 @@ ElfReportEventAndSourceW(
 											TimeWritten);
 	}
 }	
+
+BOOL 
+WINAPI
+EvtReport(int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8)
+{
+	return TRUE;
+}
+
+ULONG 
+WINAPI 
+EvtRegisterPublisher(int a1, HMODULE hModule, int a3, int a4)
+{
+	return ERROR_SUCCESS;
+}

@@ -183,6 +183,8 @@ typedef struct _UMS_CREATE_THREAD_ATTRIBUTES {
 #define LOCALE_REPLACEMENT          0x08
 #define LOCALE_NEUTRALDATA          0x10
 #define LOCALE_SPECIFICDATA         0x20
+#define LOCALE_SLOCALIZEDDISPLAYNAME 0x0002
+#define LOCALE_SLOCALIZEDCOUNTRYNAME 0x0006
 #define LOCALE_SPARENT 0x0000006d
 
 #ifndef FileIdInformation
@@ -428,6 +430,19 @@ typedef struct _NeutralToSpecific
 	LPCWSTR szNeutralLocale;
 	LPCWSTR szSpecificLocale;
 }NeutralToSpecific;
+
+typedef struct _LcidFallback
+{
+	LCID Locale;
+	LCID Fallback;
+}LcidFallback;
+
+// Map of LCID to locale name.
+typedef struct _LcidToLocaleName
+{
+	LCID    Locale;
+	LPCWSTR localeName;
+}LcidToLocaleName;
 
 typedef enum _POWER_REQUEST_TYPE { 
   PowerRequestDisplayRequired,

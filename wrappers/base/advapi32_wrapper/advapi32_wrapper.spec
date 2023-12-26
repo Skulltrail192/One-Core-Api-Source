@@ -848,9 +848,11 @@
 @ stdcall EvtOpenPublisherEnum() wevtapibase.EvtIntOpenPublisherEnum
 @ stdcall EvtOpenPublisherMetadata() wevtapibase.EvtIntOpenPublisherMetadata
 @ stdcall EvtQueryLog() wevtapibase.EvtIntQueryLog
+@ stdcall EvtRegisterPublisher(long long long long)
 @ stdcall EvtRegisterSubscription() wevtapibase.EvtIntRegisterSubscription
 @ stdcall EvtRender() wevtapibase.EvtIntRender
 @ stdcall EvtRenderBookmark() wevtapibase.EvtIntRenderBookmark
+@ stdcall EvtReport(long long long long long long long long)
 @ stdcall EvtRetractConfig() wevtapibase.EvtIntRetractConfig
 @ stdcall EvtSaveChannelConfig() wevtapibase.EvtIntSaveChannelConfig
 @ stdcall EvtSeek() wevtapibase.EvtIntSeek

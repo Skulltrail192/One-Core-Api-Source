@@ -608,3 +608,4 @@
 #Vista Functions
 @ stdcall SetupDiGetDevicePropertyW(ptr ptr ptr ptr ptr long ptr long)
 @ stdcall -stub CM_Get_DevNode_PropertyW(long ptr ptr ptr ptr long)
+@ stdcall -stub CM_MapCrToWin32Err(long long)

@@ -16,9 +16,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
  
-#define WINE_FILEVERSION 10,1,35000,18035
-#define WINE_FILEVERSION_STR "3.0.5"
-#define WINE_PRODUCTVERSION 3,0,5
-#define WINE_PRODUCTVERSION_STR "10.1.35000.18035"
+#define WINE_FILEDESCRIPTION_STR "Wine Crypto Library for One-Core-API"
+#define WINE_FILENAME_STR "bcrypt.dll"
 
-#include "one_core-api_common_ver.rc"
+#include "common_wrappers_ver.rc"

@@ -648,3 +648,6 @@
 @ stdcall SetupDiGetDevicePropertyKeys(long ptr ptr long ptr long) setupapibase.SetupDiGetDevicePropertyKeys
 @ stdcall SetupDiGetClassPropertyExW(ptr ptr ptr ptr long ptr long wstr ptr) setupapibase.SetupDiGetClassPropertyExW
 @ stdcall SetupDiGetClassPropertyKeysExW(ptr ptr long ptr long wstr ptr) setupapibase.SetupDiGetClassPropertyKeysExW
+
+#Win7
+@ stdcall CM_MapCrToWin32Err(long long)

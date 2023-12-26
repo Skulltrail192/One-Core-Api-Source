@@ -31,6 +31,21 @@ WINE_DEFAULT_DEBUG_CHANNEL(process);
 
 UNICODE_STRING NoDefaultCurrentDirectoryInExePath = RTL_CONSTANT_STRING(L"NoDefaultCurrentDirectoryInExePath");
 
+typedef struct _PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY {
+  union {
+    DWORD Flags;
+    struct {
+      DWORD DisallowWin32kSystemCalls : 1;
+      DWORD AuditDisallowWin32kSystemCalls : 1;
+      DWORD DisallowFsctlSystemCalls : 1;
+      DWORD AuditDisallowFsctlSystemCalls : 1;
+      DWORD ReservedFlags : 28;
+    } DUMMYSTRUCTNAME;
+  } DUMMYUNIONNAME;
+} PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY, *PPROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY;
+
+PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY globalPolicy;
+
 typedef struct _SYSTEM_LOGICAL_INFORMATION_FILLED{
 	CACHE_DESCRIPTOR  CacheLevel1;
 	CACHE_DESCRIPTOR  CacheLevel2;
@@ -2520,6 +2535,9 @@ BOOL WINAPI UmsThreadYield(void *param)
 BOOL WINAPI SetProcessMitigationPolicy(PROCESS_MITIGATION_POLICY policy, void *buffer, SIZE_T length)
 {
     FIXME("(%d, %p, %lu): stub\n", policy, buffer, length);
+	
+	// if (policy == ProcessSystemCallDisablePolicy)
+		// globalPolicy = (PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY)(ULONG_PTR)buffer;
 
     return TRUE;
 }
@@ -2529,6 +2547,9 @@ BOOL WINAPI SetProcessMitigationPolicy(PROCESS_MITIGATION_POLICY policy, void *b
  */
 BOOL WINAPI GetProcessMitigationPolicy(HANDLE hProcess, PROCESS_MITIGATION_POLICY policy, void *buffer, SIZE_T length)
 {
+    if (!buffer)
+        return FALSE;
+    memset(buffer, 0, length);
     FIXME("(%p, %u, %p, %lu): stub\n", hProcess, policy, buffer, length);
 
     return TRUE;

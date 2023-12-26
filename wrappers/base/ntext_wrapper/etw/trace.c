@@ -21,12 +21,17 @@ Revision History:
 #include <main.h> 
 #include <wmistr.h>
 #include <evntrace.h>
+#include <rtltypes.h>
 
 #define NDEBUG
 #include <debug.h>
 
 PVOID EtwpDumpHardwareConfig;
 PVOID EtwpDumpHWConfig;
+
+PRTL_UNLOAD_EVENT_TRACE
+NTAPI
+RtlGetUnloadEventTrace(VOID);
 
 /*
  * @unimplemented
@@ -389,4 +394,14 @@ ULONG WINAPI EtwEnumerateTraceGuids(
 )
 {
     return ERROR_SUCCESS;	
+}
+
+VOID WINAPI RtlGetUnloadEventTraceEx(
+  _Out_ PULONG *ElementSize,
+  _Out_ PULONG *ElementCount,
+  _Out_ PVOID  *EventTrace
+) {
+    **ElementCount = RTL_UNLOAD_EVENT_TRACE_NUMBER;
+    **ElementSize = sizeof(RTL_UNLOAD_EVENT_TRACE);
+    *EventTrace = RtlGetUnloadEventTrace(); // begins from XP SP2 and 2003 RTM. (!!!!!)
 }

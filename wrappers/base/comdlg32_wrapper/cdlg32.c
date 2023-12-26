@@ -87,9 +87,9 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD Reason, LPVOID Reserved)
 		actctx.hModule = COMDLG32_hInstance;
 		actctx.lpResourceName = MAKEINTRESOURCEW(123);
 		actctx.dwFlags = ACTCTX_FLAG_HMODULE_VALID | ACTCTX_FLAG_RESOURCE_NAME_VALID;
-		COMDLG32_hActCtx = CreateActCtxW(&actctx);
-		if (COMDLG32_hActCtx == INVALID_HANDLE_VALUE)
-			ERR("failed to create activation context, last error %lu\n", GetLastError());
+		// COMDLG32_hActCtx = CreateActCtxW(&actctx);
+		// if (COMDLG32_hActCtx == INVALID_HANDLE_VALUE)
+			// ERR("failed to create activation context, last error %lu\n", GetLastError());
 		
 		
 
@@ -246,6 +246,8 @@ HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void **ppv)
 
     if(IsEqualGUID(&CLSID_FileSaveDialog, rclsid))
         return IClassFactory_QueryInterface(&FileSaveDlgClassFactory.IClassFactory_iface, riid, ppv);
+	
+	DbgPrint("Comdlg32::DllGetClassObject:: Interface not found\n");
 
     return CLASS_E_CLASSNOTAVAILABLE;
 }

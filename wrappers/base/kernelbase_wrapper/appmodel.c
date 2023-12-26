@@ -157,3 +157,32 @@ LONG WINAPI /* DECLSPEC_HOTPATCH */ GetPackageFamilyName( HANDLE process, UINT32
     FIXME( "(%p %p %p): stub\n", process, length, name );
     return APPMODEL_ERROR_NO_PACKAGE;
 }
+
+/***********************************************************************
+ *         GetPackagePathByFullName   (kernelbase.@)
+ */
+LONG WINAPI GetPackagePathByFullName(const WCHAR *name, UINT32 *len, WCHAR *path)
+{
+    if (!len || !name)
+        return ERROR_INVALID_PARAMETER;
+
+    FIXME( "(%s %p %p): stub\n", debugstr_w(name), len, path );
+
+    return APPMODEL_ERROR_NO_PACKAGE;
+}
+
+/***********************************************************************
+ *         GetPackagesByPackageFamily   (kernelbase.@)
+ */
+LONG WINAPI DECLSPEC_HOTPATCH GetPackagesByPackageFamily(const WCHAR *family_name, UINT32 *count,
+                                                         WCHAR *full_names, UINT32 *buffer_len, WCHAR *buffer)
+{
+    FIXME( "(%s %p %p %p %p): stub\n", debugstr_w(family_name), count, full_names, buffer_len, buffer );
+
+    if (!count || !buffer_len)
+        return ERROR_INVALID_PARAMETER;
+
+    *count = 0;
+    *buffer_len = 0;
+    return ERROR_SUCCESS;
+}

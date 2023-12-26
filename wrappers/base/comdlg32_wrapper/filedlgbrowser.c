@@ -41,9 +41,10 @@
 #include "servprov.h"
 #include "wine/debug.h"
 #include "wine/heap.h"
-#include "main.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(commdlg);
+
+#define ARRAY_SIZE(a) sizeof(a)/sizeof(a[0])
 
 typedef struct
 {
@@ -151,7 +152,7 @@ static void COMDLG32_UpdateCurrentDir(const FileOpenDlgInfos *fodInfos)
 /* copied from shell32 to avoid linking to it */
 static BOOL COMDLG32_StrRetToStrNW (LPVOID dest, DWORD len, LPSTRRET src, LPCITEMIDLIST pidl)
 {
-        TRACE("dest=%p len=0x%lx strret=%p pidl=%p\n", dest , len, src, pidl);
+        TRACE("dest=%p len=0x%x strret=%p pidl=%p\n", dest , len, src, pidl);
 
 	switch (src->uType)
 	{
@@ -253,7 +254,7 @@ static ULONG WINAPI IShellBrowserImpl_AddRef(IShellBrowser * iface)
     IShellBrowserImpl *This = impl_from_IShellBrowser(iface);
     ULONG ref = InterlockedIncrement(&This->ref);
 
-    TRACE("(%p,%lu)\n", This, ref - 1);
+    TRACE("(%p,%u)\n", This, ref - 1);
 
     return ref;
 }
@@ -266,7 +267,7 @@ static ULONG WINAPI IShellBrowserImpl_Release(IShellBrowser * iface)
     IShellBrowserImpl *This = impl_from_IShellBrowser(iface);
     ULONG ref = InterlockedDecrement(&This->ref);
 
-    TRACE("(%p,%lu)\n", This, ref + 1);
+    TRACE("(%p,%u)\n", This, ref + 1);
 
     if (!ref)
         heap_free(This);
@@ -449,7 +450,7 @@ static HRESULT WINAPI IShellBrowserImpl_BrowseObject(IShellBrowser *iface,
             &fodInfos->ShellInfos.folderSettings, fodInfos->Shell.FOIShellBrowser,
             &rectView, &hwndView)))
     {
-        WARN("Failed to create view window, hr %#lx.\n", hRes);
+        WARN("Failed to create view window, hr %#x.\n", hRes);
         return hRes;
     }
 
@@ -514,7 +515,7 @@ static HRESULT WINAPI IShellBrowserImpl_GetViewStateStream(IShellBrowser *iface,
 {
     IShellBrowserImpl *This = impl_from_IShellBrowser(iface);
 
-    FIXME("(%p 0x%08lx %p)\n", This, grfMode, ppStrm);
+    FIXME("(%p 0x%08x %p)\n", This, grfMode, ppStrm);
 
     /* Feature not implemented */
     return E_NOTIMPL;
@@ -603,7 +604,7 @@ static HRESULT WINAPI IShellBrowserImpl_SendControlMsg(IShellBrowser *iface,
     IShellBrowserImpl *This = impl_from_IShellBrowser(iface);
     LRESULT lres;
 
-    TRACE("(%p)->(0x%08x 0x%08x 0x%08Ix 0x%08Ix %p)\n", This, id, uMsg, wParam, lParam, pret);
+    TRACE("(%p)->(0x%08x 0x%08x 0x%08lx 0x%08lx %p)\n", This, id, uMsg, wParam, lParam, pret);
 
     switch (id)
     {
@@ -775,9 +776,9 @@ static HRESULT WINAPI IShellBrowserImpl_ICommDlgBrowser_OnDefaultCommand(ICommDl
     {
         HRESULT hRes;
 
-        ULONG  ulAttr = SFGAO_FOLDER | SFGAO_HASSUBFOLDER;
+        ULONG  ulAttr = SFGAO_FOLDER | SFGAO_HASSUBFOLDER | SFGAO_FILESYSANCESTOR;
         IShellFolder_GetAttributesOf(fodInfos->Shell.FOIShellFolder, 1, (LPCITEMIDLIST *)&pidl, &ulAttr);
-	if (ulAttr & (SFGAO_FOLDER | SFGAO_HASSUBFOLDER) )
+	if ((ulAttr & (SFGAO_FOLDER | SFGAO_HASSUBFOLDER)) && (ulAttr & SFGAO_FILESYSANCESTOR))
 	{
             hRes = IShellBrowser_BrowseObject(&This->IShellBrowser_iface,pidl,SBSP_RELATIVE);
             if(fodInfos->ofnInfos->Flags & OFN_EXPLORER)
@@ -904,7 +905,7 @@ static LRESULT send_includeitem_notification(HWND hwndParentDlg, LPCITEMIDLIST p
                 hook_result = SendMessageA(fodInfos->DlgInfos.hwndCustomDlg, WM_NOTIFY, 0, (LPARAM)&ofnNotify);
         }
     }
-    TRACE("Retval: 0x%08Ix\n", hook_result);
+    TRACE("Retval: 0x%08lx\n", hook_result);
     return hook_result;
 }
 

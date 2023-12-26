@@ -27,7 +27,7 @@ WINE_DEFAULT_DEBUG_CHANNEL(setupapi);
  */
 DWORD WINAPI CM_MapCrToWin32Err( CONFIGRET code, DWORD default_error )
 {
-    TRACE( "code: %#lx, default_error: %ld\n", code, default_error );
+    //TRACE( "code: %#lx, default_error: %ld\n", code, default_error );
 
     switch (code)
     {

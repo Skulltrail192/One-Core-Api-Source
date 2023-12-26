@@ -137,7 +137,7 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	/* search our internal interface table */
 	for(i=0;InterfaceTable[i].clsid;i++) {
 	    if(IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
-	        TRACE("index[%u]\n", i);
+	        //TRACE("index[%u]\n", i);
 			if(IsEqualIID(&CLSID_ShellLink, rclsid))
 			{
 				if(bIsWindowsVistaorLater && !CheckIfIsExplorer()){
@@ -154,14 +154,14 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	}		
 
     if (!pcf) {
-	    FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));
+	    //FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));
 	    return DllGetClassObject(rclsid, iid, ppv);//return DllGetClassObjectInternal;
 	}
 
 	hres = IClassFactory_QueryInterface(pcf, iid, ppv);
 	IClassFactory_Release(pcf);
 
-	TRACE("-- pointer to class factory: %p\n",*ppv);
+	//TRACE("-- pointer to class factory: %p\n",*ppv);
 	return hres;
 }
 
