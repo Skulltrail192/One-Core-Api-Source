@@ -2376,6 +2376,7 @@ static HRESULT create_dialog(FileDialogImpl *This, HWND parent)
     INT_PTR res;
     OPENFILENAMEW ofn;
 	LPWSTR szDir;
+	LPWSTR fileName;
 	BROWSEINFOW bInfo;	
 	UINT cFileTypes = This->filterspec_count;
     HRESULT hr;
@@ -2389,17 +2390,19 @@ static HRESULT create_dialog(FileDialogImpl *This, HWND parent)
 	PCIDLIST_ABSOLUTE *pidlArray = NULL;
 	PIDLIST_ABSOLUTE pidlCurrent;
 
-	if(!This->set_filename)
-	{
-		This->set_filename = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
-	}
-    ZeroMemory(&ofn, sizeof(ofn));	
+	fileName = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
 	
+	if(This->set_filename)
+	{
+		memcpy(fileName, This->set_filename, (wcslen(This->set_filename) + 8) + sizeof(LPWSTR));
+	}
+	
+    ZeroMemory(&ofn, sizeof(ofn));		
     ofn.lStructSize = sizeof(ofn); 
     ofn.hwndOwner = parent;
     ofn.hInstance = COMDLG32_hInstance;
     ofn.lpstrFilter = (LPCWSTR)ConvertVistaFiltersToXPFilters(This->filterspecs, cFileTypes);//L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
-    ofn.lpstrFile = (LPWSTR)This->set_filename;
+    ofn.lpstrFile = (LPWSTR)fileName;
     ofn.lpstrTitle = (LPWSTR)This->custom_title;
     ofn.nMaxFile = MAX_PATH;
     ofn.Flags = ConvertFileDialogFlagsToOpenFileNameFlags(This->options);
@@ -2432,9 +2435,7 @@ static HRESULT create_dialog(FileDialogImpl *This, HWND parent)
 		}		
 	}
 	
-	if(res || This->lpItem){
-		if(This->set_filename){
-			
+	if(res || This->lpItem){			
 			// Inicializa a COM (Component Object Model)
 			CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 			
@@ -2445,67 +2446,69 @@ static HRESULT create_dialog(FileDialogImpl *This, HWND parent)
 					DbgPrint("create_dialog::SHCreateItemFromIDList return: %08x\n", hr);	
 				}
 			}else{
-				if(This->dlg_type == ITEMDLG_TYPE_OPEN)
-				{
-					if(This->options & FOS_ALLOWMULTISELECT)
+				if(fileName){
+					if(This->dlg_type == ITEMDLG_TYPE_OPEN)
 					{
-						folderPath = (wchar_t*)This->set_filename;
-						currentPart = (wchar_t*)folderPath;
-						countFiles = 0;	
-						
-						currentPart += wcslen(currentPart) + 1;
-						
-						if(currentPart){
-							while (*currentPart != L'\0') {
-								if (PathCombineW(fullPath, folderPath, currentPart)) {
-										pidlCurrent = NULL;
-										// Cria um PIDLIST_ABSOLUTE para o caminho atual
-										hr = SHParseDisplayName(fullPath, NULL, &pidlCurrent, 0, NULL);
-										// Aloca memória para o novo caminho na lista
-										pidlArray = (PIDLIST_ABSOLUTE*)CoTaskMemRealloc(pidlArray, sizeof(PIDLIST_ABSOLUTE) * (countFiles + 1));
-										// Adiciona o PIDLIST_ABSOLUTE à lista
-										pidlArray[countFiles] = pidlCurrent;
-										countFiles++;
-								}
-								currentPart += wcslen(currentPart) + 1;			
-							}							
-						}else{
-							countFiles++;
-						}
-						if(pidlArray && countFiles > 1) 
+						if(This->options & FOS_ALLOWMULTISELECT)
 						{
-							hr = SHCreateShellItemArrayFromIDLists(countFiles, pidlArray, &This->psia_results);
-							This->set_filename = NULL;
-							for (i = 0; i < countFiles; i++)
-							{
-								CoTaskMemFree(pidlArray[i]);
-							}
-
-							// Libera o array
-							LocalFree(pidlArray);
-							LocalFree(pidlCurrent);
-							return hr;
-						}						
-					}
+							folderPath = (wchar_t*)fileName;
+							currentPart = (wchar_t*)folderPath;
+							countFiles = 0;	
 							
-					hr = SHCreateItemFromParsingName(This->set_filename, NULL, &IID_IShellItem, (void**)&ppsi);
-				}
-				if(This->dlg_type == ITEMDLG_TYPE_SAVE)
-				{
-					idListAbolute = SHSimpleIDListFromPath(This->set_filename);
-					
-					if(idListAbolute){
-						hr = SHCreateItemFromIDList(idListAbolute, &IID_IShellItem, (void**)&ppsi);
+							currentPart += wcslen(currentPart) + 1;
+							
+							if(currentPart){
+								while (*currentPart != L'\0') {
+									if (PathCombineW(fullPath, folderPath, currentPart)) {
+											pidlCurrent = NULL;
+											// Cria um PIDLIST_ABSOLUTE para o caminho atual
+											hr = SHParseDisplayName(fullPath, NULL, &pidlCurrent, 0, NULL);
+											// Aloca memória para o novo caminho na lista
+											pidlArray = (PIDLIST_ABSOLUTE*)CoTaskMemRealloc(pidlArray, sizeof(PIDLIST_ABSOLUTE) * (countFiles + 1));
+											// Adiciona o PIDLIST_ABSOLUTE à lista
+											pidlArray[countFiles] = pidlCurrent;
+											countFiles++;
+									}
+									currentPart += wcslen(currentPart) + 1;			
+								}							
+							}else{
+								countFiles++;
+							}
+							if(pidlArray && countFiles > 1) 
+							{
+								hr = SHCreateShellItemArrayFromIDLists(countFiles, pidlArray, &This->psia_results);
+								This->set_filename = NULL;
+								for (i = 0; i < countFiles; i++)
+								{
+									CoTaskMemFree(pidlArray[i]);
+								}
+
+								// Libera o array
+								LocalFree(pidlArray);
+								LocalFree(pidlCurrent);
+								return hr;
+							}						
+						}
+								
+						hr = SHCreateItemFromParsingName(fileName, NULL, &IID_IShellItem, (void**)&ppsi);
 					}
-				}			
+					if(This->dlg_type == ITEMDLG_TYPE_SAVE)
+					{
+						DbgPrint("create_dialog::This->set_filename atual %ws\n", fileName);
+						idListAbolute = SHSimpleIDListFromPath(fileName);
+						
+						if(idListAbolute){
+							hr = SHCreateItemFromIDList(idListAbolute, &IID_IShellItem, (void**)&ppsi);
+						}
+					}				
+				}
 			}
 
 			// Cria um IShellItemArray a partir do IShellItem        
 			hr = SHCreateShellItemArrayFromShellItem(ppsi, &IID_IShellItemArray, (void**)&This->psia_results);
 
 			DbgPrint("create_dialog::SHCreateShellItemArrayFromShellItem return: %08x\n", hr);	
-			return hr;
-		}		
+			return hr;		
 	}
 	
 	return E_UNEXPECTED;

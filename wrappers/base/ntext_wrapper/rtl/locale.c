@@ -845,11 +845,21 @@ static NTSTATUS get_dummy_preferred_ui_language( DWORD flags, LANGID lang, ULONG
     NTSTATUS status;
     ULONG len;
 
-    DbgPrint("(0x%x %p %p %p) returning a dummy value (current locale)\n", flags, count, buffer, size);
+    //FIXME("(0x%lx %#x %p %p %p) returning a dummy value (current locale)\n", flags, lang, count, buffer, size);
 
-    status = load_string( (flags & MUI_LANGUAGE_ID) ? LOCALE_ILANGUAGE : LOCALE_SNAME,
-                          lang, name, ARRAY_SIZE(name) );
-    if (status) return status;
+    if (flags & MUI_LANGUAGE_ID) swprintf( name, L"%04lX", lang );
+    else
+    {
+        UNICODE_STRING str;
+
+        if (lang == LOCALE_CUSTOM_UNSPECIFIED)
+            NtQueryInstallUILanguage( &lang );
+
+        str.Buffer = name;
+        str.MaximumLength = sizeof(name);
+        status = RtlLcidToLocaleName( lang, &str, 0, FALSE );
+        if (status) return status;
+    }
 
     len = wcslen( name ) + 2;
     name[len - 1] = 0;
@@ -864,9 +874,8 @@ static NTSTATUS get_dummy_preferred_ui_language( DWORD flags, LANGID lang, ULONG
     }
     *size = len;
     *count = 1;
-    DbgPrint("returned variable content: %d, \"%s\", %d\n", *count, buffer, *size);
+    //TRACE("returned variable content: %ld, \"%s\", %ld\n", *count, debugstr_w(buffer), *size);
     return STATUS_SUCCESS;
-
 }
 
 // NTSTATUS 
@@ -1035,6 +1044,7 @@ NTSTATUS WINAPI RtlGetSystemPreferredUILanguages( DWORD flags, ULONG unknown, UL
 	// }	
 // }
 
+
 /**************************************************************************
  *      RtlGetThreadPreferredUILanguages   (NTDLL.@)
  */
@@ -1042,7 +1052,7 @@ NTSTATUS WINAPI RtlGetThreadPreferredUILanguages( DWORD flags, ULONG *count, WCH
 {
     LANGID ui_language;
 
-    DbgPrint( "%08x, %p, %p %p\n", flags, count, buffer, size );
+    DbgPrint( "%08lx, %p, %p %p\n", flags, count, buffer, size );
 
     NtQueryDefaultUILanguage( &ui_language );
     return get_dummy_preferred_ui_language( flags, ui_language, count, buffer, size );
