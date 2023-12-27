@@ -1013,8 +1013,8 @@ void NTAPI RtlReleaseSRWLockExclusive(RTL_SRWLOCK* SRWLock)
 	//去掉Hold标记
 	SYNCSTATUS CurrStatus;
 	SYNCSTATUS OldStatus=InterlockedExchangeAdd((volatile long*)SRWLock,-SRWF_Hold);
-	if (!(OldStatus&SRWF_Hold))
-		RtlRaiseStatus(0xC0000264);	//STATUS_RESOURCE_NOT_OWNED
+	// if (!(OldStatus&SRWF_Hold))
+		// RtlRaiseStatus(0xC0000264);	//STATUS_RESOURCE_NOT_OWNED
 	//有线程在等待，且没有线程正在操作链表，执行唤醒操作
 	//否则当前操作链表的线程检测到状态改变，执行唤醒操作
 	if ((OldStatus&SRWF_Wait) && !(OldStatus&SRWF_Link))
