@@ -6,6 +6,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 
 spec2def(fwpuclnt.dll fwpuclnt.spec)
 
+set(baseaddress_fwpuclnt     0x6c370000)
+
 list(APPEND SOURCE
     main.c
     ${CMAKE_CURRENT_BINARY_DIR}/fwpuclnt_stubs.c

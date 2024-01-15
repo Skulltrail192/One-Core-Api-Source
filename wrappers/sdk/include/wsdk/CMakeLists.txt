@@ -3,6 +3,8 @@ add_definitions(-D_MIDL_USE_GUIDDEF_)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+include(baseaddres_wrappers.cmake)
+
 list(APPEND SOURCE
 	activation.idl
 	d2d1.idl

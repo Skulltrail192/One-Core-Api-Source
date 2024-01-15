@@ -10,7 +10,7 @@ include_directories(${REACTOS_SOURCE_DIR}/wrappers/dependencies/propsys)
 include_directories(${REACTOS_SOURCE_DIR}/wrappers/dependencies/shellbase)
 spec2def(shell32_wrapper.dll shell32_wrapper.spec)
 
-set(baseaddress_shell32_wrapper     0x7b630000)
+set(baseaddress_shell32_wrapper     0x2b630000)
 
 list(APPEND SOURCE
 	assoc.c

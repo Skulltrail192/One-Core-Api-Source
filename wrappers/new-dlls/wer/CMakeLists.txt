@@ -3,6 +3,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(wer.dll wer.spec)
 
+set(baseaddress_wer 	0x6d3a0000)
+
 list(APPEND SOURCE
     main.c	
     version.rc

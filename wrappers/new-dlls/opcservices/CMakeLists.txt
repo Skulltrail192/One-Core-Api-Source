@@ -8,6 +8,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/psdk)
 
 spec2def(opcservices.dll opcservices.spec)
 
+set(baseaddress_opcservices 0x619d0000)
+
 list(APPEND SOURCE
     compress.c
     deflate.c

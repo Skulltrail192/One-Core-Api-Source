@@ -6,5 +6,5 @@
 @ stub SetProcessDefaultCpuSets
 @ stub SetProcessInformation
 @ stub SetThreadDescription
-@ stdcall SetThreadIdealProcessor(long long) kernelbase.SetThreadIdealProcessor
+@ stdcall SetThreadIdealProcessor(long long) kernel32.SetThreadIdealProcessor
 @ stub SetThreadSelectedCpuSets

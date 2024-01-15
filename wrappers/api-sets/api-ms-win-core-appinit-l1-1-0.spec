@@ -1,1 +1,1 @@
-@ stdcall LoadAppInitDlls() kernelbase.LoadAppInitDlls
+@ stdcall LoadAppInitDlls() kernel32.LoadAppInitDlls

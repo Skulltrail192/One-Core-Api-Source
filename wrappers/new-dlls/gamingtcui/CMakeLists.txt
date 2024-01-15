@@ -6,6 +6,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 
 spec2def(gamingtcui.dll gamingtcui.spec ADD_IMPORTLIB)
 
+set(baseaddress_gamingtcui     0x61370000)
+
 list(APPEND SOURCE
     gamingtcui_main.c
     ${CMAKE_CURRENT_BINARY_DIR}/gamingtcui_stubs.c

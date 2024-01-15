@@ -56,6 +56,6 @@ HANDLE WINAPI CreateTransaction(LPSECURITY_ATTRIBUTES pattr, LPGUID pguid, DWORD
 BOOL WINAPI RollbackTransaction(HANDLE transaction)
 {
     FIXME("stub: %p\n", transaction);
-    SetLastError(ERROR_ACCESS_VIOLATION);
+    //SetLastError(ERROR_ACCESS_VIOLATION);
     return FALSE;
 }

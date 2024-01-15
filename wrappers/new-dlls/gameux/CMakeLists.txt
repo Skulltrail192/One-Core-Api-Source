@@ -6,6 +6,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 
 spec2def(gameux.dll gameux.spec)
 
+set(baseaddress_gameux     0x65370000)
+
 list(APPEND SOURCE
     factory.c
 	gameexplorer.c

@@ -7,6 +7,8 @@ include_directories(${REACTOS_BINARY_DIR}/sdk/include/reactos/wine)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 spec2def(mfreadwrite.dll mfreadwrite.spec)
 
+set(baseaddress_mfreadwrite     0x67470000)
+
 list(APPEND SOURCE
     main.c
     reader.c

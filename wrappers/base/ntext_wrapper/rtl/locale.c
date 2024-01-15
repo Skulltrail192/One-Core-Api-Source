@@ -717,11 +717,11 @@ static NTSTATUS open_nls_data_file( ULONG type, ULONG id, HANDLE *file )
 }
 
 /***********************************************************************
- *           LCIDToLocaleName  (KERNEL32.@)
+ *           L  (KERNEL32.@)
  */
 INT 
 WINAPI 
-RtlpLCIDToLocaleName( 
+RtlpL( 
 	LCID lcid, 
 	LPWSTR lpName, 
 	INT count, 
@@ -745,7 +745,7 @@ RtlpLCIDToLocaleName(
 
 NTSTATUS 
 NTAPI 	
-RtlLcidToLocaleName(
+RtlL(
 	_In_ LCID lcid, 
 	_Inout_ PUNICODE_STRING locale, 
 	_In_ ULONG Flags, 
@@ -754,7 +754,7 @@ RtlLcidToLocaleName(
 {
 	LPWSTR lpName = L"";
 	
-	if(RtlpLCIDToLocaleName(lcid, lpName, 0, 0)>0){
+	if(RtlpL(lcid, lpName, 0, 0)>0){
 		RtlInitUnicodeString(locale, lpName);
 		return STATUS_SUCCESS;
 	}else{
@@ -773,7 +773,7 @@ RtlLCIDToCultureName(
 	OUT PUNICODE_STRING lpName
 )
 {
-	return RtlLcidToLocaleName(lcid, lpName, 0, TRUE);
+	return RtlL(lcid, lpName, 0, TRUE);
 }
 
 /*
@@ -857,7 +857,7 @@ static NTSTATUS get_dummy_preferred_ui_language( DWORD flags, LANGID lang, ULONG
 
         str.Buffer = name;
         str.MaximumLength = sizeof(name);
-        status = RtlLcidToLocaleName( lang, &str, 0, FALSE );
+        status = RtlL( lang, &str, 0, FALSE );
         if (status) return status;
     }
 
@@ -907,7 +907,7 @@ static NTSTATUS get_dummy_preferred_ui_language( DWORD flags, LANGID lang, ULONG
 			// wcscpy(pwszLanguagesBuffer, locale);
 			// memcpy(pwszLanguagesBuffer+wcslen(pwszLanguagesBuffer), L"\0409\0\0", sizeof(WCHAR)*(5));				
 		// }else{
-			// RtlpLCIDToLocaleName(UILangId, locale, LOCALE_NAME_MAX_LENGTH, 0);
+			// RtlpL(UILangId, locale, LOCALE_NAME_MAX_LENGTH, 0);
 			// wcscpy(pwszLanguagesBuffer, locale);
 			// memcpy(pwszLanguagesBuffer+wcslen(pwszLanguagesBuffer), L"\0en-US\0\0", sizeof(WCHAR)*(7));				
 		// }		
@@ -917,7 +917,7 @@ static NTSTATUS get_dummy_preferred_ui_language( DWORD flags, LANGID lang, ULONG
 		// if(dwFlags == MUI_LANGUAGE_ID){
 			// length = 9;
 		// }else{
-			// length = (7 + RtlpLCIDToLocaleName(UILangId, NULL, 0, 0));
+			// length = (7 + RtlpL(UILangId, NULL, 0, 0));
 		// }		
 		// *pcchLanguagesBuffer = length;
 		// return STATUS_INVALID_PARAMETER;
@@ -967,7 +967,7 @@ RtlGetUserPreferredUILanguages(
 			// wcscpy(pwszLanguagesBuffer, locale);
 			// memcpy(pwszLanguagesBuffer+wcslen(pwszLanguagesBuffer), L"\0409\0\0", sizeof(WCHAR)*(5));				
 		// }else{
-			// RtlpLCIDToLocaleName(lcid, locale, LOCALE_NAME_MAX_LENGTH, 0);
+			// RtlpL(lcid, locale, LOCALE_NAME_MAX_LENGTH, 0);
 			// wcscpy(pwszLanguagesBuffer, locale);
 			// memcpy(pwszLanguagesBuffer+wcslen(pwszLanguagesBuffer), L"\0en-US\0\0", sizeof(WCHAR)*(7));				
 		// }		
@@ -977,7 +977,7 @@ RtlGetUserPreferredUILanguages(
 		// if(dwFlags == MUI_LANGUAGE_ID){
 			// length = 9;
 		// }else{
-			// length = (7 + RtlpLCIDToLocaleName(lcid, NULL, 0, 0));
+			// length = (7 + RtlpL(lcid, NULL, 0, 0));
 		// }		
 		// *pcchLanguagesBuffer = length;
 		// return STATUS_INVALID_PARAMETER;
@@ -1027,7 +1027,7 @@ NTSTATUS WINAPI RtlGetSystemPreferredUILanguages( DWORD flags, ULONG unknown, UL
 			// wcscpy(pwszLanguagesBuffer, locale);
 			// memcpy(pwszLanguagesBuffer+wcslen(pwszLanguagesBuffer), L"\0409\0\0", sizeof(WCHAR)*(5));				
 		// }else{
-			// RtlpLCIDToLocaleName(lcid, locale, LOCALE_NAME_MAX_LENGTH, 0);
+			// RtlpL(lcid, locale, LOCALE_NAME_MAX_LENGTH, 0);
 			// wcscpy(pwszLanguagesBuffer, locale);
 			// memcpy(pwszLanguagesBuffer+wcslen(pwszLanguagesBuffer), L"\0en-US\0\0", sizeof(WCHAR)*(7));				
 		// }		
@@ -1037,7 +1037,7 @@ NTSTATUS WINAPI RtlGetSystemPreferredUILanguages( DWORD flags, ULONG unknown, UL
 		// if(dwFlags == MUI_LANGUAGE_ID){
 			// length = 9;
 		// }else{
-			// length = (7 + RtlpLCIDToLocaleName(lcid, NULL, 0, 0));
+			// length = (7 + RtlpL(lcid, NULL, 0, 0));
 		// }		
 		// *pcchLanguagesBuffer = length;
 		// return STATUS_INVALID_PARAMETER;

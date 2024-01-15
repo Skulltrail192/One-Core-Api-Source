@@ -6,6 +6,8 @@ include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 
 spec2def(srvcli.dll srvcli.spec ADD_IMPORTLIB)
 
+set(baseaddress_srvcli 	0x652f0000)
+
 list(APPEND SOURCE
     main.c
 	version.rc

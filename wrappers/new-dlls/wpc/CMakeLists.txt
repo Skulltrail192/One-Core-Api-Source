@@ -6,6 +6,8 @@ include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 
 spec2def(wpc.dll wpc.spec)
 
+set(baseaddress_wpc 	0x622a0000)
+
 list(APPEND SOURCE
     wpc.c
     ${CMAKE_CURRENT_BINARY_DIR}/wpc_stubs.c

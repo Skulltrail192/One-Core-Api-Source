@@ -658,8 +658,8 @@
 
 #Only on XP
 @ stdcall CreateProcessAsUserSecure(ptr str str ptr ptr long long ptr str ptr ptr) advapibase.CreateProcessAsUserSecure;only on XP (needed for synchronization)
-@ stdcall QueryWindows31FilesMigration(long) advapibase.QueryWindows31FilesMigration
-@ stdcall SynchronizeWindows31FilesAndWindowsNTRegistry(long long long long) advapibase.SynchronizeWindows31FilesAndWindowsNTRegistry  ;only on XP (needed for synchronization)
+@ stdcall QueryWindows31FilesMigration(long)
+@ stdcall SynchronizeWindows31FilesAndWindowsNTRegistry(long long long long) ;only on XP (needed for synchronization)
 
 #Missing on XP
 100 stdcall CreateProcessWithTokenW(ptr long wstr wstr long ptr wstr ptr ptr)
@@ -869,6 +869,9 @@
 ; @ stdcall EvtReportText()
 ; @ stdcall EvtScopePublisher()
 ; @ stdcall EvtSetThreadCorrelationId()
+
+#Vista Beta Functions
+@ stdcall WmiSendDataBlock(ptr long long long long)
 
 #Hooks
 87 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorA(str long ptr ptr)

@@ -8,6 +8,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/psdk)
 
 spec2def(sechost.dll sechost.spec ADD_IMPORTLIB)
 
+set(baseaddress_sechost 	0x662f0000)
+
 list(APPEND SOURCE
     security.c
 	service.c

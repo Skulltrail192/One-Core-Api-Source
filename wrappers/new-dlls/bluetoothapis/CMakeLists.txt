@@ -3,6 +3,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(bluetoothapis.dll bluetoothapis.spec)
 
+set(baseaddress_bluetoothapis     0x642e0000)
+
 list(APPEND SOURCE
 	dllmain.c
     version.rc

@@ -3,6 +3,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(ninput.dll ninput.spec)
 
+set(baseaddress_ninput 0x639d0000)
+
 list(APPEND SOURCE
     main.c	
     version.rc

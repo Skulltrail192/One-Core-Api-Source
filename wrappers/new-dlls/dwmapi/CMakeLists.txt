@@ -5,6 +5,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/psdk)
 
 spec2def(dwmapi.dll dwmapi.spec ADD_IMPORTLIB)
 
+set(baseaddress_dwmapi     0x70F60000)
+
 list(APPEND SOURCE
     dwmapi_main.c
     ${CMAKE_CURRENT_BINARY_DIR}/dwmapi_stubs.c

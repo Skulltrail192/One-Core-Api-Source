@@ -10,6 +10,8 @@ include_directories(${REACTOS_SOURCE_DIR}/wrappers/includes)
 
 spec2def(mfplat.dll mfplat.spec ADD_IMPORTLIB)
 
+set(baseaddress_mfplat     0x66370000)
+
 list(APPEND SOURCE
     buffer.c
 	main.c

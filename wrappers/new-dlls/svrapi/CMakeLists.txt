@@ -6,6 +6,8 @@ include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 
 spec2def(svrapi.dll svrapi.spec ADD_IMPORTLIB)
 
+set(baseaddress_svrapi 	0x682a0000)
+
 list(APPEND SOURCE
     svrapi_main.c
 	version.rc

@@ -2394,7 +2394,8 @@ static HRESULT create_dialog(FileDialogImpl *This, HWND parent)
 	
 	if(This->set_filename)
 	{
-		memcpy(fileName, This->set_filename, (wcslen(This->set_filename) + 8) + sizeof(LPWSTR));
+		//memcpy(fileName, This->set_filename, MAX_PATH * 2);
+		wcscpy(fileName, This->set_filename);
 	}
 	
     ZeroMemory(&ofn, sizeof(ofn));		
@@ -2435,7 +2436,7 @@ static HRESULT create_dialog(FileDialogImpl *This, HWND parent)
 		}		
 	}
 	
-	if(res || This->lpItem){			
+	if(res || This->lpItem){		
 			// Inicializa a COM (Component Object Model)
 			CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 			

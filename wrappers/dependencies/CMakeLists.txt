@@ -14,6 +14,7 @@ add_subdirectory(idndl)
 #end
 add_subdirectory(iphlpapibase)
 add_subdirectory(kernelex)
+add_subdirectory(mfplat)
 add_subdirectory(netapibase)
 add_subdirectory(netapinew)
 add_subdirectory(ntdllnew)

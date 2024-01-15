@@ -6,6 +6,8 @@ include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 
 spec2def(sppc.dll sppc.spec ADD_IMPORTLIB)
 
+set(baseaddress_sppc 0x638d0000)
+
 list(APPEND SOURCE
     sppc.c
 	version.rc

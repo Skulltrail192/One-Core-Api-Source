@@ -99,8 +99,8 @@
 @ stdcall WSASetEvent(long) kernel32.SetEvent
 @ stdcall WSASetServiceA(ptr long long)
 @ stdcall WSASetServiceW(ptr long long)
-@ stdcall WSASocketA(long long long ptr long long)
-@ stdcall WSASocketW(long long long ptr long long)
+@ stdcall WSASocketA(long long long ptr long long) WSASocketAInternal
+@ stdcall WSASocketW(long long long ptr long long) WSASocketWInternal
 @ stdcall WSAStringToAddressA(str long ptr ptr ptr)
 @ stdcall WSAStringToAddressW(wstr long ptr ptr ptr)
 @ stdcall WSAWaitForMultipleEvents(long ptr long long long) kernel32.WaitForMultipleObjectsEx
@@ -144,6 +144,7 @@
 @ stdcall InetNtopW(long ptr wstr long)
 @ stdcall InetPtonW(long wstr ptr)
 @ stdcall WSAPoll(ptr long long)
+@ stdcall WSASendMsg(long ptr long ptr ptr ptr)
 @ stdcall WSCInstallProviderAndChains(ptr wstr wstr long ptr long ptr ptr)
 @ stdcall WSCGetProviderInfo(ptr long ptr ptr long ptr)
 @ stdcall WSCSetProviderInfo(ptr long ptr long long ptr)

@@ -6,6 +6,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 
 spec2def(nsi.dll nsi.spec ADD_IMPORTLIB)
 
+set(baseaddress_nsi     0x70320000)
+
 list(APPEND SOURCE
     nsi.c
 	version.rc

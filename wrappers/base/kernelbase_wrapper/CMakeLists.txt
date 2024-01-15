@@ -16,9 +16,9 @@ include_directories(
 spec2def(kernelbase.dll kernelbase.spec ADD_IMPORTLIB)
 
 if(ARCH STREQUAL "amd64")
-	set(baseaddress_kernelbase   0x76D60000)
+	set(baseaddress_kernelbase   0x56D60000)
 elseif(ARCH STREQUAL "i386")
-	set(baseaddress_kernelbase   0x68910000)
+	set(baseaddress_kernelbase   0x2D850000)
 endif()
 
 list(APPEND SOURCE

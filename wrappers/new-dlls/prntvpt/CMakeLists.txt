@@ -4,6 +4,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 
 spec2def(prntvpt.dll prntvpt.spec)
 
+set(baseaddress_prntvpt 0x612d0000)
+
 list(APPEND SOURCE
     dllmain.c
     main.c

@@ -52,8 +52,8 @@
 @ stdcall PathIsValidCharA(long long) shlwapi.PathIsValidCharA
 @ stdcall PathIsValidCharW(long long) shlwapi.PathIsValidCharW
 @ stdcall PathMatchSpecA(str str) shlwapi.PathMatchSpecA
-@ stdcall PathMatchSpecExA(str str long) kernelbase.PathMatchSpecExA
-@ stdcall PathMatchSpecExW(wstr wstr long) kernelbase.PathMatchSpecExW
+@ stdcall PathMatchSpecExA(str str long) kernel32.PathMatchSpecExA
+@ stdcall PathMatchSpecExW(wstr wstr long) kernel32.PathMatchSpecExW
 @ stdcall PathMatchSpecW(wstr wstr) shlwapi.PathMatchSpecW
 @ stdcall PathParseIconLocationA(str) shlwapi.PathParseIconLocationA
 @ stdcall PathParseIconLocationW(wstr) shlwapi.PathParseIconLocationW

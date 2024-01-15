@@ -8,6 +8,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/psdk)
 
 spec2def(mf.dll mf.spec)
 
+set(baseaddress_mf     0x66370000)
+
 list(APPEND SOURCE
     copier.c
     evr.c

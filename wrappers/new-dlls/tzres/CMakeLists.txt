@@ -5,6 +5,8 @@ include_directories(${REACTOS_SOURCE_DIR}/wrappers/includes)
 include_directories(${REACTOS_BINARY_DIR}/sdk/include/reactos/wine)
 spec2def(tzres.dll tzres.spec ADD_IMPORTLIB)
 
+set(baseaddress_tzres 	0x6c3a0000)
+
 list(APPEND SOURCE
     tzres.rc
     ${CMAKE_CURRENT_BINARY_DIR}/tzres_stubs.c

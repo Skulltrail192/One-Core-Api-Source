@@ -1496,3 +1496,12 @@
 @ stdcall -stub WerCheckEventEscalation()
 @ stdcall -stub WerReportSQMEvent()
 @ stdcall -stub WerReportWatsonEvent()
+
+#Vista Beta support Functions
+@ stdcall -stub RtlpCreateProcessOSCultures(ptr)
+@ stdcall -stub RtlRundownFlsData(ptr)
+
+#Longhorn support functions
+@ stdcall -stub RtlInitializeCriticalSectionAndSpinCountEx(ptr)
+@ stdcall -stub RtlpFreeCultureMap(ptr)
+@ stdcall -stub RtlpInitializeOSCultureMap(ptr)

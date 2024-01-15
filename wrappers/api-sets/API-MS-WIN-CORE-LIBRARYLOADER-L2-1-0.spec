@@ -1,2 +1,2 @@
-@ stdcall LoadPackagedLibrary(wstr long) kernelbase.LoadPackagedLibrary
+@ stdcall LoadPackagedLibrary(wstr long) kernel32.LoadPackagedLibrary
 @ stub QueryOptionalDelayLoadedAPI

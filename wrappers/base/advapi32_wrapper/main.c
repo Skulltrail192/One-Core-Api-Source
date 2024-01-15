@@ -66,3 +66,43 @@ LsaLookupSids2(
 						 ReferencedDomains,
 						 Names);
 }
+
+ULONG
+WINAPI
+WmiSendDataBlock(ULONG *InputBuffer, int a2, int a3, int a4, int a5)
+{
+	return ERROR_SUCCESS;
+}
+
+
+/******************************************************************************
+ * QueryWindows31FilesMigration [ADVAPI32.@]
+ *
+ * PARAMS
+ *   x1 []
+ */
+DWORD WINAPI
+QueryWindows31FilesMigration( DWORD x1 )
+{
+	//Need a getprocaddress
+	FIXME("(%d):stub\n",x1);
+	return 0;
+}
+
+/******************************************************************************
+ * SynchronizeWindows31FilesAndWindowsNTRegistry [ADVAPI32.@]
+ *
+ * PARAMS
+ *   x1 []
+ *   x2 []
+ *   x3 []
+ *   x4 []
+ */
+BOOL WINAPI
+SynchronizeWindows31FilesAndWindowsNTRegistry( DWORD x1, DWORD x2, DWORD x3,
+                                               DWORD x4 )
+{
+	//Need a getprocaddress
+	FIXME("(0x%08x,0x%08x,0x%08x,0x%08x):stub\n",x1,x2,x3,x4);
+	return TRUE;
+}

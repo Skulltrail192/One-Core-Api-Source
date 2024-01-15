@@ -5,6 +5,8 @@ include_directories(${REACTOS_SOURCE_DIR}/wrappers/sdk/include/wsdk)
 include_directories(${REACTOS_BINARY_DIR}/sdk/include/reactos/wine)
 spec2def(rtworkq.dll rtworkq.spec ADD_IMPORTLIB)
 
+set(baseaddress_rtworkq 0x682d0000)
+
 list(APPEND SOURCE
     queue.c
     version.rc

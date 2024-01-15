@@ -11,9 +11,9 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/iphlpapi_wrapper.def)
 	
 if(ARCH STREQUAL "amd64")
-	set(baseaddress_iphlpapi_wrapper     0x76CF0000)
+	set(baseaddress_iphlpapi_wrapper     0x26CF0000)
 elseif(ARCH STREQUAL "i386")
-	set(baseaddress_iphlpapi_wrapper     0x7c3e0000)
+	set(baseaddress_iphlpapi_wrapper     0x2c3e0000)
 endif()
 	
 add_library(iphlpapi_wrapper SHARED ${SOURCE})

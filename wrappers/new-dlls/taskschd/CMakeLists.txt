@@ -7,6 +7,8 @@ include_directories(${REACTOS_BINARY_DIR}/sdk/include/reactos/wine)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 spec2def(taskschd.dll taskschd.spec)
 
+set(baseaddress_taskschd 	0x6c3a0000)
+
 add_idl_headers(taskschd_idlheader schrpc.idl taskschd_tlb.idl)	
 add_rpc_files(client schrpc.idl)
 
@@ -23,7 +25,7 @@ list(APPEND SOURCE
 	${CMAKE_CURRENT_BINARY_DIR}/schrpc_c.c)
 
 add_library(taskschd SHARED ${SOURCE})
-add_dependencies(taskschd mf_idlheader)
+add_dependencies(taskschd taskschd_idlheader)
 set_module_type(taskschd win32dll)
 target_link_libraries(taskschd wine uuid mfuuid)
 add_importlibs(taskschd oleaut32 ole32 advapi32 xmllite rpcrt4 msvcrt kernelbase ntdll)

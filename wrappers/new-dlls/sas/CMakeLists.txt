@@ -5,6 +5,8 @@ include_directories(${REACTOS_SOURCE_DIR}/wrappers/includes)
 include_directories(${REACTOS_BINARY_DIR}/sdk/include/reactos/wine)
 spec2def(sas.dll sas.spec ADD_IMPORTLIB)
 
+set(baseaddress_sas 	0x672d0000)
+
 list(APPEND SOURCE
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/sas_stubs.c

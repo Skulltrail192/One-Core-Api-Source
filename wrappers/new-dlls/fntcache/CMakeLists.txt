@@ -4,6 +4,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 
 spec2def(fntcache.dll fntcache.spec)
 
+set(baseaddress_fntcache     0x623d0000)
+
 list(APPEND SOURCE
     main.c
     ${CMAKE_CURRENT_BINARY_DIR}/fntcache_stubs.c

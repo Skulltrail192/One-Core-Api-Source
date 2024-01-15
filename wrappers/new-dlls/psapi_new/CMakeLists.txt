@@ -3,6 +3,8 @@ remove_definitions(-D_WIN32_WINNT=0x502)
 add_definitions(-D_WIN32_WINNT=0x600)
 spec2def(psapi_new.dll psapi_new.spec ADD_IMPORTLIB)
 
+set(baseaddress_psapi_new 0x4AB00000)
+
 list(APPEND SOURCE
     psapi.c
     psapi_new.rc

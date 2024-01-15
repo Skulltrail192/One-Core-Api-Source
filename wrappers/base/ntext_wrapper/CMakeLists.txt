@@ -10,6 +10,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/ndk)
 
 spec2def(ntext.dll ntext.spec ADD_IMPORTLIB)
 
+set(baseaddress_ntext     0x2dec0000)	
+
 list(APPEND SOURCE
 	crypt.c
     main.c
@@ -60,6 +62,12 @@ list(APPEND SOURCE
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/ntext_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/ntext.def)
+	
+if(ARCH STREQUAL "amd64")
+    list(APPEND SOURCE
+        rtl/amd64/dynfntbl.c
+		)
+endif()		
 
 add_library(ntext SHARED ${SOURCE})
 

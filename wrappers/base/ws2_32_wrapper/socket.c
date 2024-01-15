@@ -19,6 +19,7 @@ Revision History:
 --*/
  
 #include "main.h"
+#include "stubs.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(socket);
 
@@ -607,4 +608,47 @@ int WINAPI GetAddrInfoExCancel(HANDLE *handle)
 {
     FIXME("(%p)\n", handle);
     return WSA_INVALID_HANDLE;
+}
+
+/***********************************************************************
+ *     WSASendMsg
+ */
+int WINAPI WSASendMsg( 
+	SOCKET s,
+	LPWSAMSG msg, 
+	DWORD dwFlags, 
+	LPDWORD lpNumberOfBytesSent,
+    LPWSAOVERLAPPED lpOverlapped,
+    LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine
+)
+{
+	return WSA_INVALID_HANDLE;
+}
+
+/***********************************************************************
+ *      WSASocketA          (WS2_32.78)
+ *
+ */
+SOCKET WINAPI WSASocketAInternal(int af, int type, int protocol,
+                         LPWSAPROTOCOL_INFOA lpProtocolInfo,
+                         GROUP g, DWORD dwFlags)
+{
+	if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
+		DbgPrint("WSASocketAInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
+	}
+	return WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
+}
+
+/***********************************************************************
+ *      WSASocketA          (WS2_32.78)
+ *
+ */
+SOCKET WINAPI WSASocketWInternal(int af, int type, int protocol,
+                         LPWSAPROTOCOL_INFOW lpProtocolInfo,
+                         GROUP g, DWORD dwFlags)
+{
+	if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
+		DbgPrint("WSASocketWInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
+	}
+	return WSASocketW(af, type, protocol, lpProtocolInfo, g, dwFlags);
 }

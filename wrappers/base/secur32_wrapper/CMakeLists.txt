@@ -9,7 +9,7 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/secur32_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/secur32_wrapper.def)
 	
-set(baseaddress_secur32_wrapper     0x7ae60000)		
+set(baseaddress_secur32_wrapper     0x23050000)		
 
 add_library(secur32_wrapper SHARED ${SOURCE})
 set_module_type(secur32_wrapper win32dll)

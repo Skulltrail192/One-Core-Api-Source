@@ -6,6 +6,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 spec2def(mmdevapi.dll mmdevapi.spec ADD_IMPORTLIB)
 
+set(baseaddress_mmdevapi     0x62470000)
+
 list(APPEND SOURCE
     audiovolume.c
     devenum.c

@@ -186,3 +186,18 @@ LONG WINAPI DECLSPEC_HOTPATCH GetPackagesByPackageFamily(const WCHAR *family_nam
     *buffer_len = 0;
     return ERROR_SUCCESS;
 }
+
+/***********************************************************************
+ *         GetPackagePathByFullName   (kernelbase.@)
+ */
+LONG WINAPI GetApplicationUserModelId(HANDLE hProcess, UINT32 *applicationUserModelIdLength, PWSTR  applicationUserModelId)
+{
+	FIXME( "(%p %p %p): stub\n", hProcess, applicationUserModelIdLength, applicationUserModelId );
+    return APPMODEL_ERROR_NO_PACKAGE;
+}
+
+LONG WINAPI GetCurrentApplicationUserModelId(UINT32 *applicationUserModelIdLength, PWSTR  applicationUserModelId)
+{
+	FIXME( "(%p %p): stub\n", applicationUserModelIdLength, applicationUserModelId );
+    return APPMODEL_ERROR_NO_PACKAGE;	
+}

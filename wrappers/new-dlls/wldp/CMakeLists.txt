@@ -3,7 +3,7 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(wldp.dll wldp.spec)
 
-set(baseaddress_advapi32_wrapper     0x76520000)
+set(baseaddress_wldp     0x63000000)
 
 list(APPEND SOURCE
     wldp.c

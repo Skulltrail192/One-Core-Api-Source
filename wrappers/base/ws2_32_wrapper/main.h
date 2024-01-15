@@ -64,6 +64,13 @@
 
 #define WSA_INVALID_HANDLE         (ERROR_INVALID_HANDLE)
 
+#define MAX_PROTOCOL_CHAIN 7
+
+#define WSAPROTOCOL_LEN 255
+
+#define WSA_FLAG_NO_HANDLE_INHERIT      0x0080
+#define WSA_FLAG_REGISTERED_IO          0x0100
+
 static const unsigned __int64 epoch = ((unsigned __int64) 116444736000000000ULL);
 
 struct pollfd
@@ -198,3 +205,115 @@ struct gethostname_params
     char *name;
     unsigned int size;
 };
+
+typedef void (CALLBACK *LPWSAOVERLAPPED_COMPLETION_ROUTINE)
+(
+    DWORD dwError,
+    DWORD cbTransferred,
+    LPWSAOVERLAPPED lpOverlapped,
+    DWORD dwFlags
+);
+
+typedef struct _WSABUF {
+  ULONG len;
+  CHAR FAR *buf;
+} WSABUF, FAR * LPWSABUF;
+
+typedef struct _WSAMSG {
+  LPSOCKADDR name;
+  INT namelen;
+  LPWSABUF lpBuffers;
+#if (_WIN32_WINNT >= 0x0600)
+  ULONG dwBufferCount;
+#else
+  DWORD dwBufferCount;
+#endif
+  WSABUF Control;
+#if (_WIN32_WINNT >= 0x0600)
+  ULONG dwFlags;
+#else
+  DWORD dwFlags;
+#endif
+} WSAMSG, *PWSAMSG, *FAR LPWSAMSG;
+
+typedef struct _WSAPROTOCOLCHAIN {
+  int ChainLen;
+  DWORD ChainEntries[MAX_PROTOCOL_CHAIN];
+} WSAPROTOCOLCHAIN, *LPWSAPROTOCOLCHAIN;
+
+typedef struct _WSAPROTOCOL_INFOA {
+  DWORD dwServiceFlags1;
+  DWORD dwServiceFlags2;
+  DWORD dwServiceFlags3;
+  DWORD dwServiceFlags4;
+  DWORD dwProviderFlags;
+  GUID ProviderId;
+  DWORD dwCatalogEntryId;
+  WSAPROTOCOLCHAIN ProtocolChain;
+  int iVersion;
+  int iAddressFamily;
+  int iMaxSockAddr;
+  int iMinSockAddr;
+  int iSocketType;
+  int iProtocol;
+  int iProtocolMaxOffset;
+  int iNetworkByteOrder;
+  int iSecurityScheme;
+  DWORD dwMessageSize;
+  DWORD dwProviderReserved;
+  CHAR szProtocol[WSAPROTOCOL_LEN+1];
+} WSAPROTOCOL_INFOA, *LPWSAPROTOCOL_INFOA;
+
+typedef struct _WSAPROTOCOL_INFOW {
+  DWORD dwServiceFlags1;
+  DWORD dwServiceFlags2;
+  DWORD dwServiceFlags3;
+  DWORD dwServiceFlags4;
+  DWORD dwProviderFlags;
+  GUID ProviderId;
+  DWORD dwCatalogEntryId;
+  WSAPROTOCOLCHAIN ProtocolChain;
+  int iVersion;
+  int iAddressFamily;
+  int iMaxSockAddr;
+  int iMinSockAddr;
+  int iSocketType;
+  int iProtocol;
+  int iProtocolMaxOffset;
+  int iNetworkByteOrder;
+  int iSecurityScheme;
+  DWORD dwMessageSize;
+  DWORD dwProviderReserved;
+  WCHAR szProtocol[WSAPROTOCOL_LEN+1];
+} WSAPROTOCOL_INFOW, * LPWSAPROTOCOL_INFOW;
+
+#ifdef UNICODE
+typedef WSAPROTOCOL_INFOW WSAPROTOCOL_INFO;
+typedef LPWSAPROTOCOL_INFOW LPWSAPROTOCOL_INFO;
+#else
+typedef WSAPROTOCOL_INFOA WSAPROTOCOL_INFO;
+typedef LPWSAPROTOCOL_INFOA LPWSAPROTOCOL_INFO;
+#endif
+
+typedef unsigned int GROUP;
+
+SOCKET
+WINAPI 
+WSASocketA(
+	int af, 
+	int type, 
+	int protocol,
+    LPWSAPROTOCOL_INFOA lpProtocolInfo,
+    GROUP g, 
+	DWORD dwFlags
+);
+
+WINAPI 
+WSASocketW(
+	int af, 
+	int type, 
+	int protocol,
+    LPWSAPROTOCOL_INFOW lpProtocolInfo,
+    GROUP g, 
+	DWORD dwFlags
+);

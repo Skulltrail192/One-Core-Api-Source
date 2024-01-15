@@ -1385,6 +1385,8 @@
 @ stdcall DeleteSynchronizationBarrier(ptr)
 @ stdcall EnterSynchronizationBarrier(ptr long)
 @ stdcall EnumDynamicTimeZoneInformation(long ptr)
+@ stdcall GetApplicationUserModelId(long ptr wstr)
+@ stdcall GetCurrentApplicationUserModelId(ptr wstr)
 @ stdcall GetCurrentPackageId(ptr ptr)
 @ stdcall GetCurrentPackageFamilyName(ptr ptr)
 @ stdcall GetCurrentPackageFullName(ptr ptr)

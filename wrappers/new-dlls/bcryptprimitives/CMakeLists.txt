@@ -3,7 +3,7 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(bcryptprimitives.dll bcryptprimitives.spec)
 
-set(baseaddress_bcryptprimitives     0x743e0000)
+set(baseaddress_bcryptprimitives     0x643e0000)
 
 list(APPEND SOURCE
     main.c	

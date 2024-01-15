@@ -856,3 +856,10 @@
 856 varargs wnsprintfW(ptr long wstr)
 857 stdcall wvnsprintfA(ptr long str ptr)
 858 stdcall wvnsprintfW(ptr long wstr ptr)
+
+#Windows Vista Functions
+@ stdcall -stub PathMatchSpecExA(str str long)
+@ stdcall -stub PathMatchSpecExW(wstr wstr long)
+@ stdcall -stub PathCreateFromUrlAlloc(wstr wstr long)
+@ stdcall -stub StrFormatByteSizeEx(long long long wstr long)
+@ stdcall -stub SHAutoCompGetPidl(ptr ptr long ptr)

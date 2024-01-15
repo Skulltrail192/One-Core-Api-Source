@@ -3,6 +3,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(pwrshplugin.dll pwrshplugin.spec)
 
+set(baseaddress_pwrshplugin 0x692d0000)
+
 list(APPEND SOURCE
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/pwrshplugin_stubs.c

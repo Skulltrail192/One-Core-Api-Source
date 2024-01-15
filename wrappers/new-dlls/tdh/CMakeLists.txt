@@ -5,6 +5,8 @@ include_directories(${REACTOS_SOURCE_DIR}/wrappers/includes)
 include_directories(${REACTOS_BINARY_DIR}/sdk/include/reactos/wine)
 spec2def(tdh.dll tdh.spec ADD_IMPORTLIB)
 
+set(baseaddress_tdh 	0x632a0000)
+
 list(APPEND SOURCE
     tdh_main.c
     version.rc

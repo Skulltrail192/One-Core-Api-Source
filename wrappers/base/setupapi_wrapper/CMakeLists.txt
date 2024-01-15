@@ -10,7 +10,7 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/setupapi_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/setupapi_wrapper.def)
 	
-set(baseaddress_setupapi_wrapper     0x7b370000)	
+set(baseaddress_setupapi_wrapper     0x29370000)
 
 add_library(setupapi_wrapper SHARED ${SOURCE})
 set_module_type(setupapi_wrapper win32dll ENTRYPOINT 0)

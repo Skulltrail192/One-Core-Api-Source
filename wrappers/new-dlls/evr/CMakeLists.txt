@@ -8,6 +8,8 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/psdk)
 
 spec2def(evr.dll evr.spec ADD_IMPORTLIB)
 
+set(baseaddress_evr     0x613d0000)
+
 list(APPEND SOURCE
     evr.c
 	dllmain.c

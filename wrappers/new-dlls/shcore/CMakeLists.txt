@@ -4,7 +4,7 @@ remove_definitions(-D_WIN32_WINNT=0x502)
 add_definitions(-D_WIN32_WINNT=0x600)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 
-set(baseaddress_shcore 0x729e0000)
+set(baseaddress_shcore 0x72000000)
 
 spec2def(shcore.dll shcore.spec ADD_IMPORTLIB)
 

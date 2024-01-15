@@ -1573,7 +1573,7 @@
 @ stdcall RtlpIsValidUILanguage(ptr)
 @ stdcall RtlIsNormalizedString(long wstr long ptr)
 @ stdcall RtlLCIDToCultureName(long wstr) ;this functions already have implementation
-@ stdcall RtlLcidToLocaleName(long ptr long long)
+@ stdcall RtlL(long ptr long long)
 @ stdcall RtlNormalizeString(long wstr long ptr ptr)
 @ stdcall RtlProcessFlsData(ptr)
 @ stdcall RtlpQueryDefaultUILanguage(long long)
@@ -1685,14 +1685,15 @@
 @ stdcall LdrResolveDelayLoadedAPI(ptr ptr ptr ptr ptr ptr)
 @ stdcall LdrSetDefaultDllDirectories(long)
 @ stdcall LdrSetDllDirectory(ptr)
-@ stdcall RtlSetExtendedFeaturesMask(ptr long long)
+@ stdcall RtlAddIntegrityLabelToBoundaryDescriptor(ptr ptr)
+@ stdcall -arch=x86_64 RtlAddGrowableFunctionTable(ptr ptr long long long long)
 @ stdcall RtlAddResourceAttributeAce(ptr long long long ptr ptr ptr)
+@ stdcall RtlAddSIDToBoundaryDescriptor(ptr ptr)
 @ stdcall RtlCheckTokenCapability(ptr ptr ptr)
 @ stdcall RtlCheckTokenMembershipEx(ptr ptr long ptr)
-@ stdcall RtlAddIntegrityLabelToBoundaryDescriptor(ptr ptr)
-@ stdcall RtlAddSIDToBoundaryDescriptor(ptr ptr)
 @ stdcall RtlCreateBoundaryDescriptor(ptr long)
 @ stdcall RtlDeleteBoundaryDescriptor(ptr)
+@ stdcall -arch=x86_64 RtlDeleteGrowableFunctionTable(ptr)
 @ stdcall RtlDeregisterSecureMemoryCacheCallback(ptr)
 @ stdcall RtlDisableThreadProfiling(ptr)
 @ stdcall RtlEnableThreadProfiling(ptr long int64 ptr)
@@ -1706,6 +1707,7 @@
 @ stdcall RtlQueryUnbiasedInterruptTime(ptr)
 @ stdcall RtlReadThreadProfilingData(ptr long ptr)
 @ stdcall RtlReleasePath(ptr)
+@ stdcall RtlSetExtendedFeaturesMask(ptr long long)
 @ stdcall RtlSetSearchPathMode(long)
 @ stdcall RtlUnsubscribeWnfStateChangeNotification(ptr)
 @ stdcall RtlWaitOnAddress(ptr ptr long ptr)
@@ -1739,44 +1741,54 @@
 @ stdcall NtSetInformationToken(long long ptr long) NtSetInformationTokenInternal
 
 #Vista only support Functions
-@ stdcall -stub CsrVerifyRegion() ntdll.CsrVerifyRegion
-@ stdcall -stub LdrGetFileNameFromLoadAsDataTable() ntdll.LdrGetFileNameFromLoadAsDataTable
-@ stdcall -stub LdrRemoveLoadAsDataTable() ntdll.LdrRemoveLoadAsDataTable
-@ stdcall -stub LdrResFindResource() ntdll.LdrResFindResource
-@ stdcall -stub LdrResFindResourceDirectory() ntdll.LdrResFindResourceDirectory
-@ stdcall -stub LdrResSearchResource() ntdll.LdrResSearchResource
-@ stdcall -stub LdrpResGetMappingSize() ntdll.LdrpResGetMappingSize
-@ stdcall -stub LdrpResGetRCConfig() ntdll.LdrpResGetRCConfig
-@ stdcall -stub LdrpResGetResourceDirectory() ntdll.LdrpResGetResourceDirectory
-@ stdcall -stub NtCancelSynchronousIoFile() ntdll.NtCancelSynchronousIoFile
-@ stdcall -stub NtCreateUserProcess() ntdll.NtCreateUserProcess
-@ stdcall -stub NtInitializeNlsFiles() ntdll.NtInitializeNlsFiles
-@ stdcall -stub RtlCleanUpTEBLangLists() ntdll.RtlCleanUpTEBLangLists
-@ stdcall -stub RtlCreateEnvironmentEx() ntdll.RtlCreateEnvironmentEx
-@ stdcall -stub RtlCreateProcessParametersEx() ntdll.RtlCreateProcessParametersEx
-@ stdcall -stub RtlExitUserProcess() ntdll.RtlExitUserProcess
-@ stdcall -stub RtlExpandEnvironmentStrings() ntdll.RtlExpandEnvironmentStrings
-@ stdcall -stub RtlInitializeExceptionChain() ntdll.RtlInitializeExceptionChain
-@ stdcall -stub RtlLocaleNameToLcid() ntdll.RtlLocaleNameToLcid
-@ stdcall -stub RtlQueryElevationFlags() ntdll.RtlQueryElevationFlags
-@ stdcall -stub RtlQueryEnvironmentVariable() ntdll.RtlQueryEnvironmentVariable
-@ stdcall -stub RtlSetEnvironmentVar() ntdll.RtlSetEnvironmentVar
-@ stdcall -stub RtlTryAcquirePebLock() ntdll.RtlTryAcquirePebLock
-@ stdcall -stub RtlWerpReportException() ntdll.RtlWerpReportException
-@ stdcall -stub RtlpCheckDynamicTimeZoneInformation() ntdll.RtlpCheckDynamicTimeZoneInformation
-@ stdcall -stub RtlpConvertCultureNamesToLCIDs() ntdll.RtlpConvertCultureNamesToLCIDs
-@ stdcall -stub RtlpConvertLCIDsToCultureNames() ntdll.RtlpConvertLCIDsToCultureNames
-@ stdcall -stub RtlpCreateProcessRegistryInfo() ntdll.RtlpCreateProcessRegistryInfo
-@ stdcall -stub RtlpGetLCIDFromLangInfoNode() ntdll.RtlpGetLCIDFromLangInfoNode
-@ stdcall -stub RtlpGetNameFromLangInfoNode() ntdll.RtlpGetNameFromLangInfoNode
-@ stdcall -stub RtlpGetSystemDefaultUILanguage() ntdll.RtlpGetSystemDefaultUILanguage
-@ stdcall -stub RtlpInitializeLangRegistryInfo() ntdll.RtlpInitializeLangRegistryInfo
-@ stdcall -stub RtlpIsQualifiedLanguage() ntdll.RtlpIsQualifiedLanguage
-@ stdcall -stub RtlpLoadMachineUIByPolicy() ntdll.RtlpLoadMachineUIByPolicy
-@ stdcall -stub RtlpLoadUserUIByPolicy() ntdll.RtlpLoadUserUIByPolicy
-@ stdcall -stub RtlpMuiFreeLangRegistryInfo() ntdll.RtlpMuiFreeLangRegistryInfo
-@ stdcall -stub TpCaptureCaller() ntdll.TpCaptureCaller
-@ stdcall -stub TpCheckTerminateWorker() ntdll.TpCheckTerminateWorker
-@ stdcall -stub WerCheckEventEscalation() ntdll.WerCheckEventEscalation
-@ stdcall -stub WerReportSQMEvent() ntdll.WerReportSQMEvent
-@ stdcall -stub WerReportWatsonEvent() ntdll.WerReportWatsonEvent
+@ stdcall CsrVerifyRegion() ntdll.CsrVerifyRegion
+@ stdcall LdrGetFileNameFromLoadAsDataTable() ntdll.LdrGetFileNameFromLoadAsDataTable
+@ stdcall LdrRemoveLoadAsDataTable() ntdll.LdrRemoveLoadAsDataTable
+@ stdcall LdrResFindResource() ntdll.LdrResFindResource
+@ stdcall LdrResFindResourceDirectory() ntdll.LdrResFindResourceDirectory
+@ stdcall LdrResSearchResource() ntdll.LdrResSearchResource
+@ stdcall LdrpResGetMappingSize() ntdll.LdrpResGetMappingSize
+@ stdcall LdrpResGetRCConfig() ntdll.LdrpResGetRCConfig
+@ stdcall LdrpResGetResourceDirectory() ntdll.LdrpResGetResourceDirectory
+@ stdcall NtCancelSynchronousIoFile() ntdll.NtCancelSynchronousIoFile
+@ stdcall NtCreateUserProcess() ntdll.NtCreateUserProcess
+@ stdcall NtInitializeNlsFiles() ntdll.NtInitializeNlsFiles
+@ stdcall RtlCleanUpTEBLangLists() ntdll.RtlCleanUpTEBLangLists
+@ stdcall RtlCreateEnvironmentEx() ntdll.RtlCreateEnvironmentEx
+@ stdcall RtlCreateProcessParametersEx() ntdll.RtlCreateProcessParametersEx
+@ stdcall RtlExitUserProcess() ntdll.RtlExitUserProcess
+@ stdcall RtlExpandEnvironmentStrings() ntdll.RtlExpandEnvironmentStrings
+@ stdcall RtlInitializeExceptionChain() ntdll.RtlInitializeExceptionChain
+@ stdcall RtlLocaleNameToLcid() ntdll.RtlLocaleNameToLcid
+@ stdcall RtlQueryElevationFlags() ntdll.RtlQueryElevationFlags
+@ stdcall RtlQueryElevationFlags() ntdll.RtlQueryElevationFlags
+@ stdcall RtlQueryEnvironmentVariable() ntdll.RtlQueryEnvironmentVariable
+@ stdcall RtlSetEnvironmentVar() ntdll.RtlSetEnvironmentVar
+@ stdcall RtlTryAcquirePebLock() ntdll.RtlTryAcquirePebLock
+@ stdcall RtlWerpReportException() ntdll.RtlWerpReportException
+@ stdcall RtlpCheckDynamicTimeZoneInformation() ntdll.RtlpCheckDynamicTimeZoneInformation
+@ stdcall RtlpConvertCultureNamesToLCIDs() ntdll.RtlpConvertCultureNamesToLCIDs
+@ stdcall RtlpConvertLCIDsToCultureNames() ntdll.RtlpConvertLCIDsToCultureNames
+@ stdcall RtlpCreateProcessRegistryInfo() ntdll.RtlpCreateProcessRegistryInfo
+@ stdcall RtlpGetLCIDFromLangInfoNode() ntdll.RtlpGetLCIDFromLangInfoNode
+@ stdcall RtlpGetNameFromLangInfoNode() ntdll.RtlpGetNameFromLangInfoNode
+@ stdcall RtlpGetSystemDefaultUILanguage() ntdll.RtlpGetSystemDefaultUILanguage
+@ stdcall RtlpInitializeLangRegistryInfo() ntdll.RtlpInitializeLangRegistryInfo
+@ stdcall RtlpIsQualifiedLanguage() ntdll.RtlpIsQualifiedLanguage
+@ stdcall RtlpLoadMachineUIByPolicy() ntdll.RtlpLoadMachineUIByPolicy
+@ stdcall RtlpLoadUserUIByPolicy() ntdll.RtlpLoadUserUIByPolicy
+@ stdcall RtlpMuiFreeLangRegistryInfo() ntdll.RtlpMuiFreeLangRegistryInfo
+@ stdcall TpCaptureCaller() ntdll.TpCaptureCaller
+@ stdcall TpCheckTerminateWorker() ntdll.TpCheckTerminateWorker
+@ stdcall WerCheckEventEscalation() ntdll.WerCheckEventEscalation
+@ stdcall WerReportSQMEvent() ntdll.WerReportSQMEvent
+@ stdcall WerReportWatsonEvent() ntdll.WerReportWatsonEvent
+
+#Vista Beta support Functions
+@ stdcall RtlpCreateProcessOSCultures(ptr) ntdll.RtlpCreateProcessOSCultures
+@ stdcall RtlRundownFlsData(ptr) ntdll.RtlRundownFlsData
+
+#Longhorn support functions
+@ stdcall RtlInitializeCriticalSectionAndSpinCountEx(ptr) ntdll.RtlInitializeCriticalSectionAndSpinCountEx
+@ stdcall RtlpFreeCultureMap(ptr) ntdll.RtlpFreeCultureMap
+@ stdcall RtlpInitializeOSCultureMap(ptr) ntdll.RtlpInitializeOSCultureMap

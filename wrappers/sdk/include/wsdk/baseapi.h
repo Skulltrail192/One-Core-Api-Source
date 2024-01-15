@@ -395,12 +395,6 @@ NTSTATUS NTAPI 	TpQueryPoolStackInformation (
   __out PTP_POOL_STACK_INFORMATION PoolStackInformation
 );
 
-VOID WINAPI RtlAcquireSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
-VOID NTAPI RtlReleaseSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
-VOID WINAPI RtlDeleteBoundaryDescriptor(_In_  HANDLE BoundaryDescriptor);
-VOID NTAPI RtlReleaseSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
-VOID NTAPI RtlAcquireSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
-
 NTSTATUS 
 NTAPI 
 NtCreatePrivateNamespace(
@@ -744,10 +738,12 @@ ULONG64 NTAPI RtlGetExtendedFeaturesMask( CONTEXT_EX *context_ex );
 VOID NTAPI RtlWakeConditionVariable(_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable);
 VOID NTAPI RtlWakeAllConditionVariable(_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable);
 void NTAPI RtlInitializeConditionVariable( RTL_CONDITION_VARIABLE *variable);
+VOID WINAPI RtlDeleteBoundaryDescriptor(_In_  HANDLE BoundaryDescriptor);
+VOID WINAPI RtlAcquireSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
 VOID NTAPI RtlReleaseSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
-VOID NTAPI RtlAcquireSRWLockExclusive(IN OUT PRTL_SRWLOCK SRWLock);
 VOID NTAPI RtlReleaseSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
 VOID NTAPI RtlAcquireSRWLockShared(IN OUT PRTL_SRWLOCK SRWLock);
+
 
 #ifdef __i386__
 #define CONTEXT_I386_XSTATE             (CONTEXT_i386 | 0x0040)

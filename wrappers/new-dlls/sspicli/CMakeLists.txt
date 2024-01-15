@@ -3,6 +3,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(sspicli.dll sspicli.spec ADD_IMPORTLIB)
 
+set(baseaddress_sspicli 	0x652a0000)
+
 list(APPEND SOURCE
     main.c
     version.rc

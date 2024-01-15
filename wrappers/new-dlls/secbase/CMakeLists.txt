@@ -3,6 +3,8 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(secbase.dll secbase.spec)
 
+set(baseaddress_secbase 	0x662d0000)
+
 list(APPEND SOURCE
     main.c
     version.rc

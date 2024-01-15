@@ -1092,6 +1092,15 @@ EnumPreferredUserUILanguages(
 	
 
     FIXME( "semi-stub %u, %p, %p %p\n", flags, count, buffer, buffersize );
+	
+    /* FIXME should we check for too small buffersize too? */
+    if (!buffer || *buffersize < 11)
+    {
+           SetLastError(ERROR_INSUFFICIENT_BUFFER);
+           *buffersize = 11;
+           *count=2;
+           return TRUE;
+    }	
 
     if (!flags)
         flags = MUI_LANGUAGE_NAME;
@@ -1150,6 +1159,15 @@ EnumPreferredThreadUILanguages(
 	
 
     FIXME( "EnumPreferredThreadUILanguages :: semi-stub %u, %p, %p %p\n", flags, count, buffer, buffersize );
+	
+    /* FIXME should we check for too small buffersize too? */
+    if (!buffer || *buffersize < 11)
+    {
+           SetLastError(ERROR_INSUFFICIENT_BUFFER);
+           *buffersize = 11;
+           *count=2;
+           return TRUE;
+    }	
 
     if (!flags)
         flags = MUI_LANGUAGE_NAME;
@@ -1209,6 +1227,15 @@ EnumPreferredSystemUILanguages(
     LANGID langid;
 
     FIXME( "semi-stub %u, %p, %p %p\n", flags, count, buffer, buffersize );
+	
+    /* FIXME should we check for too small buffersize too? */
+    if (!buffer || *buffersize < 11)
+    {
+           SetLastError(ERROR_INSUFFICIENT_BUFFER);
+           *buffersize = 11;
+           *count=2;
+           return TRUE;
+    }		
 
     if (!flags)
         flags = MUI_LANGUAGE_NAME;
@@ -1269,6 +1296,15 @@ EnumPreferredProcessUILanguages(
     LANGID langid;
 
     FIXME( "semi-stub %u, %p, %p %p\n", flags, count, buffer, buffersize );
+	
+    /* FIXME should we check for too small buffersize too? */
+    if (!buffer || *buffersize < 11)
+    {
+           SetLastError(ERROR_INSUFFICIENT_BUFFER);
+           *buffersize = 11;
+           *count=2;
+           return TRUE;
+    }		
 
     if (!flags)
         flags = MUI_LANGUAGE_NAME;
