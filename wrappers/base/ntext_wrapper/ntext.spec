@@ -1573,7 +1573,7 @@
 @ stdcall RtlpIsValidUILanguage(ptr)
 @ stdcall RtlIsNormalizedString(long wstr long ptr)
 @ stdcall RtlLCIDToCultureName(long wstr) ;this functions already have implementation
-@ stdcall RtlL(long ptr long long)
+@ stdcall RtlLcidToLocaleName(long ptr long long)
 @ stdcall RtlNormalizeString(long wstr long ptr ptr)
 @ stdcall RtlProcessFlsData(ptr)
 @ stdcall RtlpQueryDefaultUILanguage(long long)
