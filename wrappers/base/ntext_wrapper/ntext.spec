@@ -1761,7 +1761,6 @@
 @ stdcall RtlInitializeExceptionChain() ntdll.RtlInitializeExceptionChain
 @ stdcall RtlLocaleNameToLcid() ntdll.RtlLocaleNameToLcid
 @ stdcall RtlQueryElevationFlags() ntdll.RtlQueryElevationFlags
-@ stdcall RtlQueryElevationFlags() ntdll.RtlQueryElevationFlags
 @ stdcall RtlQueryEnvironmentVariable() ntdll.RtlQueryEnvironmentVariable
 @ stdcall RtlSetEnvironmentVar() ntdll.RtlSetEnvironmentVar
 @ stdcall RtlTryAcquirePebLock() ntdll.RtlTryAcquirePebLock
