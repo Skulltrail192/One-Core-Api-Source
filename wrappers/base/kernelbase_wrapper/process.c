@@ -28,6 +28,7 @@ WINE_DEFAULT_DEBUG_CHANNEL(process);
 #define PF_AVX_INSTRUCTIONS_AVAILABLE 39
 #define PF_AVX2_INSTRUCTIONS_AVAILABLE 40
 #define PF_AVX512F_INSTRUCTIONS_AVAILABLE 41
+#define LTP_PC_SMT 0x1
 
 UNICODE_STRING NoDefaultCurrentDirectoryInExePath = RTL_CONSTANT_STRING(L"NoDefaultCurrentDirectoryInExePath");
 
@@ -423,233 +424,7 @@ size_t BitCountTable[256] =
 	4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8
 };
 
-#ifdef _X86_ //Using wine implementation for x86, work fine with cpu-z, chromium, etc
-// BOOL
-// WINAPI
-// GetLogicalProcessorInformationEx(
-	// _In_ LOGICAL_PROCESSOR_RELATIONSHIP RelationshipType,
-	// _Out_writes_bytes_to_opt_(*ReturnedLength, *ReturnedLength) PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX Buffer,
-	// _Inout_ PDWORD ReturnedLength
-// )
-// {
-	// DWORD cbBuffer;
-	// PVOID ProcessHeap;
-	// LSTATUS lStatus;
-	// DWORD cbLogicalProcessorInformation;
-	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfo;
-	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfoStart;
-	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pNewBuffer;
-	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION* pProcessorInfoLastItem;
-	// SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX* pInfo;
-	// DWORD cbBufferUsed;
-	// DWORD cbInfoNeed;
-	// SYSTEM_INFO SystemInfo;
-// #ifdef _X86_
-	// long ActiveProcessorMask;
-	// long ActiveProcessorCount;
-// #else
-	// __int64 ActiveProcessorMask;
-	// __int64 ActiveProcessorCount;
-// #endif			
-	// // if (auto pGetLogicalProcessorInformationEx = try_get_GetLogicalProcessorInformationEx())
-	// // {
-		// // return pGetLogicalProcessorInformationEx(RelationshipType, Buffer, ReturnedLength);
-	// // }
-
-
-	// if (!ReturnedLength)
-	// {
-		// SetLastError(ERROR_INVALID_PARAMETER);
-		// return FALSE;
-	// }
-	
-			// cbBuffer = *ReturnedLength;
-
-			// // if (cbBuffer != 0 && Buffer == NULL)
-			// // {
-				// // SetLastError(ERROR_NOACCESS);
-				// // return FALSE;
-			// // }
-	
-			// ProcessHeap = ((TEB*)NtCurrentTeb())->ProcessEnvironmentBlock->ProcessHeap;
-			// lStatus = ERROR_SUCCESS;
-
-			// pProcessorInfo = NULL;
-			// cbLogicalProcessorInformation = 0;
-
-	
-			// for (; GetLogicalProcessorInformation(pProcessorInfo, &cbLogicalProcessorInformation) == FALSE;)
-			// {
-				// lStatus = GetLastError();
-
-				// if (ERROR_INSUFFICIENT_BUFFER == lStatus)
-				// {
-					// if (pProcessorInfo)
-					// {
-						// pNewBuffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)HeapReAlloc(ProcessHeap, 0, pProcessorInfo, cbLogicalProcessorInformation);
-						// if (pNewBuffer)
-						// {
-							// pProcessorInfo = pNewBuffer;
-							// continue;
-						// }
-					// }
-					// else
-					// {
-						// pProcessorInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)HeapAlloc(ProcessHeap, 0, cbLogicalProcessorInformation);
-
-						// if (pProcessorInfo)
-							// continue;
-					// }
-
-					// lStatus = ERROR_NOT_ENOUGH_MEMORY;
-				// }
-
-				// goto __End;
-			// }
-
-
-			// {
-				// pProcessorInfoLastItem = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION*)((byte*)pProcessorInfo + cbLogicalProcessorInformation - sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION));
-
-				// cbBufferUsed = 0;
-
-
-
-				// for (pProcessorInfoStart = pProcessorInfo; pProcessorInfoStart <= pProcessorInfoLastItem; ++pProcessorInfoStart)
-				// {
-					// if (RelationshipType == RelationAll
-						// || pProcessorInfoStart->Relationship == RelationshipType)
-					// {			
-
-						// switch (pProcessorInfoStart->Relationship)
-						// {
-						// case RelationProcessorCore:
-						// case RelationProcessorPackage:
-							// cbInfoNeed = log_proc_ex_size_plus(sizeof(PROCESSOR_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Processor);
-							// break;
-						// case RelationNumaNode:
-							// cbInfoNeed = log_proc_ex_size_plus(sizeof(NUMA_NODE_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, NumaNode);
-							// break;
-						// case RelationCache:
-							// cbInfoNeed = log_proc_ex_size_plus(sizeof(CACHE_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Cache);
-							// break;
-						// default:
-							// cbInfoNeed = 0;
-							// break;
-						// }
-
-						// //不支持传输此类型
-						// if (0 == cbInfoNeed)
-							// continue;
-
-						// cbBufferUsed += cbInfoNeed;
-
-						// if (cbBuffer >= cbBufferUsed)
-						// {
-							// pInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)((byte*)Buffer + cbBufferUsed);
-
-							// memset(pInfo, 0, cbInfoNeed);
-
-							// pInfo->Size = cbInfoNeed;
-							// pInfo->Relationship = pProcessorInfoStart->Relationship;
-
-							// switch (pProcessorInfoStart->Relationship)
-							// {
-							// case RelationProcessorCore:
-							// case RelationProcessorPackage:
-								// pInfo->Processor.Flags = pProcessorInfoStart->ProcessorCore.Flags;
-								// pInfo->Processor.GroupCount = 1;
-								// pInfo->Processor.GroupMask->Mask = pProcessorInfoStart->ProcessorMask;
-								// break;
-							// case RelationNumaNode:
-								// pInfo->NumaNode.NodeNumber = pProcessorInfoStart->NumaNode.NodeNumber;
-								// pInfo->NumaNode.GroupMask.Mask = pProcessorInfoStart->ProcessorMask;
-								// break;
-							// case RelationCache:
-								// pInfo->Cache.Level = pProcessorInfoStart->Cache.Level;
-								// pInfo->Cache.Associativity = pProcessorInfoStart->Cache.Associativity;
-								// pInfo->Cache.LineSize = pProcessorInfoStart->Cache.LineSize;
-								// pInfo->Cache.CacheSize = pProcessorInfoStart->Cache.Size;
-								// pInfo->Cache.Type = pProcessorInfoStart->Cache.Type;
-								// pInfo->Cache.GroupMask.Mask= pProcessorInfoStart->ProcessorMask;
-								// break;
-							// }
-						// }
-					// }
-				// }
-
-
-				// //传输 RelationGroup 信息，这里只能假设只有一组CPU
-				// if (RelationshipType == RelationAll
-					// || RelationGroup == RelationshipType)
-				// {
-					// cbInfoNeed = log_proc_ex_size_plus(sizeof(GROUP_RELATIONSHIP));//RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Group);
-
-					// cbBufferUsed += cbInfoNeed;
-
-					// if (cbBuffer >= cbBufferUsed)
-					// {
-						// pInfo = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)((byte*)Buffer + cbBufferUsed);
-
-						// memset(pInfo, 0, cbInfoNeed);
-
-						// pInfo->Size = cbInfoNeed;
-						// pInfo->Relationship = RelationGroup;
-
-						// pInfo->Group.ActiveGroupCount = 1;
-						// pInfo->Group.MaximumGroupCount = 1;					
-
-						// GetSystemInfo(&SystemInfo);
-
-						// pInfo->Group.GroupInfo->ActiveProcessorMask = SystemInfo.dwActiveProcessorMask;
-
-						// ActiveProcessorMask = SystemInfo.dwActiveProcessorMask;
-
-// #if defined(_M_IX86) || defined(_M_ARM)
-						// ActiveProcessorCount = BitCountTable[((byte*)&ActiveProcessorMask)[0]] + BitCountTable[((byte*)&ActiveProcessorMask)[1]] + BitCountTable[((byte*)&ActiveProcessorMask)[2]] + BitCountTable[((byte*)&ActiveProcessorMask)[3]];
-// #elif defined(_M_AMD64) || defined(_M_IA64) || defined(_M_ARM64)
-						// ActiveProcessorCount = BitCountTable[((byte*)&ActiveProcessorMask)[0]] + BitCountTable[((byte*)&ActiveProcessorMask)[1]] + BitCountTable[((byte*)&ActiveProcessorMask)[2]] + BitCountTable[((byte*)&ActiveProcessorMask)[3]]
-							// + BitCountTable[((byte*)&ActiveProcessorMask)[4]] + BitCountTable[((byte*)&ActiveProcessorMask)[5]] + BitCountTable[((byte*)&ActiveProcessorMask)[6]] + BitCountTable[((byte*)&ActiveProcessorMask)[7]];
-// #else
-						// ActiveProcessorCount = 0;
-						// for (i = 0; i != sizeof(ActiveProcessorMask); ++i)
-						// {
-							// ActiveProcessorCount += BitCountTable[((byte*)&ActiveProcessorMask)[i]];
-						// }
-// #endif
-						// pInfo->Group.GroupInfo->ActiveProcessorCount = ActiveProcessorCount;
-						// pInfo->Group.GroupInfo->MaximumProcessorCount = SystemInfo.dwNumberOfProcessors;
-					// }
-				// }
-
-				// *ReturnedLength = cbBufferUsed;
-
-				// if (cbBufferUsed > cbBuffer)
-				// {
-					// //缓冲区不足
-					// lStatus = ERROR_INSUFFICIENT_BUFFER;
-				// }
-			// }
-
-		// __End:
-			// if (pProcessorInfo)
-				// HeapFree(ProcessHeap, 0, pProcessorInfo);
-
-			// if (lStatus != ERROR_SUCCESS)
-			// {
-				// SetLastError(lStatus);
-
-				// return FALSE;
-			// }
-			// else
-			// {
-				// return TRUE;
-			// }
-		// }
-		
-		
-
-
+//#ifdef _X86_ //Using wine implementation for x86, work fine with cpu-z, chromium, etc
 //Helper function to count set bits in the processor mask.
 DWORD CountSetBits(ULONG_PTR bitMask)
 {
@@ -702,7 +477,8 @@ static inline BOOL logical_proc_info_add_by_id(
 	DWORD *pmax_len,
     LOGICAL_PROCESSOR_RELATIONSHIP rel, 
 	DWORD id, 
-	ULONG_PTR mask
+	ULONG_PTR mask,
+	DWORD flags
 )
 {
         SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *dataex;
@@ -732,14 +508,14 @@ static inline BOOL logical_proc_info_add_by_id(
 
         dataex->Relationship = rel;
         dataex->Size = log_proc_ex_size_plus(sizeof(PROCESSOR_RELATIONSHIP));
-        dataex->Processor.Flags = 0; /* TODO */
-        //dataex->Processor.EfficiencyClass = 0;
-        dataex->Processor.GroupCount = 1;
-        dataex->Processor.GroupMask[0].Mask = mask;
-        dataex->Processor.GroupMask[0].Group = 0;
-        /* mark for future lookup */
-        dataex->Processor.Reserved[0] = 0;
-        dataex->Processor.Reserved[1] = id;
+		dataex->Processor.Flags = flags;
+		dataex->Processor.EfficiencyClass = 0;
+		dataex->Processor.GroupCount = 1;
+		dataex->Processor.GroupMask->Group = 0;
+		dataex->Processor.GroupMask->Mask = mask;		
+        // /* mark for future lookup */
+        // dataex->Processor.Reserved[0] = 0;
+        // dataex->Processor.Reserved[1] = id;
 
         *len += dataex->Size;
     return TRUE;
@@ -839,22 +615,28 @@ static inline BOOL logical_proc_info_add_group(
     dataex->Size = log_proc_ex_size_plus(sizeof(GROUP_RELATIONSHIP));
     dataex->Group.MaximumGroupCount = 1;
     dataex->Group.ActiveGroupCount = 1;
-    dataex->Group.GroupInfo[0].MaximumProcessorCount = num_cpus;
-    dataex->Group.GroupInfo[0].ActiveProcessorCount = num_cpus;
-    dataex->Group.GroupInfo[0].ActiveProcessorMask = mask;
+    dataex->Group.GroupInfo->MaximumProcessorCount = num_cpus;
+    dataex->Group.GroupInfo->ActiveProcessorCount = num_cpus;
+    dataex->Group.GroupInfo->ActiveProcessorMask = mask;
 
     *len += dataex->Size;
 
     return TRUE;
-}	
+}
 
-SYSTEM_LOGICAL_INFORMATION_FILLED _cdecl GetLogicalInfo()
+/* for 'data', max_len is the array count. for 'dataex', max_len is in bytes */
+static NTSTATUS create_logical_proc_info(SYSTEM_LOGICAL_PROCESSOR_INFORMATION **data,
+        SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX **dataex, DWORD *max_len)
 {
-    LPFN_GLPI glpi;
+    DWORD pkgs_no, cores_no, lcpu_no, lcpu_per_core, cores_per_package, len = 0;
+    //DWORD cache_ctrs[10] = {0};
+    ULONG_PTR all_cpus_mask = 0;
+    CACHE_DESCRIPTOR cache[10];
+    LONGLONG cache_sharing[10];
+    //DWORD p;//,i,j,k;
     BOOL done = FALSE;
     PSYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer = NULL;
     PSYSTEM_LOGICAL_PROCESSOR_INFORMATION ptr = NULL;
-	SYSTEM_LOGICAL_INFORMATION_FILLED fill = {1};
     DWORD returnLength = 0;
     DWORD logicalProcessorCount = 0;
     DWORD numaNodeCount = 0;
@@ -864,20 +646,20 @@ SYSTEM_LOGICAL_INFORMATION_FILLED _cdecl GetLogicalInfo()
     DWORD processorL3CacheCount = 0;
     DWORD processorPackageCount = 1;
     DWORD byteOffset = 0;
-    PCACHE_DESCRIPTOR Cache;
-
-    glpi = (LPFN_GLPI) GetProcAddress(
-                            GetModuleHandle(TEXT("kernel32")),
-                            "GetLogicalProcessorInformation");
-    if (NULL == glpi) 
-    {
-        DbgPrint(TEXT("\nGetLogicalProcessorInformation is not supported.\n"));
-        return fill;
-    }
+    PCACHE_DESCRIPTOR currentCache;
+    CACHE_DESCRIPTOR cacheLevel1;
+    CACHE_DESCRIPTOR cacheLevel2;
+    CACHE_DESCRIPTOR cacheLevel3;
+	SYSTEM_INFO SysInfo;
+	DWORD_PTR ActiveProcessorMask;
+	
+	GetSystemInfo(&SysInfo);
+	
+	ActiveProcessorMask = SysInfo.dwActiveProcessorMask;	
 
     while (!done)
     {
-        DWORD rc = glpi(buffer, &returnLength);
+        DWORD rc = GetLogicalProcessorInformation(buffer, &returnLength);
 
         if (FALSE == rc) 
         {
@@ -891,13 +673,13 @@ SYSTEM_LOGICAL_INFORMATION_FILLED _cdecl GetLogicalInfo()
                 if (NULL == buffer) 
                 {
                     DbgPrint(TEXT("\nError: Allocation failure\n"));
-                    return fill;
+                    return STATUS_NO_MEMORY;
                 }
             } 
             else 
             {
                 DbgPrint(TEXT("\nError %d\n"), GetLastError());
-                return fill;
+                return STATUS_NO_MEMORY;
             }
         } 
         else
@@ -915,40 +697,49 @@ SYSTEM_LOGICAL_INFORMATION_FILLED _cdecl GetLogicalInfo()
         case RelationNumaNode:
             // Non-NUMA systems report a single record of this type.
             numaNodeCount++;
+			if(!logical_proc_info_add_numa_node(data, dataex, &len, max_len, ActiveProcessorMask, 0))
+				return STATUS_NO_MEMORY;
+			
             break;
 
         case RelationProcessorCore:
             processorCoreCount++;
 
+            if(!logical_proc_info_add_by_id(dataex, &len, max_len, RelationProcessorCore, 0, ActiveProcessorMask, ptr->ProcessorCore.Flags))
+                return STATUS_NO_MEMORY;
             // A hyperthreaded core supplies more than one logical processor.
             logicalProcessorCount += CountSetBits(ptr->ProcessorMask);
             break;
 
         case RelationCache:
             // Cache data is in ptr->Cache, one CACHE_DESCRIPTOR structure for each cache. 
-            Cache = &ptr->Cache;
+            currentCache = &ptr->Cache;
 			
-            if (Cache->Level == 1)
+            if (currentCache->Level == 1)
             {
                 processorL1CacheCount++;
-				fill.CacheLevel1 = *Cache;
+				cacheLevel1 = *currentCache;
             }
-            else if (Cache->Level == 2)
+            else if (currentCache->Level == 2)
             {
-				fill.CacheLevel2 = *Cache;
+				cacheLevel2 = *currentCache;
                 processorL2CacheCount++;
             }
-            else if (Cache->Level == 3)
+            else if (currentCache->Level == 3)
             {
-				fill.CacheLevel3 = *Cache;
+				cacheLevel3 = *currentCache;
                 processorL3CacheCount++;
             }
+            if(!logical_proc_info_add_cache(data, dataex, &len, max_len, ActiveProcessorMask, currentCache))
+                 return STATUS_NO_MEMORY;			
             break;
 
         case RelationProcessorPackage:
             // Logical processors share a physical package.
 			DbgPrint("processor Packages\n");
             processorPackageCount++;
+            if(!logical_proc_info_add_by_id(dataex, &len, max_len, RelationProcessorPackage, 0, ActiveProcessorMask, ptr->ProcessorCore.Flags))
+                return STATUS_NO_MEMORY;			
             break;
 
         default:
@@ -957,38 +748,12 @@ SYSTEM_LOGICAL_INFORMATION_FILLED _cdecl GetLogicalInfo()
         }
         byteOffset += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
         ptr++;
-    }
+    }	
 	
-	fill.NumaNumber = numaNodeCount;
-	fill.PackagesNumber = processorPackageCount;
-	fill.CoresNumber = processorCoreCount;
-	fill.LogicalProcessorsNumber = logicalProcessorCount;
+    lcpu_no = logicalProcessorCount;
 	
-	DbgPrint("Number of processor packages is %d\n", processorPackageCount);
-    
-    RtlFreeHeap(GetProcessHeap(),0,buffer);
-
-    return fill;
-}
-
-/* for 'data', max_len is the array count. for 'dataex', max_len is in bytes */
-static NTSTATUS create_logical_proc_info(SYSTEM_LOGICAL_PROCESSOR_INFORMATION **data,
-        SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX **dataex, DWORD *max_len)
-{
-    DWORD pkgs_no, cores_no, lcpu_no, lcpu_per_core, cores_per_package, len = 0;
-    DWORD cache_ctrs[10] = {0};
-    ULONG_PTR all_cpus_mask = 0;
-    CACHE_DESCRIPTOR cache[10];
-    LONGLONG cache_sharing[10];
-    DWORD p,i,j,k;
-	SYSTEM_LOGICAL_INFORMATION_FILLED fill;
-	
-	fill = GetLogicalInfo();
-
-    lcpu_no = fill.LogicalProcessorsNumber;
-	
-	pkgs_no = fill.PackagesNumber;
-	cores_no = fill.CoresNumber;
+	pkgs_no = 1;
+	cores_no = processorCoreCount;
 
     DbgPrint("Kernel32 :: create_logical_proc_info :: %u logical CPUs from %u physical cores across %u packages\n",
             lcpu_no, cores_no, pkgs_no);
@@ -999,71 +764,30 @@ static NTSTATUS create_logical_proc_info(SYSTEM_LOGICAL_PROCESSOR_INFORMATION **
 //(DWORD)32 << 10; /* 16 KB */
     memset(cache, 0, sizeof(cache));
     cache[1].Level = 1;
-	cache[1].Size = fill.CacheLevel1.Size;
+	cache[1].Size = cacheLevel1.Size;
     cache[1].Type = CacheInstruction;
-    cache[1].Associativity = 8; /* reasonable default */
-    cache[1].LineSize = 0x40; /* reasonable default */
+    cache[1].Associativity = cacheLevel1.Associativity; /* reasonable default */
+    cache[1].LineSize = cacheLevel1.LineSize; /* reasonable default */
     cache[2].Level = 1;
-	cache[2].Size = fill.CacheLevel1.Size;
+	cache[2].Size = cacheLevel1.Size;
     cache[2].Type = CacheData;
-    cache[2].Associativity = 8;
-    cache[2].LineSize = 0x40;
+    cache[2].Associativity = cacheLevel1.Associativity;
+    cache[2].LineSize = cacheLevel1.LineSize;
     cache[3].Level = 2;
-	cache[3].Size = fill.CacheLevel2.Size;
+	cache[3].Size = cacheLevel2.Size;
     cache[3].Type = CacheUnified;
-    cache[3].Associativity = fill.CacheLevel2.Associativity;
-    cache[3].LineSize = 0x40;
+    cache[3].Associativity = cacheLevel2.Associativity;
+    cache[3].LineSize = cacheLevel2.LineSize;
     cache[4].Level = 3;
-	cache[4].Size = fill.CacheLevel3.Size;
+	cache[4].Size = cacheLevel3.Size;
     cache[4].Type = CacheUnified;
-    cache[4].Associativity = 12;
-    cache[4].LineSize = 0x40;
+    cache[4].Associativity = cacheLevel3.Associativity;
+    cache[4].LineSize = cacheLevel3.LineSize;
 	
     cache_sharing[1] = lcpu_per_core;
     cache_sharing[2] = lcpu_per_core;
     cache_sharing[3] = lcpu_per_core;
     cache_sharing[4] = lcpu_no;
-
-    for(p = 0; p < pkgs_no; ++p){
-        for(j = 0; j < cores_per_package && p * cores_per_package + j < cores_no; ++j){
-            ULONG_PTR mask = 0;
-
-            for(k = 0; k < lcpu_per_core; ++k)
-                mask |= (ULONG_PTR)1 << (j * lcpu_per_core + k);
-
-            all_cpus_mask |= mask;
-
-            /* add to package */
-            if(!logical_proc_info_add_by_id(dataex, &len, max_len, RelationProcessorPackage, p, mask))
-                return STATUS_NO_MEMORY;
-
-            /* add new core */
-            if(!logical_proc_info_add_by_id(dataex, &len, max_len, RelationProcessorCore, p, mask))
-                return STATUS_NO_MEMORY;
-
-            for(i = 1; i < 5; ++i){
-                if(cache_ctrs[i] == 0 && cache[i].Size > 0){
-                    mask = 0;
-                    for(k = 0; k < cache_sharing[i]; ++k)
-                        mask |= (ULONG_PTR)1 << (j * lcpu_per_core + k);
-
-                    if(!logical_proc_info_add_cache(data, dataex, &len, max_len, mask, &cache[i]))
-                        return STATUS_NO_MEMORY;
-                }
-
-                cache_ctrs[i] += lcpu_per_core;
-
-                if(cache_ctrs[i] == cache_sharing[i])
-                    cache_ctrs[i] = 0;
-            }
-        }
-    }
-	
-	DbgPrint("create_logical_proc_info part 6\n");	
-
-    /* OSX doesn't support NUMA, so just make one NUMA node for all CPUs */
-    if(!logical_proc_info_add_numa_node(data, dataex, &len, max_len, all_cpus_mask, 0))
-        return STATUS_NO_MEMORY;
 
     if(dataex)
         logical_proc_info_add_group(dataex, &len, max_len, lcpu_no, all_cpus_mask);
@@ -1180,234 +904,6 @@ BOOL WINAPI GetLogicalProcessorInformationEx(LOGICAL_PROCESSOR_RELATIONSHIP rela
     }
     return TRUE;
 }
-#else
-//#else //Using wine implementation for x86, work fine with cpu-z, chromium, etc 	 
-BOOL GetLogicalProcessorInformationEx(LOGICAL_PROCESSOR_RELATIONSHIP RelationshipType, PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX Buffer, PDWORD ReturnedLength)
-/*
-    A tough cookie of a function, which builds on the XP SP3/2003 SP1 function GetLogicalProcessorInformation. That function returns a struct with information 
-	on either of the following:
-	-Cache
-	-NUMA nodes
-	-Processor cores
-	-Physical processor packages
-	
-	GetLogicalProcessorInformationEx does the same thing, but also returns information on processor groups and does not return all possible information if requested.
-*/
-{
-	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION BufferClassic;
-	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION Ptr;
-	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX NewBuffer;
-	SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX Temp;
-	SYSTEM_INFO SysInfo;
-	DWORD ReturnedLengthClassic;
-	DWORD RequiredLength_All;
-	DWORD RequiredLength;
-	DWORD NewOffset;
-	DWORD Offset;
-#ifdef _X86_
-	long ActiveProcessorMask;
-#else
-	__int64 ActiveProcessorMask;
-#endif
-	BOOL StructisCopied;
-	BOOL BufferTooSmall = FALSE;
-	DWORD cbInfoNeed;
-	//NTSTATUS Status;
-	
-	if(!ReturnedLength || RelationshipType < 0 || (RelationshipType > 7 && RelationshipType != RelationAll))
-	{
-		RtlSetLastWin32Error(ERROR_INVALID_PARAMETER);
-		return FALSE;
-	}
-    if(Buffer == NULL)
-	{
-		BufferTooSmall = TRUE;
-	}
-	
-    BufferClassic = (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION)RtlAllocateHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, sizeof(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION));
-	ReturnedLengthClassic = 0;
-	while(!GetLogicalProcessorInformation(BufferClassic, &ReturnedLengthClassic))
-	{
-		if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) 
-		{
-		RtlFreeHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, BufferClassic);
-
-		BufferClassic = (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION)RtlAllocateHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, ReturnedLengthClassic);
-
-		}
-		else
-		 return FALSE; // a lost cause; the first error is the only anticipated error. ERROR_NOACCESS is also possible, but shouldn't based on the way I've set it up.
-	
-	}
-	
-	// Status = NtQuerySystemInformation(SystemLogicalProcessorInformation,
-									  // BufferClassic,
-									  // ReturnedLengthClassic,
-									  // &ReturnedLengthClassic);
-
-	// /* Normalize the error to what Win32 expects */
-	// if (Status == STATUS_INFO_LENGTH_MISMATCH) Status = STATUS_BUFFER_TOO_SMALL;
-	// if (!NT_SUCCESS(Status))
-	// {
-		// //BaseSetLastNTError(Status);
-		// return FALSE;
-	// }
-	
-	GetSystemInfo(&SysInfo);
-	
-	ActiveProcessorMask = SysInfo.dwActiveProcessorMask;
-	
-	Ptr = BufferClassic;
-	
-	NewBuffer = Buffer;
-
-	Offset = 0;
-	RequiredLength_All = 0;
-	RequiredLength = 0;
-	NewOffset = 0;	
- 
-	while (Offset + sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION) <= ReturnedLengthClassic)
-	{
-									// cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Processor);
-							// break;
-						// case RelationNumaNode:
-							// cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, NumaNode);
-							// break;
-						// case RelationCache:
-							// cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Cache);
-		StructisCopied = FALSE;
-		switch(Ptr->Relationship)
-		{
-			case RelationNumaNode:
-		     if(RelationshipType == RelationNumaNode || RelationshipType == RelationAll)
-		     {
-				 StructisCopied = TRUE;
-				 Temp.Relationship = RelationNumaNode;
-				 cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, NumaNode);
-				 #ifdef _X86_				 
-				 Temp.Size = cbInfoNeed;
-				 RequiredLength = cbInfoNeed;
-				 RequiredLength_All += cbInfoNeed;			 
-			     #else
-				 Temp.Size = 80;
-				 RequiredLength = 80;
-				 RequiredLength_All += 80;
-				 #endif
-				 Temp.NumaNode.NodeNumber = Ptr->NumaNode.NodeNumber;
-				 Temp.NumaNode.GroupMask.Mask = (KAFFINITY) ActiveProcessorMask;
-				 Temp.NumaNode.GroupMask.Group = 0;
-				 if(RequiredLength_All > *ReturnedLength || BufferTooSmall)
-				 BufferTooSmall = TRUE;
-			     else
-				 *NewBuffer = Temp;
-			 }
-			 break;
-			 case RelationProcessorCore:
-			 case RelationProcessorPackage:
-			 if(RelationshipType == RelationProcessorCore || RelationshipType == RelationAll || RelationshipType == RelationProcessorPackage)
-			 {
-				 StructisCopied = TRUE;
-				 if(Ptr->Relationship == RelationProcessorCore)
-				 Temp.Relationship = RelationProcessorCore;
-			     else
-				 Temp.Relationship = RelationProcessorPackage;
-				cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Processor); 
-				 #ifdef _X86_
-				 Temp.Size = cbInfoNeed;
-				 RequiredLength = cbInfoNeed;
-				 RequiredLength_All += cbInfoNeed;			 
-			     #else
-				 Temp.Size = 80;
-				 RequiredLength = 80;
-				 RequiredLength_All += 80;
-				 #endif
-				 Temp.Processor.Flags = Ptr->ProcessorCore.Flags;
-				 Temp.Processor.EfficiencyClass = 0;
-				 Temp.Processor.GroupCount = 1;
-				 Temp.Processor.GroupMask->Mask =(KAFFINITY) ActiveProcessorMask;
-				 Temp.Processor.GroupMask->Group = 0;
-				 if(RequiredLength_All > *ReturnedLength || BufferTooSmall)
-				 BufferTooSmall = TRUE;
-			     else
-				 *NewBuffer = Temp;
-			 }
-			 break;
-			 case RelationCache:
-			 if(RelationshipType == RelationCache || RelationshipType == RelationAll)
-			 {
-				 StructisCopied = TRUE;
-				 Temp.Relationship = RelationCache;
-				 Temp.Cache.Level = Ptr->Cache.Level;
-				 cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Cache); 
-				 #ifdef _X86_
-				 Temp.Size = cbInfoNeed; //52
-				 RequiredLength = cbInfoNeed;
-				 RequiredLength_All += cbInfoNeed;		
-				 #else
-				 Temp.Size = 80; 
-				 RequiredLength = 80;
-				 RequiredLength_All += 80;		
-                 #endif				 
-				 Temp.Cache.Associativity = Ptr->Cache.Associativity;
-				 Temp.Cache.LineSize = Ptr->Cache.LineSize;
-				 Temp.Cache.CacheSize = Ptr->Cache.Size;
-				 Temp.Cache.Type = Ptr->Cache.Type;
-				 Temp.Cache.GroupCount = 1;
-				 Temp.Cache.GroupMask.Mask = (KAFFINITY) ActiveProcessorMask;
-				 Temp.Cache.GroupMask.Group = 0;
-				 if(RequiredLength_All > *ReturnedLength || BufferTooSmall)
-				 BufferTooSmall = TRUE;
-			     else
-				 *NewBuffer = Temp;
-				 
-			 }
-			 break;
-			
-		}
-  
-		Offset += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
-		NewOffset = RequiredLength + Offset;
-		RequiredLength = 0;   // to make sure it doesn't advance the SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX pointer
-                              // if a SYSTEM_LOGICAL_PROCESSOR_INFORMATION struct contains irrelevant information
-		if (StructisCopied && !BufferTooSmall)  
-		NewBuffer++;
-		Ptr++;
-	}
-	RtlFreeHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, BufferClassic);
-	if(RelationshipType == RelationGroup || RelationshipType == RelationAll)
-	{
-		Temp.Relationship = RelationGroup;
-		cbInfoNeed = RTL_SIZEOF_THROUGH_FIELD(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, Group);
-		#ifdef _X86_
-		Temp.Size = cbInfoNeed;
-		RequiredLength = cbInfoNeed;
-		RequiredLength_All += cbInfoNeed;			 
-	    #else
-		Temp.Size = 80;
-	    RequiredLength = 80;
-		RequiredLength_All += 80;
-		#endif
-		Temp.Group.MaximumGroupCount = 1;
-		Temp.Group.ActiveGroupCount = 1;
-		Temp.Group.GroupInfo->MaximumProcessorCount = SysInfo.dwNumberOfProcessors;
-		Temp.Group.GroupInfo->ActiveProcessorCount = SysInfo.dwNumberOfProcessors;
-		Temp.Group.GroupInfo->ActiveProcessorMask = (KAFFINITY) ActiveProcessorMask;
-		if(RequiredLength_All > *ReturnedLength || BufferTooSmall)
-		BufferTooSmall = TRUE;
-	    else
-		*NewBuffer = Temp;
-	}     
-    
-	*ReturnedLength = RequiredLength_All;
-	if(BufferTooSmall)
-	{
-		RtlSetLastWin32Error(ERROR_INSUFFICIENT_BUFFER);
-		return FALSE;
-	}
-
-	return TRUE;
-}
-#endif	
  
 /***********************************************************************
  *           InitializeProcThreadAttributeList   (kernelbase.@)
