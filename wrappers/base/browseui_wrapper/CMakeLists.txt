@@ -5,7 +5,7 @@ include_directories(${REACTOS_SOURCE_DIR}/win32ss/user/winsrv/usersrv)
 
 spec2def(browseui_wrapper.dll browseui_wrapper.spec)
 
-set(baseaddress_browseui_wrapper 	 0x29f90000)
+set(baseaddress_browseui_wrapper 	 0x69f90000)
 
 list(APPEND SOURCE
 	main.c

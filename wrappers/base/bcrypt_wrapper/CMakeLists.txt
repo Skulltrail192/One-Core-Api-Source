@@ -2,7 +2,7 @@ add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 spec2def(bcrypt_wrapper.dll bcrypt_wrapper.spec)
 
-set(baseaddress_bcrypt_wrapper 0x71ad0000)
+set(baseaddress_bcrypt_wrapper 0x61ad0000)
 
 list(APPEND SOURCE
     version.rc

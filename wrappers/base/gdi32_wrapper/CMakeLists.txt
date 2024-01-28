@@ -8,7 +8,7 @@ spec2def(gdi32_wrapper.dll gdi32_wrapper.spec)
 if(ARCH STREQUAL "amd64")
 	set(baseaddress_gdi32_wrapper     0x68D90000)
 elseif(ARCH STREQUAL "i386")
-	set(baseaddress_gdi32_wrapper     0x220D0000)
+	set(baseaddress_gdi32_wrapper     0x620D0000)
 endif()
 
 list(APPEND SOURCE

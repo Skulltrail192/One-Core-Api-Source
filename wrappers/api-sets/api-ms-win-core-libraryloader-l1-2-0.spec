@@ -21,8 +21,8 @@
 @ stdcall LoadLibraryExA( str long long) kernel32.LoadLibraryExA
 @ stdcall LoadLibraryExW(wstr long long) kernel32.LoadLibraryExW
 @ stdcall LoadResource(long long) kernel32.LoadResource
-@ stdcall LoadStringA(long long ptr long) kernel32.LoadStringA
-@ stdcall LoadStringW(long long ptr long) kernel32.LoadStringW
+@ stdcall LoadStringA(long long ptr long) user32.LoadStringA
+@ stdcall LoadStringW(long long ptr long) user32.LoadStringW
 @ stdcall LockResource(long) kernel32.LockResource
 @ stdcall RemoveDllDirectory(ptr) kernel32.RemoveDllDirectory
 @ stdcall SetDefaultDllDirectories(long) kernel32.SetDefaultDllDirectories

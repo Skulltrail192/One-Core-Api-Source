@@ -9,7 +9,7 @@
 9   stdcall -ordinal SHUnlockShared(ptr)
 10  stdcall -ordinal SHFreeShared(long long)
 11  stdcall -noname SHMapHandle(long long long long long)
-12  stdcall -noname SHCreateMemStream(ptr long)
+12  stdcall SHCreateMemStream(ptr long)
 13  stdcall -noname RegisterDefaultAcceptHeaders(ptr ptr)
 14  stdcall -ordinal GetAcceptLanguagesA(ptr ptr)
 15  stdcall -ordinal GetAcceptLanguagesW(ptr ptr)
@@ -181,7 +181,7 @@
 181 stdcall -noname SHEnableMenuItem(long long long)
 182 stdcall -noname SHCheckMenuItem(long long long)
 183 stdcall -noname SHRegisterClassA(ptr)
-184 stdcall -noname IStream_Read(ptr ptr long) 
+184 stdcall IStream_Read(ptr ptr long) 
 185 stdcall -noname SHMessageBoxCheckA(ptr str str long long str)
 186 stdcall -noname SHSimulateDrop(ptr ptr long ptr ptr)
 187 stdcall -noname SHLoadFromPropertyBag(ptr ptr)
@@ -273,7 +273,7 @@
 273 stdcall -noname SHTerminateThreadPool()
 274 stdcall -noname RegisterGlobalHotkeyW(long long wstr)
 275 stdcall -noname RegisterGlobalHotkeyA(long long str)
-276 stdcall -noname WhichPlatform()
+276 stdcall WhichPlatform()
 277 stdcall -noname SHDialogBox(ptr wstr ptr ptr ptr)
 278 stdcall -noname SHCreateWorkerWindowW(long long long long long long)
 279 stdcall -noname SHInvokeDefaultCommand(ptr ptr ptr)
@@ -434,7 +434,7 @@
 434 stdcall -noname SendMessageTimeoutWrapW(long long long long long long ptr) user32.SendMessageTimeoutW
 435 stdcall -noname CLSIDFromProgIDWrap(wstr ptr)
 436 stdcall -noname CLSIDFromStringWrap(wstr ptr)
-437 stdcall -noname IsOS(long)
+437 stdcall IsOS(long)
 438 stdcall -noname SHLoadRegUIStringA(ptr str str long)
 439 stdcall -noname SHLoadRegUIStringW(ptr wstr ptr long)
 440 stdcall -noname SHGetWebFolderFilePathA(str ptr long)
@@ -459,7 +459,7 @@
 459 stdcall -noname SHExpandEnvironmentStringsA(str ptr long) 
 460 stdcall -noname SHExpandEnvironmentStringsW(wstr ptr long)
 461 stdcall -noname SHGetAppCompatFlags(long)
-462 stdcall -noname UrlFixupW(wstr wstr long)
+462 stdcall UrlFixupW(wstr wstr long)
 463 stdcall -noname SHExpandEnvironmentStringsForUserA(ptr str ptr long) 
 464 stdcall -noname SHExpandEnvironmentStringsForUserW(ptr wstr ptr long)
 465 stdcall -noname PathUnExpandEnvStringsForUserA(ptr str ptr long)
@@ -504,7 +504,7 @@
 509 stdcall -noname IUnknown_OnFocusChangeIS(ptr ptr long)
 510 stdcall -noname SHLockSharedEx(ptr long long)
 511 stdcall -noname PathFileExistsDefExtAndAttributesW(wstr ptr ptr)
-512 stdcall -noname -ordinal IStream_ReadPidl(ptr ptr)
+512 stdcall IStream_ReadPidl(ptr ptr)
 513 stdcall -noname -ordinal IStream_WritePidl(ptr ptr)
 514 stdcall -noname IUnknown_ProfferService(ptr ptr ptr ptr)
 515 stdcall -ordinal SHGetViewStatePropertyBag(ptr wstr long ptr ptr)
@@ -568,7 +568,7 @@
 504 stdcall -i386 AssocQueryStringA(long long str str ptr ptr)
 555 stdcall -i386 AssocQueryStringByKeyA(long long ptr str ptr ptr)
 567 stdcall -i386 AssocQueryStringByKeyW(long long ptr wstr ptr ptr)
-568 stdcall -i386 AssocQueryStringW(long long wstr wstr ptr ptr)
+@ stdcall -i386 AssocQueryStringW(long long wstr wstr ptr ptr)
 569 stdcall -i386 ChrCmpIA(long long)
 570 stdcall -i386 ChrCmpIW(long long)
 571 stdcall -i386 ColorAdjustLuma(long long long)
@@ -868,7 +868,7 @@
 
 555 stdcall -arch=x86_64 AssocGetPerceivedType(wstr ptr ptr ptr)
 567 stdcall -arch=x86_64 AssocIsDangerous(wstr)
-568 stdcall -arch=x86_64 AssocQueryKeyA(long long str str ptr)
+@ stdcall -arch=x86_64 AssocQueryKeyA(long long str str ptr)
 569 stdcall -arch=x86_64 AssocQueryKeyW(long long wstr wstr ptr)
 570 stdcall -arch=x86_64 AssocQueryStringA(long long str str ptr ptr)
 571 stdcall -arch=x86_64 AssocQueryStringByKeyA(long long ptr str ptr ptr)
@@ -1176,6 +1176,7 @@
 ;@ varargs ShellMessageBoxW(long long wstr wstr long) shell32.ShellMessageBoxW
 ;@ varargs ShellMessageBoxA(long long str str long) shell32.ShellMessageBoxA
 
+568 stdcall IStream_Copy(ptr ptr long)
 628 stdcall -noname SHCreateStreamOnModuleResourceW(ptr ptr wstr ptr) ;Change 628 ordinal from PathIsNetworkPathA to SHCreateStreamOnModuleResourceW to satisfy Windows 7 wordpad
 @ stdcall -i386 PathIsNetworkPathA(str) ;Change from ordinal 628 (x86) to standard export
 @ stdcall -arch=x86_64 PathIsDirectoryW(wstr) ;Change from ordinal 633 (x64) to standard export

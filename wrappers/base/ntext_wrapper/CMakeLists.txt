@@ -10,7 +10,7 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/ndk)
 
 spec2def(ntext.dll ntext.spec ADD_IMPORTLIB)
 
-set(baseaddress_ntext     0x2dec0000)	
+set(baseaddress_ntext     0x7C910000)	
 
 list(APPEND SOURCE
 	crypt.c

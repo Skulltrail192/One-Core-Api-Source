@@ -9,7 +9,7 @@ add_definitions(
 	
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/wine)
 
-set(baseaddress_ole32_wrapper 0x2A610000)
+set(baseaddress_ole32_wrapper 0x6A610000)
 
 spec2def(ole32_wrapper.dll ole32_wrapper.spec)
 

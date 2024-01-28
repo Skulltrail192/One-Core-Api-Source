@@ -52,7 +52,7 @@ AlpcGetMessageAttribute(
   PVOID result; // eax@3
 
   if ( !(AttributeFlag & Buffer->AllocatedAttributes) || (AttributeFlag - 1) & AttributeFlag )
-    result = 0;
+    return 0;
   else
     result = (char *)Buffer + AlpcGetHeaderSize(Buffer->AllocatedAttributes & ~(2 * AttributeFlag - 1));
   return result;

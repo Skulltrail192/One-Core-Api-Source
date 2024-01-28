@@ -21,6 +21,9 @@ Revision History:
 #include "main.h"
 #include "stubs.h"
 
+#define IPV6_V6ONLY           27
+#define IPPROTO_IPV6          41
+
 WINE_DEFAULT_DEBUG_CHANNEL(socket);
 
 /***********************************************************************
@@ -634,6 +637,7 @@ SOCKET WINAPI WSASocketAInternal(int af, int type, int protocol,
                          GROUP g, DWORD dwFlags)
 {
 	if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
+		dwFlags =~WSA_FLAG_NO_HANDLE_INHERIT;
 		DbgPrint("WSASocketAInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
 	}
 	return WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
@@ -648,7 +652,24 @@ SOCKET WINAPI WSASocketWInternal(int af, int type, int protocol,
                          GROUP g, DWORD dwFlags)
 {
 	if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
+		dwFlags =~WSA_FLAG_NO_HANDLE_INHERIT;
 		DbgPrint("WSASocketWInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
 	}
 	return WSASocketW(af, type, protocol, lpProtocolInfo, g, dwFlags);
+}
+
+INT
+WINAPI
+setsockoptInternal(
+	IN SOCKET s,
+    IN INT level,
+    IN INT optname,
+    IN CONST CHAR FAR* optval,
+    IN INT optlen)
+{
+	if(level == IPPROTO_IPV6 && optname == IPV6_V6ONLY){
+		return S_OK;
+	}
+	
+	return setsockopt(s, level, optname, optval, optlen);
 }

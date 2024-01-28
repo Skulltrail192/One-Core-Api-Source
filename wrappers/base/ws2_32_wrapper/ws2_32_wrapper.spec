@@ -18,7 +18,7 @@
 18  stdcall  select(long ptr ptr ptr ptr)
 19  stdcall  send(long ptr long long)
 20  stdcall  sendto(long ptr long long ptr long) ws2_base.sendto
-21  stdcall  setsockopt(long long long ptr long)
+21  stdcall  setsockopt(long long long ptr long) setsockoptInternal
 22  stdcall  shutdown(long long)
 23  stdcall  socket(long long long)
 51  stdcall  gethostbyaddr(ptr long long)

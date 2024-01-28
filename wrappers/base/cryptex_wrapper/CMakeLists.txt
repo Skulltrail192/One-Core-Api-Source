@@ -7,7 +7,7 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/cryptex_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/cryptex_wrapper.def)
 	
-set(baseaddress_cryptex_wrapper     0x2b270000)		
+set(baseaddress_cryptex_wrapper     0x6b270000)		
 
 add_library(cryptex_wrapper SHARED ${SOURCE})
 set_module_type(cryptex_wrapper win32dll ENTRYPOINT 0)
