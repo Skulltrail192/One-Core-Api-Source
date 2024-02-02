@@ -143,7 +143,7 @@
 @ stdcall NtCreateTimer(ptr long ptr long)
 @ stdcall NtCreateToken(ptr long ptr long ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall NtCreateWaitablePort(ptr ptr long long long)
-@ stdcall -arch=win32 NtCurrentTeb() 
+@ stdcall -arch=win32 NtCurrentTeb()  _NtCurrentTeb
 @ stdcall NtDebugActiveProcess(ptr ptr)
 @ stdcall NtDebugContinue(ptr ptr long)
 @ stdcall NtDelayExecution(long ptr)
@@ -1296,6 +1296,13 @@
 @ cdecl wcstombs(ptr ptr long)
 @ cdecl wcstoul(wstr ptr long)
 
+#Hooks
+@ stdcall NtQueryInformationThread(long long ptr long ptr) NtQueryInformationThreadInternal
+@ stdcall NtQueryInformationToken(long long ptr long ptr) NtQueryInformationTokenInternal #Wrapper needed for Integrity Level Introduced on Vista
+@ stdcall NtQuerySection(long long long long long) NtQuerySectionInternal
+@ stdcall NtSetInformationProcess(long long long long) NtSetInformationProcessInternal
+@ stdcall NtSetInformationToken(long long ptr long) NtSetInformationTokenInternal
+
 #Missing on XP and Server 2003 RTM
 @ stdcall -arch=i386 KiFastSystemCall() ntdll.KiFastSystemCall
 @ stdcall -arch=i386 KiFastSystemCallRet() ntdll.KiFastSystemCallRet
@@ -1305,7 +1312,7 @@
 @ stdcall NtDeleteDriverEntry(long) ntdll.NtDeleteDriverEntry
 @ stdcall NtEnumerateDriverEntries(ptr ptr) ntdll.NtEnumerateDriverEntries
 @ stdcall NtGetCurrentProcessorNumber() ;5.2 and higher
-@ stdcall NtGetTickCount() RtlGetTickCount
+@ stdcall NtGetTickCount() ;RtlGetTickCount
 @ stdcall NtLoadKeyEx(ptr ptr long ptr) 
 @ stdcall NtQueryDriverEntryOrder(ptr ptr) ntdll.NtQueryDriverEntryOrder
 @ stdcall NtModifyDriverEntry(ptr) ntdll.NtModifyDriverEntry
@@ -1461,6 +1468,21 @@
 @ stdcall ZwWow64QueryInformationProcess64(ptr long ptr long ptr) ntdll.NtWow64QueryInformationProcess64
 @ stdcall ZwWow64QueryVirtualMemory64(ptr ptr ptr long ptr long long ptr) ntdll.NtWow64QueryVirtualMemory64
 @ stdcall ZwWow64ReadVirtualMemory64(ptr ptr ptr ptr long long ptr) ntdll.NtWow64ReadVirtualMemory64
+
+#Unimplemented
+@ stdcall NtCommitTransaction(ptr long)
+@ stdcall NtCreatePrivateNamespace(ptr long ptr ptr) 
+@ stdcall NtCreateTransaction(ptr long ptr ptr ptr long long long ptr ptr)
+@ stdcall NtDeletePrivateNamespace(ptr)
+@ stdcall NtFlushProcessWriteBuffers()
+@ stdcall NtOpenPrivateNamespace(ptr long ptr ptr)
+@ stdcall NtOpenTransaction(ptr long ptr ptr ptr)
+@ stdcall NtQuerySystemInformationEx(long ptr long ptr ptr ptr)
+@ stdcall NtQueryInformationTransaction(ptr long ptr long ptr)
+@ stdcall NtReplacePartitionUnit(wstr wstr long)
+@ stdcall NtRollbackTransaction(ptr long)
+@ stdcall NtSetInformationTransaction(ptr long ptr long)
+@ stdcall NtSetInformationVirtualMemory(ptr long long ptr ptr long)
 
 #Longhorn Functions
 @ stdcall EtwpAddLogHeaderToLogFile(ptr ptr long)
@@ -1717,28 +1739,6 @@
 
 #Win10
 @ stdcall RtlGetDeviceFamilyInfoEnum(ptr ptr ptr)
-
-#Unimplemented
-@ stdcall NtCommitTransaction(ptr long)
-@ stdcall NtCreatePrivateNamespace(ptr long ptr ptr) 
-@ stdcall NtCreateTransaction(ptr long ptr ptr ptr long long long ptr ptr)
-@ stdcall NtDeletePrivateNamespace(ptr)
-@ stdcall NtFlushProcessWriteBuffers()
-@ stdcall NtOpenPrivateNamespace(ptr long ptr ptr)
-@ stdcall NtOpenTransaction(ptr long ptr ptr ptr)
-@ stdcall NtQuerySystemInformationEx(long ptr long ptr ptr ptr)
-@ stdcall NtQueryInformationTransaction(ptr long ptr long ptr)
-@ stdcall NtReplacePartitionUnit(wstr wstr long)
-@ stdcall NtRollbackTransaction(ptr long)
-@ stdcall NtSetInformationTransaction(ptr long ptr long)
-@ stdcall NtSetInformationVirtualMemory(ptr long long ptr ptr long)
-
-#Hooks
-@ stdcall NtQueryInformationThread(long long ptr long ptr) NtQueryInformationThreadInternal
-@ stdcall NtQueryInformationToken(long long ptr long ptr) NtQueryInformationTokenInternal #Wrapper needed for Integrity Level Introduced on Vista
-@ stdcall NtQuerySection(long long long long long) NtQuerySectionInternal
-@ stdcall NtSetInformationProcess(long long long long) NtSetInformationProcessInternal
-@ stdcall NtSetInformationToken(long long ptr long) NtSetInformationTokenInternal
 
 #Vista only support Functions
 @ stdcall CsrVerifyRegion() ntdll.CsrVerifyRegion

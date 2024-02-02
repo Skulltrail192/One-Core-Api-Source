@@ -242,7 +242,7 @@
 @ stdcall GetBinaryType(str ptr) GetBinaryTypeA
 @ stdcall GetBinaryTypeA(str ptr)
 @ stdcall GetBinaryTypeW(wstr ptr)
-@ stdcall GetCPFileNameFromRegistry(long wstr long) ;check missing in Win 7
+@ stdcall GetCPFileNameFromRegistry(long wstr long) kernel32.GetCPFileNameFromRegistry ;check missing in Win 7
 @ stdcall GetCPInfo(long ptr)
 @ stdcall GetCPInfoExA(long long ptr)
 @ stdcall GetCPInfoExW(long long ptr)
@@ -595,7 +595,7 @@
 @ stdcall MoveFileWithProgressW(wstr wstr ptr ptr long)
 @ stdcall MulDiv(long long long)
 @ stdcall MultiByteToWideChar(long long str long ptr long)
-@ stdcall NlsConvertIntegerToString(long long long wstr long) ; missing in Win 7
+@ stdcall NlsConvertIntegerToString(long long long wstr long) kernel32.NlsConvertIntegerToString ; missing in Win 7
 @ stdcall NlsGetCacheUpdateCount()
 @ stdcall NlsResetProcessLocale() kernel32.NlsResetProcessLocale
 @ stdcall OpenConsoleW(wstr long long long)
@@ -1105,7 +1105,7 @@
 @ stdcall FindNLSStringEx(wstr long wstr long wstr long ptr ptr ptr ptr)
 @ stdcall FlushProcessWriteBuffers()
 @ stdcall FreeLibraryWhenCallbackReturns(ptr ptr) ntext.TpCallbackUnloadDllOnCompletion
-# @ stub GetApplicationRecoveryCallback
+@ stdcall GetApplicationRecoveryCallback(ptr ptr ptr ptr ptr)
 @ stdcall GetApplicationRestartSettings(ptr wstr ptr ptr)
 @ stdcall GetApplicationRestartSettingsWorker(ptr wstr ptr ptr) GetApplicationRestartSettings
 @ stdcall GetCalendarDateFormat(ptr long ptr ptr ptr long) ;unimplemented TODO
@@ -1130,7 +1130,7 @@
 @ stdcall GetDurationFormat(long long ptr long long ptr ptr long) ;need test
 @ stdcall GetDurationFormatEx(wstr long ptr long long ptr ptr long) ;need test
 @ stdcall GetDynamicTimeZoneInformation(ptr)
-# @ stub GetFileBandwidthReservation
+@ stdcall GetFileBandwidthReservation(ptr ptr ptr ptr ptr ptr)
 @ stdcall GetErrorMode()
 @ stdcall GetFileAttributesTransactedA(str long ptr ptr)
 @ stdcall GetFileAttributesTransactedW(wstr long ptr ptr)
@@ -1229,6 +1229,7 @@
 @ stdcall SetEventWhenCallbackReturns(ptr long) ntext.TpCallbackSetEventOnCompletion
 @ stdcall SetFileAttributesTransactedA(str long ptr)
 @ stdcall SetFileAttributesTransactedW(wstr long ptr)
+@ stdcall SetFileBandwidthReservation(ptr long long long ptr ptr)
 @ stdcall SetFileInformationByHandle(long long ptr long) #fileextd.SetFileInformationByHandle
 @ stdcall SetFileInformationByHandleW(long long ptr long) SetFileInformationByHandle #fileextd.SetFileInformationByHandle
 @ stdcall SetNamedPipeAttribute(ptr long str ptr long)
@@ -1379,6 +1380,7 @@
 @ stdcall AppPolicyGetShowDeveloperDiagnostic(ptr ptr)
 @ stdcall AppPolicyGetThreadInitializationType(ptr ptr) 
 @ stdcall AppPolicyGetWindowingModel(ptr ptr)
+@ stdcall CheckTokenMembershipEx(long ptr long ptr)
 @ stdcall CopyFile2(wstr wstr ptr)
 @ stdcall CreateFile2(wstr long long long ptr)
 @ stdcall CreateFileMappingFromApp(long ptr long int64 wstr)

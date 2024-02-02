@@ -501,3 +501,9 @@ BOOL WINAPI NtUserGetDpiForMonitor( HMONITOR monitor, UINT type, UINT *x, UINT *
 	*y = 96;
 	return TRUE;
 }
+
+// UWP stuff. Needs to be in user32.
+BOOL WINAPI IsImmersiveProcess(HANDLE hProcess)
+    SetLastError(0);
+    return FALSE;
+}

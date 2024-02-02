@@ -4,7 +4,7 @@ include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
 
 spec2def(explorerframe.dll explorerframe.spec)
 
-set(baseaddress_explorerframe     0x612d0000)
+set(baseaddress_explorerframe     0x6F2d0000)
 
 list(APPEND SOURCE
     explorerframe_main.c

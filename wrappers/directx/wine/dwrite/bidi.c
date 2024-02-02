@@ -136,17 +136,26 @@ static const char debug_type[][4] =
     "PDI",
 };
 
-static inline void bidi_dump_types(const char* header, const struct bidi_char *chars, UINT32 start, UINT32 end)
+static inline void bidi_dump_types(const char* header, const UINT8 *types, UINT32 start, UINT32 end)
 {
     int i, len = 0;
     TRACE("%s:", header);
     for (i = start; i < end && len < 200; i++) {
-        TRACE(" %s", debug_type[chars[i].bidi_class]);
-        len += strlen(debug_type[chars[i].bidi_class]) + 1;
+        TRACE(" %s", debug_type[types[i]]);
+        len += strlen(debug_type[types[i]])+1;
     }
     if (i != end)
         TRACE("...");
     TRACE("\n");
+}
+
+/* Convert the libwine information to the direction enum */
+static void bidi_classify(const WCHAR *string, UINT8 *chartype, UINT32 count)
+{
+    UINT32 i;
+
+    for (i = 0; i < count; ++i)
+        chartype[i] = get_table_entry( bidi_direction_table, string[i] );
 }
 
 /* RESOLVE EXPLICIT */
@@ -172,6 +181,14 @@ static inline UINT8 get_embedding_direction(UINT8 level)
     Recursively resolves explicit embedding levels and overrides.
     Implements rules X1-X9, of the Unicode Bidirectional Algorithm.
 
+    Input: Base embedding level and direction
+           Character count
+
+    Output: Array of embedding levels
+
+    In/Out: Array of direction classes
+
+
     Note: The function uses two simple counters to keep track of
           matching explicit codes and PDF. Use the default argument for
           the outermost call. The nesting counter counts the recursion
@@ -194,13 +211,13 @@ typedef struct tagStackItem
 
 #define valid_level(x) (x <= MAX_DEPTH && overflow_isolate_count == 0 && overflow_embedding_count == 0)
 
-static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, UINT8 baselevel)
+static void bidi_resolve_explicit(UINT8 baselevel, UINT8 *classes, UINT8 *levels, UINT32 count)
 {
     /* X1 */
     int overflow_isolate_count = 0;
     int overflow_embedding_count = 0;
     int valid_isolate_count = 0;
-    unsigned int i;
+    UINT32 i;
 
     StackItem stack[MAX_DEPTH+2];
     int stack_top = MAX_DEPTH+1;
@@ -209,18 +226,15 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
     stack[stack_top].override = NI;
     stack[stack_top].isolate = FALSE;
 
-    for (i = 0; i < count; ++i)
-    {
-        struct bidi_char *c = &chars[i];
+    for (i = 0; i < count; i++) {
         UINT8 least_odd, least_even;
 
-        switch (c->bidi_class)
-        {
+        switch (classes[i]) {
 
         /* X2 */
         case RLE:
             least_odd = get_greater_odd_level(stack[stack_top].level);
-            c->resolved = valid_level(least_odd) ? least_odd : stack[stack_top].level;
+            levels[i] = valid_level(least_odd) ? least_odd : stack[stack_top].level;
             if (valid_level(least_odd))
                 push_stack(least_odd, NI, FALSE);
             else if (overflow_isolate_count == 0)
@@ -230,7 +244,7 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
         /* X3 */
         case LRE:
             least_even = get_greater_even_level(stack[stack_top].level);
-            c->resolved = valid_level(least_even) ? least_even : stack[stack_top].level;
+            levels[i] = valid_level(least_even) ? least_even : stack[stack_top].level;
             if (valid_level(least_even))
                 push_stack(least_even, NI, FALSE);
             else if (overflow_isolate_count == 0)
@@ -240,7 +254,7 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
         /* X4 */
         case RLO:
             least_odd = get_greater_odd_level(stack[stack_top].level);
-            c->resolved = stack[stack_top].level;
+            levels[i] = stack[stack_top].level;
             if (valid_level(least_odd))
                 push_stack(least_odd, R, FALSE);
             else if (overflow_isolate_count == 0)
@@ -250,7 +264,7 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
         /* X5 */
         case LRO:
             least_even = get_greater_even_level(stack[stack_top].level);
-            c->resolved = stack[stack_top].level;
+            levels[i] = stack[stack_top].level;
             if (valid_level(least_even))
                 push_stack(least_even, L, FALSE);
             else if (overflow_isolate_count == 0)
@@ -260,7 +274,7 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
         /* X5a */
         case RLI:
             least_odd = get_greater_odd_level(stack[stack_top].level);
-            c->resolved = stack[stack_top].level;
+            levels[i] = stack[stack_top].level;
             if (valid_level(least_odd))
             {
                 valid_isolate_count++;
@@ -273,7 +287,7 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
         /* X5b */
         case LRI:
             least_even = get_greater_even_level(stack[stack_top].level);
-            c->resolved = stack[stack_top].level;
+            levels[i] = stack[stack_top].level;
             if (valid_level(least_even))
             {
                 valid_isolate_count++;
@@ -290,17 +304,15 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
             int skipping = 0;
             int j;
 
-            c->resolved = stack[stack_top].level;
+            levels[i] = stack[stack_top].level;
             for (j = i+1; j < count; j++)
             {
-                const struct bidi_char *p = &chars[j];
-
-                if (p->bidi_class == LRI || p->bidi_class == RLI || p->bidi_class == FSI)
+                if (classes[j] == LRI || classes[j] == RLI || classes[j] == FSI)
                 {
                     skipping++;
                     continue;
                 }
-                else if (p->bidi_class == PDI)
+                else if (classes[j] == PDI)
                 {
                     if (skipping)
                         skipping --;
@@ -311,12 +323,12 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
 
                 if (skipping) continue;
 
-                if (p->bidi_class == L)
+                if (classes[j] == L)
                 {
                     new_level = 0;
                     break;
                 }
-                else if (p->bidi_class == R || p->bidi_class == AL)
+                else if (classes[j] == R || classes[j] == AL)
                 {
                     new_level = 1;
                     break;
@@ -360,9 +372,9 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
         case ET:
         case S:
         case WS:
-            c->resolved = stack[stack_top].level;
+            levels[i] = stack[stack_top].level;
             if (stack[stack_top].override != NI)
-                c->resolved = stack[stack_top].override;
+                classes[i] = stack[stack_top].override;
             break;
 
         /* X6a */
@@ -376,12 +388,12 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
                 pop_stack();
                 valid_isolate_count--;
             }
-            c->resolved = stack[stack_top].level;
+            levels[i] = stack[stack_top].level;
             break;
 
         /* X7 */
         case PDF:
-            c->resolved = stack[stack_top].level;
+            levels[i] = stack[stack_top].level;
             if (overflow_isolate_count) {/* do nothing */}
             else if (overflow_embedding_count) overflow_embedding_count--;
             else if (!stack[stack_top].isolate && stack_top < (MAX_DEPTH+1))
@@ -390,44 +402,29 @@ static void bidi_resolve_explicit(struct bidi_char *chars, unsigned int count, U
 
         /* X8 */
         default:
-            c->resolved = baselevel;
+            levels[i] = baselevel;
             break;
         }
-
-        c->explicit = c->resolved;
     }
-
     /* X9: Based on 5.2 Retaining Explicit Formatting Characters */
-    for (i = 0; i < count; ++i)
-    {
-        switch (chars[i].bidi_class)
-        {
-            case RLE:
-            case LRE:
-            case RLO:
-            case LRO:
-            case PDF:
-                chars[i].bidi_class = BN;
-                break;
-            default:
-                ;
-        }
-    }
+    for (i = 0; i < count ; i++)
+        if (classes[i] == RLE || classes[i] == LRE || classes[i] == RLO || classes[i] == LRO || classes[i] == PDF)
+            classes[i] = BN;
 }
 
-static inline int get_prev_valid_char_index(const struct bidi_char *chars, int index, int back_fence)
+static inline int get_prev_valid_char_index(const UINT8 *classes, int index, int back_fence)
 {
     if (index == -1 || index == back_fence) return index;
     index--;
-    while (index > back_fence && chars[index].bidi_class == BN) index--;
+    while (index > back_fence && classes[index] == BN) index--;
     return index;
 }
 
-static inline int get_next_valid_char_index(const struct bidi_char *chars, int index, int front_fence)
+static inline int get_next_valid_char_index(const UINT8 *classes, int index, int front_fence)
 {
     if (index == front_fence) return index;
     index++;
-    while (index < front_fence && chars[index].bidi_class == BN) index++;
+    while (index < front_fence && classes[index] == BN) index++;
     return index;
 }
 
@@ -632,27 +629,21 @@ static BracketPair *bidi_compute_bracket_pairs(IsolatedRun *iso_run)
     WCHAR *open_stack;
     int *stack_index;
     int stack_top = iso_run->length;
-    BracketPair *out;
+    BracketPair *out = NULL;
     int pair_count = 0;
     int i;
 
-    open_stack = malloc(sizeof(WCHAR) * iso_run->length);
-    stack_index = malloc(sizeof(int) * iso_run->length);
-    out = malloc(sizeof(BracketPair) * iso_run->length);
-
-    if (!open_stack || !stack_index || !out) {
-        free(open_stack);
-        free(stack_index);
-        free(out);
-        return NULL;
-    }
-
-    out[0].start = -1;
+    open_stack = heap_alloc(sizeof(WCHAR) * iso_run->length);
+    stack_index = heap_alloc(sizeof(int) * iso_run->length);
 
     for (i = 0; i < iso_run->length; i++) {
-        unsigned short ubv = get_table_entry_16(bidi_bracket_table, iso_run->item[i].ch);
-        if (ubv)
-        {
+        unsigned short ubv = get_table_entry(bidi_bracket_table, iso_run->item[i].ch);
+        if (ubv) {
+            if (!out) {
+                out = heap_alloc(sizeof(BracketPair));
+                out[0].start = -1;
+            }
+
             if ((ubv >> 8) == 0) {
                 stack_top--;
                 open_stack[stack_top] = iso_run->item[i].ch + (signed char)(ubv & 0xff);
@@ -672,6 +663,7 @@ static BracketPair *bidi_compute_bracket_pairs(IsolatedRun *iso_run)
                         out[pair_count].start = stack_index[j];
                         out[pair_count].end = i;
                         pair_count++;
+                        out = heap_realloc(out, sizeof(BracketPair) * (pair_count+1));
                         out[pair_count].start = -1;
                         stack_top = j+1;
                         break;
@@ -680,16 +672,15 @@ static BracketPair *bidi_compute_bracket_pairs(IsolatedRun *iso_run)
             }
         }
     }
-    if (pair_count == 0)
-    {
-        free(out);
+    if (pair_count == 0) {
+        heap_free(out);
         out = NULL;
     }
     else if (pair_count > 1)
         qsort(out, pair_count, sizeof(BracketPair), bracketpair_compr);
 
-    free(open_stack);
-    free(stack_index);
+    heap_free(open_stack);
+    heap_free(stack_index);
     return out;
 }
 
@@ -783,7 +774,7 @@ static void bidi_resolve_neutrals(IsolatedRun *run)
             i++;
             p = &pairs[i];
         }
-        free(pairs);
+        heap_free(pairs);
     }
 
     /* N1 */
@@ -847,31 +838,34 @@ static void bidi_resolve_neutrals(IsolatedRun *run)
     Recursively resolves implicit embedding levels.
     Implements rules I1 and I2 of the Unicode Bidirectional Algorithm.
 
+    Input: Array of direction classes
+           Character count
+           Base level
+
+    In/Out: Array of embedding levels
+
     Note: levels may exceed 15 on output.
           Accepted subset of direction classes
           R, L, AN, EN
 ------------------------------------------------------------------------*/
-static void bidi_resolve_implicit(struct bidi_char *chars, unsigned int count)
+static void bidi_resolve_implicit(const UINT8 *classes, UINT8 *levels, int sos, int eos)
 {
-    unsigned int i;
+    int i;
 
     /* I1/2 */
-    for (i = 0; i < count; ++i)
-    {
-        struct bidi_char *c = &chars[i];
-
-        if (c->bidi_class == BN)
+    for (i = sos; i <= eos; i++) {
+        if (classes[i] == BN)
             continue;
 
-        ASSERT(c->bidi_class != ON); /* "No Neutrals allowed to survive here." */
-        ASSERT(c->bidi_class <= EN); /* "Out of range." */
+        ASSERT(classes[i] != ON); /* "No Neutrals allowed to survive here." */
+        ASSERT(classes[i] <= EN); /* "Out of range." */
 
-        if (odd(c->resolved) && (c->bidi_class == L || c->bidi_class == EN || c->bidi_class == AN))
-            c->resolved++;
-        else if (!odd(c->resolved) && c->bidi_class == R)
-            c->resolved++;
-        else if (!odd(c->resolved) && (c->bidi_class == EN || c->bidi_class == AN))
-            c->resolved += 2;
+        if (odd(levels[i]) && (classes[i] == L || classes[i] == EN || classes[i] == AN))
+            levels[i]++;
+        else if (!odd(levels[i]) && classes[i] == R)
+            levels[i]++;
+        else if (!odd(levels[i]) && (classes[i] == EN || classes[i] == AN))
+            levels[i] += 2;
     }
 }
 
@@ -895,80 +889,68 @@ static inline BOOL is_rule_L1_reset_class(UINT8 class)
     }
 }
 
-static void bidi_resolve_resolved(struct bidi_char *chars, unsigned int count, UINT8 baselevel)
+static void bidi_resolve_resolved(UINT8 baselevel, const UINT8 *classes, UINT8 *levels, int sos, int eos)
 {
-    int i, sos = 0, eos = count - 1;
+    int i;
 
     /* L1 */
-    for (i = sos; i <= eos; i++)
-    {
-        switch (chars[i].nominal_bidi_class)
-        {
-            case B:
-            case S:
-                {
-                    int j = i - 1;
-                    while (i > sos && j >= sos && is_rule_L1_reset_class(chars[j].nominal_bidi_class))
-                        chars[j--].resolved = baselevel;
-                    chars[i].resolved = baselevel;
-                }
-                break;
-            case LRE: case RLE: case LRO: case RLO: case PDF: case BN:
-                chars[i].resolved = i ? chars[i - 1].resolved : baselevel;
-                break;
-            default:
-                ;
+    for (i = sos; i <= eos; i++) {
+        if (classes[i] == B || classes[i] == S) {
+            int j = i - 1;
+            while (i > sos && j >= sos && is_rule_L1_reset_class(classes[j]))
+                levels[j--] = baselevel;
+            levels[i] = baselevel;
         }
-
-        if (i == eos && is_rule_L1_reset_class(chars[i].nominal_bidi_class))
-        {
+        else if (classes[i] == LRE || classes[i] == RLE || classes[i] == LRO || classes[i] == RLO ||
+                 classes[i] == PDF || classes[i] == BN) {
+            levels[i] = i ? levels[i - 1] : baselevel;
+        }
+        if (i == eos && is_rule_L1_reset_class(classes[i])) {
             int j = i;
-            while (j >= sos && is_rule_L1_reset_class(chars[j].nominal_bidi_class))
-                chars[j--].resolved = baselevel;
+            while (j >= sos && is_rule_L1_reset_class(classes[j]))
+                levels[j--] = baselevel;
         }
     }
 }
 
-static HRESULT bidi_compute_isolating_runs_set(struct bidi_char *chars, unsigned int count, UINT8 baselevel, struct list *set)
+static HRESULT bidi_compute_isolating_runs_set(UINT8 baselevel, UINT8 *classes, UINT8 *levels, const WCHAR *string, UINT32 count, struct list *set)
 {
     int run_start, run_end, i;
     int run_count = 0;
     HRESULT hr = S_OK;
     Run *runs;
 
-    if (!(runs = calloc(count, sizeof(*runs))))
+    runs = heap_calloc(count, sizeof(*runs));
+    if (!runs)
         return E_OUTOFMEMORY;
 
     list_init(set);
 
     /* Build Runs */
     run_start = 0;
-    while (run_start < count)
-    {
-        run_end = get_next_valid_char_index(chars, run_start, count);
-        while (run_end < count && chars[run_end].resolved == chars[run_start].resolved)
-            run_end = get_next_valid_char_index(chars, run_end, count);
+    while (run_start < count) {
+        run_end = get_next_valid_char_index(classes, run_start, count);
+        while (run_end < count && levels[run_end] == levels[run_start])
+            run_end = get_next_valid_char_index(classes, run_end, count);
         run_end--;
         runs[run_count].start = run_start;
         runs[run_count].end = run_end;
-        runs[run_count].e = chars[run_start].resolved;
-        run_start = get_next_valid_char_index(chars, run_end, count);
+        runs[run_count].e = levels[run_start];
+        run_start = get_next_valid_char_index(classes, run_end, count);
         run_count++;
     }
 
     /* Build Isolating Runs */
     i = 0;
-    while (i < run_count)
-    {
+    while (i < run_count) {
         int k = i;
-        if (runs[k].start >= 0)
-        {
+        if (runs[k].start >= 0) {
             IsolatedRun *current_isolated;
             int type_fence, real_end;
             int j;
 
-            if (!(current_isolated = malloc(sizeof(IsolatedRun) + sizeof(RunChar)*count)))
-            {
+            current_isolated = heap_alloc(sizeof(IsolatedRun) + sizeof(RunChar)*count);
+            if (!current_isolated) {
                 hr = E_OUTOFMEMORY;
                 break;
             }
@@ -977,45 +959,42 @@ static HRESULT bidi_compute_isolating_runs_set(struct bidi_char *chars, unsigned
             current_isolated->e = runs[k].e;
             current_isolated->length = (runs[k].end - runs[k].start)+1;
 
-            for (j = 0; j < current_isolated->length; ++j)
-            {
-                current_isolated->item[j].class = &chars[runs[k].start+j].bidi_class;
-                current_isolated->item[j].ch = chars[runs[k].start+j].ch;
+            for (j = 0; j < current_isolated->length; j++) {
+                current_isolated->item[j].class = &classes[runs[k].start+j];
+                current_isolated->item[j].ch = string[runs[k].start+j];
             }
 
             run_end = runs[k].end;
 
             TRACE("{ [%i -- %i]",run_start, run_end);
 
-            if (chars[run_end].bidi_class == BN)
-                run_end = get_prev_valid_char_index(chars, run_end, runs[k].start);
+            if (classes[run_end] == BN)
+                run_end = get_prev_valid_char_index(classes, run_end, runs[k].start);
 
-            while (run_end < count && (chars[run_end].bidi_class == RLI || chars[run_end].bidi_class == LRI || chars[run_end].bidi_class == FSI))
-            {
+            while (run_end < count && (classes[run_end] == RLI || classes[run_end] == LRI || classes[run_end] == FSI)) {
                 j = k+1;
 search:
-                while (j < run_count && chars[runs[j].start].bidi_class != PDI) j++;
+                while (j < run_count && classes[runs[j].start] != PDI) j++;
                 if (j < run_count && runs[i].e != runs[j].e) {
                     j++;
                     goto search;
                 }
 
-                if (j != run_count)
-                {
+                if (j != run_count) {
                     int l = current_isolated->length;
                     int m;
 
                     current_isolated->length += (runs[j].end - runs[j].start)+1;
                     for (m = 0; l < current_isolated->length; l++, m++) {
-                        current_isolated->item[l].class = &chars[runs[j].start + m].bidi_class;
-                        current_isolated->item[l].ch = chars[runs[j].start + m].ch;
+                        current_isolated->item[l].class = &classes[runs[j].start+m];
+                        current_isolated->item[l].ch = string[runs[j].start+m];
                     }
 
                     TRACE("[%i -- %i]", runs[j].start, runs[j].end);
 
                     run_end = runs[j].end;
-                    if (chars[run_end].bidi_class == BN)
-                        run_end = get_prev_valid_char_index(chars, run_end, runs[i].start);
+                    if (classes[run_end] == BN)
+                        run_end = get_prev_valid_char_index(classes, run_end, runs[i].start);
                     runs[j].start = -1;
                     k = j;
                 }
@@ -1025,34 +1004,32 @@ search:
                 }
             }
 
-            type_fence = get_prev_valid_char_index(chars, run_start, -1);
+            type_fence = get_prev_valid_char_index(classes, run_start, -1);
 
             if (type_fence == -1)
-                current_isolated->sos = max(baselevel, chars[run_start].resolved);
+                current_isolated->sos = (baselevel > levels[run_start]) ? baselevel : levels[run_start];
             else
-                current_isolated->sos = max(chars[type_fence].resolved, chars[run_start].resolved);
+                current_isolated->sos = (levels[type_fence] > levels[run_start]) ? levels[type_fence] : levels[run_start];
 
             current_isolated->sos = get_embedding_direction(current_isolated->sos);
 
             if (run_end == count)
                 current_isolated->eos = current_isolated->sos;
-            else
-            {
+            else {
                 /* eos could be an BN */
-                if (chars[run_end].resolved == BN)
-                {
-                    real_end = get_prev_valid_char_index(chars, run_end, run_start - 1);
+                if (classes[run_end] == BN) {
+                    real_end = get_prev_valid_char_index(classes, run_end, run_start-1);
                     if (real_end < run_start)
                         real_end = run_start;
                 }
                 else
                     real_end = run_end;
 
-                type_fence = get_next_valid_char_index(chars, run_end, count);
+                type_fence = get_next_valid_char_index(classes, run_end, count);
                 if (type_fence == count)
-                    current_isolated->eos = max(baselevel, chars[real_end].resolved);
+                    current_isolated->eos = (baselevel > levels[real_end]) ? baselevel : levels[real_end];
                 else
-                    current_isolated->eos = max(chars[type_fence].resolved, chars[real_end].resolved);
+                    current_isolated->eos = (levels[type_fence] > levels[real_end]) ? levels[type_fence] : levels[real_end];
 
                 current_isolated->eos = get_embedding_direction(current_isolated->eos);
             }
@@ -1063,28 +1040,35 @@ search:
         i++;
     }
 
-    free(runs);
+    heap_free(runs);
     return hr;
 }
 
-HRESULT bidi_computelevels(struct bidi_char *chars, unsigned int count, UINT8 baselevel)
+HRESULT bidi_computelevels(const WCHAR *string, UINT32 count, UINT8 baselevel, UINT8 *explicit, UINT8 *levels)
 {
     IsolatedRun *iso_run, *next;
     struct list IsolatingRuns;
+    UINT8 *chartype;
     HRESULT hr;
 
-    if (TRACE_ON(bidi)) bidi_dump_types("start ", chars, 0, count);
+    TRACE("%s, %u\n", debugstr_wn(string, count), count);
 
-    bidi_resolve_explicit(chars, count, baselevel);
+    chartype = heap_alloc(count*sizeof(*chartype));
+    if (!chartype)
+        return E_OUTOFMEMORY;
 
-    if (TRACE_ON(bidi)) bidi_dump_types("after explicit", chars, 0, count);
+    bidi_classify(string, chartype, count);
+    if (TRACE_ON(bidi)) bidi_dump_types("start ", chartype, 0, count);
+
+    bidi_resolve_explicit(baselevel, chartype, levels, count);
+    memcpy(explicit, levels, count*sizeof(*explicit));
+
+    if (TRACE_ON(bidi)) bidi_dump_types("after explicit", chartype, 0, count);
 
     /* X10/BD13: Compute Isolating runs */
-    if (FAILED(hr = bidi_compute_isolating_runs_set(chars, count, baselevel, &IsolatingRuns)))
-    {
-        WARN("Failed to compute isolating runs set, hr %#lx.\n", hr);
-        return hr;
-    }
+    hr = bidi_compute_isolating_runs_set(baselevel, chartype, levels, string, count, &IsolatingRuns);
+    if (FAILED(hr))
+        goto done;
 
     LIST_FOR_EACH_ENTRY_SAFE(iso_run, next, &IsolatingRuns, IsolatedRun, entry)
     {
@@ -1097,13 +1081,16 @@ HRESULT bidi_computelevels(struct bidi_char *chars, unsigned int count, UINT8 ba
         if (TRACE_ON(bidi)) iso_dump_types("after neutrals", iso_run);
 
         list_remove(&iso_run->entry);
-        free(iso_run);
+        heap_free(iso_run);
     }
 
-    if (TRACE_ON(bidi)) bidi_dump_types("before implicit", chars, 0, count);
-    bidi_resolve_implicit(chars, count);
+    if (TRACE_ON(bidi)) bidi_dump_types("before implicit", chartype, 0, count);
+    bidi_resolve_implicit(chartype, levels, 0, count-1);
 
-    bidi_resolve_resolved(chars, count, baselevel);
+    bidi_classify(string, chartype, count);
+    bidi_resolve_resolved(baselevel, chartype, levels, 0, count-1);
 
-    return S_OK;
+done:
+    heap_free(chartype);
+    return hr;
 }

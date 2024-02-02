@@ -81,8 +81,6 @@ typedef struct _ADDRESS_WAIT_BLOCK
 	
 #define ADDRESS_GET_BLOCK(AW) ((ADDRESS_WAIT_BLOCK*)((SIZE_T)(AW) & (~(SIZE_T)(0x3))))
 
-//HANDLE _GlobalKeyedEventHandle = NULL;
-
 BOOL NTAPI RtlpWaitCouldDeadlock();
 
 BOOL NTAPI RtlDllShutdownInProgress(VOID);
@@ -150,13 +148,6 @@ RtlpInitializeKeyedEvent(VOID)
     NtCreateKeyedEvent(&GlobalKeyedEventHandle, EVENT_ALL_ACCESS, NULL, 0);
 }
 
-static DWORD NTAPI
-RtlpInitializeWaitOnAddressKeyedEvent( RTL_RUN_ONCE *once, void *param, void **context )
-{
-    NtCreateKeyedEvent(&WaitOnAddressKeyedEventHandle, GENERIC_READ|GENERIC_WRITE, NULL, 0);
-	return TRUE; 
-}
-
 VOID
 RtlpCloseKeyedEvent(VOID)
 {
@@ -164,6 +155,14 @@ RtlpCloseKeyedEvent(VOID)
     NtClose(GlobalKeyedEventHandle);
     GlobalKeyedEventHandle = NULL;
 }
+
+static DWORD NTAPI
+RtlpInitializeWaitOnAddressKeyedEvent( RTL_RUN_ONCE *once, void *param, void **context )
+{
+    NtCreateKeyedEvent(&WaitOnAddressKeyedEventHandle, GENERIC_READ|GENERIC_WRITE, NULL, 0);
+	return TRUE; 
+}
+
 
 static ULONG_PTR* GetBlockByWaitOnAddressHashTable(LPVOID Address)
 {
@@ -174,30 +173,28 @@ static ULONG_PTR* GetBlockByWaitOnAddressHashTable(LPVOID Address)
 	return &WaitOnAddressHashTable[Index];
 }
 
-// static HANDLE __fastcall GetGlobalKeyedEventHandle()
-// {
-	// HANDLE KeyedEventHandle;
-	// //Windows XP等平台则 使用系统自身的 CritSecOutOfMemoryEvent，Vista或者更高平台 我们直接返回 nullptr 即可。
-	// if (_GlobalKeyedEventHandle == NULL)
-	// {
-		// const wchar_t Name[] = L"\\KernelObjects\\CritSecOutOfMemoryEvent";
+VOID InitializeGlobalKeyedEventHandle()
+{
+	HANDLE KeyedEventHandle;
+	//Windows XP等平台则 使用系统自身的 CritSecOutOfMemoryEvent，Vista或者更高平台 我们直接返回 nullptr 即可。
+	if (GlobalKeyedEventHandle == NULL)
+	{
+		const wchar_t Name[] = L"\\KernelObjects\\CritSecOutOfMemoryEvent";
 
-		// UNICODE_STRING ObjectName = {sizeof(Name) - sizeof(wchar_t),sizeof(Name) - sizeof(wchar_t) ,(PWSTR)Name };
-		// OBJECT_ATTRIBUTES attr = { sizeof(attr),0,&ObjectName };
+		UNICODE_STRING ObjectName = {sizeof(Name) - sizeof(wchar_t),sizeof(Name) - sizeof(wchar_t) ,(PWSTR)Name };
+		OBJECT_ATTRIBUTES attr = { sizeof(attr),0,&ObjectName };
 
-		// if (NtOpenKeyedEvent(&KeyedEventHandle, MAXIMUM_ALLOWED, &attr) < 0)
-		// {
-			// RtlRaiseStatus(STATUS_RESOURCE_NOT_OWNED);
-		// }
+		if (NtOpenKeyedEvent(&KeyedEventHandle, MAXIMUM_ALLOWED, &attr) < 0)
+		{
+			RtlRaiseStatus(STATUS_RESOURCE_NOT_OWNED);
+		}
 
-		// if (InterlockedCompareExchange((volatile long *)&_GlobalKeyedEventHandle, (size_t)KeyedEventHandle, (size_t)0))
-		// {
-			// RtlFreeHeap( RtlGetProcessHeap(), 0, KeyedEventHandle );
-		// }
-	// }
-	
-	// return _GlobalKeyedEventHandle;
-// }
+		if (InterlockedCompareExchange((volatile long *)&GlobalKeyedEventHandle, (size_t)KeyedEventHandle, (size_t)0))
+		{
+			RtlFreeHeap( RtlGetProcessHeap(), 0, KeyedEventHandle );
+		}
+	}
+}
 
 static void RtlpWaitOnAddressWakeEntireList(ADDRESS_WAIT_BLOCK* pBlock)
 {

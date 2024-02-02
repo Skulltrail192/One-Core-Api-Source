@@ -628,34 +628,40 @@ int WINAPI WSASendMsg(
 	return WSA_INVALID_HANDLE;
 }
 
-/***********************************************************************
- *      WSASocketA          (WS2_32.78)
- *
- */
 SOCKET WINAPI WSASocketAInternal(int af, int type, int protocol,
                          LPWSAPROTOCOL_INFOA lpProtocolInfo,
                          GROUP g, DWORD dwFlags)
 {
-	if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
-		dwFlags =~WSA_FLAG_NO_HANDLE_INHERIT;
-		DbgPrint("WSASocketAInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
-	}
-	return WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
+        SOCKET curSock;
+    if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
+                
+        dwFlags ^= WSA_FLAG_NO_HANDLE_INHERIT;
+                curSock = WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
+                if (curSock != INVALID_SOCKET) {
+                    SetHandleInformation((HANDLE)curSock, HANDLE_FLAG_INHERIT, 0);
+                }
+        DbgPrint("WSASocketWInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
+                return curSock;
+    }
+    return WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
 }
 
-/***********************************************************************
- *      WSASocketA          (WS2_32.78)
- *
- */
 SOCKET WINAPI WSASocketWInternal(int af, int type, int protocol,
                          LPWSAPROTOCOL_INFOW lpProtocolInfo,
                          GROUP g, DWORD dwFlags)
 {
-	if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
-		dwFlags =~WSA_FLAG_NO_HANDLE_INHERIT;
-		DbgPrint("WSASocketWInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
-	}
-	return WSASocketW(af, type, protocol, lpProtocolInfo, g, dwFlags);
+        SOCKET curSock;
+    if(dwFlags & WSA_FLAG_NO_HANDLE_INHERIT){
+                
+        dwFlags ^= WSA_FLAG_NO_HANDLE_INHERIT;
+                curSock = WSASocketW(af, type, protocol, lpProtocolInfo, g, dwFlags);
+                if (curSock != INVALID_SOCKET) {
+                    SetHandleInformation((HANDLE)curSock, HANDLE_FLAG_INHERIT, 0);
+                }
+        DbgPrint("WSASocketWInternal: flag is WSA_FLAG_NO_HANDLE_INHERIT\n");
+                return curSock;
+    }
+    return WSASocketW(af, type, protocol, lpProtocolInfo, g, dwFlags);
 }
 
 INT

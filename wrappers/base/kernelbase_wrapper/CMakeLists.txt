@@ -18,7 +18,7 @@ spec2def(kernelbase.dll kernelbase.spec ADD_IMPORTLIB)
 if(ARCH STREQUAL "amd64")
 	set(baseaddress_kernelbase   0x26D60000)
 elseif(ARCH STREQUAL "i386")
-	set(baseaddress_kernelbase   0x68910000)
+	set(baseaddress_kernelbase   0x68100000)
 endif()
 
 list(APPEND SOURCE

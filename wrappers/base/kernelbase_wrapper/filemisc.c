@@ -20,6 +20,8 @@ Revision History:
 
 #include <main.h>
 
+WINE_DEFAULT_DEBUG_CHANNEL(filemisc); 
+
 BOOL 
 WINAPI 
 MoveFileTransactedA(
@@ -165,4 +167,37 @@ BOOL FindNextFileNameW(
 )
 {
 	return FALSE;
+}
+
+/*
+ * @unimplemented
+ */
+BOOL
+WINAPI
+SetFileBandwidthReservation(IN HANDLE hFile,
+                            IN DWORD nPeriodMilliseconds,
+                            IN DWORD nBytesPerPeriod,
+                            IN BOOL bDiscardable,
+                            OUT LPDWORD lpTransferSize,
+                            OUT LPDWORD lpNumOutstandingRequests)
+{
+    UNIMPLEMENTED;
+    return FALSE;
+}
+
+
+/*
+ * @unimplemented
+ */
+BOOL
+WINAPI
+GetFileBandwidthReservation(IN HANDLE hFile,
+                            OUT LPDWORD lpPeriodMilliseconds,
+                            OUT LPDWORD lpBytesPerPeriod,
+                            OUT LPBOOL pDiscardable,
+                            OUT LPDWORD lpTransferSize,
+                            OUT LPDWORD lpNumOutstandingRequests)
+{
+    UNIMPLEMENTED;
+    return FALSE;
 }

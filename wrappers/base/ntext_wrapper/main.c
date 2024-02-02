@@ -26,6 +26,7 @@ VOID NTAPI RtlpInitDeferredCriticalSection(VOID);
 void load_global_options(void);
 void init_locale();
 void NTAPI RtlpInitSRWLock();
+VOID InitializeGlobalKeyedEventHandle();
 
 /*****************************************************
  *      DllMain
@@ -40,22 +41,28 @@ LdrInitialize(
 {
     if (dwReason == DLL_PROCESS_ATTACH)
     {
-		// RtlInitializeCriticalSection(&time_tz_section);
-		// RtlInitializeCriticalSection(&localeCritSection);
-		// RtlInitializeCriticalSection(&loader_section);
-		// RtlInitializeCriticalSection(&dlldir_section);
+		RtlInitializeCriticalSection(&time_tz_section);
+		RtlInitializeCriticalSection(&localeCritSection);
+		RtlInitializeCriticalSection(&loader_section);
+		//RtlInitializeCriticalSection(&dlldir_section);
 		load_global_options();		
 		init_locale();
         // LdrDisableThreadCalloutsForDll(hDll);
-        RtlpInitializeKeyedEvent();
+        //RtlpInitializeKeyedEvent();
         RtlpInitDeferredCriticalSection();
 		RtlpInitSRWLock(NtCurrentTeb()->ProcessEnvironmentBlock);
 		RtlpInitConditionVariable(NtCurrentTeb()->ProcessEnvironmentBlock);
+		InitializeGlobalKeyedEventHandle();
     }
     else if (dwReason == DLL_PROCESS_DETACH)
     {
-        RtlpCloseKeyedEvent();
+       //RtlpCloseKeyedEvent();
     }	
 	
     return TRUE;
+}
+
+struct _TEB * _NtCurrentTeb(void)
+{
+    return (struct _TEB *)__readfsdword(0x18);
 }

@@ -2186,3 +2186,18 @@ SetProcessInformation(
 	BaseSetLastNTError(Status);
 	return FALSE;
 }
+
+/*
+ * @unimplemented
+ */
+HRESULT
+WINAPI
+GetApplicationRecoveryCallback(IN HANDLE hProcess,
+                               OUT APPLICATION_RECOVERY_CALLBACK* pRecoveryCallback,
+                               OUT PVOID* ppvParameter,
+                               PDWORD dwPingInterval,
+                               PDWORD dwFlags)
+{
+    UNIMPLEMENTED;
+    return E_FAIL;
+}

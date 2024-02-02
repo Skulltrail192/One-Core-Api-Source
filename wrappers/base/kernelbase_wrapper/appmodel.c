@@ -117,7 +117,7 @@ HMODULE WINAPI /* DECLSPEC_HOTPATCH */ LoadPackagedLibrary( LPCWSTR name, DWORD 
 {
     FIXME( "semi-stub, name %s, reserved %#x.\n", debugstr_w(name), reserved );
     SetLastError( APPMODEL_ERROR_NO_PACKAGE );
-    return NULL;
+    return LoadLibraryW(name);
 }
 
 /***********************************************************************

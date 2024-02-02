@@ -212,3 +212,8 @@ ClosePrivateNamespace(
 {
 	return TRUE;
 }
+
+// The only flag is UWP app containers, we don't care. Needs to be in advapi32, and kernel32/kernelbase needs to export it.
+BOOL WINAPI CheckTokenMembershipEx(HANDLE TokenHandle, PSID SidToCheck, DWORD Flags, PBOOL IsMember) {
+    return CheckTokenMembership(TokenHandle, SidToCheck, IsMember);
+}

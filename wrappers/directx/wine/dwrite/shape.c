@@ -44,7 +44,8 @@ struct scriptshaping_cache *create_scriptshaping_cache(void *context, const stru
 {
     struct scriptshaping_cache *cache;
 
-    if (!(cache = calloc(1, sizeof(*cache))))
+    cache = heap_alloc_zero(sizeof(*cache));
+    if (!cache)
         return NULL;
 
     cache->font = font_ops;
@@ -64,13 +65,13 @@ void release_scriptshaping_cache(struct scriptshaping_cache *cache)
     cache->font->release_font_table(cache->context, cache->gdef.table.context);
     cache->font->release_font_table(cache->context, cache->gsub.table.context);
     cache->font->release_font_table(cache->context, cache->gpos.table.context);
-    free(cache);
+    heap_free(cache);
 }
 
-static unsigned int shape_select_script(const struct scriptshaping_cache *cache, DWORD kind, const unsigned int *scripts,
+static unsigned int shape_select_script(const struct scriptshaping_cache *cache, DWORD kind, const DWORD *scripts,
         unsigned int *script_index)
 {
-    static const unsigned int fallback_scripts[] =
+    static const DWORD fallback_scripts[] =
     {
         DWRITE_MAKE_OPENTYPE_TAG('D','F','L','T'),
         DWRITE_MAKE_OPENTYPE_TAG('d','f','l','t'),
@@ -200,22 +201,7 @@ static void shape_merge_features(struct scriptshaping_context *context, struct s
     features->count = j + 1;
 }
 
-static void default_shaper_setup_masks(struct scriptshaping_context *context,
-        const struct shaping_features *features)
-{
-    unsigned int i;
-
-    for (i = 0; i < context->glyph_count; ++i)
-    {
-        context->u.buffer.glyph_props[i].justification = iswspace(context->glyph_infos[i].codepoint) ?
-                SCRIPT_JUSTIFY_BLANK : SCRIPT_JUSTIFY_CHARACTER;
-    }
-}
-
-static const struct shaper default_shaper =
-{
-    default_shaper_setup_masks
-};
+static const struct shaper null_shaper;
 
 static void shape_set_shaper(struct scriptshaping_context *context)
 {
@@ -226,7 +212,7 @@ static void shape_set_shaper(struct scriptshaping_context *context)
             context->shaper = &arabic_shaper;
             break;
         default:
-            context->shaper = &default_shaper;
+            context->shaper = &null_shaper;
     }
 }
 
@@ -272,8 +258,8 @@ HRESULT shape_get_positions(struct scriptshaping_context *context, const unsigne
 
             if ((language = shape_select_language(cache, MS_GPOS_TAG, script_index, language, &language_index)))
             {
-                // TRACE("script %s, language %s.\n", debugstr_fourcc(script), language != ~0u ?
-                        // debugstr_fourcc(language) : "deflangsys");
+                TRACE("script %s, language %s.\n", debugstr_tag(script), language != ~0u ?
+                        debugstr_tag(language) : "deflangsys");
                 opentype_layout_apply_gpos_features(context, script_index, language_index, &features);
             }
         }
@@ -283,7 +269,7 @@ HRESULT shape_get_positions(struct scriptshaping_context *context, const unsigne
         if (context->u.pos.glyph_props[i].isZeroWidthSpace)
             context->advances[i] = 0.0f;
 
-    free(features.features);
+    heap_free(features.features);
 
     return S_OK;
 }
@@ -361,7 +347,7 @@ HRESULT shape_get_glyphs(struct scriptshaping_context *context, const unsigned i
     shape_get_script_lang_index(context, scripts, MS_GSUB_TAG, &script_index, &language_index);
     opentype_layout_apply_gsub_features(context, script_index, language_index, &features);
 
-    free(features.features);
+    heap_free(features.features);
 
     return (context->glyph_count <= context->u.subst.max_glyph_count) ? S_OK : E_NOT_SUFFICIENT_BUFFER;
 }
@@ -373,7 +359,7 @@ static int __cdecl tag_array_sorting_compare(const void *a, const void *b)
 };
 
 HRESULT shape_get_typographic_features(struct scriptshaping_context *context, const unsigned int *scripts,
-        unsigned int max_tagcount, unsigned int *actual_tagcount, DWRITE_FONT_FEATURE_TAG *tags)
+        unsigned int max_tagcount, unsigned int *actual_tagcount, unsigned int *tags)
 {
     unsigned int i, j, script_index, language_index;
     struct tag_array t = { 0 };
@@ -407,7 +393,7 @@ HRESULT shape_get_typographic_features(struct scriptshaping_context *context, co
 
     *actual_tagcount = t.count;
 
-    free(t.tags);
+    heap_free(t.tags);
 
     return t.count <= max_tagcount ? S_OK : E_NOT_SUFFICIENT_BUFFER;
 }

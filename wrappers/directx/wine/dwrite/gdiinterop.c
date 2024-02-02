@@ -75,7 +75,7 @@ static inline int get_dib_stride(int width, int bpp)
 
 static HRESULT create_target_dibsection(struct rendertarget *target, UINT32 width, UINT32 height)
 {
-    char bmibuf[FIELD_OFFSET(BITMAPINFO, bmiColors[256])];
+    char bmibuf[FIELD_OFFSET(BITMAPINFO, bmiColors) + 256 * sizeof(RGBQUAD)];
     BITMAPINFO *bmi = (BITMAPINFO*)bmibuf;
     HBITMAP hbm;
 
@@ -251,7 +251,7 @@ static ULONG WINAPI rendertarget_AddRef(IDWriteBitmapRenderTarget1 *iface)
     struct rendertarget *target = impl_from_IDWriteBitmapRenderTarget1(iface);
     ULONG refcount = InterlockedIncrement(&target->refcount);
 
-    TRACE("%p, refcount %lu.\n", iface, refcount);
+    TRACE("%p, refcount %u.\n", iface, refcount);
 
     return refcount;
 }
@@ -261,13 +261,13 @@ static ULONG WINAPI rendertarget_Release(IDWriteBitmapRenderTarget1 *iface)
     struct rendertarget *target = impl_from_IDWriteBitmapRenderTarget1(iface);
     ULONG refcount = InterlockedDecrement(&target->refcount);
 
-    TRACE("%p, refcount %lu.\n", iface, refcount);
+    TRACE("%p, refcount %u.\n", iface, refcount);
 
     if (!refcount)
     {
         IDWriteFactory7_Release(target->factory);
         DeleteDC(target->hdc);
-        free(target);
+        heap_free(target);
     }
 
     return refcount;
@@ -352,7 +352,7 @@ static HRESULT WINAPI rendertarget_DrawGlyphRun(IDWriteBitmapRenderTarget1 *ifac
     RECT target_rect, bounds;
     HRESULT hr;
 
-    TRACE("%p, %.8e, %.8e, %d, %p, %p, 0x%08lx, %p.\n", iface, originX, originY,
+    TRACE("%p, %.8e, %.8e, %d, %p, %p, 0x%08x, %p.\n", iface, originX, originY,
         measuring_mode, run, params, color, bbox_ret);
 
     SetRectEmpty(bbox_ret);
@@ -364,7 +364,7 @@ static HRESULT WINAPI rendertarget_DrawGlyphRun(IDWriteBitmapRenderTarget1 *ifac
         return E_INVALIDARG;
 
     if (FAILED(hr = IDWriteFontFace_QueryInterface(run->fontFace, &IID_IDWriteFontFace3, (void **)&fontface))) {
-        WARN("Failed to get IDWriteFontFace2 interface, hr %#lx.\n", hr);
+        WARN("Failed to get IDWriteFontFace2 interface, hr %#x.\n", hr);
         return hr;
     }
 
@@ -435,7 +435,7 @@ static HRESULT WINAPI rendertarget_DrawGlyphRun(IDWriteBitmapRenderTarget1 *ifac
             gridfitmode, target->antialiasmode, originX, originY, &analysis);
     if (FAILED(hr))
     {
-        WARN("failed to create analysis instance, 0x%08lx\n", hr);
+        WARN("failed to create analysis instance, 0x%08x\n", hr);
         return hr;
     }
 
@@ -445,7 +445,7 @@ static HRESULT WINAPI rendertarget_DrawGlyphRun(IDWriteBitmapRenderTarget1 *ifac
     if (FAILED(hr) || IsRectEmpty(&bounds)) {
         hr = IDWriteGlyphRunAnalysis_GetAlphaTextureBounds(analysis, DWRITE_TEXTURE_CLEARTYPE_3x1, &bounds);
         if (FAILED(hr)) {
-            WARN("GetAlphaTextureBounds() failed, 0x%08lx\n", hr);
+            WARN("GetAlphaTextureBounds() failed, 0x%08x\n", hr);
             IDWriteGlyphRunAnalysis_Release(analysis);
             return hr;
         }
@@ -460,8 +460,8 @@ static HRESULT WINAPI rendertarget_DrawGlyphRun(IDWriteBitmapRenderTarget1 *ifac
         color = colorref_to_pixel_888(color);
         if (texturetype == DWRITE_TEXTURE_CLEARTYPE_3x1)
             size *= 3;
-        if (!(bitmap = calloc(1, size)))
-        {
+        bitmap = heap_alloc_zero(size);
+        if (!bitmap) {
             IDWriteGlyphRunAnalysis_Release(analysis);
             return E_OUTOFMEMORY;
         }
@@ -477,7 +477,7 @@ static HRESULT WINAPI rendertarget_DrawGlyphRun(IDWriteBitmapRenderTarget1 *ifac
             if (bbox_ret) *bbox_ret = target_rect;
         }
 
-        free(bitmap);
+        heap_free(bitmap);
     }
 
     IDWriteGlyphRunAnalysis_Release(analysis);
@@ -605,8 +605,8 @@ static HRESULT create_rendertarget(IDWriteFactory7 *factory, HDC hdc, UINT32 wid
 
     *ret = NULL;
 
-    if (!(target = malloc(sizeof(*target))))
-        return E_OUTOFMEMORY;
+    target = heap_alloc(sizeof(struct rendertarget));
+    if (!target) return E_OUTOFMEMORY;
 
     target->IDWriteBitmapRenderTarget1_iface.lpVtbl = &rendertargetvtbl;
     target->ID2D1SimplifiedGeometrySink_iface.lpVtbl = &rendertargetsinkvtbl;
@@ -655,7 +655,7 @@ static ULONG WINAPI gdiinterop_AddRef(IDWriteGdiInterop1 *iface)
     struct gdiinterop *interop = impl_from_IDWriteGdiInterop1(iface);
     LONG refcount = InterlockedIncrement(&interop->refcount);
 
-    TRACE("%p, refcount %lu.\n", iface, refcount);
+    TRACE("%p, refcount %u.\n", iface, refcount);
 
     return refcount;
 }
@@ -665,13 +665,13 @@ static ULONG WINAPI gdiinterop_Release(IDWriteGdiInterop1 *iface)
     struct gdiinterop *interop = impl_from_IDWriteGdiInterop1(iface);
     LONG refcount = InterlockedDecrement(&interop->refcount);
 
-    TRACE("%p, refcount %lu.\n", iface, refcount);
+    TRACE("%p, refcount %u.\n", iface, refcount);
 
     if (!refcount)
     {
         IDWriteFactory7_UnregisterFontFileLoader(interop->factory, &interop->IDWriteFontFileLoader_iface);
         factory_detach_gdiinterop(interop->factory, iface);
-        free(interop);
+        heap_free(interop);
     }
 
     return refcount;
@@ -737,19 +737,17 @@ static HRESULT WINAPI gdiinterop_ConvertFontFaceToLOGFONT(IDWriteGdiInterop1 *if
     return S_OK;
 }
 
-struct font_realization_info
-{
+struct font_realization_info {
     DWORD size;
     DWORD flags;
     DWORD cache_num;
     DWORD instance_id;
-    DWORD file_count;
+    DWORD unk;
     WORD  face_index;
     WORD  simulations;
 };
 
-struct font_fileinfo
-{
+struct font_fileinfo {
     FILETIME writetime;
     LARGE_INTEGER size;
     WCHAR path[1];
@@ -757,34 +755,75 @@ struct font_fileinfo
 
 /* Undocumented gdi32 exports, used to access actually selected font information */
 extern BOOL WINAPI GetFontRealizationInfo(HDC hdc, struct font_realization_info *info);
-extern BOOL WINAPI GetFontFileInfo(DWORD instance_id, DWORD file_index, struct font_fileinfo *info, SIZE_T size, SIZE_T *needed);
-extern BOOL WINAPI GetFontFileData(DWORD instance_id, DWORD file_index, UINT64 offset, void *buff, SIZE_T buff_size);
+extern BOOL WINAPI GetFontFileInfo(DWORD instance_id, DWORD unknown, struct font_fileinfo *info, SIZE_T size, SIZE_T *needed);
+extern BOOL WINAPI GetFontFileData(DWORD instance_id, DWORD unknown, UINT64 offset, void *buff, DWORD buff_size);
 
-static HRESULT WINAPI gdiinterop_CreateFontFaceFromHdc(IDWriteGdiInterop *iface,
+static HRESULT WINAPI gdiinterop_CreateFontFaceFromHdc(IDWriteGdiInterop1 *iface,
     HDC hdc, IDWriteFontFace **fontface)
 {
-    struct gdiinterop *This = impl_from_IDWriteGdiInterop(iface);
-    IDWriteFont *font;
-    LOGFONTW logfont;
-    HFONT hfont;
+    struct gdiinterop *interop = impl_from_IDWriteGdiInterop1(iface);
+    struct font_realization_info info;
+    struct font_fileinfo *fileinfo;
+    DWRITE_FONT_FILE_TYPE filetype;
+    DWRITE_FONT_FACE_TYPE facetype;
+    IDWriteFontFile *file;
+    BOOL is_supported;
+    UINT32 facenum;
+    SIZE_T needed;
     HRESULT hr;
 
-    TRACE("(%p)->(%p %p)\n", This, hdc, fontface);
+    TRACE("%p, %p, %p.\n", iface, hdc, fontface);
 
     *fontface = NULL;
 
-    hfont = GetCurrentObject(hdc, OBJ_FONT);
-    if (!hfont)
+    if (!hdc)
         return E_INVALIDARG;
-    GetObjectW(hfont, sizeof(logfont), &logfont);
 
-    hr = IDWriteGdiInterop_CreateFontFromLOGFONT(iface, &logfont, &font);
+    /* get selected font id  */
+    info.size = sizeof(info);
+    if (!GetFontRealizationInfo(hdc, &info)) {
+        WARN("failed to get selected font id\n");
+        return E_FAIL;
+    }
+
+    needed = 0;
+    GetFontFileInfo(info.instance_id, 0, NULL, 0, &needed);
+    if (needed == 0) {
+        WARN("failed to get font file info size\n");
+        return E_FAIL;
+    }
+
+    fileinfo = heap_alloc(needed);
+    if (!fileinfo)
+        return E_OUTOFMEMORY;
+
+    if (!GetFontFileInfo(info.instance_id, 0, fileinfo, needed, &needed)) {
+        heap_free(fileinfo);
+        return E_FAIL;
+    }
+
+    if (*fileinfo->path)
+        hr = IDWriteFactory7_CreateFontFileReference(interop->factory, fileinfo->path, &fileinfo->writetime, &file);
+    else
+        hr = IDWriteFactory7_CreateCustomFontFileReference(interop->factory, &info.instance_id,
+                sizeof(info.instance_id), &interop->IDWriteFontFileLoader_iface, &file);
+
+    heap_free(fileinfo);
     if (FAILED(hr))
         return hr;
 
-    hr = IDWriteFont_CreateFontFace(font, fontface);
-    IDWriteFont_Release(font);
+    is_supported = FALSE;
+    hr = IDWriteFontFile_Analyze(file, &is_supported, &filetype, &facetype, &facenum);
+    if (SUCCEEDED(hr)) {
+        if (is_supported)
+            /* Simulations flags values match DWRITE_FONT_SIMULATIONS */
+            hr = IDWriteFactory7_CreateFontFace(interop->factory, facetype, 1, &file, info.face_index,
+                    info.simulations, fontface);
+        else
+            hr = DWRITE_E_FILEFORMAT;
+    }
 
+    IDWriteFontFile_Release(file);
     return hr;
 }
 
@@ -819,7 +858,7 @@ static HRESULT WINAPI gdiinterop1_CreateFontFromLOGFONT(IDWriteGdiInterop1 *ifac
     else {
         hr = IDWriteFactory5_GetSystemFontCollection((IDWriteFactory5 *)interop->factory, FALSE, (IDWriteFontCollection1 **)&collection, FALSE);
         if (FAILED(hr)) {
-            ERR("failed to get system font collection: 0x%08lx.\n", hr);
+            ERR("failed to get system font collection: 0x%08x.\n", hr);
             return hr;
         }
     }
@@ -865,20 +904,11 @@ static HRESULT WINAPI gdiinterop1_GetFontSignature(IDWriteGdiInterop1 *iface, ID
 }
 
 static HRESULT WINAPI gdiinterop1_GetMatchingFontsByLOGFONT(IDWriteGdiInterop1 *iface, LOGFONTW const *logfont,
-        IDWriteFontSet *fontset, IDWriteFontSet **subset)
+    IDWriteFontSet *fontset, IDWriteFontSet **subset)
 {
-    DWRITE_FONT_PROPERTY property;
+    FIXME("%p, %p, %p, %p: stub.\n", iface, logfont, fontset, subset);
 
-    TRACE("%p, %p, %p, %p.\n", iface, logfont, fontset, subset);
-
-    if (!logfont || !fontset)
-        return E_INVALIDARG;
-
-    property.propertyId = DWRITE_FONT_PROPERTY_ID_WIN32_FAMILY_NAME;
-    property.propertyValue = logfont->lfFaceName;
-    property.localeName = L"";
-
-    return IDWriteFontSet_GetMatchingFonts(fontset, &property, 1, subset);
+    return E_NOTIMPL;
 }
 
 static const IDWriteGdiInterop1Vtbl gdiinteropvtbl =
@@ -917,7 +947,7 @@ static ULONG WINAPI memresourcestream_AddRef(IDWriteFontFileStream *iface)
     struct memresource_stream *stream = impl_from_IDWriteFontFileStream(iface);
     ULONG refcount = InterlockedIncrement(&stream->refcount);
 
-    TRACE("%p, refcount %ld.\n", iface, refcount);
+    TRACE("%p, refcount %d.\n", iface, refcount);
 
     return refcount;
 }
@@ -927,10 +957,10 @@ static ULONG WINAPI memresourcestream_Release(IDWriteFontFileStream *iface)
     struct memresource_stream *stream = impl_from_IDWriteFontFileStream(iface);
     ULONG refcount = InterlockedDecrement(&stream->refcount);
 
-    TRACE("%p, refcount %ld.\n", iface, refcount);
+    TRACE("%p, refcount %d.\n", iface, refcount);
 
     if (!refcount)
-        free(stream);
+        heap_free(stream);
 
     return refcount;
 }
@@ -954,7 +984,7 @@ static HRESULT WINAPI memresourcestream_ReadFileFragment(IDWriteFontFileStream *
     if ((offset >= fileinfo.size.QuadPart - 1) || (fragment_size > fileinfo.size.QuadPart - offset))
         return E_INVALIDARG;
 
-    if (!(fragment = malloc(fragment_size)))
+    if (!(fragment = heap_alloc(fragment_size)))
         return E_OUTOFMEMORY;
 
     if (!GetFontFileData(stream->key, 0, offset, fragment, fragment_size))
@@ -968,7 +998,7 @@ static void WINAPI memresourcestream_ReleaseFileFragment(IDWriteFontFileStream *
 {
     TRACE("%p, %p.\n", iface, fragment_context);
 
-    free(fragment_context);
+    heap_free(fragment_context);
 }
 
 static HRESULT WINAPI memresourcestream_GetFileSize(IDWriteFontFileStream *iface, UINT64 *size)
@@ -1041,7 +1071,7 @@ static HRESULT WINAPI memresourceloader_CreateStreamFromKey(IDWriteFontFileLoade
     if (!key || key_size != sizeof(DWORD))
         return E_INVALIDARG;
 
-    if (!(stream = malloc(sizeof(*stream))))
+    if (!(stream = heap_alloc(sizeof(*stream))))
         return E_OUTOFMEMORY;
 
     stream->IDWriteFontFileStream_iface.lpVtbl = &memresourcestreamvtbl;
@@ -1067,7 +1097,7 @@ HRESULT create_gdiinterop(IDWriteFactory7 *factory, IDWriteGdiInterop1 **ret)
 
     *ret = NULL;
 
-    if (!(interop = malloc(sizeof(*interop))))
+    if (!(interop = heap_alloc(sizeof(*interop))))
         return E_OUTOFMEMORY;
 
     interop->IDWriteGdiInterop1_iface.lpVtbl = &gdiinteropvtbl;
