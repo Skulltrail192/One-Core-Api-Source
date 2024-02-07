@@ -1278,7 +1278,9 @@ LSTATUS WINAPI RegLoadAppKeyW(const WCHAR *file, HKEY *result, REGSAM sam, DWORD
     return ERROR_SUCCESS;
 }
 
-LSTATUS RegOpenKeyTransactedA(
+LSTATUS 
+WINAPI
+RegOpenKeyTransactedA(
   HKEY   hKey,
   LPCSTR lpSubKey,
   DWORD  ulOptions,
@@ -1299,7 +1301,8 @@ LSTATUS RegOpenKeyTransactedA(
 						 phkResult);
 }
 
-LSTATUS 
+LSTATUS
+WINAPI
 RegOpenKeyTransactedW(
   HKEY   hKey,
   LPCWSTR lpSubKey,
@@ -2116,7 +2119,9 @@ RegQueryReflectionKey(IN HKEY hBase,
 	}
 }
 
-LSTATUS RegCreateKeyTransactedA(
+LSTATUS 
+WINAPI
+RegCreateKeyTransactedA(
   HKEY                        hKey,
   LPCSTR                      lpSubKey,
   DWORD                       Reserved,
@@ -2145,7 +2150,9 @@ LSTATUS RegCreateKeyTransactedA(
 						   lpdwDisposition);
 }
 
-LSTATUS RegCreateKeyTransactedW(
+LSTATUS 
+WINAPI
+RegCreateKeyTransactedW(
   HKEY                        hKey,
   LPCWSTR                     lpSubKey,
   DWORD                       Reserved,
@@ -2174,7 +2181,9 @@ LSTATUS RegCreateKeyTransactedW(
 						   lpdwDisposition);
 }
 
-LSTATUS RegDeleteKeyTransactedA(
+LSTATUS 
+WINAPI
+RegDeleteKeyTransactedA(
   HKEY   hKey,
   LPCSTR lpSubKey,
   REGSAM samDesired,
@@ -2193,7 +2202,9 @@ LSTATUS RegDeleteKeyTransactedA(
 						   Reserved);
 }
 
-LSTATUS RegDeleteKeyTransactedW(
+LSTATUS 
+WINAPI
+RegDeleteKeyTransactedW(
   HKEY   hKey,
   LPCWSTR lpSubKey,
   REGSAM samDesired,

@@ -740,8 +740,21 @@
 
 #Only Srv2k3
 @ stdcall IsSETEnabled()
-@ stdcall -stub IsProcess16Bit()
+@ stdcall IsProcess16Bit()
 @ stdcall -stub IsWow64Message()
+
+#functions exported by user32 from Longhorn Pre-Reset
+@ stdcall HangrepRegisterPort(ptr)
+@ stdcall HangrepUnregisterPort(ptr)
+@ stdcall ThemeGetCurrentSection(ptr)
+@ stdcall ThemeSetCurrentSection(ptr)
+
+@ stdcall GetAutoRotationState(ptr)
+
+#Hooks
+@ stdcall GetUserObjectSecurity (long ptr ptr long ptr) GetUserObjectSecurityInternal
+@ stdcall SystemParametersInfoA(long long ptr long) SystemParametersInfoAInternal
+@ stdcall SystemParametersInfoW(long long ptr long) SystemParametersInfoWInternal
 
 #Functions exported by Win Vista and 7
 @ stdcall AddClipboardFormatListener(ptr)
@@ -775,7 +788,6 @@
 @ stub gapfnScSendMessage
 @ stdcall GetCIMSSM(ptr)
 #@ stdcall GetCurrentInputMessageSource(ptr long) ;commented because cause error with Ccleaner
-@ stdcall GetDisplayAutoRotationPreferences(ptr)
 @ stdcall GetDisplayConfigBufferSizes(long ptr ptr)
 @ stdcall GetGestureConfig(ptr long long ptr ptr long)
 @ stdcall GetGestureExtraArgs(ptr long ptr)
@@ -870,26 +882,21 @@
 @ stdcall VRipOutput()
 1550  stdcall -noname DwmGetRedirSurfaceUpdateId(ptr long long) 
 1551  stdcall -noname DwmSetRedirSurfacePresentFlags(ptr long)
-1552  stdcall -noname DwmGetRedirSurfacePresentFlags(ptr ptr) 
+1552  stdcall -noname DwmGetRedirSurfacePresentFlags(ptr ptr)
 
 #Win8 functions
-@ stdcall GetPointerPenInfo(long ptr)
+@ stdcall GetDisplayAutoRotationPreferences(ptr)
 @ stdcall GetDpiForMonitorInternal(long long ptr ptr) NtUserGetDpiForMonitor
+@ stdcall GetPointerPenInfo(long ptr)
 @ stdcall GetProcessDpiAwarenessInternal(long ptr)
+@ stdcall IsImmersiveProcess(long)
 @ stdcall RegisterSuspendResumeNotification(long long)
 @ stdcall SetProcessDpiAwarenessContext(ptr)
 @ stdcall SetProcessDpiAwarenessInternal(long)
 @ stdcall UnregisterSuspendResumeNotification(ptr)
 
-#functions exported by user32 from Longhorn Pre-Reset
-@ stdcall HangrepRegisterPort(ptr)
-@ stdcall HangrepUnregisterPort(ptr)
-@ stdcall ThemeGetCurrentSection(ptr)
-@ stdcall ThemeSetCurrentSection(ptr)
-
-@ stdcall GetAutoRotationState(ptr)
-
-#Hooks
-@ stdcall GetUserObjectSecurity (long ptr ptr long ptr) GetUserObjectSecurityInternal
-@ stdcall SystemParametersInfoA(long long ptr long) SystemParametersInfoAInternal
-@ stdcall SystemParametersInfoW(long long ptr long) SystemParametersInfoWInternal
+#Win10 functions
+@ stdcall GetDpiForSystem()
+@ stdcall GetDpiForWindow(long)
+@ stdcall GetThreadDpiAwarenessContext()
+@ stdcall SetThreadDpiAwarenessContext(ptr)

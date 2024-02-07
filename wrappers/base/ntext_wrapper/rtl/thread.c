@@ -333,3 +333,10 @@ void WINAPI DECLSPEC_HOTPATCH RtlProcessFlsData( void *teb_fls_data, ULONG flags
         RtlFreeHeap( RtlProcessHeap(), 0, fls );
     }
 }
+
+#ifdef __i386__
+struct _TEB * _NtCurrentTeb(void)
+{
+    return (struct _TEB *)__readfsdword(0x18);
+}
+#endif

@@ -649,5 +649,11 @@
 @ stdcall SetupDiGetClassPropertyExW(ptr ptr ptr ptr long ptr long wstr ptr) setupapibase.SetupDiGetClassPropertyExW
 @ stdcall SetupDiGetClassPropertyKeysExW(ptr ptr long ptr long wstr ptr) setupapibase.SetupDiGetClassPropertyKeysExW
 
+#WinVista
+@ stdcall CM_Get_Device_Interface_PropertyW(wstr ptr ptr ptr ptr long)
+
 #Win7
 @ stdcall CM_MapCrToWin32Err(long long)
+
+#Win8
+@ stdcall CM_Register_Notification(ptr ptr ptr ptr)

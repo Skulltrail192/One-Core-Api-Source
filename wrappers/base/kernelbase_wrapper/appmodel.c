@@ -201,3 +201,20 @@ LONG WINAPI GetCurrentApplicationUserModelId(UINT32 *applicationUserModelIdLengt
 	FIXME( "(%p %p): stub\n", applicationUserModelIdLength, applicationUserModelId );
     return APPMODEL_ERROR_NO_PACKAGE;	
 }
+
+/***********************************************************************
+ *         GetCurrentPackagePath   (kernelbase.@)
+ */
+LONG WINAPI /* DECLSPEC_HOTPATCH */ GetCurrentPackagePath( UINT32 *length, WCHAR *path )
+{
+    FIXME( "(%p %p): stub\n", length, path );
+    return APPMODEL_ERROR_NO_PACKAGE;
+}
+
+/***********************************************************************
+ *         PackageIdFromFullName   (kernelbase.@)
+ */
+LONG WINAPI PackageIdFromFullName(const WCHAR *full_name, UINT32 flags, UINT32 *buffer_length, BYTE *buffer)
+{
+	return ERROR_NOT_FOUND;
+}

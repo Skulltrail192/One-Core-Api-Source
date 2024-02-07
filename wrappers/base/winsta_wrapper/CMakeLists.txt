@@ -9,7 +9,7 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/winsta_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/winsta_wrapper.def)
 	
-set(baseaddress_winsta_wrapper     0x64bc0000)		
+set(baseaddress_winsta_wrapper     0x57fd0000)		
 
 add_library(winsta_wrapper SHARED ${SOURCE})
 set_module_type(winsta_wrapper win32dll ENTRYPOINT 0)

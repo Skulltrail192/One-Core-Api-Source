@@ -176,19 +176,6 @@ DWORD WINAPI PowerSettingUnregisterNotification(HPOWERNOTIFY handle)
 
 DWORD 
 WINAPI 
-PowerWriteACValueIndex(
-  _In_opt_       HKEY  RootPowerKey,
-  _In_     const GUID  *SchemeGuid,
-  _In_opt_ const GUID  *SubGroupOfPowerSettingsGuid,
-  _In_opt_ const GUID  *PowerSettingGuid,
-  _In_           DWORD AcValueIndex
-)
-{
-   return ERROR_CALL_NOT_IMPLEMENTED;
-}
-
-DWORD 
-WINAPI 
 PowerWriteDCValueIndex(
   _In_opt_       HKEY  RootSystemPowerKey,
   _In_     const GUID  *SchemePersonalityGuid,
@@ -235,4 +222,36 @@ DWORD WINAPI PowerUnregisterSuspendResumeNotification(HPOWERNOTIFY handle)
 DWORD WINAPI PowerWriteSettingAttributes(const GUID *SubGroupGuid, const GUID *PowerSettingGuid, DWORD Attributes)
 {
 	return ERROR_SUCCESS;
+}
+
+DWORD WINAPI PowerWriteACValueIndex(HKEY key, const GUID *scheme, const GUID *subgroup, const GUID *setting, DWORD index)
+{
+   DbgPrint("(%p,%s,%s,%s,0x%08lx) stub!\n", key, (scheme), (subgroup), (setting), index);
+   return ERROR_SUCCESS;
+}
+
+DWORD 
+PowerReadACValueIndex(
+  HKEY       RootPowerKey,
+  const GUID *SchemeGuid,
+  const GUID *SubGroupOfPowerSettingsGuid,
+  const GUID *PowerSettingGuid,
+  LPDWORD    AcValueIndex
+)
+{
+   DbgPrint("(%p,%s,%s,%s,0x%08lx) stub!\n", RootPowerKey, (SchemeGuid), (SubGroupOfPowerSettingsGuid), (PowerSettingGuid), AcValueIndex);
+   return ERROR_CALL_NOT_IMPLEMENTED;
+}
+
+DWORD 
+PowerReadDCValueIndex(
+	HKEY       RootPowerKey,
+	const GUID *SchemeGuid,
+	const GUID *SubGroupOfPowerSettingsGuid,
+	const GUID *PowerSettingGuid,
+	LPDWORD    DcValueIndex
+)
+{
+   DbgPrint("(%p,%s,%s,%s,0x%08lx) stub!\n", RootPowerKey, (SchemeGuid), (SubGroupOfPowerSettingsGuid), (PowerSettingGuid), DcValueIndex);
+   return ERROR_CALL_NOT_IMPLEMENTED;
 }

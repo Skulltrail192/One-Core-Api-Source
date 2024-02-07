@@ -61,8 +61,3 @@ LdrInitialize(
 	
     return TRUE;
 }
-
-struct _TEB * _NtCurrentTeb(void)
-{
-    return (struct _TEB *)__readfsdword(0x18);
-}

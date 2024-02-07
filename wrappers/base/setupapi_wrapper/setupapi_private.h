@@ -22,6 +22,8 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+typedef HANDLE HCMNOTIFICATION, *PHCMNOTIFICATION;
+
 DWORD
 GetErrorCodeFromCrCode(const IN CONFIGRET cr);
 
@@ -128,3 +130,76 @@ struct DeviceInfo /* Element of DeviceInfoSet.ListHead */
     /* Variable size array (contains data for instanceId, UniqueId, DeviceDescription) */
     WCHAR Data[ANYSIZE_ARRAY];
 };
+
+typedef enum _CM_NOTIFY_FILTER_TYPE
+{
+    CM_NOTIFY_FILTER_TYPE_DEVICEINTERFACE,
+    CM_NOTIFY_FILTER_TYPE_DEVICEHANDLE,
+    CM_NOTIFY_FILTER_TYPE_DEVICEINSTANCE,
+    CM_NOTIFY_FILTER_TYPE_MAX
+} CM_NOTIFY_FILTER_TYPE, *PCM_NOTIFY_FILTER_TYPE;
+
+typedef enum _CM_NOTIFY_ACTION
+{
+    CM_NOTIFY_ACTION_DEVICEINTERFACEARRIVAL,
+    CM_NOTIFY_ACTION_DEVICEINTERFACEREMOVAL,
+    CM_NOTIFY_ACTION_DEVICEQUERYREMOVE,
+    CM_NOTIFY_ACTION_DEVICEQUERYREMOVEFAILED,
+    CM_NOTIFY_ACTION_DEVICEREMOVEPENDING,
+    CM_NOTIFY_ACTION_DEVICEREMOVECOMPLETE,
+    CM_NOTIFY_ACTION_DEVICECUSTOMEVENT,
+    CM_NOTIFY_ACTION_DEVICEINSTANCEENUMERATED,
+    CM_NOTIFY_ACTION_DEVICEINSTANCESTARTED,
+    CM_NOTIFY_ACTION_DEVICEINSTANCEREMOVED,
+    CM_NOTIFY_ACTION_MAX
+} CM_NOTIFY_ACTION, *PCM_NOTIFY_ACTION;
+
+typedef struct _CM_NOTIFY_FILTER
+{
+    DWORD cbSize;
+    DWORD Flags;
+    CM_NOTIFY_FILTER_TYPE FilterType;
+    DWORD Reserved;
+    union
+    {
+        struct
+        {
+            GUID ClassGuid;
+        } DeviceInterface;
+        struct
+        {
+            HANDLE hTarget;
+        } DeviceHandle;
+        struct
+        {
+            WCHAR InstanceId[MAX_DEVICE_ID_LEN];
+        } DeviceInstance;
+    } u;
+} CM_NOTIFY_FILTER, *PCM_NOTIFY_FILTER;
+
+typedef struct _CM_NOTIFY_EVENT_DATA
+{
+    CM_NOTIFY_FILTER_TYPE FilterType;
+    DWORD Reserved;
+    union
+    {
+        struct
+        {
+            GUID  ClassGuid;
+            WCHAR SymbolicLink[ANYSIZE_ARRAY];
+        } DeviceInterface;
+        struct
+        {
+            GUID  EventGuid;
+            LONG  NameOffset;
+            DWORD DataSize;
+            BYTE  Data[ANYSIZE_ARRAY];
+        } DeviceHandle;
+        struct
+        {
+            WCHAR InstanceId[ANYSIZE_ARRAY];
+        } DeviceInstance;
+    } u;
+} CM_NOTIFY_EVENT_DATA, *PCM_NOTIFY_EVENT_DATA;
+
+typedef DWORD (WINAPI *PCM_NOTIFY_CALLBACK)(HCMNOTIFICATION,void*,CM_NOTIFY_ACTION,CM_NOTIFY_EVENT_DATA*,DWORD);

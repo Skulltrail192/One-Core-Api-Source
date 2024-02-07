@@ -776,3 +776,4 @@
 766 stdcall GetDpiForMonitorInternal(long long ptr ptr)
 767 stdcall GetProcessDpiAwarenessInternal(long ptr)
 768 stdcall SetProcessDpiAwarenessInternal(long)
+@ stdcall -stub SetThreadDpiAwarenessContext(ptr)

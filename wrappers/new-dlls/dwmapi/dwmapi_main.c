@@ -36,6 +36,8 @@ WINE_DEFAULT_DEBUG_CHANNEL(dwmapi);
 #define DWM_E_COMPOSITIONDISABLED  _HRESULT_TYPEDEF_(0x80263001)
 #define MILERR_MISMATCHED_SIZE                             _HRESULT_TYPEDEF_(0x88980090)
 
+DPI_AWARENESS_CONTEXT WINAPI SetThreadDpiAwarenessContext( DPI_AWARENESS_CONTEXT context );
+
 /**********************************************************************
  *           DwmIsCompositionEnabled         (DWMAPI.@)
  */
@@ -149,10 +151,7 @@ HRESULT WINAPI DwmSetWindowAttribute(HWND hwnd, DWORD attributenum, LPCVOID attr
 	
 	DwmIsCompositionEnabled(&isCompositionEnabled);
 	
-	if (isCompositionEnabled) 
-		return S_OK;
-	else 
-		return DWM_E_COMPOSITIONDISABLED;
+	return S_OK;
 }
 
 /**********************************************************************
@@ -268,15 +267,46 @@ BOOL WINAPI DwmDefWindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, 
  */
 HRESULT WINAPI DwmGetWindowAttribute(HWND hwnd, DWORD attribute, PVOID pv_attribute, DWORD size)
 {
-    ////FIXME("(%p %d %p %d) stub\n", hwnd, attribute, pv_attribute, size);
+    //BOOL enabled = FALSE;
+    HRESULT hr;
 
-	BOOL isCompositionEnabled;
-	DwmIsCompositionEnabled(&isCompositionEnabled);
-	
-	if (isCompositionEnabled) 
-		return S_OK;
-	else 
-		return DWM_E_COMPOSITIONDISABLED;
+    TRACE("(%p %ld %p %ld)\n", hwnd, attribute, pv_attribute, size);
+
+    // if (DwmIsCompositionEnabled(&enabled) == S_OK && !enabled)
+        // return E_HANDLE;
+    // if (!IsWindow(hwnd))
+        // return E_HANDLE;
+
+    switch (attribute) {
+    case DWMWA_EXTENDED_FRAME_BOUNDS:
+    {
+        RECT *rect = (RECT *)pv_attribute;
+        //DPI_AWARENESS_CONTEXT context;
+
+        if (!rect)
+            return E_INVALIDARG;
+        if (size < sizeof(*rect))
+            return E_NOT_SUFFICIENT_BUFFER;
+        if (GetWindowLongW(hwnd, GWL_STYLE) & WS_CHILD)
+            return E_HANDLE;
+
+        /* DWM frame bounds are always in physical coords */
+        //context = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+        if (GetWindowRect(hwnd, rect))
+            hr = S_OK;
+        else
+            hr = HRESULT_FROM_WIN32(GetLastError());
+
+        //SetThreadDpiAwarenessContext(context);
+        break;
+    }
+    default:
+        FIXME("attribute %ld not implemented.\n", attribute);
+        hr = E_NOTIMPL;
+        break;
+    }
+
+    return hr;
 }
 
 /**********************************************************************

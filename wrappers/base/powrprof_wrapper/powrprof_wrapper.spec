@@ -36,6 +36,9 @@
 
 #Vista Functions
 @ stdcall PowerWriteSettingAttributes(ptr ptr long)
+@ stdcall PowerReadACValueIndex(ptr ptr ptr ptr long)
+@ stdcall PowerReadDCValueIndex(ptr ptr ptr ptr long)
+@ stdcall PowerWriteACValueIndex(ptr ptr ptr ptr long)
 
 #Win8 Functions
 @ stdcall PowerRegisterSuspendResumeNotification(long ptr ptr)

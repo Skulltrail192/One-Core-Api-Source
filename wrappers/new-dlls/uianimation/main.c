@@ -31,7 +31,6 @@
 #include "initguid.h"
 #include "uianimation.h"
 
-#include "wine/heap.h"
 #include "wine/debug.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(uianimation);
@@ -139,7 +138,7 @@ static ULONG WINAPI animation_storyboard_AddRef( IUIAnimationStoryboard *iface )
     struct animation_storyboard *This = impl_from_IUIAnimationStoryboard( iface );
     ULONG ref = InterlockedIncrement( &This->ref );
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
     return ref;
 }
 
@@ -148,10 +147,10 @@ static ULONG WINAPI animation_storyboard_Release( IUIAnimationStoryboard *iface 
     struct animation_storyboard *This = impl_from_IUIAnimationStoryboard( iface );
     ULONG ref = InterlockedDecrement(&This->ref);
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
 
     if (!ref)
-        heap_free( This );
+        free( This );
 
     return ref;
 }
@@ -308,7 +307,7 @@ const struct IUIAnimationStoryboardVtbl animation_storyboard_vtbl =
 
 static HRESULT animation_storyboard_create( IUIAnimationStoryboard **obj )
 {
-    struct animation_storyboard *This = heap_alloc( sizeof(*This) );
+    struct animation_storyboard *This = malloc( sizeof(*This) );
 
     if (!This) return E_OUTOFMEMORY;
     This->IUIAnimationStoryboard_iface.lpVtbl = &animation_storyboard_vtbl;
@@ -359,7 +358,7 @@ static ULONG WINAPI animation_var_AddRef( IUIAnimationVariable *iface )
     struct animation_var *This = impl_from_IUIAnimationVariable( iface );
     ULONG ref = InterlockedIncrement( &This->ref );
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
     return ref;
 }
 
@@ -368,10 +367,10 @@ static ULONG WINAPI animation_var_Release( IUIAnimationVariable *iface )
     struct animation_var *This = impl_from_IUIAnimationVariable( iface );
     ULONG ref = InterlockedDecrement(&This->ref);
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
 
     if (!ref)
-        heap_free( This );
+        free( This );
 
     return ref;
 }
@@ -498,7 +497,7 @@ const struct IUIAnimationVariableVtbl animation_var_vtbl =
 
 static HRESULT animation_var_create(DOUBLE initial, IUIAnimationVariable **obj )
 {
-    struct animation_var *This = heap_alloc( sizeof(*This) );
+    struct animation_var *This = malloc( sizeof(*This) );
 
     if (!This) return E_OUTOFMEMORY;
     This->IUIAnimationVariable_iface.lpVtbl = &animation_var_vtbl;
@@ -548,7 +547,7 @@ static ULONG WINAPI manager_AddRef( IUIAnimationManager *iface )
     struct manager *This = impl_from_IUIAnimationManager( iface );
     ULONG ref = InterlockedIncrement( &This->ref );
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
     return ref;
 }
 
@@ -557,11 +556,11 @@ static ULONG WINAPI manager_Release( IUIAnimationManager *iface )
     struct manager *This = impl_from_IUIAnimationManager( iface );
     ULONG ref = InterlockedDecrement(&This->ref);
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
 
     if (!ref)
     {
-        heap_free( This );
+        free( This );
     }
 
     return ref;
@@ -730,7 +729,7 @@ const struct IUIAnimationManagerVtbl manager_vtbl =
 
 static HRESULT manager_create( IUnknown *outer, REFIID iid, void **obj )
 {
-    struct manager *This = heap_alloc( sizeof(*This) );
+    struct manager *This = malloc( sizeof(*This) );
     HRESULT hr;
 
     if (!This) return E_OUTOFMEMORY;
@@ -781,7 +780,7 @@ static ULONG WINAPI timer_AddRef( IUIAnimationTimer *iface )
     struct timer *This = impl_from_IUIAnimationTimer( iface );
     ULONG ref = InterlockedIncrement( &This->ref );
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
     return ref;
 }
 
@@ -790,10 +789,10 @@ static ULONG WINAPI timer_Release( IUIAnimationTimer *iface )
     struct timer *This = impl_from_IUIAnimationTimer( iface );
     ULONG ref = InterlockedDecrement(&This->ref);
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
 
     if (!ref)
-        heap_free( This );
+        free( This );
 
     return ref;
 }
@@ -866,7 +865,7 @@ const struct IUIAnimationTimerVtbl timer_vtbl =
 
 static HRESULT timer_create( IUnknown *outer, REFIID iid, void **obj )
 {
-    struct timer *This = heap_alloc( sizeof(*This) );
+    struct timer *This = malloc( sizeof(*This) );
     HRESULT hr;
 
     if (!This)
@@ -918,7 +917,7 @@ static ULONG WINAPI tr_factory_AddRef( IUIAnimationTransitionFactory *iface )
     struct tr_factory *This = impl_from_IUIAnimationTransitionFactory( iface );
     ULONG ref = InterlockedIncrement( &This->ref );
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
     return ref;
 }
 
@@ -927,10 +926,10 @@ static ULONG WINAPI tr_factory_Release( IUIAnimationTransitionFactory *iface )
     struct tr_factory *This = impl_from_IUIAnimationTransitionFactory( iface );
     ULONG ref = InterlockedDecrement(&This->ref);
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
 
     if (!ref)
-        heap_free( This );
+        free( This );
 
     return ref;
 }
@@ -953,7 +952,7 @@ const struct IUIAnimationTransitionFactoryVtbl tr_factory_vtbl =
 
 static HRESULT transition_create( IUnknown *outer, REFIID iid, void **obj )
 {
-    struct tr_factory *This = heap_alloc( sizeof(*This) );
+    struct tr_factory *This = malloc( sizeof(*This) );
     HRESULT hr;
 
     if (!This) return E_OUTOFMEMORY;
@@ -1005,7 +1004,7 @@ static ULONG WINAPI tr_library_AddRef( IUIAnimationTransitionLibrary *iface )
     struct tr_library *This = impl_from_IUIAnimationTransitionLibrary( iface );
     ULONG ref = InterlockedIncrement( &This->ref );
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
     return ref;
 }
 
@@ -1014,10 +1013,10 @@ static ULONG WINAPI tr_library_Release( IUIAnimationTransitionLibrary *iface )
     struct tr_library *This = impl_from_IUIAnimationTransitionLibrary( iface );
     ULONG ref = InterlockedDecrement(&This->ref);
 
-    TRACE( "(%p) ref = %u\n", This, ref );
+    TRACE( "(%p) ref = %lu\n", This, ref );
 
     if (!ref)
-        heap_free( This );
+        free( This );
 
     return ref;
 }
@@ -1141,7 +1140,7 @@ const struct IUIAnimationTransitionLibraryVtbl tr_library_vtbl =
 
 static HRESULT library_create( IUnknown *outer, REFIID iid, void **obj )
 {
-    struct tr_library *This = heap_alloc( sizeof(*This) );
+    struct tr_library *This = malloc( sizeof(*This) );
     HRESULT hr;
 
     if (!This) return E_OUTOFMEMORY;
