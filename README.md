@@ -2,6 +2,8 @@ Welcome to One-Core-API!
 
 Here you can found source code of One-Core-API project. It is based on ReactOS source and use ReactOS's build environment and is compatible with Windows Server 2003 SP2, Windows XP SP3 and Windows XP x64 SP2. You can do amazing things installing binaries.
 
+This is software that uses modified files from the respective systems, contains other files still in the testing or experimental phase and has only one developer. In other words, it is impossible to predict all possible scenarios on all possible types of computers or virtual machines. Between XP/2003 and Vista there was the biggest leap in new APIs, new technologies and modifications to existing APIs, so it is very difficult to have the same level of compatibility in NT5 as in NT6. Be calm, be prudent and before saying that this software is bad or "crap", report the defect in the issues and as soon as possible, it will be analyzed and I will try to correct the problem. Help me, complaining or defaming the software doesn't do anyone any good.
+
 Now, we will describe folders present on this repository:
 
 Contains all ReactOS code and addition of wrappers, new dlls present in Windows Vista, drivers and API-SETs. 
@@ -11,10 +13,10 @@ You can run several programs with One-Core-API, like:
     Web Storm 2018
     Intelliji 2018 (maybe other versions works)
     Filezilla (lastest)
-    Visual Studio Code 1.18
-    Chrome up to version 60
-    Opera up to version 38
-    Firefox up to version 53
+    Visual Studio Code 1.81
+    Chrome up to version 123
+    Opera up to version 106
+    Firefox up to version 122
     JDK 1.8
     Maxthon 5.1
     Python 3.6
