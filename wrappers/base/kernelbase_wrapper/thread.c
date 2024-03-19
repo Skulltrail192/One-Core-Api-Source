@@ -344,58 +344,234 @@ BOOL isXPOrLower(){
 	return FALSE;
 }
 
-/***********************************************************************
- *           FlsAlloc   (KERNEL32.@) - For .Net 4.5.1 + Framework Support (native functions not work)
+// /***********************************************************************
+ // *           FlsAlloc   (KERNEL32.@) - For .Net 4.5.1 + Framework Support (native functions not work)
+ // */
+// DWORD WINAPI FlsAlloc( PFLS_CALLBACK_FUNCTION lpCallback )
+// {
+	// // if(isXPOrLower()){
+		// // return TlsAlloc();				
+	// // }else{
+		// DWORD index;		
+		// if (!set_ntstatus( RtlFlsAlloc( lpCallback, &index ))) return FLS_OUT_OF_INDEXES;
+		// return index;		
+	// //}	
+// }
+
+// /***********************************************************************
+ // *           FlsFree   (KERNEL32.@) - Framework Support (native functions not work)
+ // */
+// BOOL WINAPI FlsFree( DWORD index )
+// {	
+	// // if(isXPOrLower()){
+		// // return TlsFree(index); 	
+	// // }else{
+		// return set_ntstatus( RtlFlsFree( index ));		
+	// //}	
+// }
+
+// /***********************************************************************
+ // *           FlsGetValue   (KERNEL32.@) - Framework Support (native functions not work)
+ // */
+// PVOID WINAPI FlsGetValue( DWORD index )
+// {
+	// // if(isXPOrLower()){
+		// // return TlsGetValue(index); 	
+	// // }else{
+		// void *data;
+
+		// if (!set_ntstatus( RtlFlsGetValue( index, &data ))) return NULL;
+		// SetLastError( ERROR_SUCCESS );
+		// return data;	
+	// //}		
+// }
+
+// /***********************************************************************
+ // *           FlsSetValue   (KERNEL32.@) - Framework Support (native functions not work)
+ // */
+// BOOL WINAPI FlsSetValue( DWORD index, PVOID lpFlsData )
+// {
+	// // if(isXPOrLower()){
+		// // return TlsSetValue(index, lpFlsData);	
+	// // }else{
+		// return set_ntstatus( RtlFlsSetValue( index, lpFlsData ));		
+	// //}	
+// }
+
+/*
+ * @implemented
  */
-DWORD WINAPI FlsAlloc( PFLS_CALLBACK_FUNCTION lpCallback )
+DWORD
+WINAPI
+FlsAlloc(PFLS_CALLBACK_FUNCTION lpCallback)
 {
-	if(isXPOrLower()){
-		return TlsAlloc();				
-	}else{
-		DWORD index;		
-		if (!set_ntstatus( RtlFlsAlloc( lpCallback, &index ))) return FLS_OUT_OF_INDEXES;
-		return index;		
-	}	
+    DWORD dwFlsIndex;
+    PPEB Peb = NtCurrentPeb();
+    PRTL_FLS_DATA pFlsData;
+
+    RtlAcquirePebLock();
+
+    pFlsData = NtCurrentTeb()->FlsData;
+
+    if (!Peb->FlsCallback &&
+        !(Peb->FlsCallback = RtlAllocateHeap(RtlGetProcessHeap(), HEAP_ZERO_MEMORY,
+                                             FLS_MAXIMUM_AVAILABLE * sizeof(PVOID))))
+    {
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        dwFlsIndex = FLS_OUT_OF_INDEXES;
+    }
+    else
+    {
+        dwFlsIndex = RtlFindClearBitsAndSet(Peb->FlsBitmap, 1, 1);
+        if (dwFlsIndex != FLS_OUT_OF_INDEXES)
+        {
+            if (!pFlsData &&
+                !(pFlsData = RtlAllocateHeap(RtlGetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(RTL_FLS_DATA))))
+            {
+                RtlClearBits(Peb->FlsBitmap, dwFlsIndex, 1);
+                dwFlsIndex = FLS_OUT_OF_INDEXES;
+                SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+            }
+            else
+            {
+                if (!NtCurrentTeb()->FlsData)
+                {
+                    NtCurrentTeb()->FlsData = pFlsData;
+                    InsertTailList(&Peb->FlsListHead, &pFlsData->ListEntry);
+                }
+
+                pFlsData->Data[dwFlsIndex] = NULL; /* clear the value */
+                Peb->FlsCallback[dwFlsIndex] = lpCallback;
+
+                if (dwFlsIndex > Peb->FlsHighIndex)
+                    Peb->FlsHighIndex = dwFlsIndex;
+            }
+        }
+        else
+        {
+            SetLastError(ERROR_NO_MORE_ITEMS);
+        }
+    }
+    RtlReleasePebLock();
+    return dwFlsIndex;
 }
 
-/***********************************************************************
- *           FlsFree   (KERNEL32.@) - Framework Support (native functions not work)
+
+/*
+ * @implemented
  */
-BOOL WINAPI FlsFree( DWORD index )
-{	
-	if(isXPOrLower()){
-		return TlsFree(index); 	
-	}else{
-		return set_ntstatus( RtlFlsFree( index ));		
-	}	
+BOOL
+WINAPI
+FlsFree(DWORD dwFlsIndex)
+{
+    BOOL ret;
+    PPEB Peb = NtCurrentPeb();
+
+    if (dwFlsIndex >= FLS_MAXIMUM_AVAILABLE)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    RtlAcquirePebLock();
+
+    _SEH2_TRY
+    {
+        ret = RtlAreBitsSet(Peb->FlsBitmap, dwFlsIndex, 1);
+        if (ret)
+        {
+            PLIST_ENTRY Entry;
+            PFLS_CALLBACK_FUNCTION lpCallback;
+
+            RtlClearBits(Peb->FlsBitmap, dwFlsIndex, 1);
+            lpCallback = Peb->FlsCallback[dwFlsIndex];
+
+            for (Entry = Peb->FlsListHead.Flink; Entry != &Peb->FlsListHead; Entry = Entry->Flink)
+            {
+                PRTL_FLS_DATA pFlsData;
+
+                pFlsData = CONTAINING_RECORD(Entry, RTL_FLS_DATA, ListEntry);
+                if (pFlsData->Data[dwFlsIndex])
+                {
+                    if (lpCallback)
+                    {
+                        lpCallback(pFlsData->Data[dwFlsIndex]);
+                    }
+                    pFlsData->Data[dwFlsIndex] = NULL;
+                }
+            }
+            Peb->FlsCallback[dwFlsIndex] = NULL;
+        }
+        else
+        {
+            SetLastError(ERROR_INVALID_PARAMETER);
+        }
+    }
+    _SEH2_FINALLY
+    {
+        RtlReleasePebLock();
+    }
+    _SEH2_END;
+
+    return ret;
 }
 
-/***********************************************************************
- *           FlsGetValue   (KERNEL32.@) - Framework Support (native functions not work)
- */
-PVOID WINAPI FlsGetValue( DWORD index )
-{
-	if(isXPOrLower()){
-		return TlsGetValue(index); 	
-	}else{
-		void *data;
 
-		if (!set_ntstatus( RtlFlsGetValue( index, &data ))) return NULL;
-		SetLastError( ERROR_SUCCESS );
-		return data;	
-	}		
+/*
+ * @implemented
+ */
+PVOID
+WINAPI
+FlsGetValue(DWORD dwFlsIndex)
+{
+    PRTL_FLS_DATA pFlsData;
+
+    pFlsData = NtCurrentTeb()->FlsData;
+    if (!dwFlsIndex || dwFlsIndex >= FLS_MAXIMUM_AVAILABLE || !pFlsData)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return NULL;
+    }
+
+    SetLastError(ERROR_SUCCESS);
+    return pFlsData->Data[dwFlsIndex];
 }
 
-/***********************************************************************
- *           FlsSetValue   (KERNEL32.@) - Framework Support (native functions not work)
+
+/*
+ * @implemented
  */
-BOOL WINAPI FlsSetValue( DWORD index, PVOID lpFlsData )
+BOOL
+WINAPI
+FlsSetValue(DWORD dwFlsIndex,
+            PVOID lpFlsData)
 {
-	if(isXPOrLower()){
-		return TlsSetValue(index, lpFlsData);	
-	}else{
-		return set_ntstatus( RtlFlsSetValue( index, lpFlsData ));		
-	}	
+    PRTL_FLS_DATA pFlsData;
+
+    if (!dwFlsIndex || dwFlsIndex >= FLS_MAXIMUM_AVAILABLE)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    pFlsData = NtCurrentTeb()->FlsData;
+
+    if (!NtCurrentTeb()->FlsData &&
+        !(NtCurrentTeb()->FlsData = RtlAllocateHeap(RtlGetProcessHeap(), HEAP_ZERO_MEMORY,
+                                                    sizeof(RTL_FLS_DATA))))
+    {
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        return FALSE;
+    }
+    if (!pFlsData)
+    {
+        pFlsData = NtCurrentTeb()->FlsData;
+        RtlAcquirePebLock();
+        InsertTailList(&NtCurrentPeb()->FlsListHead, &pFlsData->ListEntry);
+        RtlReleasePebLock();
+    }
+    pFlsData->Data[dwFlsIndex] = lpFlsData;
+    return TRUE;
 }
 
 /***********************************************************************
@@ -423,12 +599,12 @@ ConvertThreadToFiberEx(
 
     /* Are we already a fiber? */
     Teb = NtCurrentTeb();
-    // if (Teb->HasFiberData)
-    // {
-        // /* Fail */
-        // SetLastError(ERROR_ALREADY_FIBER);
-        // return NULL;
-    // }
+    if (Teb->HasFiberData)
+    {
+        /* Fail */
+        SetLastError(ERROR_ALREADY_FIBER);
+        return NULL;
+    }
 
     /* Allocate the fiber */
     Fiber = RtlAllocateHeap(RtlGetProcessHeap(),
@@ -458,7 +634,7 @@ ConvertThreadToFiberEx(
 
     /* Associate the fiber to the current thread */
     Teb->NtTib.FiberData = Fiber;
-   // Teb->HasFiberData = TRUE;
+    Teb->HasFiberData = TRUE;
 
     /* Return opaque fiber data */
     return (LPVOID)Fiber;
@@ -925,7 +1101,8 @@ CreateRemoteThreadEx(
  */
 BOOL WINAPI IsThreadAFiber(void)
 {
-    return NtCurrentTeb()->NtTib.FiberData != NULL;
+	//return NtCurrentTeb()->NtTib.FiberData != NULL;
+    return NtCurrentTeb()->HasFiberData;
 }
 
 /***********************************************************************
@@ -1340,4 +1517,20 @@ OpenThread(IN DWORD dwDesiredAccess,
     }
 
     return ThreadHandle;
+}
+
+HANDLE GetCurrentTransaction()
+{
+	HANDLE result; // eax
+
+	result = NtCurrentTeb()->CurrentTransactionHandle;
+	if ( !result )
+		return (HANDLE)-1;
+	return result;
+}
+
+BOOLEAN SetCurrentTransaction(HANDLE Transaction)
+{
+	NtCurrentTeb()->CurrentTransactionHandle = Transaction;
+	return 1;
 }

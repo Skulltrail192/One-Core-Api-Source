@@ -19,7 +19,7 @@ Revision History:
 --*/
 
 #include "main.h"
-#include "winbase.h"
+#include <winbase.h>
 
 WINE_DEFAULT_DEBUG_CHANNEL(filehops); 
 
@@ -104,8 +104,6 @@ WINE_DEFAULT_DEBUG_CHANNEL(filehops);
 
 #define REMOTE_PROTOCOL_FLAG_LOOPBACK           0x00000001
 #define REMOTE_PROTOCOL_FLAG_OFFLINE            0x00000002
-
-#define FileRemoteProtocolInformation 0x37
 
 /*
  * @implemented

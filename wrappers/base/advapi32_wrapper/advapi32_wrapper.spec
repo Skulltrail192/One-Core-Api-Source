@@ -618,8 +618,6 @@
 645 stdcall UpdateTraceW(double wstr ptr) #ntdll.EtwUpdateTraceW ; Windows XP doesn't have this function on Ntdll
 646 stdcall WdmWmiServiceMain(ptr long)
 647 stdcall WmiCloseBlock(ptr)
-648 stdcall WmiCloseTraceWithCursor(ptr)
-649 stdcall WmiConvertTimestamp(long long long)
 650 stdcall WmiDevInstToInstanceNameA(ptr long str long)
 651 stdcall WmiDevInstToInstanceNameW(ptr long wstr long)
 652 stdcall WmiEnumerateGuids(long long)
@@ -629,15 +627,12 @@
 656 stdcall WmiFileHandleToInstanceNameW(long long ptr long)
 657 stdcall WmiFreeBuffer(ptr)
 658 stdcall WmiGetFirstTraceOffset(long long)
-659 stdcall WmiGetNextEvent(long)
 660 stdcall WmiGetTraceHeader(long long long)
 661 stdcall WmiMofEnumerateResourcesA(long long long)
 662 stdcall WmiMofEnumerateResourcesW(long long long)
 663 stdcall WmiNotificationRegistrationA(ptr long ptr long long) #ntdll.EtwNotificationRegistrationA ; Windows XP doesn't have this function on Ntdll
 664 stdcall WmiNotificationRegistrationW(ptr long ptr long long) #ntdll.EtwNotificationRegistrationW ; Windows XP doesn't have this function on Ntdll
 665 stdcall WmiOpenBlock(long long long)
-666 stdcall WmiOpenTraceWithCursor(long long) 
-667 stdcall WmiParseTraceEvent(long long long long long)
 668 stdcall WmiQueryAllDataA(long ptr ptr)
 669 stdcall WmiQueryAllDataMultipleA(long long long ptr)
 670 stdcall WmiQueryAllDataMultipleW(long long long ptr)
@@ -678,7 +673,7 @@
 486 stdcall RegGetValueA(long str str long ptr ptr ptr) 
 487 stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) 
 
-; @ stdcall LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr)
+@ stdcall -stub LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr)
 
 #Vista Functions implemented (without redirection)
 @ stdcall AddMandatoryAce(ptr long long long ptr)
@@ -889,3 +884,10 @@
 567 stdcall SetNamedSecurityInfoW(wstr long ptr ptr ptr ptr ptr) SetNamedSecurityInfoWInternal
 576 stdcall SetSecurityInfo(long long long ptr ptr ptr ptr) SetSecurityInfoInternal
 583 stdcall SetTokenInformation(ptr long ptr long) SetTokenInformationInternal
+
+#Missing on Longhorn/vista
+648 stdcall WmiCloseTraceWithCursor(ptr) advapibase.WmiCloseTraceWithCursor
+649 stdcall WmiConvertTimestamp(long long long) advapibase.WmiConvertTimestamp
+659 stdcall WmiGetNextEvent(long) advapibase.WmiGetNextEvent
+666 stdcall WmiOpenTraceWithCursor(long long) advapi32.WmiOpenTraceWithCursor
+667 stdcall WmiParseTraceEvent(long long long long long) advapibase.WmiParseTraceEvent

@@ -50,6 +50,9 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+#define PROCESS_DEP_ENABLE 0x00000001
+#define PROCESS_DEP_DISABLE_ATL_THUNK_EMULATION 0x00000002
+
 #define FIND_DATA_SIZE 0x4000
 #define BASESRV_SERVERDLL_INDEX 1
 #define LOCALE_NAME_USER_DEFAULT    NULL
@@ -1092,66 +1095,182 @@ PathCchCombineEx(
 	DWORD flags
 );
 
-// typedef struct {
-  // UINT  cbSize;
-  // UINT  HistoryBufferSize;
-  // UINT  NumberOfHistoryBuffers;
-  // DWORD dwFlags;
-// } CONSOLE_HISTORY_INFO, *PCONSOLE_HISTORY_INFO;
+typedef struct {
+  UINT  cbSize;
+  UINT  HistoryBufferSize;
+  UINT  NumberOfHistoryBuffers;
+  DWORD dwFlags;
+} CONSOLE_HISTORY_INFO, *PCONSOLE_HISTORY_INFO;
 
-// typedef struct _CONSOLE_SCREEN_BUFFER_INFOEX {
-  // ULONG      cbSize;
-  // COORD      dwSize;
-  // COORD      dwCursorPosition;
-  // WORD       wAttributes;
-  // SMALL_RECT srWindow;
-  // COORD      dwMaximumWindowSize;
-  // WORD       wPopupAttributes;
-  // BOOL       bFullscreenSupported;
-  // COLORREF   ColorTable[16];
-// } CONSOLE_SCREEN_BUFFER_INFOEX, *PCONSOLE_SCREEN_BUFFER_INFOEX;
+typedef struct _CONSOLE_SCREEN_BUFFER_INFOEX {
+  ULONG      cbSize;
+  COORD      dwSize;
+  COORD      dwCursorPosition;
+  WORD       wAttributes;
+  SMALL_RECT srWindow;
+  COORD      dwMaximumWindowSize;
+  WORD       wPopupAttributes;
+  BOOL       bFullscreenSupported;
+  COLORREF   ColorTable[16];
+} CONSOLE_SCREEN_BUFFER_INFOEX, *PCONSOLE_SCREEN_BUFFER_INFOEX;
 
-// typedef struct _CONSOLE_FONT_INFOEX {
-  // ULONG cbSize;
-  // DWORD nFont;
-  // COORD dwFontSize;
-  // UINT  FontFamily;
-  // UINT  FontWeight;
-  // WCHAR FaceName[LF_FACESIZE];
-// } CONSOLE_FONT_INFOEX, *PCONSOLE_FONT_INFOEX;
+typedef struct _CONSOLE_FONT_INFOEX {
+  ULONG cbSize;
+  DWORD nFont;
+  COORD dwFontSize;
+  UINT  FontFamily;
+  UINT  FontWeight;
+  WCHAR FaceName[LF_FACESIZE];
+} CONSOLE_FONT_INFOEX, *PCONSOLE_FONT_INFOEX;
 
-// typedef struct _CONSOLE_GRAPHICS_BUFFER_INFO {
-       // DWORD        dwBitMapInfoLength;
-       // LPBITMAPINFO lpBitMapInfo;
-       // DWORD        dwUsage;    // DIB_PAL_COLORS or DIB_RGB_COLORS
-       // HANDLE       hMutex;
-       // PVOID        lpBitMap;
-// } CONSOLE_GRAPHICS_BUFFER_INFO, *PCONSOLE_GRAPHICS_BUFFER_INFO;
+typedef struct _CONSOLE_GRAPHICS_BUFFER_INFO {
+       DWORD        dwBitMapInfoLength;
+       LPBITMAPINFO lpBitMapInfo;
+       DWORD        dwUsage;    // DIB_PAL_COLORS or DIB_RGB_COLORS
+       HANDLE       hMutex;
+       PVOID        lpBitMap;
+} CONSOLE_GRAPHICS_BUFFER_INFO, *PCONSOLE_GRAPHICS_BUFFER_INFO;
 
-// typedef enum _FILE_INFO_BY_HANDLE_CLASS {
-    // FileBasicInfo,
-    // FileStandardInfo,
-    // FileNameInfo,
-    // FileRenameInfo,
-    // FileDispositionInfo,
-    // FileAllocationInfo,
-    // FileEndOfFileInfo,
-    // FileStreamInfo,
-    // FileCompressionInfo,
-    // FileAttributeTagInfo,
-    // FileIdBothDirectoryInfo,
-    // FileIdBothDirectoryRestartInfo,
-    // FileIoPriorityHintInfo,
-    // FileRemoteProtocolInfo,
-    // FileFullDirectoryInfo,
-    // FileFullDirectoryRestartInfo,
-    // FileStorageInfo,
-    // FileAlignmentInfo,
-    // FileIdInfo,
-    // FileIdExtdDirectoryInfo,
-    // FileIdExtdDirectoryRestartInfo,
-    // MaximumFileInfoByHandlesClass
-// } FILE_INFO_BY_HANDLE_CLASS, *PFILE_INFO_BY_HANDLE_CLASS;
+typedef enum _FILE_ID_TYPE {
+    FileIdType,
+    ObjectIdType,
+    ExtendedFileIdType,
+    MaximumFileIdType
+} FILE_ID_TYPE, *PFILE_ID_TYPE;
+
+typedef struct _FILE_ID_DESCRIPTOR {
+    DWORD        dwSize;
+    FILE_ID_TYPE Type;
+    union {
+        LARGE_INTEGER FileId;
+        GUID          ObjectId;
+    } DUMMYUNIONNAME;
+} FILE_ID_DESCRIPTOR, *LPFILE_ID_DESCRIPTOR;
+
+typedef enum _FILE_INFO_BY_HANDLE_CLASS {
+    FileBasicInfo,
+    FileStandardInfo,
+    FileNameInfo,
+    FileRenameInfo,
+    FileDispositionInfo,
+    FileAllocationInfo,
+    FileEndOfFileInfo,
+    FileStreamInfo,
+    FileCompressionInfo,
+    FileAttributeTagInfo,
+    FileIdBothDirectoryInfo,
+    FileIdBothDirectoryRestartInfo,
+    FileIoPriorityHintInfo,
+    FileRemoteProtocolInfo,
+    FileFullDirectoryInfo,
+    FileFullDirectoryRestartInfo,
+    FileStorageInfo,
+    FileAlignmentInfo,
+    FileIdInfo,
+    FileIdExtdDirectoryInfo,
+    FileIdExtdDirectoryRestartInfo,
+    MaximumFileInfoByHandlesClass
+} FILE_INFO_BY_HANDLE_CLASS, *PFILE_INFO_BY_HANDLE_CLASS;
+
+typedef struct _FILE_BASIC_INFO {
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    DWORD FileAttributes;
+} FILE_BASIC_INFO, *PFILE_BASIC_INFO;
+
+typedef struct _FILE_STANDARD_INFO {
+    LARGE_INTEGER AllocationSize;
+    LARGE_INTEGER EndOfFile;
+    DWORD NumberOfLinks;
+    BOOLEAN DeletePending;
+    BOOLEAN Directory;
+} FILE_STANDARD_INFO, *PFILE_STANDARD_INFO;
+
+typedef struct _FILE_NAME_INFO {
+    DWORD FileNameLength;
+    WCHAR FileName[1];
+} FILE_NAME_INFO, *PFILE_NAME_INFO;
+
+typedef enum _PRIORITY_HINT {
+    IoPriorityHintVeryLow,
+    IoPriorityHintLow,
+    IoPriorityHintNormal,
+    MaximumIoPriorityHintType
+} PRIORITY_HINT;
+
+typedef struct _FILE_IO_PRIORITY_HINT_INFO {
+    PRIORITY_HINT PriorityHint;
+} FILE_IO_PRIORITY_HINT_INFO;
+
+typedef struct _FILE_COMPRESSION_INFO {
+    LARGE_INTEGER CompressedFileSize;
+    WORD CompressionFormat;
+    UCHAR CompressionUnitShift;
+    UCHAR ChunkShift;
+    UCHAR ClusterShift;
+    UCHAR Reserved[3];
+} FILE_COMPRESSION_INFO, *PFILE_COMPRESSION_INFO;
+
+typedef struct _FILE_ATTRIBUTE_TAG_INFO {
+    DWORD FileAttributes;
+    DWORD ReparseTag;
+} FILE_ATTRIBUTE_TAG_INFO, *PFILE_ATTRIBUTE_TAG_INFO;
+
+typedef struct _FILE_ID_BOTH_DIR_INFO {
+    DWORD         NextEntryOffset;
+    DWORD         FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    DWORD         FileAttributes;
+    DWORD         FileNameLength;
+    DWORD         EaSize;
+    CCHAR         ShortNameLength;
+    WCHAR         ShortName[12];
+    LARGE_INTEGER FileId;
+    WCHAR         FileName[1];
+} FILE_ID_BOTH_DIR_INFO, *PFILE_ID_BOTH_DIR_INFO;
+
+typedef struct _FILE_REMOTE_PROTOCOL_INFO {
+    USHORT StructureVersion;
+    USHORT StructureSize;
+    ULONG Protocol;
+    USHORT ProtocolMajorVersion;
+    USHORT ProtocolMinorVersion;
+    USHORT ProtocolRevision;
+    USHORT Reserved;
+    ULONG Flags;
+    struct {
+        ULONG Reserved[8];
+    } GenericReserved;
+    struct {
+        ULONG Reserved[16];
+    } ProtocolSpecificReserved;
+} FILE_REMOTE_PROTOCOL_INFO, *PFILE_REMOTE_PROTOCOL_INFO;
+
+typedef struct _FILE_RENAME_INFO {
+    BOOLEAN ReplaceIfExists;
+    HANDLE RootDirectory;
+    DWORD FileNameLength;
+    WCHAR FileName[1];
+} FILE_RENAME_INFO, *PFILE_RENAME_INFO;
+
+typedef struct _FILE_ALLOCATION_INFO {
+    LARGE_INTEGER AllocationSize;
+} FILE_ALLOCATION_INFO, *PFILE_ALLOCATION_INFO;
+
+typedef struct _FILE_DISPOSITION_INFO {
+    BOOLEAN DeleteFile;
+} FILE_DISPOSITION_INFO, *PFILE_DISPOSITION_INFO;
+
+typedef struct _FILE_END_OF_FILE_INFO {
+    LARGE_INTEGER EndOfFile;
+} FILE_END_OF_FILE_INFO, *PFILE_END_OF_FILE_INFO;
 
 typedef struct _RTL_BARRIER
 {

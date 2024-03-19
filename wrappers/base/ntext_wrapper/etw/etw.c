@@ -595,7 +595,7 @@ BOOLEAN NTAPI EtwEventProviderEnabled( REGHANDLE handle, UCHAR level, ULONGLONG 
 ULONG NTAPI EtwEventSetInformation( REGHANDLE handle, EVENT_INFO_CLASS class, void *info,
                                      ULONG length )
 {
-    DbgPrint("(%s, %u, %p, %u) stub\n", handle, class, info, length);
+    //DbgPrint("(%s, %u, %p, %u) stub\n", handle, class, info, length);
     return ERROR_SUCCESS;
 }
 

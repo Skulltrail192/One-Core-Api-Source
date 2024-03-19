@@ -623,7 +623,7 @@
 @ stdcall SetupConfigureWmiFromInfSectionW(ptr ptr wstr) setupapibase.SetupConfigureWmiFromInfSectionW
 @ stdcall SetupDiGetActualModelsSectionA(ptr ptr ptr long ptr ptr) setupapibase.SetupDiGetActualModelsSectionA
 @ stdcall SetupDiGetActualModelsSectionW(ptr ptr ptr long ptr ptr) setupapibase.SetupDiGetActualModelsSectionW
-@ stdcall SetupDiRestartDevices(ptr ptr) setupapibase.SetupDiRestartDevices
+@ stdcall SetupDiRestartDevices(ptr ptr) ;setupapibase.SetupDiRestartDevices
 @ stdcall pSetupIsLocalSystem() setupapibase.pSetupIsLocalSystem
 
 #Vista functions

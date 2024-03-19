@@ -2,8 +2,6 @@
 add_definitions(-D_KERNEL32_)
 add_definitions(-D__WINESRC__)
 
-remove_definitions(-D_WIN32_WINNT=0x502)
-add_definitions(-D_WIN32_WINNT=0x600)
 include_directories(
 	${REACTOS_SOURCE_DIR}/sdk/lib/rtl
 	${REACTOS_SOURCE_DIR}/sdk/include/crt
