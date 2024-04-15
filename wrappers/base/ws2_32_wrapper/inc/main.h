@@ -11,7 +11,6 @@
 #include <wine/debug.h>
 #include <wine/list.h>
 #include <wine/unicode.h>
-#include <winsock.h>
 #include <winsock2.h>
 
 #define POLLHUP                    0x0002
@@ -109,14 +108,6 @@ typedef struct addrinfoexW {
   struct addrinfoexW *ai_next;
 } ADDRINFOEXW, *PADDRINFOEXW, *LPADDRINFOEXW;
 
-typedef struct _WSAOVERLAPPED {
-  DWORD    Internal;
-  DWORD    InternalHigh;
-  DWORD    Offset;
-  DWORD    OffsetHigh;
-  WSAEVENT hEvent;
-} WSAOVERLAPPED, *LPWSAOVERLAPPED;
-
 struct timezone {
     int tz_minuteswest; /* minutes W of Greenwich */
     int tz_dsttime;     /* type of dst correction */
@@ -137,29 +128,7 @@ struct getaddrinfo_args
     ADDRINFOEXW **result;
     char *nodename;
     char *servname;
-};	
-
-typedef struct addrinfo {
-  int             ai_flags;
-  int             ai_family;
-  int             ai_socktype;
-  int             ai_protocol;
-  size_t          ai_addrlen;
-  char            *ai_canonname;
-  struct sockaddr *ai_addr;
-  struct addrinfo *ai_next;
-} ADDRINFOA, *PADDRINFOA;
-
-typedef struct addrinfoW {
-  int ai_flags;
-  int ai_family;
-  int ai_socktype;
-  int ai_protocol;
-  size_t ai_addrlen;
-  PWSTR ai_canonname;
-  struct sockaddr *ai_addr;
-  struct addrinfoW *ai_next;
-} ADDRINFOW, *PADDRINFOW;
+};		
 
 typedef struct addrinfoexA {
     int ai_flags;
@@ -214,79 +183,6 @@ typedef void (CALLBACK *LPWSAOVERLAPPED_COMPLETION_ROUTINE)
     DWORD dwFlags
 );
 
-typedef struct _WSABUF {
-  ULONG len;
-  CHAR FAR *buf;
-} WSABUF, FAR * LPWSABUF;
-
-typedef struct _WSAMSG {
-  LPSOCKADDR name;
-  INT namelen;
-  LPWSABUF lpBuffers;
-#if (_WIN32_WINNT >= 0x0600)
-  ULONG dwBufferCount;
-#else
-  DWORD dwBufferCount;
-#endif
-  WSABUF Control;
-#if (_WIN32_WINNT >= 0x0600)
-  ULONG dwFlags;
-#else
-  DWORD dwFlags;
-#endif
-} WSAMSG, *PWSAMSG, *FAR LPWSAMSG;
-
-typedef struct _WSAPROTOCOLCHAIN {
-  int ChainLen;
-  DWORD ChainEntries[MAX_PROTOCOL_CHAIN];
-} WSAPROTOCOLCHAIN, *LPWSAPROTOCOLCHAIN;
-
-typedef struct _WSAPROTOCOL_INFOA {
-  DWORD dwServiceFlags1;
-  DWORD dwServiceFlags2;
-  DWORD dwServiceFlags3;
-  DWORD dwServiceFlags4;
-  DWORD dwProviderFlags;
-  GUID ProviderId;
-  DWORD dwCatalogEntryId;
-  WSAPROTOCOLCHAIN ProtocolChain;
-  int iVersion;
-  int iAddressFamily;
-  int iMaxSockAddr;
-  int iMinSockAddr;
-  int iSocketType;
-  int iProtocol;
-  int iProtocolMaxOffset;
-  int iNetworkByteOrder;
-  int iSecurityScheme;
-  DWORD dwMessageSize;
-  DWORD dwProviderReserved;
-  CHAR szProtocol[WSAPROTOCOL_LEN+1];
-} WSAPROTOCOL_INFOA, *LPWSAPROTOCOL_INFOA;
-
-typedef struct _WSAPROTOCOL_INFOW {
-  DWORD dwServiceFlags1;
-  DWORD dwServiceFlags2;
-  DWORD dwServiceFlags3;
-  DWORD dwServiceFlags4;
-  DWORD dwProviderFlags;
-  GUID ProviderId;
-  DWORD dwCatalogEntryId;
-  WSAPROTOCOLCHAIN ProtocolChain;
-  int iVersion;
-  int iAddressFamily;
-  int iMaxSockAddr;
-  int iMinSockAddr;
-  int iSocketType;
-  int iProtocol;
-  int iProtocolMaxOffset;
-  int iNetworkByteOrder;
-  int iSecurityScheme;
-  DWORD dwMessageSize;
-  DWORD dwProviderReserved;
-  WCHAR szProtocol[WSAPROTOCOL_LEN+1];
-} WSAPROTOCOL_INFOW, * LPWSAPROTOCOL_INFOW;
-
 #ifdef UNICODE
 typedef WSAPROTOCOL_INFOW WSAPROTOCOL_INFO;
 typedef LPWSAPROTOCOL_INFOW LPWSAPROTOCOL_INFO;
@@ -296,24 +192,3 @@ typedef LPWSAPROTOCOL_INFOA LPWSAPROTOCOL_INFO;
 #endif
 
 typedef unsigned int GROUP;
-
-SOCKET
-WINAPI 
-WSASocketA(
-	int af, 
-	int type, 
-	int protocol,
-    LPWSAPROTOCOL_INFOA lpProtocolInfo,
-    GROUP g, 
-	DWORD dwFlags
-);
-
-WINAPI 
-WSASocketW(
-	int af, 
-	int type, 
-	int protocol,
-    LPWSAPROTOCOL_INFOW lpProtocolInfo,
-    GROUP g, 
-	DWORD dwFlags
-);

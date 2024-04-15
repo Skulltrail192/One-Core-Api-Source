@@ -17,8 +17,8 @@
 17  stdcall  recvfrom(long ptr long long ptr ptr)
 18  stdcall  select(long ptr ptr ptr ptr)
 19  stdcall  send(long ptr long long)
-20  stdcall  sendto(long ptr long long ptr long) ws2_base.sendto
-21  stdcall  setsockopt(long long long ptr long) setsockoptInternal
+20  stdcall  sendto(long ptr long long ptr long) ;ws2_base.sendto
+21  stdcall  setsockopt(long long long ptr long) ;setsockoptInternal
 22  stdcall  shutdown(long long)
 23  stdcall  socket(long long long)
 51  stdcall  gethostbyaddr(ptr long long)
@@ -99,8 +99,8 @@
 @ stdcall WSASetEvent(long) kernel32.SetEvent
 @ stdcall WSASetServiceA(ptr long long)
 @ stdcall WSASetServiceW(ptr long long)
-@ stdcall WSASocketA(long long long ptr long long) WSASocketAInternal
-@ stdcall WSASocketW(long long long ptr long long) WSASocketWInternal
+@ stdcall WSASocketA(long long long ptr long long) ;WSASocketAInternal
+@ stdcall WSASocketW(long long long ptr long long) ;WSASocketWInternal
 @ stdcall WSAStringToAddressA(str long ptr ptr ptr)
 @ stdcall WSAStringToAddressW(wstr long ptr ptr ptr)
 @ stdcall WSAWaitForMultipleEvents(long ptr long long long) kernel32.WaitForMultipleObjectsEx
@@ -133,7 +133,7 @@
 @ stdcall -arch=x86_64 WSCWriteProviderOrder32(ptr long)
 @ stdcall -arch=x86_64 WSCUpdateProvider32(ptr wstr ptr long ptr)
 
-#Vista functions
+; #Vista functions
 @ stdcall FreeAddrInfoEx(ptr)
 @ stdcall FreeAddrInfoExW(ptr)
 @ stdcall GetAddrInfoExCancel(ptr)
@@ -148,3 +148,6 @@
 @ stdcall WSCInstallProviderAndChains(ptr wstr wstr long ptr long ptr ptr)
 @ stdcall WSCGetProviderInfo(ptr long ptr ptr long ptr)
 @ stdcall WSCSetProviderInfo(ptr long ptr long long ptr)
+
+;Win8.1 functions
+@ stdcall GetHostNameW(wstr long)

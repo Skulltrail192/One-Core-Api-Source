@@ -28,8 +28,22 @@
 #include <ntsecapi.h>
 #include <winuser.h>
 #include <shlwapi.h>
+#include <stdio.h>
+#include <math.h>
 
 WINE_DEFAULT_DEBUG_CHANNEL(shlwapi);
+
+#define IDS_BYTES_FORMAT 64
+
+/* Structure for formatting byte strings */
+typedef struct tagSHLWAPI_BYTEFORMATS
+{
+  LONGLONG dLimit;
+  double   dDivisor;
+  double   dNormaliser;
+  int      nDecimals;
+  WCHAR     wPrefix;
+} SHLWAPI_BYTEFORMATS;
 
 typedef enum  { 
   SFBS_FLAGS_ROUND_TO_NEAREST_DISPLAYED_DIGIT     = 0x00000001,
@@ -134,16 +148,151 @@ PathCreateFromUrlAlloc(
     return hr;
 }
 
-HRESULT 
-WINAPI 
-StrFormatByteSizeEx(
-        ULONGLONG  ull,
-        SFBS_FLAGS flags,
-  _Out_ PWSTR      pszBuf,
-        UINT       cchBuf
-)
+static void FillNumberFmt(NUMBERFMTW *fmt, LPWSTR decimal_buffer, int decimal_bufwlen,
+                          LPWSTR thousand_buffer, int thousand_bufwlen)
 {
-	return PSStrFormatByteSizeEx(ull, flags, pszBuf, cchBuf);	
+  WCHAR grouping[64];
+  WCHAR *c;
+
+  GetLocaleInfoW(LOCALE_USER_DEFAULT, LOCALE_ILZERO|LOCALE_RETURN_NUMBER, (LPWSTR)&fmt->LeadingZero, sizeof(fmt->LeadingZero)/sizeof(WCHAR));
+  GetLocaleInfoW(LOCALE_USER_DEFAULT, LOCALE_INEGNUMBER|LOCALE_RETURN_NUMBER, (LPWSTR)&fmt->NegativeOrder, sizeof(fmt->NegativeOrder)/sizeof(WCHAR));
+  fmt->NumDigits = 0;
+  GetLocaleInfoW(LOCALE_USER_DEFAULT, LOCALE_SDECIMAL, decimal_buffer, decimal_bufwlen);
+  GetLocaleInfoW(LOCALE_USER_DEFAULT, LOCALE_STHOUSAND, thousand_buffer, thousand_bufwlen);
+  fmt->lpThousandSep = thousand_buffer;
+  fmt->lpDecimalSep = decimal_buffer;
+
+  /* 
+   * Converting grouping string to number as described on 
+   * http://blogs.msdn.com/oldnewthing/archive/2006/04/18/578251.aspx
+   */
+  fmt->Grouping = 0;
+  GetLocaleInfoW(LOCALE_USER_DEFAULT, LOCALE_SGROUPING, grouping, ARRAY_SIZE(grouping));
+  for (c = grouping; *c; c++)
+    if (*c >= '0' && *c < '9')
+    {
+      fmt->Grouping *= 10;
+      fmt->Grouping += *c - '0';
+    }
+
+  if (fmt->Grouping % 10 == 0)
+    fmt->Grouping /= 10;
+  else
+    fmt->Grouping *= 10;
+}
+
+/*************************************************************************
+ * FormatDouble   [internal]
+ *
+ * Format an integer according to the current locale. Prints the specified number of digits
+ * after the decimal point
+ *
+ * RETURNS
+ *  The number of characters written on success or 0 on failure
+ */
+static int FormatDouble(double value, int decimals, LPWSTR pszBuf, int cchBuf)
+{
+  static const WCHAR flfmt[] = {'%','f',0};
+  WCHAR buf[64];
+  NUMBERFMTW fmt;
+  WCHAR decimal[8], thousand[8];
+  
+  swprintf(buf, flfmt, value);
+
+  FillNumberFmt(&fmt, decimal, ARRAY_SIZE(decimal), thousand, ARRAY_SIZE(thousand));
+  fmt.NumDigits = decimals;
+  return GetNumberFormatW(LOCALE_USER_DEFAULT, 0, buf, &fmt, pszBuf, cchBuf);
+}
+
+/*************************************************************************
+ * StrFormatByteSizeEx  [SHLWAPI.@]
+ *
+ */
+
+HRESULT WINAPI StrFormatByteSizeEx(LONGLONG llBytes, SFBS_FLAGS flags, LPWSTR lpszDest,
+                                   UINT cchMax)
+{
+#define KB ((ULONGLONG)1024)
+#define MB (KB*KB)
+#define GB (KB*KB*KB)
+#define TB (KB*KB*KB*KB)
+#define PB (KB*KB*KB*KB*KB)
+
+  static  SHLWAPI_BYTEFORMATS bfFormats[] =
+  {
+    { 10*KB, 10.24, 100.0, 2, 'K' }, /* 10 KB */
+    { 100*KB, 102.4, 10.0, 1, 'K' }, /* 100 KB */
+    { 1000*KB, 1024.0, 1.0, 0, 'K' }, /* 1000 KB */
+    { 10*MB, 10485.76, 100.0, 2, 'M' }, /* 10 MB */
+    { 100*MB, 104857.6, 10.0, 1, 'M' }, /* 100 MB */
+    { 1000*MB, 1048576.0, 1.0, 0, 'M' }, /* 1000 MB */
+    { 10*GB, 10737418.24, 100.0, 2, 'G' }, /* 10 GB */
+    { 100*GB, 107374182.4, 10.0, 1, 'G' }, /* 100 GB */
+    { 1000*GB, 1073741824.0, 1.0, 0, 'G' }, /* 1000 GB */
+    { 10*TB, 10485.76, 100.0, 2, 'T' }, /* 10 TB */
+    { 100*TB, 104857.6, 10.0, 1, 'T' }, /* 100 TB */
+    { 1000*TB, 1048576.0, 1.0, 0, 'T' }, /* 1000 TB */
+    { 10*PB, 10737418.24, 100.00, 2, 'P' }, /* 10 PB */
+    { 100*PB, 107374182.4, 10.00, 1, 'P' }, /* 100 PB */
+    { 1000*PB, 1073741824.0, 1.00, 0, 'P' }, /* 1000 PB */
+    { 0, 10995116277.76, 100.00, 2, 'E' } /* EB's, catch all */
+  };
+  WCHAR wszAdd[] = {' ','?','B',0};
+  double dBytes;
+  UINT i = 0;
+  HINSTANCE hInst = LoadLibraryW(L"shlwapibase.dll");
+
+  TRACE("(0x%s,%d,%p,%d)\n", wine_dbgstr_longlong(llBytes), flags, lpszDest, cchMax);
+
+  if (!cchMax)
+    return E_INVALIDARG;
+
+  if (llBytes < 1024)  /* 1K */
+  {
+    WCHAR wszBytesFormat[64];
+    LoadStringW(hInst, IDS_BYTES_FORMAT, wszBytesFormat, 64);
+    swprintf(lpszDest,  wszBytesFormat, (int)llBytes);
+    return S_OK;
+  }
+
+  /* Note that if this loop completes without finding a match, i will be
+   * pointing at the last entry, which is a catch all for > 1000 PB
+   */
+  while (i < ARRAY_SIZE(bfFormats) - 1)
+  {
+    if (llBytes < bfFormats[i].dLimit)
+      break;
+    i++;
+  }
+  /* Above 1 TB we encounter problems with FP accuracy. So for amounts above
+   * this number we integer shift down by 1 MB first. The table above has
+   * the divisors scaled down from the '< 10 TB' entry onwards, to account
+   * for this. We also add a small fudge factor to get the correct result for
+   * counts that lie exactly on a 1024 byte boundary.
+   */
+  if (i > 8)
+    dBytes = (double)(llBytes >> 20) + 0.001; /* Scale down by 1 MB */
+  else
+    dBytes = (double)llBytes + 0.00001;
+
+  switch(flags)
+  {
+  case SFBS_FLAGS_ROUND_TO_NEAREST_DISPLAYED_DIGIT:
+      dBytes = round(dBytes / bfFormats[i].dDivisor) / bfFormats[i].dNormaliser;
+      break;
+  case SFBS_FLAGS_TRUNCATE_UNDISPLAYED_DECIMAL_DIGITS:
+      dBytes = floor(dBytes / bfFormats[i].dDivisor) / bfFormats[i].dNormaliser;
+      break;
+  default:
+      return E_INVALIDARG;
+  }
+
+  if (!FormatDouble(dBytes, bfFormats[i].nDecimals, lpszDest, cchMax))
+    return E_FAIL;
+
+  wszAdd[1] = bfFormats[i].wPrefix;
+  StrCatBuffW(lpszDest, wszAdd, cchMax);
+  return S_OK;
 }
 
 DWORD __stdcall GetLastErrorError()

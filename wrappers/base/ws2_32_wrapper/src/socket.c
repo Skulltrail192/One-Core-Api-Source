@@ -21,6 +21,8 @@ Revision History:
 #include "main.h"
 #include "stubs.h"
 
+#include "ws2_32.h"
+
 #define IPV6_V6ONLY           27
 #define IPPROTO_IPV6          41
 
@@ -29,7 +31,7 @@ WINE_DEFAULT_DEBUG_CHANNEL(socket);
 /***********************************************************************
  *              inet_ntop                      (WS2_32.@)
  */
-PCSTR WINAPI WS_inet_ntop( INT family, PVOID addr, PSTR buffer, SIZE_T len )
+PCSTR WSAAPI WS_inet_ntop( INT family, PVOID addr, PSTR buffer, SIZE_T len )
 {
 #ifdef HAVE_INET_NTOP
     struct WS_in6_addr *in6;
@@ -65,7 +67,7 @@ PCSTR WINAPI WS_inet_ntop( INT family, PVOID addr, PSTR buffer, SIZE_T len )
     if (!pdst) SetLastError( STATUS_INVALID_PARAMETER );
     return pdst;
 #else
-    FIXME( "not supported on this platform\n" );
+    DbgPrint( "not supported on this platform\n" );
     SetLastError( WSAEAFNOSUPPORT );
     return NULL;
 #endif
@@ -74,7 +76,7 @@ PCSTR WINAPI WS_inet_ntop( INT family, PVOID addr, PSTR buffer, SIZE_T len )
 /***********************************************************************
 *              inet_pton                      (WS2_32.@)
 */
-INT WINAPI WS_inet_pton( INT family, PCSTR addr, PVOID buffer)
+INT WSAAPI WS_inet_pton( INT family, PCSTR addr, PVOID buffer)
 {
 #ifdef HAVE_INET_PTON
     int unixaf, ret;
@@ -217,7 +219,7 @@ int poll( struct pollfd *fds, unsigned int count, int timeout )
 /***********************************************************************
  *     WSAPoll
  */
-int WINAPI WSAPoll(WSAPOLLFD *wfds, ULONG count, int timeout)
+int WSAAPI WSAPoll(WSAPOLLFD *wfds, ULONG count, int timeout)
 {
     int i, ret;
     struct pollfd *ufds;
@@ -279,7 +281,7 @@ int WINAPI WSAPoll(WSAPOLLFD *wfds, ULONG count, int timeout)
 /***********************************************************************
 *              InetPtonW                      (WS2_32.@)
 */
-INT WINAPI InetPtonW(INT family, PCWSTR addr, PVOID buffer)
+INT WSAAPI InetPtonW(INT family, PCWSTR addr, PVOID buffer)
 {
     char *addrA;
     int len;
@@ -310,7 +312,7 @@ INT WINAPI InetPtonW(INT family, PCWSTR addr, PVOID buffer)
 /***********************************************************************
  *              InetNtopW                      (WS2_32.@)
  */
-PCWSTR WINAPI InetNtopW(INT family, PVOID addr, PWSTR buffer, SIZE_T len)
+PCWSTR WSAAPI InetNtopW(INT family, PVOID addr, PWSTR buffer, SIZE_T len)
 {
     char bufferA[WS_INET6_ADDRSTRLEN];
     PWSTR ret = NULL;
@@ -375,7 +377,7 @@ static ADDRINFOEXW *addrinfo_list_AtoW(PADDRINFOA info)
     {
         if (!(infoW->ai_next = addrinfo_AtoW(info->ai_next)))
         {
-            FreeAddrInfoExW(ret);
+            //FreeAddrInfoExW(ret);
             return NULL;
         }
         infoW = infoW->ai_next;
@@ -384,7 +386,7 @@ static ADDRINFOEXW *addrinfo_list_AtoW(PADDRINFOA info)
     return ret;
 }
 
-static void WINAPI getaddrinfo_callback(TP_CALLBACK_INSTANCE *instance, void *context)
+static void WSAAPI getaddrinfo_callback(TP_CALLBACK_INSTANCE *instance, void *context)
 {
     struct getaddrinfo_args *args = context;
     OVERLAPPED *overlapped = args->overlapped;
@@ -397,7 +399,7 @@ static void WINAPI getaddrinfo_callback(TP_CALLBACK_INSTANCE *instance, void *co
     if (res)
     {
         *args->result = addrinfo_list_AtoW(res);
-        overlapped->u.Pointer = args->result;
+        overlapped->Pointer = args->result;
         freeaddrinfo(res);
     }
 
@@ -481,12 +483,12 @@ static int WS_getaddrinfoW(const WCHAR *nodename, const WCHAR *servname, const P
         args->servname = servnameA;
 
         overlapped->Internal = WSAEINPROGRESS;
-        if (!TrySubmitThreadpoolCallback(getaddrinfo_callback, args, NULL))
-        {
-            HeapFree(GetProcessHeap(), 0, args);
-            ret = GetLastError();
-            goto end;
-        }
+        // if (!TrySubmitThreadpoolCallback(getaddrinfo_callback, args, NULL))
+        // {
+            // HeapFree(GetProcessHeap(), 0, args);
+            // ret = GetLastError();
+            // goto end;
+        // }
 
         if (local_nodenameW != nodename)
             HeapFree(GetProcessHeap(), 0, local_nodenameW);
@@ -512,7 +514,7 @@ end:
 /***********************************************************************
  *		GetAddrInfoExW		(WS2_32.@)
  */
-int WINAPI GetAddrInfoExW(const WCHAR *name, const WCHAR *servname, DWORD namespace, GUID *namespace_id,
+int WSAAPI GetAddrInfoExW(const WCHAR *name, const WCHAR *servname, DWORD namespace, GUID *namespace_id,
         const ADDRINFOEXW *hints, ADDRINFOEXW **result, struct WS_timeval *timeout, OVERLAPPED *overlapped,
         LPLOOKUPSERVICE_COMPLETION_ROUTINE completion_routine, HANDLE *handle)
 {
@@ -541,7 +543,7 @@ int WINAPI GetAddrInfoExW(const WCHAR *name, const WCHAR *servname, DWORD namesp
 /***********************************************************************
  *      FreeAddrInfoExW      (WS2_32.@)
  */
-void WINAPI FreeAddrInfoExW(ADDRINFOEXW *ai)
+void WSAAPI FreeAddrInfoExW(ADDRINFOEXW *ai)
 {
     TRACE("(%p)\n", ai);
 
@@ -559,7 +561,7 @@ void WINAPI FreeAddrInfoExW(ADDRINFOEXW *ai)
 /***********************************************************************
  *              WSCGetProviderInfo
  */
-INT WINAPI WSCGetProviderInfo( LPGUID provider, WSC_PROVIDER_INFO_TYPE info_type,
+INT WSAAPI WSCGetProviderInfo( LPGUID provider, WSC_PROVIDER_INFO_TYPE info_type,
                                PBYTE info, size_t* len, DWORD flags, LPINT errcode )
 {
     FIXME( "(%s 0x%08x %p %p 0x%08x %p) Stub!\n",
@@ -580,9 +582,9 @@ INT WINAPI WSCGetProviderInfo( LPGUID provider, WSC_PROVIDER_INFO_TYPE info_type
 /***********************************************************************
  *      FreeAddrInfoEx      (WS2_32.@)
  */
-void WINAPI FreeAddrInfoEx(ADDRINFOEXA *ai)
+void WSAAPI FreeAddrInfoEx(ADDRINFOEXA *ai)
 {
-    TRACE("(%p)\n", ai);
+    //TRACE("(%p)\n", ai);
 
     while (ai)
     {
@@ -598,25 +600,25 @@ void WINAPI FreeAddrInfoEx(ADDRINFOEXA *ai)
 /***********************************************************************
  *		GetAddrInfoExOverlappedResult  (WS2_32.@)
  */
-int WINAPI GetAddrInfoExOverlappedResult(OVERLAPPED *overlapped)
+int WSAAPI GetAddrInfoExOverlappedResult(OVERLAPPED *overlapped)
 {
-    TRACE("(%p)\n", overlapped);
+    //TRACE("(%p)\n", overlapped);
     return overlapped->Internal;
 }
 
 /***********************************************************************
  *		GetAddrInfoExCancel     (WS2_32.@)
  */
-int WINAPI GetAddrInfoExCancel(HANDLE *handle)
+int WSAAPI GetAddrInfoExCancel(HANDLE *handle)
 {
-    FIXME("(%p)\n", handle);
+    DbgPrint("(%p)\n", handle);
     return WSA_INVALID_HANDLE;
 }
 
 /***********************************************************************
  *     WSASendMsg
  */
-int WINAPI WSASendMsg( 
+int WSAAPI WSASendMsg( 
 	SOCKET s,
 	LPWSAMSG msg, 
 	DWORD dwFlags, 
@@ -628,7 +630,7 @@ int WINAPI WSASendMsg(
 	return WSA_INVALID_HANDLE;
 }
 
-SOCKET WINAPI WSASocketAInternal(int af, int type, int protocol,
+SOCKET WSAAPI WSASocketAInternal(int af, int type, int protocol,
                          LPWSAPROTOCOL_INFOA lpProtocolInfo,
                          GROUP g, DWORD dwFlags)
 {
@@ -646,7 +648,7 @@ SOCKET WINAPI WSASocketAInternal(int af, int type, int protocol,
     return WSASocketA(af, type, protocol, lpProtocolInfo, g, dwFlags);
 }
 
-SOCKET WINAPI WSASocketWInternal(int af, int type, int protocol,
+SOCKET WSAAPI WSASocketWInternal(int af, int type, int protocol,
                          LPWSAPROTOCOL_INFOW lpProtocolInfo,
                          GROUP g, DWORD dwFlags)
 {
@@ -665,7 +667,7 @@ SOCKET WINAPI WSASocketWInternal(int af, int type, int protocol,
 }
 
 INT
-WINAPI
+WSAAPI
 setsockoptInternal(
 	IN SOCKET s,
     IN INT level,

@@ -31,7 +31,7 @@ int WINAPI GetHostNameW( WCHAR *name, int namelen )
     struct gethostname_params params = { buf, sizeof(buf) };
     int ret;
 
-    TRACE( "name %p, len %d\n", name, namelen );
+    DbgPrint( "name %p, len %d\n", name, namelen );
 
     if (!name)
     {

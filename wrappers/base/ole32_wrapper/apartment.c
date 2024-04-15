@@ -24,39 +24,36 @@ WINE_DEFAULT_DEBUG_CHANNEL(ole32);
 
 BOOLEAN g_cMTAInits;  // Global variables within ole32 itself
 DWORD gdwMainThreadId;
-
+		
 HRESULT WINAPI CoGetApartmentType(APTTYPE *pAptType, APTTYPEQUALIFIER *pAptQualifier)
 /* 
     win32 - March 7 2021
 	An important OLE function introduced in Windows 7, but should be usable in NT 4 and above.
+	Modified to better support wrappers
 */
 {
+  IUnknown ContextToken;
   HRESULT Status; 
-  BOOLEAN MTAInit; 
   SOleTlsData* ReservedForOle; 
   DWORD CurrentThreadId; 
   DWORD OleFlags; 
   APTTYPE AptTypeTemp; 
   APTTYPEQUALIFIER AptQualifierTemp; 
   TEB *CurrentThreadInfo;
-
+  
   Status = S_OK;
   if ( !pAptType || !pAptQualifier )
     return E_INVALIDARG;
   *pAptType = APTTYPE_CURRENT;
   *pAptQualifier = APTTYPEQUALIFIER_NONE;
-  MTAInit = FALSE;
   CurrentThreadInfo = NtCurrentTeb();
   ReservedForOle = (SOleTlsData*) CurrentThreadInfo->ReservedForOle;
-  if ( g_cMTAInits )
-    MTAInit = TRUE;
-  // The following is a GetCurrentThreadId() replacement.
-  // NtCurrentTeb()->UniqueThread.ClientId or NtCurrentTeb() + 48h (AMD64) or NtCurrentTeb() + 24h (X86)
-  CurrentThreadId = (DWORD)CurrentThreadInfo->ClientId.UniqueThread;
+  CurrentThreadId = GetCurrentThreadId();
 
   if ( !ReservedForOle )
   {
-    if ( MTAInit )
+	// Try to see if COM is initialized
+    if ( CoGetContextToken((ULONG_PTR*)&ContextToken) == 0)
       goto ImplicitMTA;
     return CO_E_NOTINITIALIZED;
   }
@@ -66,7 +63,7 @@ HRESULT WINAPI CoGetApartmentType(APTTYPE *pAptType, APTTYPEQUALIFIER *pAptQuali
     if ( (OleFlags & 0x80) != 0 )
     {
       AptTypeTemp = APTTYPE_STA;
-      if ( CurrentThreadId == gdwMainThreadId )
+      if (FALSE) // not supported yet if ( CurrentThreadId == gdwMainThreadId )
         AptTypeTemp = APTTYPE_MAINSTA;
       *pAptType = AptTypeTemp;
       if ( (OleFlags & 0x400000) != 0 )
@@ -81,7 +78,7 @@ HRESULT WINAPI CoGetApartmentType(APTTYPE *pAptType, APTTYPEQUALIFIER *pAptQuali
       *pAptType = APTTYPE_MTA;
       return Status;
     }
-    if ( MTAInit )
+    if ( CoGetContextToken((ULONG_PTR*)&ContextToken) == 0 )
     {
 ImplicitMTA:
       *pAptType = APTTYPE_MTA;
@@ -95,7 +92,7 @@ ImplicitMTA:
   if ( (OleFlags & 0x80) != 0 )
   {
     AptQualifierTemp = APTTYPEQUALIFIER_NA_ON_STA;
-    if ( CurrentThreadId == gdwMainThreadId )
+    if (FALSE) // not supported yet if ( CurrentThreadId == gdwMainThreadId )
       AptQualifierTemp = APTTYPEQUALIFIER_NA_ON_MAINSTA;
     *pAptQualifier = AptQualifierTemp;
 	return Status;
@@ -105,10 +102,11 @@ ImplicitMTA:
     *pAptQualifier = AptQualifierTemp;
     return Status;
   }
-  if ( MTAInit )
+  if ( TRUE ) // TODO: make replacement for this.
   {
     *pAptQualifier = APTTYPEQUALIFIER_NA_ON_IMPLICIT_MTA;
     return Status;
   }
   return E_FAIL;
 }
+		

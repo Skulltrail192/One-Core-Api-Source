@@ -22,6 +22,8 @@ Revision History:
 
 #include "main.h"
 
+#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
+
 typedef struct _MTA_USAGE_INCREMENTOR
 {
   ULONG ulTime;
@@ -31,52 +33,58 @@ typedef struct _MTA_USAGE_INCREMENTOR
 
 DWORD MTAThreadToRemove = 0;
 
-void CreateMTAUsageThread()
-// Suggestion to self: implement mutex object and use WaitForSingleObject instead.
-// But this does not seem necessary at this time.
+DWORD WINAPI KxCompMTAUsageIncrementerThread(
+    HANDLE Handle)
 {
-	DWORD Tid;
-	CoInitializeEx(NULL, 0);
-	Tid = GetCurrentThreadId();
-	while(MTAThreadToRemove != Tid)
-		Sleep(1); // Sleep(0) is equivalent to taking your CPU hostage when it is unnecessary
-    MTAThreadToRemove = 0;
-	CoUninitialize();
+    CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    SetEvent(Handle);
+    SleepEx(INFINITE, TRUE);
+    CoUninitialize();
+    return 0;
 }
 
-HRESULT WINAPI CoIncrementMTAUsage(CO_MTA_USAGE_COOKIE *pCookie) 
-/*
-   My earlier drafts of this function did not create a thread, but used internal functions and incremented
-   a global value in ole32.dll. Those are not suitable for wrappers.
-   
-   As the main intent of this function is to keep MTA alive when no MTA threads are running, the function
-   creates a thread that initializes a MTA then suspends immediately. The thread is resumed by a calloc
-   to CoDecrementMTAUsage.
-*/
+HRESULT WINAPI CoIncrementMTAUsage(
+    CO_MTA_USAGE_COOKIE *Cookie)
 {
-	PMTA_USAGE_INCREMENTOR MTAIncrementor;
-	DWORD ThreadId;
-	MTAIncrementor = CoTaskMemAlloc(sizeof(MTA_USAGE_INCREMENTOR));
-	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CreateMTAUsageThread, 0, 0, &ThreadId);
-	MTAIncrementor->dwThreadId = ThreadId;
-	MTAIncrementor->ulTime = GetTickCount();
-
-	*pCookie = (CO_MTA_USAGE_COOKIE)MTAIncrementor;
-
-	return S_OK;
+	HANDLE Event;
+    if (!Cookie) {
+        return E_INVALIDARG;
+    }
+    Event = CreateEventW(NULL, TRUE, FALSE, NULL);
+    if (!Event) {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    *Cookie = CreateThread(
+        NULL,
+        8192,
+        KxCompMTAUsageIncrementerThread,
+        Event,
+        0,
+        NULL);
+    if (!*Cookie) {
+        CloseHandle(Event);
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    WaitForSingleObject(Event, INFINITE);
+    CloseHandle(Event);
+    return S_OK;
 }
 
-HRESULT WINAPI CoDecrementMTAUsage(CO_MTA_USAGE_COOKIE *pCookie)
+HRESULT WINAPI CoDecrementMTAUsage(
+    IN    CO_MTA_USAGE_COOKIE        Cookie)
 {
-	PMTA_USAGE_INCREMENTOR MTAIncrementor;
-	if(pCookie)
-	{
-		MTAIncrementor = (PMTA_USAGE_INCREMENTOR)*pCookie;
-		MTAThreadToRemove = MTAIncrementor->dwThreadId;
+    NTSTATUS Status;
 
-		CoTaskMemFree(*pCookie);
-		return S_OK;
-	}
-	else
-		return E_INVALIDARG;
+    if (!Cookie) {
+        return E_INVALIDARG;
+    }
+
+    Status = NtAlertThread(Cookie);
+    CloseHandle(Cookie);
+
+    if (NT_SUCCESS(Status)) {
+        return S_OK;
+    } else {
+        return HRESULT_FROM_WIN32(RtlNtStatusToDosError(Status));
+    }
 }

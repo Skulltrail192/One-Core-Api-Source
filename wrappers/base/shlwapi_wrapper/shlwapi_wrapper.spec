@@ -1171,12 +1171,12 @@
 @ stdcall PathMatchSpecExW(wstr wstr long)
 @ stdcall PathCreateFromUrlAlloc(wstr wstr long)
 @ stdcall StrFormatByteSizeEx(long long long wstr long)
-@ stdcall SHAutoCompGetPidl(ptr ptr long ptr)
+;@ stdcall SHAutoCompGetPidl(ptr ptr long ptr) ;cause error on VirtulBox Machine on x64. Is from Longhorn?
 
 ;@ varargs ShellMessageBoxW(long long wstr wstr long) shell32.ShellMessageBoxW
 ;@ varargs ShellMessageBoxA(long long str str long) shell32.ShellMessageBoxA
 
 568 stdcall IStream_Copy(ptr ptr long)
 628 stdcall -noname SHCreateStreamOnModuleResourceW(ptr ptr wstr ptr) ;Change 628 ordinal from PathIsNetworkPathA to SHCreateStreamOnModuleResourceW to satisfy Windows 7 wordpad
-@ stdcall -i386 PathIsNetworkPathA(str) ;Change from ordinal 628 (x86) to standard export
+@ stdcall PathIsNetworkPathA(str) ;Change from ordinal 628 (x86) to standard export
 @ stdcall -arch=x86_64 PathIsDirectoryW(wstr) ;Change from ordinal 633 (x64) to standard export
