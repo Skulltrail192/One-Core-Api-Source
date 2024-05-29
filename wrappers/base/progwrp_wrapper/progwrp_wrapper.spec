@@ -1,4 +1,3 @@
-#undef i386
 @ stdcall ActivateActCtx(ptr ptr)
 @ stdcall AddAtomA(str)
 @ stdcall AddAtomW(wstr)
@@ -956,7 +955,7 @@
 @ stdcall ConsoleIMERoutine(ptr)
 
 #missing on XP 
-@ stdcall BaseIsAppcompatInfrastructureDisabled() IsShimInfrastructureDisabled
+@ stdcall BaseIsAppcompatInfrastructureDisabled()
 @ stdcall ConvertThreadToFiberEx(ptr long)
 @ stdcall FindFirstStreamW(wstr ptr ptr long)
 @ stdcall FindNextStreamW(ptr ptr)
@@ -1003,23 +1002,23 @@
 @ stdcall SetProcessDEPPolicy(long) 
 
 #Own implementation only for support - hooks
-@ stdcall CreateProcessA(str str ptr ptr long long ptr str ptr ptr) CreateProcessExA
-@ stdcall CreateProcessInternalA(ptr str str ptr ptr long long ptr str ptr ptr long) CreateProcessInternalExA
-@ stdcall CreateProcessInternalW(ptr wstr wstr ptr ptr long long ptr wstr ptr ptr long) CreateProcessInternalExW
-@ stdcall CreateProcessW(wstr wstr ptr ptr long long ptr wstr ptr ptr) CreateProcessExW
+@ stdcall CreateProcessA(str str ptr ptr long long ptr str ptr ptr)
+@ stdcall CreateProcessInternalA(ptr str str ptr ptr long long ptr str ptr ptr long) 
+@ stdcall CreateProcessInternalW(ptr wstr wstr ptr ptr long long ptr wstr ptr ptr long) 
+@ stdcall CreateProcessW(wstr wstr ptr ptr long long ptr wstr ptr ptr)
 @ stdcall GetModuleHandleA(str) 
 @ stdcall GetModuleHandleW(wstr)
 @ stdcall GetProcAddress(long str) 
-@ stdcall IsProcessorFeaturePresent(long) IsProcessorFeaturePresentInternal
+@ stdcall IsProcessorFeaturePresent(long)
 @ stdcall LoadLibraryA(str) 
 @ stdcall LoadLibraryW(wstr) 
-@ stdcall LoadLibraryExA( str long long) LoadLibraryExInternalA
-@ stdcall LoadLibraryExW(wstr long long) LoadLibraryExInternalW
-@ stdcall SetFileApisToANSI() SetpFileApisToANSI
-@ stdcall SetFileApisToOEM() SetpFileApisToOEM
-@ stdcall HeapSetInformation(ptr long ptr long) HeapSetInformationInternal
-@ stdcall SetThreadPriority(ptr long) SetThreadPriorityInternal
-@ stdcall WideCharToMultiByte(long long wstr long ptr long ptr ptr) WideCharToMultiByteInternal
+@ stdcall LoadLibraryExA( str long long) 
+@ stdcall LoadLibraryExW(wstr long long) 
+@ stdcall SetFileApisToANSI()
+@ stdcall SetFileApisToOEM()
+@ stdcall HeapSetInformation(ptr long ptr long)
+@ stdcall SetThreadPriority(ptr long) 
+@ stdcall WideCharToMultiByte(long long wstr long ptr long ptr ptr) 
 
 #Vista Functions 
 @ stdcall AcquireSRWLockExclusive(ptr) ntext.RtlAcquireSRWLockExclusive
@@ -1284,7 +1283,7 @@
 @ stdcall BasepMapModuleHandle(ptr long)
 @ stdcall BaseSetLastNTError(long)
 @ stub BaseThreadInitThunk
-@ stdcall CheckForReadOnlyResource(ptr) BasepCheckForReadOnlyResource
+@ stdcall CheckForReadOnlyResource(ptr)
 @ stdcall CopyContext(ptr long ptr)
 @ stdcall CreateRemoteThreadEx(long ptr long ptr long long ptr ptr)
 @ stdcall -arch=x86_64 CreateUmsCompletionList(ptr)
@@ -1317,37 +1316,37 @@
 @ stdcall -arch=x86_64 GetUmsCompletionListEvent(ptr ptr)
 @ stdcall -arch=i386,x86_64 GetXStateFeaturesMask(ptr ptr)
 @ stdcall -arch=i386,x86_64 InitializeContext(ptr long ptr ptr)
-@ stdcall LoadStringBaseExW(long long wstr long long)
+@ stub LoadStringBaseExW
 @ stub LoadStringByReference
 # @ stub LoadStringBaseW
 @ stdcall -arch=i386,x86_64 LocateXStateFeature(ptr long ptr)
-@ stdcall K32EmptyWorkingSet(ptr) EmptyWorkingSet
-@ stdcall K32EnumDeviceDrivers(ptr long ptr) EnumDeviceDrivers
-@ stdcall K32EnumPageFilesA(ptr ptr) EnumPageFilesA
-@ stdcall K32EnumPageFilesW(ptr ptr) EnumPageFilesW
-@ stdcall K32EnumProcessModules(ptr ptr long ptr) EnumProcessModules
+@ stdcall K32EmptyWorkingSet(ptr)
+@ stdcall K32EnumDeviceDrivers(ptr long ptr)
+@ stdcall K32EnumPageFilesA(ptr ptr)
+@ stdcall K32EnumPageFilesW(ptr ptr)
+@ stdcall K32EnumProcessModules(ptr ptr long ptr)
 @ stdcall K32EnumProcessModulesEx(ptr ptr long ptr long)
-@ stdcall K32EnumProcesses(ptr long ptr) EnumProcesses
-@ stdcall K32GetDeviceDriverBaseNameA(ptr ptr long) GetDeviceDriverBaseNameA
-@ stdcall K32GetDeviceDriverBaseNameW(ptr ptr long) GetDeviceDriverBaseNameW
-@ stdcall K32GetDeviceDriverFileNameA(ptr ptr long) GetDeviceDriverFileNameA
-@ stdcall K32GetDeviceDriverFileNameW(ptr ptr long) GetDeviceDriverFileNameW
-@ stdcall K32GetMappedFileNameA(ptr ptr ptr long) GetMappedFileNameA
-@ stdcall K32GetMappedFileNameW(ptr ptr ptr long) GetMappedFileNameW
-@ stdcall K32GetModuleBaseNameA(ptr ptr ptr long) GetModuleBaseNameA
-@ stdcall K32GetModuleBaseNameW(ptr ptr ptr long) GetModuleBaseNameW
-@ stdcall K32GetModuleFileNameExA(ptr ptr ptr long) GetModuleFileNameExA
-@ stdcall K32GetModuleFileNameExW(ptr ptr ptr long) GetModuleFileNameExW
-@ stdcall K32GetModuleInformation(ptr ptr ptr long) GetModuleInformation
-@ stdcall K32GetPerformanceInfo(ptr long) GetPerformanceInfo
-@ stdcall K32GetProcessImageFileNameA(ptr ptr long) GetProcessImageFileNameA
-@ stdcall K32GetProcessImageFileNameW(ptr ptr long) GetProcessImageFileNameW
-@ stdcall K32GetProcessMemoryInfo(ptr ptr long) GetProcessMemoryInfo
-@ stdcall K32GetWsChanges(ptr ptr long) GetWsChanges
-@ stdcall K32GetWsChangesEx(ptr ptr ptr) GetWsChangesEx
-@ stdcall K32InitializeProcessForWsWatch(ptr) InitializeProcessForWsWatch
-@ stdcall K32QueryWorkingSet(ptr ptr long) QueryWorkingSet
-@ stdcall K32QueryWorkingSetEx(ptr ptr long) QueryWorkingSetEx
+@ stdcall K32EnumProcesses(ptr long ptr)
+@ stdcall K32GetDeviceDriverBaseNameA(ptr ptr long)
+@ stdcall K32GetDeviceDriverBaseNameW(ptr ptr long)
+@ stdcall K32GetDeviceDriverFileNameA(ptr ptr long)
+@ stdcall K32GetDeviceDriverFileNameW(ptr ptr long)
+@ stdcall K32GetMappedFileNameA(ptr ptr ptr long)
+@ stdcall K32GetMappedFileNameW(ptr ptr ptr long)
+@ stdcall K32GetModuleBaseNameA(ptr ptr ptr long)
+@ stdcall K32GetModuleBaseNameW(ptr ptr ptr long)
+@ stdcall K32GetModuleFileNameExA(ptr ptr ptr long)
+@ stdcall K32GetModuleFileNameExW(ptr ptr ptr long)
+@ stdcall K32GetModuleInformation(ptr ptr ptr long)
+@ stdcall K32GetPerformanceInfo(ptr long)
+@ stdcall K32GetProcessImageFileNameA(ptr ptr long)
+@ stdcall K32GetProcessImageFileNameW(ptr ptr long)
+@ stdcall K32GetProcessMemoryInfo(ptr ptr long)
+@ stdcall K32GetWsChanges(ptr ptr long)
+@ stdcall K32GetWsChangesEx(ptr ptr ptr)
+@ stdcall K32InitializeProcessForWsWatch(ptr)
+@ stdcall K32QueryWorkingSet(ptr ptr long)
+@ stdcall K32QueryWorkingSetEx(ptr ptr long)
 @ stdcall LoadAppInitDlls()
 @ stdcall PowerClearRequest(ptr ptr)
 @ stdcall PowerCreateRequest(ptr)
@@ -1442,13 +1441,13 @@
 @ stdcall WerpNotifyLoadStringResourceWorker(ptr wstr ptr long) WerpNotifyLoadStringResource
 @ stdcall WerpNotifyUseStringResourceWorker(ptr) WerpNotifyUseStringResource
 @ stdcall EventSetInformation(int64 long ptr long) ntext.EtwEventSetInformation
-@ stdcall PerfCreateInstance(long ptr wstr long) 
-@ stdcall PerfDeleteInstance(long ptr)
-@ stdcall PerfSetCounterRefValue(long ptr long ptr)
-@ stdcall PerfSetCounterSetInfo(long ptr long)
-@ stdcall PerfStartProvider(ptr ptr ptr)
-@ stdcall PerfStartProviderEx(ptr ptr ptr)
-@ stdcall PerfStopProvider(long)
+; @ stdcall PerfCreateInstance(long ptr wstr long) 
+; @ stdcall PerfDeleteInstance(long ptr)
+; @ stdcall PerfSetCounterRefValue(long ptr long ptr)
+; @ stdcall PerfSetCounterSetInfo(long ptr long)
+; @ stdcall PerfStartProvider(ptr ptr ptr)
+; @ stdcall PerfStartProviderEx(ptr ptr ptr)
+; @ stdcall PerfStopProvider(long)
 @ stdcall SetProcessInformation(long long ptr long)
 @ stdcall SetProcessGroupAffinity(long ptr ptr)
 @ stdcall SetThreadInformation(long long ptr long)
@@ -1477,7 +1476,6 @@
 @ stdcall AccessCheckAndAuditAlarmW(wstr ptr wstr wstr ptr long ptr long ptr ptr ptr) advapibase.AccessCheckAndAuditAlarmW
 @ stdcall AccessCheckByType(ptr ptr long long ptr long ptr ptr ptr ptr ptr) advapibase.AccessCheckByType
 @ stdcall AccessCheckByTypeAndAuditAlarmW(wstr ptr wstr wstr ptr ptr long long long ptr long ptr long ptr ptr ptr) advapibase.AccessCheckByTypeAndAuditAlarmW
-@ stdcall AccessCheckByTypeResultList(ptr ptr ptr long ptr long ptr ptr ptr ptr ptr)
 @ stdcall AccessCheckByTypeResultListAndAuditAlarmByHandleW(wstr ptr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) advapibase.AccessCheckByTypeResultListAndAuditAlarmByHandleW
 @ stdcall AccessCheckByTypeResultListAndAuditAlarmW(wstr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) advapibase.AccessCheckByTypeResultListAndAuditAlarmW
 @ stdcall AddAccessAllowedAce(ptr long long ptr) advapibase.AddAccessAllowedAce
@@ -1587,8 +1585,6 @@
 @ stdcall RegGetKeySecurity(long long ptr ptr) advapibase.RegGetKeySecurity 
 @ stdcall RegGetValueA(long str str long ptr ptr ptr) advapibase.RegGetValueA 
 @ stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) advapi32.RegGetValueW
-@ stdcall RegLoadAppKeyA(str ptr long long long)
-@ stdcall RegLoadAppKeyW(wstr ptr long long long)
 @ stdcall RegLoadKeyA(long str str) advapibase.RegLoadKeyA 
 @ stdcall RegLoadKeyW(long wstr wstr) advapibase.RegLoadKeyW 
 @ stdcall RegLoadMUIStringA(long str str long ptr long str)
@@ -1627,7 +1623,6 @@
 @ stdcall SetSecurityDescriptorSacl(ptr long ptr long) advapibase.SetSecurityDescriptorSacl
 @ stdcall SetThreadToken(ptr ptr) advapibase.SetThreadToken
 @ stdcall SetTokenInformation(long long ptr long) advapibase.SetTokenInformation
-@ stdcall SystemFunction036(ptr long) 
 @ stdcall TraceEvent(int64 ptr) advapibase.TraceEvent
 @ varargs TraceMessage(int64 long ptr long) advapibase.TraceMessage
 @ stdcall TraceMessageVa(int64 long ptr long ptr) advapibase.TraceMessageVa
@@ -1879,3 +1874,73 @@
 @ stdcall UrlIsW(wstr long) shlwapi.UrlIsW
 @ stdcall UrlUnescapeA(str ptr ptr long) shlwapi.UrlUnescapeA
 @ stdcall UrlUnescapeW(wstr ptr ptr long) shlwapi.UrlUnescapeW
+
+#advapi32 functions
+629 stdcall SystemFunction036(ptr long) advapi32.SystemFunction036
+
+#psapi functions
+@ stdcall EmptyWorkingSet(ptr)
+@ stdcall EnumDeviceDrivers(ptr long ptr)
+@ stdcall EnumPageFilesA(ptr ptr)
+@ stdcall EnumPageFilesW(ptr ptr)
+@ stdcall EnumProcessModules(ptr ptr long ptr)
+@ stdcall EnumProcesses(ptr long ptr)
+@ stdcall GetDeviceDriverBaseNameA(ptr ptr long)
+@ stdcall GetDeviceDriverBaseNameW(ptr ptr long)
+@ stdcall GetDeviceDriverFileNameA(ptr ptr long)
+@ stdcall GetDeviceDriverFileNameW(ptr ptr long)
+@ stdcall GetMappedFileNameA(ptr ptr ptr long)
+@ stdcall GetMappedFileNameW(ptr ptr ptr long)
+@ stdcall GetModuleBaseNameA(ptr ptr ptr long)
+@ stdcall GetModuleBaseNameW(ptr ptr ptr long)
+@ stdcall GetModuleFileNameExA(ptr ptr ptr long)
+@ stdcall GetModuleFileNameExW(ptr ptr ptr long)
+@ stdcall GetModuleInformation(ptr ptr ptr long)
+@ stdcall GetPerformanceInfo(ptr long)
+@ stdcall GetProcessImageFileNameA(ptr ptr long)
+@ stdcall GetProcessImageFileNameW(ptr ptr long)
+@ stdcall GetProcessMemoryInfo(ptr ptr long)
+@ stdcall GetWsChanges(ptr ptr long)
+@ stdcall InitializeProcessForWsWatch(ptr)
+@ stdcall QueryWorkingSet(ptr ptr long)
+@ stdcall QueryWorkingSetEx(ptr ptr long)
+
+#ole32 functions
+@ stdcall CoRegisterInitializeSpy(ptr ptr)
+
+#ntdll functions
+@ stdcall NtOpenKeyEx(ptr long ptr long)
+
+#specific prowrp functions
+@ stdcall _TLSInit_DllMain_ProcessAttach@4(long) _TLSInit_DllMain_ProcessAttach
+@ stdcall _TLSInit_DllMain_ThreadAttach@4(long) _TLSInit_DllMain_ThreadAttach
+
+#shell32 functions
+@ stdcall SHGetKnownFolderPath(ptr long ptr ptr)
+
+#iphlpapi functions
+@ stdcall CancelIPChangeNotify(ptr)
+@ stdcall -stub FreeMibTable(ptr)
+@ stdcall GetAdaptersAddresses( long long ptr ptr ptr )
+@ stdcall -stub GetIfTable2(long ptr)
+
+#uxtheme functions
+@ stdcall CloseThemeData(ptr)
+@ stdcall DrawThemeBackground(ptr ptr long long ptr ptr)
+@ stdcall GetThemeBackgroundContentRect(ptr ptr long long ptr ptr)
+@ stdcall GetThemePartSize(ptr ptr long long ptr long ptr)
+
+#user32 functions
+@ stdcall -stub CloseTouchInputHandle(ptr)
+@ stdcall DefRawInputProc(ptr long long)
+@ stdcall -stub DisplayConfigGetDeviceInfo(ptr)
+@ stdcall -stub GetDisplayConfigBufferSizes(long ptr ptr)
+@ stdcall GetLayeredWindowAttributes(long ptr ptr ptr)
+@ stdcall GetRawInputBuffer(ptr ptr long)
+@ stdcall GetRawInputData(ptr long ptr ptr long)
+@ stdcall GetRawInputDeviceInfoA(ptr long ptr ptr)
+@ stdcall GetRawInputDeviceInfoW(ptr long ptr ptr)
+@ stdcall GetRawInputDeviceList(ptr ptr long)
+
+#dxgi functions
+@ stdcall CreateDXGIFactory1(ptr ptr)

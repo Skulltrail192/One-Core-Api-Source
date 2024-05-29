@@ -342,6 +342,9 @@
 @ stdcall CoGetActivationState(int128 long ptr)
 @ stdcall CoGetCallState(long ptr)
 
+#win8.1 functions
+@ stdcall RoGetAgileReference(long long ptr ptr)
+
 #for WinXP
 @ stdcall ComPs_CStdStubBuffer_AddRef(ptr) olebase.ComPs_CStdStubBuffer_AddRef
 @ stdcall ComPs_CStdStubBuffer_Connect(ptr ptr) olebase.ComPs_CStdStubBuffer_Connect

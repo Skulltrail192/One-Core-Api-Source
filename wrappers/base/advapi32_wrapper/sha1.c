@@ -17,9 +17,19 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "sha1.h"
+#include "main.h"
 
-/* SHA1 Helper Macros */
+/* SHA1 algorithm
+ *
+ * Based on public domain SHA code by Steve Reid <steve@edmweb.com>
+ */
+
+typedef struct {
+   ULONG Unknown[6];
+   ULONG State[5];
+   ULONG Count[2];
+   UCHAR Buffer[64];
+} SHA_CTX, *PSHA_CTX;
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
 /* FIXME: This definition of DWORD2BE is little endian specific! */
@@ -88,7 +98,7 @@ static void SHA1Transform(ULONG State[5], UCHAR Buffer[64])
 
 
 /******************************************************************************
- * A_SHAInit [ADVAPI32.@]
+ * A_SHAInit (ntdll.@)
  *
  * Initialize a SHA context structure.
  *
@@ -98,8 +108,7 @@ static void SHA1Transform(ULONG State[5], UCHAR Buffer[64])
  * RETURNS
  *  Nothing
  */
-VOID NTAPI
-A_SHAInit(PSHA_CTX Context)
+void WINAPI V_SHAInit(PSHA_CTX Context)
 {
    /* SHA1 initialization constants */
    Context->State[0] = 0x67452301;
@@ -112,7 +121,7 @@ A_SHAInit(PSHA_CTX Context)
 }
 
 /******************************************************************************
- * A_SHAUpdate [ADVAPI32.@]
+ * A_SHAUpdate (ntdll.@)
  *
  * Update a SHA context with a hashed data from supplied buffer.
  *
@@ -124,8 +133,7 @@ A_SHAInit(PSHA_CTX Context)
  * RETURNS
  *  Nothing
  */
-VOID NTAPI
-A_SHAUpdate(PSHA_CTX Context, const unsigned char *Buffer, ULONG BufferSize)
+void WINAPI V_SHAUpdate(PSHA_CTX Context, const unsigned char *Buffer, UINT BufferSize)
 {
    ULONG BufferContentSize;
 
@@ -137,26 +145,26 @@ A_SHAUpdate(PSHA_CTX Context, const unsigned char *Buffer, ULONG BufferSize)
 
    if (BufferContentSize + BufferSize < 64)
    {
-      memcpy(&Context->Buffer[BufferContentSize], Buffer,
+      RtlCopyMemory(&Context->Buffer[BufferContentSize], Buffer,
                     BufferSize);
    }
    else
    {
       while (BufferContentSize + BufferSize >= 64)
       {
-         memcpy(Context->Buffer + BufferContentSize, Buffer,
+         RtlCopyMemory(Context->Buffer + BufferContentSize, Buffer,
                        64 - BufferContentSize);
          Buffer += 64 - BufferContentSize;
          BufferSize -= 64 - BufferContentSize;
          SHA1Transform(Context->State, Context->Buffer);
          BufferContentSize = 0;
       }
-      memcpy(Context->Buffer + BufferContentSize, Buffer, BufferSize);
+      RtlCopyMemory(Context->Buffer + BufferContentSize, Buffer, BufferSize);
    }
 }
 
 /******************************************************************************
- * A_SHAFinal [ADVAPI32.@]
+ * A_SHAFinal (ntdll.@)
  *
  * Finalize SHA context and return the resulting hash.
  *
@@ -167,8 +175,7 @@ A_SHAUpdate(PSHA_CTX Context, const unsigned char *Buffer, ULONG BufferSize)
  * RETURNS
  *  Nothing
  */
-VOID NTAPI
-A_SHAFinal(PSHA_CTX Context, PULONG Result)
+void WINAPI V_SHAFinal(PSHA_CTX Context, PULONG Result)
 {
    INT Pad, Index;
    UCHAR Buffer[72];
@@ -184,15 +191,15 @@ A_SHAFinal(PSHA_CTX Context, PULONG Result)
    LengthHi = (Context->Count[0] << 3) | (Context->Count[1] >> (32 - 3));
    LengthLo = (Context->Count[1] << 3);
 
-   memset(Buffer + 1, 0, Pad - 1);
+   RtlZeroMemory(Buffer + 1, Pad - 1);
    Buffer[0] = 0x80;
    Count = (ULONG*)(Buffer + Pad);
    Count[0] = DWORD2BE(LengthHi);
    Count[1] = DWORD2BE(LengthLo);
-   A_SHAUpdate(Context, Buffer, Pad + 8);
+   V_SHAUpdate(Context, Buffer, Pad + 8);
 
    for (Index = 0; Index < 5; Index++)
       Result[Index] = DWORD2BE(Context->State[Index]);
 
-   A_SHAInit(Context);
+   V_SHAInit(Context);
 }

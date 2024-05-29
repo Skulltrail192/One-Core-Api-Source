@@ -516,7 +516,6 @@ FlsFree(DWORD dwFlsIndex)
     return ret;
 }
 
-
 /*
  * @implemented
  */

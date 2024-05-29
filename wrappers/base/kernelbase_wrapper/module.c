@@ -776,3 +776,13 @@ GetWsChangesEx(
         // return FALSE;
         // }
 }
+
+
+int WINAPI LoadStringBaseExW( HINSTANCE hInstance, UINT uID, LPWSTR lpBuffer, 
+  int nBufferMax, INT unknown ) {
+    if (unknown) {
+        // add debug print
+        unknown = 0;
+    }
+    return LoadStringW(hInstance, uID, lpBuffer, nBufferMax);
+}

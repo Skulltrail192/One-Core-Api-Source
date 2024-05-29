@@ -23,6 +23,7 @@ list(APPEND SOURCE
 	reg.c
 	scm.c
 	security.c
+	sha1.c
 	shutdown.c
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/advapi32_wrapper_stubs.c

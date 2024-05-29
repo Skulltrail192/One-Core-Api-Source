@@ -12,7 +12,7 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/comdlg32_wrapper_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/comdlg32_wrapper.def)
 	
-set(baseaddress_comdlg32_wrapper     0x7d550000)	
+set(baseaddress_comdlg32_wrapper     0x7f550000)	
 
 add_library(comdlg32_wrapper SHARED ${SOURCE})
 set_module_type(comdlg32_wrapper win32dll ENTRYPOINT DllMain)

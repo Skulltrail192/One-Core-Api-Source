@@ -2095,6 +2095,17 @@ INT WINAPI CompareStringEx( const WCHAR *locale, DWORD flags, const WCHAR *str1,
                                   0x10000000 | LOCALE_USE_CP_ACP;
     /* 0x10000000 is related to diacritics in Arabic, Japanese, and Hebrew */
     int ret;
+    LCID lpLocale = LocaleNameToLCID(locale, 0);
+	
+	if (flags & 0x8000000)
+		flags ^= 0x8000000;	
+	
+    if (lpLocale == 0)
+        return 0;
+
+    ret = CompareStringW(lpLocale, flags, str1, len1, str2, len2);
+    if (ret != 0 || GetLastError() == ERROR_INVALID_PARAMETER)
+        return ret;	
 
     if (version) FIXME( "unexpected version parameter\n" );
     if (reserved) FIXME( "unexpected reserved value\n" );
@@ -2136,107 +2147,107 @@ static inline UINT get_lcid_codepage( LCID lcid )
     return ret;
 }
 
-/******************************************************************************
- *           CompareStringA    (KERNEL32.@)
- *
- * Compare two locale sensitive strings.
- *
- * PARAMS
- *  lcid  [I] LCID for the comparison
- *  flags [I] Flags for the comparison (NORM_ constants from "winnls.h").
- *  str1  [I] First string to compare
- *  len1  [I] Length of str1, or -1 if str1 is NUL terminated
- *  str2  [I] Second string to compare
- *  len2  [I] Length of str2, or -1 if str2 is NUL terminated
- *
- * RETURNS
- *  Success: CSTR_LESS_THAN, CSTR_EQUAL or CSTR_GREATER_THAN depending on whether
- *           str1 is less than, equal to or greater than str2 respectively.
- *  Failure: FALSE. Use GetLastError() to determine the cause.
- */
-INT WINAPI CompareStringA(LCID lcid, DWORD flags,
-                          LPCSTR str1, INT len1, LPCSTR str2, INT len2)
-{
-    WCHAR *buf1W = NtCurrentTeb()->StaticUnicodeBuffer;
-    WCHAR *buf2W = buf1W + 130;
-    LPWSTR str1W, str2W;
-    INT len1W = 0, len2W = 0, ret;
-    UINT locale_cp = CP_ACP;
+// /******************************************************************************
+ // *           CompareStringA    (KERNEL32.@)
+ // *
+ // * Compare two locale sensitive strings.
+ // *
+ // * PARAMS
+ // *  lcid  [I] LCID for the comparison
+ // *  flags [I] Flags for the comparison (NORM_ constants from "winnls.h").
+ // *  str1  [I] First string to compare
+ // *  len1  [I] Length of str1, or -1 if str1 is NUL terminated
+ // *  str2  [I] Second string to compare
+ // *  len2  [I] Length of str2, or -1 if str2 is NUL terminated
+ // *
+ // * RETURNS
+ // *  Success: CSTR_LESS_THAN, CSTR_EQUAL or CSTR_GREATER_THAN depending on whether
+ // *           str1 is less than, equal to or greater than str2 respectively.
+ // *  Failure: FALSE. Use GetLastError() to determine the cause.
+ // */
+// INT WINAPI CompareStringA(LCID lcid, DWORD flags,
+                          // LPCSTR str1, INT len1, LPCSTR str2, INT len2)
+// {
+    // WCHAR *buf1W = NtCurrentTeb()->StaticUnicodeBuffer;
+    // WCHAR *buf2W = buf1W + 130;
+    // LPWSTR str1W, str2W;
+    // INT len1W = 0, len2W = 0, ret;
+    // UINT locale_cp = CP_ACP;
 
-    if (!str1 || !str2)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return 0;
-    }
-    if (len1 < 0) len1 = strlen(str1);
-    if (len2 < 0) len2 = strlen(str2);
+    // if (!str1 || !str2)
+    // {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return 0;
+    // }
+    // if (len1 < 0) len1 = strlen(str1);
+    // if (len2 < 0) len2 = strlen(str2);
 
-    if (!(flags & LOCALE_USE_CP_ACP)) locale_cp = get_lcid_codepage( lcid );
+    // if (!(flags & LOCALE_USE_CP_ACP)) locale_cp = get_lcid_codepage( lcid );
 
-    if (len1)
-    {
-        if (len1 <= 130) len1W = MultiByteToWideChar(locale_cp, 0, str1, len1, buf1W, 130);
-        if (len1W)
-            str1W = buf1W;
-        else
-        {
-            len1W = MultiByteToWideChar(locale_cp, 0, str1, len1, NULL, 0);
-            str1W = HeapAlloc(GetProcessHeap(), 0, len1W * sizeof(WCHAR));
-            if (!str1W)
-            {
-                SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-                return 0;
-            }
-            MultiByteToWideChar(locale_cp, 0, str1, len1, str1W, len1W);
-        }
-    }
-    else
-    {
-        len1W = 0;
-        str1W = buf1W;
-    }
+    // if (len1)
+    // {
+        // if (len1 <= 130) len1W = MultiByteToWideChar(locale_cp, 0, str1, len1, buf1W, 130);
+        // if (len1W)
+            // str1W = buf1W;
+        // else
+        // {
+            // len1W = MultiByteToWideChar(locale_cp, 0, str1, len1, NULL, 0);
+            // str1W = HeapAlloc(GetProcessHeap(), 0, len1W * sizeof(WCHAR));
+            // if (!str1W)
+            // {
+                // SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+                // return 0;
+            // }
+            // MultiByteToWideChar(locale_cp, 0, str1, len1, str1W, len1W);
+        // }
+    // }
+    // else
+    // {
+        // len1W = 0;
+        // str1W = buf1W;
+    // }
 
-    if (len2)
-    {
-        if (len2 <= 130) len2W = MultiByteToWideChar(locale_cp, 0, str2, len2, buf2W, 130);
-        if (len2W)
-            str2W = buf2W;
-        else
-        {
-            len2W = MultiByteToWideChar(locale_cp, 0, str2, len2, NULL, 0);
-            str2W = HeapAlloc(GetProcessHeap(), 0, len2W * sizeof(WCHAR));
-            if (!str2W)
-            {
-                if (str1W != buf1W) HeapFree(GetProcessHeap(), 0, str1W);
-                SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-                return 0;
-            }
-            MultiByteToWideChar(locale_cp, 0, str2, len2, str2W, len2W);
-        }
-    }
-    else
-    {
-        len2W = 0;
-        str2W = buf2W;
-    }
+    // if (len2)
+    // {
+        // if (len2 <= 130) len2W = MultiByteToWideChar(locale_cp, 0, str2, len2, buf2W, 130);
+        // if (len2W)
+            // str2W = buf2W;
+        // else
+        // {
+            // len2W = MultiByteToWideChar(locale_cp, 0, str2, len2, NULL, 0);
+            // str2W = HeapAlloc(GetProcessHeap(), 0, len2W * sizeof(WCHAR));
+            // if (!str2W)
+            // {
+                // if (str1W != buf1W) HeapFree(GetProcessHeap(), 0, str1W);
+                // SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+                // return 0;
+            // }
+            // MultiByteToWideChar(locale_cp, 0, str2, len2, str2W, len2W);
+        // }
+    // }
+    // else
+    // {
+        // len2W = 0;
+        // str2W = buf2W;
+    // }
 
-    ret = CompareStringEx(NULL, flags, str1W, len1W, str2W, len2W, NULL, NULL, 0);
+    // ret = CompareStringEx(NULL, flags, str1W, len1W, str2W, len2W, NULL, NULL, 0);
 
-    if (str1W != buf1W) HeapFree(GetProcessHeap(), 0, str1W);
-    if (str2W != buf2W) HeapFree(GetProcessHeap(), 0, str2W);
-    return ret;
-}
+    // if (str1W != buf1W) HeapFree(GetProcessHeap(), 0, str1W);
+    // if (str2W != buf2W) HeapFree(GetProcessHeap(), 0, str2W);
+    // return ret;
+// }
 
-/******************************************************************************
- *           CompareStringW    (KERNEL32.@)
- *
- * See CompareStringA.
- */
-INT WINAPI CompareStringW(LCID lcid, DWORD flags,
-                          LPCWSTR str1, INT len1, LPCWSTR str2, INT len2)
-{
-    return CompareStringEx(NULL, flags, str1, len1, str2, len2, NULL, NULL, 0);
-}
+// /******************************************************************************
+ // *           CompareStringW    (KERNEL32.@)
+ // *
+ // * See CompareStringA.
+ // */
+// INT WINAPI CompareStringW(LCID lcid, DWORD flags,
+                          // LPCWSTR str1, INT len1, LPCWSTR str2, INT len2)
+// {
+    // return CompareStringEx(NULL, flags, str1, len1, str2, len2, NULL, NULL, 0);
+// }
 
 static inline void map_byterev(const WCHAR *src, int len, WCHAR *dst)
 {
@@ -2741,6 +2752,23 @@ static int lcmap_string(DWORD flags, const WCHAR *src, int srclen, WCHAR *dst, i
 INT WINAPI LCMapStringEx(LPCWSTR locale, DWORD flags, LPCWSTR src, INT srclen, LPWSTR dst, INT dstlen,
                          LPNLSVERSIONINFO version, LPVOID reserved, LPARAM handle)
 {
+   LCID lpLocale = LocaleNameToLCID(locale, 0);
+   INT res;
+   
+  	if (flags & 0x8000000)
+		flags ^= 0x8000000; 
+
+    if (lpLocale == 0)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return 0;
+    }
+    // First use Native API
+    res = LCMapStringW(lpLocale, flags, src, srclen, dst, dstlen);
+    if (res != 0 || (GetLastError() != ERROR_INVALID_FLAGS && GetLastError() != ERROR_INVALID_PARAMETER)){ // incase Win8 API is used
+        return res;
+	}
+		
     if (version) FIXME("unsupported version structure %p\n", version);
     if (reserved) FIXME("unsupported reserved pointer %p\n", reserved);
     if (handle)

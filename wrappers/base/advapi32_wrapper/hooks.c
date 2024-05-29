@@ -38,8 +38,59 @@ GetTokenInformationInternal (
     )
 {
     NTSTATUS Status;
+    PTOKEN_GROUPS InformationBuffer = (PTOKEN_GROUPS)TokenInformation;
+    PTOKEN_GROUPS GroupBuffer;
+    DWORD dwReturnLength = *ReturnLength;
+    int i, index=0;
+    // 
+    if(TokenInformationClass == TokenLogonSid){
+		if (TokenInformationLength == 0) { // Chrome 98+ sandbox needs this.
+			*ReturnLength = sizeof(TOKEN_GROUPS) + sizeof(PVOID) + sizeof(DWORD) + SECURITY_MAX_SID_SIZE;
+			return FALSE;
+		}		
+        Status = NtQueryInformationToken(TokenHandle,
+                                         TokenGroups,
+                                         0,
+                                         0,
+                                         (PULONG)&dwReturnLength);
+        if (Status == STATUS_BUFFER_TOO_SMALL) {
+            // allocate requested buffer for temporary group buffer
+            GroupBuffer = RtlAllocateHeap(RtlGetProcessHeap(), 0, dwReturnLength);
+            Status = NtQueryInformationToken(TokenHandle,
+                                         TokenGroups,
+                                         GroupBuffer,
+                                         dwReturnLength,
+                                         (PULONG)&dwReturnLength);
+        }
+		
+		if (Status != 0) {
+				RtlFreeHeap(RtlGetProcessHeap(), 0, GroupBuffer);
+				RtlSetLastWin32ErrorAndNtStatusFromNtStatus(Status);
+				return FALSE;
+		}		
+		
+        // Return it.
+        //InformationBuffer->Groups = (SIZE_T)(InformationBuffer) + sizeof(DWORD) + sizeof(PVOID);
+        for (i = 0; i < GroupBuffer->GroupCount; i++){
+            if ((GroupBuffer->Groups[i].Attributes & SE_GROUP_LOGON_ID) == 0)
+            {
+                // Copy SID and return, assumes that buffer allocated
+                InformationBuffer->Groups[0].Attributes = GroupBuffer->Groups[i].Attributes;
+                InformationBuffer->Groups[0].Sid = &(InformationBuffer->Groups[1]);
+                CopySid(GetLengthSid(GroupBuffer->Groups[i].Sid), &InformationBuffer->Groups[1], GroupBuffer->Groups[i].Sid);
+                index++;
+                break;
+            }
+        }
+        InformationBuffer->GroupCount = index;
+		
+		*ReturnLength = sizeof(TOKEN_GROUPS) + sizeof(PVOID) + sizeof(DWORD) + SECURITY_MAX_SID_SIZE;
+        // Free temp buffer.
+        RtlFreeHeap(RtlGetProcessHeap(), 0, GroupBuffer);
+        return TRUE;
+    }
 	
-	if(TokenInformationClass & TokenIntegrityLevel | TokenElevationType | TokenLinkedToken | TokenElevation){
+	if(TokenInformationClass & TokenIntegrityLevel | TokenElevationType | TokenLinkedToken | TokenElevation | TokenLogonSid){
 		
 		//DbgPrint("GetTokenInformationInternal:: Vista Token Cases\n");
 		
@@ -54,6 +105,7 @@ GetTokenInformationInternal (
 			SetLastError(RtlNtStatusToDosError(Status));
 			return FALSE;
 		}
+		
 		
 		return TRUE;
 	}
@@ -222,23 +274,23 @@ BOOL WINAPI SetKernelObjectSecurityInternal(
   _In_ PSECURITY_DESCRIPTOR SecurityDescriptor
 )
 {
-	NTSTATUS Status;
+	//NTSTATUS Status;
 	//This is a hack, for now is enabled because need a truly implementation of LABEL_SECURITY_INFORMATION (for Chrome and Chromium Framework)
 	if(SecurityInformation & LABEL_SECURITY_INFORMATION)
 	{
 
-		Status = NtSetSecurityObject(Handle, SecurityInformation, SecurityDescriptor);
+		// Status = NtSetSecurityObject(Handle, SecurityInformation, SecurityDescriptor);
 		
-		if(!NT_SUCCESS(Status)){
-			//DbgPrint("SetKernelObjectSecurityInternal::NtSetSecurityObject returned Status: 0x%08lx\n", Status);
-			SecurityInformation = OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION | SACL_SECURITY_INFORMATION;
-			goto tryAgain;			
-		}
+		// if(!NT_SUCCESS(Status)){
+			// //DbgPrint("SetKernelObjectSecurityInternal::NtSetSecurityObject returned Status: 0x%08lx\n", Status);
+			// SecurityInformation = OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION | SACL_SECURITY_INFORMATION;
+			// goto tryAgain;			
+		// }
 
 		return TRUE;
 	}
 
-tryAgain:	
+//tryAgain:	
 	return SetKernelObjectSecurity(Handle, SecurityInformation, SecurityDescriptor);
 }
 

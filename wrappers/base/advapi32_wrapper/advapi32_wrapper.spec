@@ -868,6 +868,11 @@
 #Vista Beta Functions
 @ stdcall WmiSendDataBlock(ptr long long long long)
 
+#Custom implementation for A_SHA functions for rsa/dss
+@ stdcall V_SHAFinal(ptr ptr)
+@ stdcall V_SHAInit(ptr)
+@ stdcall V_SHAUpdate(ptr ptr long)
+
 #Hooks
 87 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorA(str long ptr ptr)
 88 stdcall ConvertStringSecurityDescriptorToSecurityDescriptorW(wstr long ptr ptr) ;ConvertStringSecurityDescriptorToSecurityDescriptorWInternal

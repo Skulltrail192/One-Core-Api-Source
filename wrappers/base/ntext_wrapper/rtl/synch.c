@@ -100,41 +100,6 @@ RtlpWaitOnAddressRemoveWaitBlock(
 
 static void RtlpWaitOnAddressRemoveWaitBlock(ADDRESS_WAIT_BLOCK* pWaitBlock);
 
-static inline int interlocked_dec_if_nonzero( volatile long int *dest )
-{
-     int val, tmp;
-     for (val = *dest;; val = tmp)
-     {
-         if (!val || (tmp = InterlockedCompareExchange( dest, val - 1, val )) == val)
-             break;
-     }
-     return val;
-}
-
-/* INTERNAL FUNCTIONS ********************************************************/
-
-FORCEINLINE
-ULONG_PTR
-InternalCmpXChgCondVarAcq(IN OUT PRTL_CONDITION_VARIABLE ConditionVariable,
-                          IN ULONG_PTR Exchange,
-                          IN ULONG_PTR Comperand)
-{
-    return (ULONG_PTR)InterlockedCompareExchangePointerAcquire(&ConditionVariable->Ptr,
-                                                               (PVOID)Exchange,
-                                                               (PVOID)Comperand);
-}
-
-FORCEINLINE
-ULONG_PTR
-InternalCmpXChgCondVarRel(IN OUT PRTL_CONDITION_VARIABLE ConditionVariable,
-                          IN ULONG_PTR Exchange,
-                          IN ULONG_PTR Comperand)
-{
-    return (ULONG_PTR)InterlockedCompareExchangePointerRelease(&ConditionVariable->Ptr,
-                                                               (PVOID)Exchange,
-                                                               (PVOID)Comperand);
-}
-
 /* GLOBALS *******************************************************************/
 
 extern HANDLE GlobalKeyedEventHandle;

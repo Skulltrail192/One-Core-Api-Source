@@ -99,8 +99,8 @@
 @ stdcall WSASetEvent(long) kernel32.SetEvent
 @ stdcall WSASetServiceA(ptr long long)
 @ stdcall WSASetServiceW(ptr long long)
-@ stdcall WSASocketA(long long long ptr long long) ;WSASocketAInternal
-@ stdcall WSASocketW(long long long ptr long long) ;WSASocketWInternal
+@ stdcall WSASocketA(long long long ptr long long) WSASocketAInternal
+@ stdcall WSASocketW(long long long ptr long long) WSASocketWInternal
 @ stdcall WSAStringToAddressA(str long ptr ptr ptr)
 @ stdcall WSAStringToAddressW(wstr long ptr ptr ptr)
 @ stdcall WSAWaitForMultipleEvents(long ptr long long long) kernel32.WaitForMultipleObjectsEx
