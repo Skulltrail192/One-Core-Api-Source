@@ -58,22 +58,38 @@ FilenameA2W(
 
 /**************************************************************************
  *           SetFileCompletionNotificationModes   (KERNEL32.@)
+ *
+ *
+ * @implemented
  */
-BOOL WINAPI SetFileCompletionNotificationModes( HANDLE handle, UCHAR flags )
+BOOL
+WINAPI
+SetFileCompletionNotificationModes(IN HANDLE FileHandle,
+                                   IN UCHAR Flags)
 {
-	NTSTATUS Status;
-	
-	FILE_IO_COMPLETION_NOTIFICATION_INFORMATION info;
-	IO_STATUS_BLOCK io;
+    NTSTATUS Status;
+    FILE_IO_COMPLETION_NOTIFICATION_INFORMATION FileInformation;
+    IO_STATUS_BLOCK IoStatusBlock;
 
-	info.Flags = flags;
-	Status = NtSetInformationFile( handle, &io, &info, sizeof(info),
-    							   FileIoCompletionNotificationInformation );
-		
-	if(NT_SUCCESS(Status)){
-		return TRUE;
-	}else{
-		SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-		return FALSE;
-	}	
+    if (Flags & ~(FILE_SKIP_COMPLETION_PORT_ON_SUCCESS | FILE_SKIP_SET_EVENT_ON_HANDLE))
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    FileInformation.Flags = Flags;
+
+    Status = NtSetInformationFile(FileHandle,
+                                  &IoStatusBlock,
+                                  &FileInformation,
+                                  sizeof(FileInformation),
+                                  FileIoCompletionNotificationInformation);
+    if (!NT_SUCCESS(Status))
+    {
+		DbgPrint("SetFileCompletionNotificationModes::NtSetInformationFile failed with status: %08x\n", Status);
+        BaseSetLastNTError(Status);
+        return FALSE;
+    }
+
+    return TRUE;
 }
