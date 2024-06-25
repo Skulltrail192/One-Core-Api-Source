@@ -90,6 +90,12 @@ GetTokenInformationInternal (
         return TRUE;
     }
 	
+	if(TokenInformationClass == TokenElevationType ){
+		TokenInformation = (PVOID)2;
+		TokenInformationLength = sizeof(ULONG);
+		return STATUS_SUCCESS;
+	}
+	
 	if(TokenInformationClass & TokenIntegrityLevel | TokenElevationType | TokenLinkedToken | TokenElevation | TokenLogonSid){
 		
 		//DbgPrint("GetTokenInformationInternal:: Vista Token Cases\n");

@@ -22,8 +22,6 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(user32);
 
-DPI_AWARENESS_CONTEXT Globalcontext;
-
 BOOL WINAPI GetDisplayAutoRotationPreferences(
   _Out_  ORIENTATION_PREFERENCE *pOrientation
 )
@@ -50,39 +48,4 @@ BOOL WINAPI SetDisplayAutoRotationPreferences(
 	Orientation = pOrientation;
 	DbgPrint("SetDisplayAutoRotationPreferences is UNIMPLEMENTED\n");	
 	return TRUE;
-}
-
-WINUSERAPI UINT WINAPI GetDpiForSystem(
-    VOID)
-{
-    HDC hdcScreen = GetDC(NULL);
-    UINT uDpi = GetDeviceCaps(hdcScreen, LOGPIXELSX);
-    ReleaseDC(NULL, hdcScreen);
-    return uDpi;
-}
-
-WINUSERAPI UINT WINAPI GetDpiForWindow(
-    IN    HWND    hWnd)
-{
-    HDC hdcWindow = GetDC(hWnd);
-    UINT uDpi = GetDeviceCaps(hdcWindow, LOGPIXELSX);
-    ReleaseDC(hWnd, hdcWindow);
-    return uDpi;
-}
-
-/**********************************************************************
- *              GetThreadDpiAwarenessContext   (USER32.@)
- */
-DPI_AWARENESS_CONTEXT WINAPI GetThreadDpiAwarenessContext(void)
-{
-    return Globalcontext;
-}
-
-/**********************************************************************
- *              SetThreadDpiAwarenessContext   (USER32.@)
- */
-DPI_AWARENESS_CONTEXT WINAPI SetThreadDpiAwarenessContext( DPI_AWARENESS_CONTEXT context )
-{
-	Globalcontext = context;
-	return Globalcontext;
 }

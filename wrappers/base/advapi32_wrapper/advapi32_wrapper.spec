@@ -673,7 +673,8 @@
 486 stdcall RegGetValueA(long str str long ptr ptr ptr) 
 487 stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) 
 
-@ stdcall -stub LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr)
+#Vista function, however, is supported by advapi32 from XP/2003 post-SP with updates
+@ stdcall LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr) advapibase.LogonUserExExW
 
 #Vista Functions implemented (without redirection)
 @ stdcall AddMandatoryAce(ptr long long long ptr)
@@ -894,5 +895,5 @@
 648 stdcall WmiCloseTraceWithCursor(ptr) advapibase.WmiCloseTraceWithCursor
 649 stdcall WmiConvertTimestamp(long long long) advapibase.WmiConvertTimestamp
 659 stdcall WmiGetNextEvent(long) advapibase.WmiGetNextEvent
-666 stdcall WmiOpenTraceWithCursor(long long) advapi32.WmiOpenTraceWithCursor
+666 stdcall WmiOpenTraceWithCursor(long long) advapibase.WmiOpenTraceWithCursor
 667 stdcall WmiParseTraceEvent(long long long long long) advapibase.WmiParseTraceEvent

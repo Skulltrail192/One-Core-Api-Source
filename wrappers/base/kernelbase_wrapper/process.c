@@ -81,38 +81,103 @@ GetProcessImageFileNameA(
 /******************************************************************
  *		QueryFullProcessImageNameW (KERNEL32.@)
  */
-BOOL 
-WINAPI 
-QueryFullProcessImageNameW(
-	HANDLE hProcess, 
-	DWORD dwFlags, 
-	LPWSTR lpExeName, 
-	PDWORD pdwSize
-)
+/******************************************************************
+ *         QueryFullProcessImageNameW   (kernelbase.@)
+ */
+BOOL WINAPI DECLSPEC_HOTPATCH QueryFullProcessImageNameW( HANDLE process, DWORD flags,
+                                                          WCHAR *name, DWORD *size )
 {
-	if(GetProcessImageFileNameW(hProcess, lpExeName, *pdwSize)>0){
-		return TRUE;
-	}else{
-		return FALSE;
-	}
+    BYTE buffer[sizeof(UNICODE_STRING) + MAX_PATH*sizeof(WCHAR)];  /* this buffer should be enough */
+    UNICODE_STRING *dynamic_buffer = NULL;
+    UNICODE_STRING *result = NULL;
+    NTSTATUS status;
+    DWORD needed;
+
+    /* FIXME: Use ProcessImageFileName for the PROCESS_NAME_NATIVE case */
+    status = NtQueryInformationProcess( process, ProcessImageFileName, buffer,
+                                        sizeof(buffer) - sizeof(WCHAR), &needed );
+    if (status == STATUS_INFO_LENGTH_MISMATCH)
+    {
+        dynamic_buffer = HeapAlloc( GetProcessHeap(), 0, needed + sizeof(WCHAR) );
+        status = NtQueryInformationProcess( process, ProcessImageFileName, dynamic_buffer,
+                                            needed, &needed );
+        result = dynamic_buffer;
+    }
+    else
+        result = (UNICODE_STRING *)buffer;
+
+    if (status) goto cleanup;
+
+    if (flags & PROCESS_NAME_NATIVE && result->Length > 2 * sizeof(WCHAR))
+    {
+        WCHAR drive[3];
+        WCHAR device[1024];
+        DWORD ntlen, devlen;
+
+        if (result->Buffer[1] != ':' || result->Buffer[0] < 'A' || result->Buffer[0] > 'Z')
+        {
+            /* We cannot convert it to an NT device path so fail */
+            status = STATUS_NO_SUCH_DEVICE;
+            goto cleanup;
+        }
+
+        /* Find this drive's NT device path */
+        drive[0] = result->Buffer[0];
+        drive[1] = ':';
+        drive[2] = 0;
+        if (!QueryDosDeviceW(drive, device, ARRAY_SIZE(device)))
+        {
+            status = STATUS_NO_SUCH_DEVICE;
+            goto cleanup;
+        }
+
+        devlen = lstrlenW(device);
+        ntlen = devlen + (result->Length/sizeof(WCHAR) - 2);
+        if (ntlen + 1 > *size)
+        {
+            status = STATUS_BUFFER_TOO_SMALL;
+            goto cleanup;
+        }
+        *size = ntlen;
+
+        memcpy( name, device, devlen * sizeof(*device) );
+        memcpy( name + devlen, result->Buffer + 2, result->Length - 2 * sizeof(WCHAR) );
+        name[*size] = 0;
+        TRACE( "NT path: %s\n", debugstr_w(name) );
+    }
+    else
+    {
+        if (result->Length/sizeof(WCHAR) + 1 > *size)
+        {
+            status = STATUS_BUFFER_TOO_SMALL;
+            goto cleanup;
+        }
+
+        *size = result->Length/sizeof(WCHAR);
+        memcpy( name, result->Buffer, result->Length );
+        name[*size] = 0;
+    }
+
+cleanup:
+    HeapFree( GetProcessHeap(), 0, dynamic_buffer );
+    return set_ntstatus( status );
 }
 
-/*
- * @implemented
+/******************************************************************
+ *         QueryFullProcessImageNameA   (kernelbase.@)
  */
-BOOL
-WINAPI
-QueryFullProcessImageNameA(
-	HANDLE hProcess,
-    DWORD dwFlags,
-    LPSTR lpExeName,
-    PDWORD pdwSize)
+BOOL WINAPI DECLSPEC_HOTPATCH QueryFullProcessImageNameA( HANDLE process, DWORD flags,
+                                                          char *name, DWORD *size )
 {
-	if(GetProcessImageFileNameA(hProcess, lpExeName, *pdwSize)>0){
-		return TRUE;
-	}else{
-		return FALSE;
-	}
+    BOOL ret;
+    DWORD sizeW = *size;
+    WCHAR *nameW = HeapAlloc( GetProcessHeap(), 0, *size * sizeof(WCHAR) );
+
+    ret = QueryFullProcessImageNameW( process, flags, nameW, &sizeW );
+    if (ret) ret = (WideCharToMultiByte( CP_ACP, 0, nameW, -1, name, *size, NULL, NULL) > 0);
+    if (ret) *size = strlen( name );
+    HeapFree( GetProcessHeap(), 0, nameW );
+    return ret;
 }
 
 BOOL

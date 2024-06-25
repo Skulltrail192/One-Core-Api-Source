@@ -334,7 +334,7 @@
 @ stdcall RealShellExecuteA(ptr str str str str str str str long ptr)
 @ stdcall RealShellExecuteExA(ptr str str str str str str str long ptr long)
 @ stdcall RealShellExecuteExW(ptr str str str str str str str long ptr long)
-@ stdcall RealShellExecuteW(ptr wstr wstr wstr wstr wstr wstr wstr long ptr)
+@ stdcall RealShellExecuteW(ptr wstr wstr wstr wstr wstr wstr wstr long ptr) ShellExecuteWInternal
 @ stdcall RegenerateUserEnvironment(ptr long)
 @ stdcall SHAddToRecentDocs(long ptr)
 @ stdcall SHAppBarMessage(long ptr)

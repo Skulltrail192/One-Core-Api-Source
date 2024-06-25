@@ -22,6 +22,7 @@ list(APPEND SOURCE
 	misc.c
 	path.c
 	pidl.c
+	shellexec.c
 	shellitem.c
 	shelllink.c
 	shellole.c

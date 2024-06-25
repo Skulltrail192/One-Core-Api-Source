@@ -550,22 +550,22 @@ EvaluateProximityToRect(
 	return FALSE;
 }
 
-/**********************************************************************
- * GetPointerDevices [USER32.@]
- */
-BOOL WINAPI GetPointerDevices(UINT32 *device_count, POINTER_DEVICE_INFO *devices)
-{
-    DbgPrint("GetPointerDevices (%p %p): partial stub\n", device_count, devices);
+// /**********************************************************************
+ // * GetPointerDevices [USER32.@]
+ // */
+// BOOL WINAPI GetPointerDevices(UINT32 *device_count, POINTER_DEVICE_INFO *devices)
+// {
+    // DbgPrint("GetPointerDevices (%p %p): partial stub\n", device_count, devices);
 
-    if (!device_count)
-        return FALSE;
+    // if (!device_count)
+        // return FALSE;
 
-    if (devices)
-        return FALSE;
+    // if (devices)
+        // return FALSE;
 
-    *device_count = 0;
-    return TRUE;
-}
+    // *device_count = 0;
+    // return TRUE;
+// }
 
 BOOL 
 WINAPI 
@@ -599,12 +599,4 @@ RegisterTouchHitTestingWindow(
 {
 	DbgPrint("RegisterTouchHitTestingWindow is UNIMPLEMENTED\n");		
 	return TRUE;
-}
-
-BOOL GetPointerPenInfo(
-  UINT32           pointerId,
-  POINTER_PEN_INFO *penInfo
-)
-{
-	return FALSE;
 }

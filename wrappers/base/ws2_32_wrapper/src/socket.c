@@ -731,3 +731,13 @@ setsockoptInternal(
 	
 	return setsockopt(s, level, optname, optval, optlen);
 }
+
+int bindInternal(
+  SOCKET         s,
+  const SOCKADDR *addr,
+  int            namelen
+)
+{
+	DbgPrint("bind: addr->sa_family %d\n", addr->sa_family);
+	return bind(s, addr, namelen);
+}

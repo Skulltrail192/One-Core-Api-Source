@@ -436,7 +436,9 @@
 @ stdcall HRGN_UserUnmarshal(ptr ptr ptr) olebase.HRGN_UserUnmarshal
 
 #combase specific functions
+@ stdcall GetRestrictedErrorInfo(ptr)
 @ stdcall RoInitialize(long)
+@ stdcall RoOriginateLanguageException(long ptr ptr)
 @ stdcall RoGetApartmentIdentifier(ptr)
 @ stdcall RoGetParameterizedTypeInstanceIID(long ptr ptr ptr ptr)
 @ stdcall RoGetServerActivatableClasses(ptr ptr ptr)

@@ -799,8 +799,8 @@
 @ stub GetMagnificationLensCtxInformation
 @ stdcall GetMagnificationDesktopMagnification(ptr ptr ptr)
 @ stdcall GetPhysicalCursorPos(ptr)
-@ stdcall GetPointerDevices(ptr ptr)
 @ stdcall GetPointerType(long ptr)
+@ stdcall GetProcessDpiAwareness(long ptr)
 @ stdcall GetSendMessageReceiver(long)
 @ stdcall GetTopLevelWindow(ptr)
 @ stdcall GetUpdatedClipboardFormats(ptr long ptr)
@@ -866,7 +866,6 @@
 @ stdcall ShutdownBlockReasonDestroy(ptr)
 @ stdcall ShutdownBlockReasonQuery(ptr wstr ptr)
 @ stdcall ShutdownWindows(long) ;implemented
-@ stdcall SkipPointerFrameMessages(long)
 @ stdcall SoundSentry() winsrv._UserSoundSentry
 #@ stdcall StartDCE() ;semi-implemented
 #@ stdcall StopDCE() ;semi-implemented
@@ -887,16 +886,35 @@
 #Win8 functions
 @ stdcall GetDisplayAutoRotationPreferences(ptr)
 @ stdcall GetDpiForMonitorInternal(long long ptr ptr) NtUserGetDpiForMonitor
+@ stdcall GetPointerDevice(long ptr)
+@ stdcall GetPointerDevices(ptr ptr)
+@ stdcall GetPointerDeviceRects(long ptr ptr)
+@ stdcall GetPointerFrameInfo(long ptr ptr)
+@ stdcall GetPointerFrameInfoHistory(long ptr ptr ptr)
+@ stdcall GetPointerFrameTouchInfo(long ptr ptr)
+@ stdcall GetPointerFrameTouchInfoHistory(long ptr ptr ptr)
+@ stdcall GetPointerInfo(long ptr)
+@ stdcall GetPointerInfoHistory(long ptr ptr)
 @ stdcall GetPointerPenInfo(long ptr)
+@ stdcall GetPointerPenInfoHistory(long ptr ptr)
+@ stdcall GetPointerTouchInfo(long ptr)
+@ stdcall GetPointerTouchInfoHistory(long ptr ptr)
 @ stdcall GetProcessDpiAwarenessInternal(long ptr)
 @ stdcall IsImmersiveProcess(long)
 @ stdcall RegisterSuspendResumeNotification(long long)
 @ stdcall SetProcessDpiAwarenessContext(ptr)
 @ stdcall SetProcessDpiAwarenessInternal(long)
+@ stdcall SkipPointerFrameMessages(long)
 @ stdcall UnregisterSuspendResumeNotification(ptr)
 
 #Win10 functions
+@ stdcall AdjustWindowRectExForDpi(ptr long long long long)
+@ stdcall AreDpiAwarenessContextsEqual(long long)
+@ stdcall EnableNonClientDpiScaling(long)
+@ stdcall IsValidDpiAwarenessContext(long)
+@ stdcall GetSystemMetricsForDpi(long long)
 @ stdcall GetDpiForSystem()
 @ stdcall GetDpiForWindow(long)
 @ stdcall GetThreadDpiAwarenessContext()
 @ stdcall SetThreadDpiAwarenessContext(ptr)
+@ stdcall SystemParametersInfoForDpi(long long ptr long long)

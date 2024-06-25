@@ -394,13 +394,13 @@ DWORD WINAPI RegisterSessionPort(HANDLE a1, HANDLE a2)
 	return 0;
 }
 
-BOOL WINAPI SkipPointerFrameMessages(
-  _In_  UINT32 pointerId
-)
-{
-	DbgPrint("SkipPointerFrameMessages is UNIMPLEMENTED\n"); 
-	return TRUE;
-}
+// BOOL WINAPI SkipPointerFrameMessages(
+  // _In_  UINT32 pointerId
+// )
+// {
+	// DbgPrint("SkipPointerFrameMessages is UNIMPLEMENTED\n"); 
+	// return TRUE;
+// }
 
 BOOL WINAPI GetCIMSSM(INPUT_MESSAGE_SOURCE *inputMessageSource)
 {

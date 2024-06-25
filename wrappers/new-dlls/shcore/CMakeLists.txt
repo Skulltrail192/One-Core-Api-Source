@@ -15,7 +15,7 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/shcore.def)
 	
 add_library(shcore SHARED ${SOURCE} shcore.rc)
-set_module_type(shcore win32dll)
+set_module_type(shcore win32dll ENTRYPOINT DllMain 12)
 target_link_libraries(shcore wine uuid)
 add_importlibs(shcore shell32 gdi32 oleaut32 ole32 user32 advapi32 shlwapi ntdll kernel32 msvcrt)
 add_cd_file(TARGET shcore DESTINATION reactos/system32 FOR all)

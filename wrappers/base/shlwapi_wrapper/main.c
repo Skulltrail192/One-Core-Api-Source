@@ -395,3 +395,173 @@ HRESULT WINAPI IStream_Copy(IStream *pstmFrom, IStream *pstmTo, DWORD cb)
 
   return result;
 }
+
+/*************************************************************************
+ * PathIsRootW		[SHLWAPI.@]
+ *
+ * See PathIsRootA.
+ */
+BOOL WINAPI PathIsRootW(LPCWSTR lpszPath)
+{
+  TRACE("(%s)\n", debugstr_w(lpszPath));
+
+  if (lpszPath && *lpszPath)
+  {
+    if (*lpszPath == '\\')
+    {
+      if (!lpszPath[1])
+        return TRUE; /* \ */
+      else if (lpszPath[1]=='\\')
+      {
+        BOOL bSeenSlash = FALSE;
+        lpszPath += 2;
+
+        /* Check for UNC root path */
+        while (*lpszPath)
+        {
+          if (*lpszPath == '\\')
+          {
+            if (bSeenSlash)
+              return FALSE;
+            bSeenSlash = TRUE;
+          }
+          lpszPath++;
+        }
+        return TRUE;
+      }
+    }
+    else if (lpszPath[1] == ':' && lpszPath[2] == '\\' && lpszPath[3] == '\0')
+      return TRUE; /* X:\ */
+  }
+  return FALSE;
+}
+
+/*************************************************************************
+ * PathIsRootA		[SHLWAPI.@]
+ *
+ * Determine if a path is a root path.
+ *
+ * PARAMS
+ *  lpszPath [I] Path to check
+ *
+ * RETURNS
+ *  TRUE  If lpszPath is valid and a root path,
+ *  FALSE Otherwise
+ */
+BOOL WINAPI PathIsRootA(LPCSTR lpszPath)
+{
+  TRACE("(%s)\n", debugstr_a(lpszPath));
+
+  if (lpszPath && *lpszPath)
+  {
+    if (*lpszPath == '\\')
+    {
+      if (!lpszPath[1])
+        return TRUE; /* \ */
+      else if (lpszPath[1]=='\\')
+      {
+        BOOL bSeenSlash = FALSE;
+        lpszPath += 2;
+
+        /* Check for UNC root path */
+        while (*lpszPath)
+        {
+          if (*lpszPath == '\\')
+          {
+            if (bSeenSlash)
+              return FALSE;
+            bSeenSlash = TRUE;
+          }
+          lpszPath = CharNextA(lpszPath);
+        }
+        return TRUE;
+      }
+    }
+    else if (lpszPath[1] == ':' && lpszPath[2] == '\\' && lpszPath[3] == '\0')
+      return TRUE; /* X:\ */
+  }
+  return FALSE;
+}
+
+/*************************************************************************
+ * PathRemoveFileSpecW	[SHLWAPI.@]
+ *
+ * See PathRemoveFileSpecA.
+ */
+BOOL WINAPI PathRemoveFileSpecW(LPWSTR lpszPath)
+{
+  LPWSTR lpszFileSpec = lpszPath;
+  BOOL bModified = FALSE;
+
+  TRACE("(%s)\n",debugstr_w(lpszPath));
+
+  if(lpszPath)
+  {
+    /* Skip directory or UNC path */
+    if (*lpszPath == '\\')
+      lpszFileSpec = ++lpszPath;
+    if (*lpszPath == '\\')
+      lpszFileSpec = ++lpszPath;
+
+    while (*lpszPath)
+    {
+      if(*lpszPath == '\\')
+        lpszFileSpec = lpszPath; /* Skip dir */
+      else if(*lpszPath == ':')
+      {
+        lpszFileSpec = ++lpszPath; /* Skip drive */
+        if (*lpszPath == '\\')
+          lpszFileSpec++;
+      }
+      lpszPath++;
+    }
+
+    if (*lpszFileSpec)
+    {
+      *lpszFileSpec = '\0';
+      bModified = TRUE;
+    }
+  }
+  return bModified;
+}
+
+/*************************************************************************
+ * PathStripToRootW	[SHLWAPI.@]
+ *
+ * See PathStripToRootA.
+ */
+BOOL WINAPI PathStripToRootW(LPWSTR lpszPath)
+{
+  TRACE("(%s)\n", debugstr_w(lpszPath));
+
+  if (!lpszPath)
+    return FALSE;
+  while(!PathIsRootW(lpszPath))
+    if (!PathRemoveFileSpecW(lpszPath))
+      return FALSE;
+  return TRUE;
+}
+
+/*************************************************************************
+ * PathStripToRootA	[SHLWAPI.@]
+ *
+ * Reduce a path to its root.
+ *
+ * PARAMS
+ *  lpszPath [I/O] the path to reduce
+ *
+ * RETURNS
+ *  Success: TRUE if the stripped path is a root path
+ *  Failure: FALSE if the path cannot be stripped or is NULL
+ */
+BOOL WINAPI PathStripToRootA(LPSTR lpszPath)
+{
+  TRACE("(%s)\n", debugstr_a(lpszPath));
+
+  if (!lpszPath)
+    return FALSE;
+  while(!PathIsRootA(lpszPath))
+    if (!PathRemoveFileSpecA(lpszPath))
+      return FALSE;
+  return TRUE;
+}

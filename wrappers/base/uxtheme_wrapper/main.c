@@ -515,7 +515,7 @@ HTHEME WINAPI OpenThemeDataInternal(
 )
 {
 	if(wcscmp(pszClassList, L"TASKDIALOG") == 0){
-		return OpenThemeData(hwnd, L"TextStyle");
+		return OpenThemeData(hwnd, L"CONTROLPANEL");
 	}
 	
 	return OpenThemeData(hwnd, pszClassList);

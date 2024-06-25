@@ -134,26 +134,21 @@ HRESULT WINAPI RoGetServerActivatableClasses(HSTRING name, HSTRING **classes, DW
     return S_OK;
 }
 
-		HRESULT
-		WINAPI
-		RoRegisterActivationFactories(
-			_In_reads_(count) HSTRING* activatableClassIds,
-			_In_reads_(count) PFNGETACTIVATIONFACTORY* activationFactoryCallbacks,
-			_In_ UINT32 count,
-			_Out_ RO_REGISTRATION_COOKIE* cookie
-			)
-		{
-			// if (auto const pRoRegisterActivationFactories = try_get_RoRegisterActivationFactories())
-			// {
-				// return pRoRegisterActivationFactories(activatableClassIds, activationFactoryCallbacks, count, cookie);
-			// }
+HRESULT
+WINAPI
+RoRegisterActivationFactories(
+	_In_reads_(count) HSTRING* activatableClassIds,
+	_In_reads_(count) PFNGETACTIVATIONFACTORY* activationFactoryCallbacks,
+	_In_ UINT32 count,
+	_Out_ RO_REGISTRATION_COOKIE* cookie
+)
+{
+	if (cookie)
+	   *cookie = NULL;
 
-			if (cookie)
-				*cookie = NULL;
+	return E_NOTIMPL;
+}
 
-			return E_NOTIMPL;
-		}
-		
 /***********************************************************************
  *      RoRegisterForApartmentShutdown (combase.@)
  */
@@ -161,11 +156,6 @@ HRESULT WINAPI RoRegisterForApartmentShutdown(IApartmentShutdown *callback,
         UINT64 *identifier, APARTMENT_SHUTDOWN_REGISTRATION_COOKIE *cookie)
 {
     HRESULT hr;
-	
-	// if (pRoRegisterForApartmentShutdown = try_get_RoRegisterForApartmentShutdown())
-	// {
-		// return pRoRegisterForApartmentShutdown(callbackObject, apartmentIdentifier, regCookie);
-	// }	
 
     FIXME("(%p, %p, %p): stub\n", callback, identifier, cookie);
 
@@ -186,4 +176,22 @@ BOOL WINAPI RoOriginateError(HRESULT error, HSTRING message)
 {
     FIXME("%#lx, %s: stub\n", error,message);
     return FALSE;
+}
+
+/***********************************************************************
+ *      GetRestrictedErrorInfo (combase.@)
+ */
+HRESULT WINAPI GetRestrictedErrorInfo(IRestrictedErrorInfo **info)
+{
+    FIXME( "(%p)\n", info );
+    return S_OK;
+}
+
+/***********************************************************************
+ *      RoOriginateLanguageException (combase.@)
+ */
+BOOL WINAPI RoOriginateLanguageException(HRESULT error, HSTRING message, IUnknown *language_exception)
+{
+    FIXME("%#lx, %s, %p: stub\n", error, message, language_exception);
+    return TRUE;
 }

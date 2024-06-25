@@ -20,6 +20,7 @@ endif()
 list(APPEND SOURCE
 	dib.c
 	display.c
+	dpi.c
 	dwm.c
 	hooks.c
 	icon.c

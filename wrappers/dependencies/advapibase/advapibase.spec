@@ -689,3 +689,6 @@
 @ stdcall CreateProcessAsUserSecure(ptr str str ptr ptr long long ptr str ptr ptr)
 @ stdcall QueryWindows31FilesMigration(long) advapibase.QueryWindows31FilesMigration
 @ stdcall SynchronizeWindows31FilesAndWindowsNTRegistry(long long long long) advapibase.SynchronizeWindows31FilesAndWindowsNTRegistry  ;only on XP (needed for synchronization)
+
+#Vista function, however, is supported by advapi32 from XP/2003 post-SP with updates
+@ stdcall -stub LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr)

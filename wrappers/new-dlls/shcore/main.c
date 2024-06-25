@@ -42,23 +42,41 @@ WINUSERAPI BOOL        WINAPI GetProcessDpiAwarenessInternal(HANDLE,DPI_AWARENES
 WINUSERAPI BOOL        WINAPI SetProcessDpiAwarenessInternal(DPI_AWARENESS);
 WINUSERAPI BOOL        WINAPI GetDpiForMonitorInternal(HMONITOR,UINT,UINT*,UINT*);
 
-BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, void *reserved)
-{
-    TRACE("(%p, %u, %p)\n", instance, reason, reserved);
+// BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, void *reserved)
+// {
+    // TRACE("(%p, %u, %p)\n", instance, reason, reserved);
 
-    switch (reason)
-    {
+    // switch (reason)
+    // {
+        // case DLL_PROCESS_ATTACH:
+            // DisableThreadLibraryCalls(instance);
+            // shcore_tls = TlsAlloc();
+            // break;
+        // case DLL_PROCESS_DETACH:
+            // if (reserved) break;
+            // if (shcore_tls != TLS_OUT_OF_INDEXES)
+                // TlsFree(shcore_tls);
+            // break;
+    // }
+
+    // return TRUE;
+// }
+BOOL WINAPI DllMain(
+    HINSTANCE hinstDLL,  
+    DWORD fdwReason,     
+    LPVOID lpvReserved )  
+{
+    HMODULE ignored;
+    switch( fdwReason ) 
+    { 
         case DLL_PROCESS_ATTACH:
-            DisableThreadLibraryCalls(instance);
-            shcore_tls = TlsAlloc();
+         // Should be OK
+            DisableThreadLibraryCalls(hinstDLL);
+            GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, L"shcore.dll", &ignored); // It's incredibly unlikely that something will load shcore.dll and unload it later on. Android Studio unloads it, and still calls functions inside it, which will crash without this code
             break;
-        case DLL_PROCESS_DETACH:
-            if (reserved) break;
-            if (shcore_tls != TLS_OUT_OF_INDEXES)
-                TlsFree(shcore_tls);
+        default:
             break;
     }
-
     return TRUE;
 }
 
