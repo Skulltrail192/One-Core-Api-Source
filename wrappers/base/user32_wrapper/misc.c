@@ -86,3 +86,11 @@ BOOL WINAPI UnregisterSuspendResumeNotification(HPOWERNOTIFY handle)
     FIXME("%p: stub.\n", handle);
     return TRUE;
 }
+
+BOOL WINAPI GetPointerDevice(HANDLE device, POINTER_DEVICE_INFO *dev) {
+	return FALSE;
+}
+
+BOOL WINAPI SkipPointerFrameMessages(UINT32 ID) {
+	return TRUE;
+}

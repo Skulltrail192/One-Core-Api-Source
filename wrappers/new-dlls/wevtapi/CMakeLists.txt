@@ -1,7 +1,7 @@
 
 add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
-spec2def(wevtapi.dll wevtapi.spec)
+spec2def(wevtapi.dll wevtapi.spec ADD_IMPORTLIB)
 
 set(baseaddress_wevtapi 	0x613a0000)
 

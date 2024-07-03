@@ -100,9 +100,21 @@ SystemParametersInfoWInternal(
 	PVOID pvParam,
 	UINT fWinIni)
 {
-  switch(uiAction)
-  {
-    case SPI_GETNONCLIENTMETRICS:
+	BOOL res;
+	// HACK: Qt6.6.1 after WinRT classes defined crashes due to NONCLIENTMETRICS being on NT6 size, so convert to NT5
+	if ((uiAction == SPI_SETNONCLIENTMETRICS || uiAction == SPI_GETNONCLIENTMETRICS) && ((LPNONCLIENTMETRICSW)pvParam)->cbSize == sizeof(NONCLIENTMETRICSW) + 4) {
+		// Set size
+		((LPNONCLIENTMETRICSW)pvParam)->cbSize -= 4;
+		res = SystemParametersInfoW(uiAction, sizeof(NONCLIENTMETRICSW), pvParam, fWinIni);
+		((LPNONCLIENTMETRICSW)pvParam)->cbSize += 4;
+		if (res) {
+			 ((LPNONCLIENTMETRICSW_VISTA)pvParam)->iPaddedBorderWidth = 0;
+		}
+		return res;
+	}	
+	switch(uiAction)
+    {
+      case SPI_GETNONCLIENTMETRICS:
       {
           LPNONCLIENTMETRICSW lpnclt = (LPNONCLIENTMETRICSW)pvParam;
 		  lpnclt->cbSize = sizeof(NONCLIENTMETRICSW);
@@ -128,9 +140,21 @@ SystemParametersInfoAInternal(
 	PVOID pvParam,
 	UINT fWinIni)
 {
-  switch(uiAction)
-  {
-    case SPI_GETNONCLIENTMETRICS:
+	BOOL res;
+	// HACK: Qt6.6.1 after WinRT classes defined crashes due to NONCLIENTMETRICS being on NT6 size, so convert to NT5
+	if ((uiAction == SPI_SETNONCLIENTMETRICS || uiAction == SPI_GETNONCLIENTMETRICS) && ((LPNONCLIENTMETRICSA)pvParam)->cbSize == sizeof(NONCLIENTMETRICSA) + 4) {
+		// Set size
+		((LPNONCLIENTMETRICSA)pvParam)->cbSize -= 4;
+		res = SystemParametersInfoW(uiAction, sizeof(NONCLIENTMETRICSA), pvParam, fWinIni);
+		((LPNONCLIENTMETRICSA)pvParam)->cbSize += 4;
+		if (res) {
+			 ((LPNONCLIENTMETRICSA_VISTA)pvParam)->iPaddedBorderWidth = 0;
+		}
+		return res;
+	}	
+    switch(uiAction)
+    {
+       case SPI_GETNONCLIENTMETRICS:
       {
           LPNONCLIENTMETRICSA lpnclt = (LPNONCLIENTMETRICSA)pvParam;	  
 		  lpnclt->cbSize = sizeof(NONCLIENTMETRICSA);       

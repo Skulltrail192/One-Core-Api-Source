@@ -23,11 +23,11 @@
 namespace Windows {
     namespace Foundation {
         [contractversion(4)]
-        apicontract FoundationContract
+        HRESULT FoundationContract
         {};
 
         [contractversion(10)]
-        apicontract UniversalApiContract
+        HRESULT UniversalApiContract
         {};
     }
 }

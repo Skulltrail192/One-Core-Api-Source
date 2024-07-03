@@ -466,15 +466,17 @@
 756 stub -noname DeleteFileThumbnail
 
 
-757 stub SHGetKnownFolderPath
+@ stdcall -stub SHGetKnownFolderPath(ptr long ptr ptr)
 758 stub GetCurrentProcessExplicitAppUserModelID
 759 stub SetCurrentProcessExplicitAppUserModelID
 760 stub SHSetKnownFolderPath
-761 stdcall SHGetIDListFromObject(ptr ptr)
-762 stdcall SHCreateShellItemArray(ptr ptr long ptr ptr)
-763 stdcall SHCreateShellItemArrayFromShellItem(ptr ptr ptr)
+@ stdcall SHGetIDListFromObject(ptr ptr)
+@ stdcall SHCreateShellItemArray(ptr ptr long ptr ptr)
+@ stdcall SHCreateShellItemArrayFromShellItem(ptr ptr ptr)
 @ stdcall -stub SHCreateItemFromIDList(ptr long ptr)
 @ stdcall -stub SHCreateShellItemArrayFromIDLists(long ptr ptr)
 @ stdcall -stub SHGetItemFromObject(ptr ptr ptr)
 @ stdcall -stub SHCreateShellItemArrayFromDataObject(ptr ptr ptr)
 @ stdcall -stub SHCreateItemFromParsingName(wstr ptr ptr ptr)
+@ stdcall -stub SHGetPropertyStoreForWindow(long ptr ptr)
+@ stdcall -stub SHQueryUserNotificationState(ptr) 

@@ -908,6 +908,7 @@
 @ stdcall UnregisterSuspendResumeNotification(ptr)
 
 #Win10 functions
+@ stdcall GetAwarenessFromDpiAwarenessContext(long)
 @ stdcall AdjustWindowRectExForDpi(ptr long long long long)
 @ stdcall AreDpiAwarenessContextsEqual(long long)
 @ stdcall EnableNonClientDpiScaling(long)
@@ -916,5 +917,6 @@
 @ stdcall GetDpiForSystem()
 @ stdcall GetDpiForWindow(long)
 @ stdcall GetThreadDpiAwarenessContext()
+@ stdcall GetWindowDpiAwarenessContext(long)
 @ stdcall SetThreadDpiAwarenessContext(ptr)
 @ stdcall SystemParametersInfoForDpi(long long ptr long long)

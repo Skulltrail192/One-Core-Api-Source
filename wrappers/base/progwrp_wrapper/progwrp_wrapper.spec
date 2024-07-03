@@ -1097,7 +1097,6 @@
 @ stdcall FindFirstFileNameW(wstr long ptr wstr)
 @ stdcall FindFirstFileTransactedA(str long ptr long ptr long ptr)
 @ stdcall FindFirstFileTransactedW(wstr long ptr long ptr long ptr)
-# @ stub FindFirstFileNameTransactedW
 @ stdcall FindFirstStreamTransactedW(wstr long ptr long ptr)
 @ stdcall FindNextFileNameW(long ptr wstr)
 @ stdcall FindNLSString(long long ptr long wstr long ptr)
@@ -1159,7 +1158,6 @@
 @ stdcall GetOverlappedResultEx(long ptr ptr long long)
 @ stdcall GetPhysicallyInstalledSystemMemory(ptr)
 @ stdcall GetProductInfo(long long long long ptr) 
-@ stub GetProductName
 @ stdcall GetQueuedCompletionStatusEx(ptr ptr long ptr long long) ;it doesn't work with Visual Code for now
 @ stdcall GetStringScripts(long wstr long wstr long) idndl.DownlevelGetStringScripts
 @ stdcall GetSystemDefaultLocaleName(ptr long)
@@ -1259,7 +1257,6 @@
 @ stdcall WakeAllConditionVariable(ptr) ntext.RtlWakeAllConditionVariable
 @ stdcall WakeConditionVariable(ptr) ntext.RtlWakeConditionVariable
 @ stdcall WerpNotifyLoadStringResource(ptr wstr ptr long)
-@ stub WerpNotifyLoadStringResourceEx
 @ stdcall WerpNotifyUseStringResource(ptr)
 @ stdcall WerRegisterFile(wstr long long)
 @ stdcall WerRegisterMemoryBlock(ptr long)
@@ -1282,7 +1279,6 @@
 @ stdcall Basep8BitStringToDynamicUnicodeString(wstr str)
 @ stdcall BasepMapModuleHandle(ptr long)
 @ stdcall BaseSetLastNTError(long)
-@ stub BaseThreadInitThunk
 @ stdcall CheckForReadOnlyResource(ptr)
 @ stdcall CopyContext(ptr long ptr)
 @ stdcall CreateRemoteThreadEx(long ptr long ptr long long ptr ptr)
@@ -1297,9 +1293,6 @@
 @ stdcall GetActiveProcessorCount(long)
 @ stdcall GetActiveProcessorGroupCount()
 @ stdcall GetCurrentProcessorNumberEx(ptr) ntext.RtlGetCurrentProcessorNumberEx
-@ stdcall -arch=x86_64 GetCurrentUmsThread()
-@ stdcall -ret64 -arch=i386,x86_64 GetEnabledXStateFeatures()
-@ stub GetEraNameCountedString
 @ stdcall GetMaximumProcessorCount(long)
 @ stdcall GetMaximumProcessorGroupCount()
 @ stdcall GetTimeFormatWWorker(long long ptr wstr ptr long) GetTimeFormatW
@@ -1316,9 +1309,6 @@
 @ stdcall -arch=x86_64 GetUmsCompletionListEvent(ptr ptr)
 @ stdcall -arch=i386,x86_64 GetXStateFeaturesMask(ptr ptr)
 @ stdcall -arch=i386,x86_64 InitializeContext(ptr long ptr ptr)
-@ stub LoadStringBaseExW
-@ stub LoadStringByReference
-# @ stub LoadStringBaseW
 @ stdcall -arch=i386,x86_64 LocateXStateFeature(ptr long ptr)
 @ stdcall K32EmptyWorkingSet(ptr)
 @ stdcall K32EnumDeviceDrivers(ptr long ptr)
@@ -1795,10 +1785,8 @@
 @ stdcall StrCatBuffW(wstr wstr long) shlwapi.StrCatBuffW
 @ stdcall StrCatChainW(ptr long long wstr) shlwapi.StrCatChainW
 @ stdcall StrChrA(str long) shlwapi.StrChrA
-# @ stub StrChrA_MB
 @ stdcall StrChrIA(str long) shlwapi.StrChrIA
 @ stdcall StrChrIW(wstr long) shlwapi.StrChrIW
-# @ stub StrChrNIW
 @ stdcall StrChrNW(wstr long long) shlwapi.StrChrNW
 @ stdcall StrChrW(wstr long) shlwapi.StrChrW
 @ stdcall StrCmpCA(str str) shlwapi.StrCmpCA
@@ -1907,6 +1895,7 @@
 
 #ole32 functions
 @ stdcall CoRegisterInitializeSpy(ptr ptr)
+@ stdcall CoRevokeInitializeSpy(int64)
 
 #ntdll functions
 @ stdcall NtOpenKeyEx(ptr long ptr long)
@@ -1917,30 +1906,108 @@
 
 #shell32 functions
 @ stdcall SHGetKnownFolderPath(ptr long ptr ptr)
+@ stdcall SHGetPropertyStoreForWindow(long ptr ptr)
+@ stdcall SHQueryUserNotificationState(ptr) 
 
 #iphlpapi functions
 @ stdcall CancelIPChangeNotify(ptr)
-@ stdcall -stub FreeMibTable(ptr)
+@ stdcall FreeMibTable(ptr)
 @ stdcall GetAdaptersAddresses( long long ptr ptr ptr )
-@ stdcall -stub GetIfTable2(long ptr)
+@ stdcall GetIfTable2(long ptr)
 
 #uxtheme functions
 @ stdcall CloseThemeData(ptr)
 @ stdcall DrawThemeBackground(ptr ptr long long ptr ptr)
 @ stdcall GetThemeBackgroundContentRect(ptr ptr long long ptr ptr)
 @ stdcall GetThemePartSize(ptr ptr long long ptr long ptr)
+92 stdcall OpenThemeData(ptr wstr)
 
 #user32 functions
-@ stdcall -stub CloseTouchInputHandle(ptr)
+@ stdcall CloseGestureInfoHandle(ptr) user32.CloseGestureInfoHandle
+@ stdcall CloseTouchInputHandle(ptr)
+@ stdcall DisplayConfigSetDeviceInfo(ptr)
 @ stdcall DefRawInputProc(ptr long long)
-@ stdcall -stub DisplayConfigGetDeviceInfo(ptr)
-@ stdcall -stub GetDisplayConfigBufferSizes(long ptr ptr)
+@ stdcall DisplayConfigGetDeviceInfo(ptr)
+@ stdcall IsTouchWindow(ptr ptr)
+@ stdcall GetDisplayConfigBufferSizes(long ptr ptr)
+@ stdcall GetGestureInfo(ptr ptr)
 @ stdcall GetLayeredWindowAttributes(long ptr ptr ptr)
 @ stdcall GetRawInputBuffer(ptr ptr long)
 @ stdcall GetRawInputData(ptr long ptr ptr long)
 @ stdcall GetRawInputDeviceInfoA(ptr long ptr ptr)
 @ stdcall GetRawInputDeviceInfoW(ptr long ptr ptr)
 @ stdcall GetRawInputDeviceList(ptr ptr long)
+@ stdcall GetTouchInputInfo(ptr long ptr long)
+@ stdcall PrintWindow(ptr ptr long)
+@ stdcall QueryDisplayConfig(long ptr ptr ptr ptr ptr)
+@ stdcall RegisterPowerSettingNotification(ptr ptr long)
+@ stdcall RegisterRawInputDevices(ptr long long)
+@ stdcall RegisterTouchWindow(ptr)
+@ stdcall SetGestureConfig(ptr long long ptr long)
+@ stdcall SetProcessDPIAware()
+@ stdcall SystemParametersInfoW(long long ptr long)
+@ stdcall UnregisterPowerSettingNotification(ptr)
+@ stdcall UnregisterTouchWindow(ptr)
 
 #dxgi functions
+@ stdcall CreateDXGIFactory(ptr ptr)
 @ stdcall CreateDXGIFactory1(ptr ptr)
+
+#dwmapi functions
+@ stdcall DwmDefWindowProc(long long long long ptr)
+@ stdcall DwmExtendFrameIntoClientArea(long ptr)
+@ stdcall DwmGetCompositionTimingInfo(long ptr)
+@ stdcall DwmGetWindowAttribute(ptr long ptr long)
+@ stdcall DwmSetWindowAttribute(ptr long ptr long)
+
+#dwrite functions
+@ stdcall DWriteCreateFactory(long ptr ptr)
+
+#wevtapi functions
+@ stdcall EvtClose(ptr)
+@ stdcall EvtCreateRenderContext(long wstr long)
+@ stdcall EvtNext(ptr long ptr long long ptr)
+@ stdcall EvtQuery(ptr wstr wstr long)
+@ stdcall EvtRender(long long long long ptr ptr ptr)
+
+#ws2_32 functions
+@ stdcall freeaddrinfo(ptr)
+@ stdcall getaddrinfo(str str ptr ptr)
+@ stdcall inet_ntop(long ptr ptr long)
+
+#pdh functions
+@ stdcall PdhAddEnglishCounterW(ptr wstr long ptr)
+
+#powrprof
+@ stdcall PowerDeterminePlatformRole()
+
+#bcryptprimitives functions
+@ stdcall ProcessPrng(ptr long)
+
+#combase functions
+@ stdcall RoActivateInstance(ptr ptr)
+@ stdcall RoGetActivationFactory(ptr ptr ptr)
+@ stdcall WindowsCreateString(wstr long ptr)
+@ stdcall WindowsCreateStringReference(wstr long ptr ptr)
+@ stdcall WindowsDeleteString(ptr)
+@ stdcall WindowsGetStringRawBuffer(ptr ptr)
+
+#ntdll functions
+@ stdcall RtlGetLastNtStatus()
+
+#gdi32 functions
+@ stdcall ScriptItemize(wstr long long ptr ptr ptr ptr)
+
+#setupapi functions
+@ stdcall SetupDiGetDevicePropertyW(ptr ptr ptr ptr ptr long ptr long)
+
+#dbghelp functions
+@ stdcall SymGetSearchPathW(long ptr long)
+@ stdcall SymSetSearchPathW(long wstr)
+
+#wtsapi32 functions
+@ stdcall WTSRegisterSessionNotification(long long)
+@ stdcall WTSUnRegisterSessionNotification(long)
+
+#shcore functions
+@ stdcall GetDpiForMonitor(long long ptr ptr)

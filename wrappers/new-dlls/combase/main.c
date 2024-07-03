@@ -68,3 +68,17 @@ HRESULT WINAPI CoGetCallState(int unknown, PULONG unknown2)
 {
     return E_NOTIMPL;
 }
+
+/***********************************************************************
+ *           InternalTlsAllocData    (combase.@)
+ */
+HRESULT WINAPI InternalTlsAllocData(struct tlsdata **data)
+{
+    if (!(*data = calloc(1, sizeof(**data))))
+        return E_OUTOFMEMORY;
+
+    list_init(&(*data)->spies);
+    NtCurrentTeb()->ReservedForOle = *data;
+
+    return S_OK;
+}

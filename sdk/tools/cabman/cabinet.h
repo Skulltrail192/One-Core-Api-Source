@@ -9,6 +9,11 @@
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
+#if defined(_AMD64_)
+unsigned long __readfsdword(
+   unsigned long Offset
+);
+#endif
 #include <windows.h>
 #else
 #include <errno.h>

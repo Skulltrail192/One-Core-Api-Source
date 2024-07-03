@@ -53,7 +53,7 @@ int WINAPI GetSystemMetricsForDpi(int nIndex, UINT dpi) {
 } 
 
 BOOL WINAPI SystemParametersInfoForDpi(UINT uiAction, UINT uiParam, PVOID pvParam, UINT fWinIni, UINT dpi) {
-    if (SystemParametersInfoW(uiAction, uiParam, pvParam, fWinIni)) {
+    if (SystemParametersInfoWInternal(uiAction, uiParam, pvParam, fWinIni)) {
         if(uiAction == SPI_GETICONTITLELOGFONT)
         {
             LOGFONTW* logfont = pvParam;
@@ -218,12 +218,7 @@ BOOL WINAPI GetPointerDeviceRects(HANDLE device, RECT *pointerDeviceRect, RECT *
 	}
 	return TRUE;
 }
-BOOL WINAPI GetPointerDevice(HANDLE device, POINTER_DEVICE_INFO *dev) {
-	return FALSE;
-}
-BOOL WINAPI SkipPointerFrameMessages(UINT32 ID) {
-	return TRUE;
-}
+
 HRESULT WINAPI GetProcessDpiAwareness(HANDLE hProcess, PROCESS_DPI_AWARENESS *value) {
 	if (!value)
 		return ERROR_INVALID_PARAMETER;
@@ -344,41 +339,47 @@ BOOL WINAPI SetProcessDpiAwarenessInternal( DPI_AWARENESS awareness )
  *              GetProcessDpiAwarenessInternal   (USER32.@)
  */
 // based on Win7Wrapper
-BOOL WINAPI GetProcessDpiAwarenessInternal(HANDLE hProcess, PROCESS_DPI_AWARENESS *value) {
-    if (!value) {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return FALSE;
-    }
-        // always set UNAWARE if you do not want this
-    if (IsProcessDPIAware())
+BOOL 
+WINAPI 
+GetProcessDpiAwarenessInternal(
+	HANDLE hProcess, 
+	PROCESS_DPI_AWARENESS *value) 
+{
+   if (!value) {
+       SetLastError(ERROR_INVALID_PARAMETER);
+       return FALSE;
+   }
+   
+   // always set UNAWARE if you do not want this
+   if (IsProcessDPIAware())
         *value = DPI_AWARENESS_SYSTEM_AWARE;
-    else
+   else
         *value = DPI_AWARENESS_UNAWARE;
-    return TRUE;
+   return TRUE;
 }
 
-		BOOL
-		WINAPI
-		SetProcessDpiAwarenessContext(
-			_In_ DPI_AWARENESS_CONTEXT value
-			)
-		{
+BOOL
+WINAPI
+SetProcessDpiAwarenessContext(
+    _In_ DPI_AWARENESS_CONTEXT value
+	)
+{
 			// if (auto const pSetProcessDpiAwarenessContext = try_get_SetProcessDpiAwarenessContext())
 			// {
 				// return pSetProcessDpiAwarenessContext(value);
 			// }
 
-			LSTATUS lStatus;
-			HRESULT hr;
+   LSTATUS lStatus;
+   HRESULT hr;
 
-			do
-			{
-				PROCESS_DPI_AWARENESS DpiAwareness;
+   do
+   {
+	   PROCESS_DPI_AWARENESS DpiAwareness;
 
-				if (DPI_AWARENESS_CONTEXT_UNAWARE == value
-					|| DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED == value)
-				{
-					DpiAwareness = PROCESS_DPI_UNAWARE;
+	   if (DPI_AWARENESS_CONTEXT_UNAWARE == value
+	      || DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED == value)
+       {
+			DpiAwareness = PROCESS_DPI_UNAWARE;
 				}
 				else if (DPI_AWARENESS_CONTEXT_SYSTEM_AWARE == value)
 				{
@@ -419,9 +420,18 @@ BOOL WINAPI GetProcessDpiAwarenessInternal(HANDLE hProcess, PROCESS_DPI_AWARENES
 					lStatus = hr;
 				}
 
-			} while (FALSE);
-
+	} while (FALSE);
 			
-			SetLastError(lStatus);
-			return FALSE;
-		}
+	SetLastError(lStatus);
+	return FALSE;
+}
+		
+DPI_AWARENESS_CONTEXT 
+WINAPI 
+GetWindowDpiAwarenessContext(HWND hWnd) {
+    // Basically check if the DPI for system is regular.
+    // But the DPI for window is not.
+    if (GetDpiForSystem() == 96 && GetDpiForWindow(hWnd) != 96)
+        return DPI_AWARENESS_CONTEXT_SYSTEM_AWARE;
+    return DPI_AWARENESS_CONTEXT_UNAWARE;
+}

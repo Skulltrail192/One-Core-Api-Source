@@ -1,7 +1,7 @@
 
 add_definitions(-D__WINESRC__)
 include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
-spec2def(bcryptprimitives.dll bcryptprimitives.spec)
+spec2def(bcryptprimitives.dll bcryptprimitives.spec ADD_IMPORTLIB)
 
 set(baseaddress_bcryptprimitives     0x643e0000)
 

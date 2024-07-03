@@ -197,6 +197,29 @@ typedef enum
     ADS_RIGHT_GENERIC_READ            = 0x80000000
 } ADS_RIGHTS_ENUM;
 
+
+typedef struct _PERF_COUNTER_IDENTIFIER {
+    GUID CounterSetGuid;
+    ULONG Status;
+    ULONG Size;
+    ULONG CounterId;
+    ULONG InstanceId;
+    ULONG Index;
+    ULONG Reserved;
+} PERF_COUNTER_IDENTIFIER, *PPERF_COUNTER_IDENTIFIER;
+
+#define PERF_WILDCARD_COUNTER  0xFFFFFFFF
+#define PERF_WILDCARD_INSTANCE L"*"
+
+typedef struct _PERF_DATA_HEADER {
+    ULONG dwTotalSize;
+    ULONG dwNumCounters;
+    LONGLONG PerfTimeStamp;
+    LONGLONG PerfTime100NSec;
+    LONGLONG PerfFreq;
+    SYSTEMTIME SystemTime;
+} PERF_DATA_HEADER, *PPERF_DATA_HEADER;
+
 /* memory allocation functions */
 
 static inline WCHAR *strdupAW( const char *src )

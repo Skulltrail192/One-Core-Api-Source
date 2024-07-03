@@ -30,3 +30,4 @@
 @ stub PowerWriteACValueIndex
 @ stub PowerWriteDCValueIndex
 @ stub PowerDeterminePlatformRoleEx
+@ stdcall -stub PowerDeterminePlatformRole()

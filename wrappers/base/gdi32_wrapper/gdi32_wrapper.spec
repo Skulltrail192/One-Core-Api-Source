@@ -624,6 +624,7 @@
 @ stdcall D3DKMTQueryStatistics(ptr)
 @ stdcall D3DKMTQueryVideoMemoryInfo(ptr)
 @ stdcall D3DKMTSetQueuedLimit(ptr)
+@ stdcall D3DKMTSetProcessSchedulingPriorityClass(long long)
 #@ stdcall D3DKMTSetVidPnSourceOwner(ptr)
 @ stub LoadImageColorMatcherA
 @ stub LoadImageColorMatcherW 

@@ -1,0 +1,1 @@
+@ stdcall DnsQueryEx(ptr ptr ptr)

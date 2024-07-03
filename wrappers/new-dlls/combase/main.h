@@ -34,6 +34,8 @@
 
 #define APTTYPEQUALIFIER_APPLICATION_STA 6
 #define APTTYPEQUALIFIER_RESERVED_1 7
+#define ACTIVATION_CONTEXT_SECTION_WINRT_ACTIVATABLE_CLASSES     12
+#define RTL_CRITICAL_SECTION_FLAG_FORCE_DEBUG_INFO 0x10000000
 
 #define IRPCSS_PROTSEQ {'n','c','a','l','r','p','c',0}
 #define IRPCSS_ENDPOINT {'i','r','p','c','s','s',0}
@@ -244,6 +246,7 @@ struct tlsdata
     struct list       spies;         /* Spies installed with CoRegisterInitializeSpy */
     DWORD             spies_lock;
     DWORD             cancelcount;
+    CO_MTA_USAGE_COOKIE implicit_mta_cookie; /* mta referenced by roapi from sta thread */
 };
 
 typedef struct _SOleTlsData {
@@ -256,6 +259,15 @@ typedef struct _SOleTlsData {
   DWORD dwFlags;
   void  *pCurrentCtx;
 } SOleTlsData, *PSOleTlsData;
+
+struct activatable_class_data
+{
+    ULONG size;
+    DWORD unk;
+    DWORD module_len;
+    DWORD module_offset;
+    DWORD threading_model;
+};
 
 extern HRESULT WINAPI InternalTlsAllocData(struct tlsdata **data);
 
@@ -306,6 +318,16 @@ static FORCEINLINE LONG ReadNoFence( LONG const volatile *src )
     LONG value = __WINE_LOAD32_NO_FENCE( (int const volatile *)src );
     return value;
 }
+
+//External kernel32
+/*
+* @implemented
+*/
+BOOL WINAPI InitializeCriticalSectionEx(OUT LPCRITICAL_SECTION lpCriticalSection,
+                                        IN DWORD dwSpinCount,
+                                        IN DWORD flags);
+
+HRESULT ensure_mta(void);
 
 /* shared variables*/
 

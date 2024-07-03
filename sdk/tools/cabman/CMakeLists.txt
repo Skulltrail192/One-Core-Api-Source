@@ -1,4 +1,6 @@
 
+include_directories(${REACTOS_SOURCE_DIR}/include/host)
+
 list(APPEND SOURCE
     cabinet.cxx
     dfp.cxx

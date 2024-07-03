@@ -1,5 +1,5 @@
 1   stdcall  accept(long ptr ptr)
-2   stdcall  bind(long ptr long) bindInternal
+2   stdcall  bind(long ptr long)
 3   stdcall  closesocket(long)
 4   stdcall  connect(long ptr long)
 5   stdcall  getpeername(long ptr ptr)
@@ -17,7 +17,7 @@
 17  stdcall  recvfrom(long ptr long long ptr ptr)
 18  stdcall  select(long ptr ptr ptr ptr)
 19  stdcall  send(long ptr long long)
-20  stdcall  sendto(long ptr long long ptr long) ;ws2_base.sendto
+20  stdcall  sendto(long ptr long long ptr long) ws2_base.sendto
 21  stdcall  setsockopt(long long long ptr long) setsockoptInternal
 22  stdcall  shutdown(long long)
 23  stdcall  socket(long long long)
@@ -133,7 +133,7 @@
 @ stdcall -arch=x86_64 WSCWriteProviderOrder32(ptr long)
 @ stdcall -arch=x86_64 WSCUpdateProvider32(ptr wstr ptr long ptr)
 
-; #Vista functions
+#Vista functions
 @ stdcall FreeAddrInfoEx(ptr)
 @ stdcall FreeAddrInfoExW(ptr)
 @ stdcall GetAddrInfoExCancel(ptr)

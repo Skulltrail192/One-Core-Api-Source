@@ -427,6 +427,7 @@ void write_type_left(FILE *h, type_t *t, enum name_type name_type, int declonly)
         break;
       case TYPE_ALIAS:
       case TYPE_FUNCTION:
+	  case TYPE_APICONTRACT:
         /* handled elsewhere */
         assert(0);
         break;
@@ -481,6 +482,7 @@ void write_type_right(FILE *h, type_t *t, int is_field)
   case TYPE_COCLASS:
   case TYPE_FUNCTION:
   case TYPE_INTERFACE:
+  case TYPE_APICONTRACT:
     break;
   }
 }
@@ -1697,6 +1699,23 @@ static void write_forward_decls(FILE *header, const statement_list_t *stmts)
   }
 }
 
+static char *format_apicontract_macro(const type_t *type)
+{
+    char *name = format_namespace(type->namespace, "", "_", type->name, NULL);
+    int i;
+    for (i = strlen(name); i > 0; --i) name[i - 1] = toupper(name[i - 1]);
+    return name;
+}
+
+static void write_apicontract(FILE *header, type_t *apicontract)
+{
+    char *name = format_apicontract_macro(apicontract);
+    fprintf(header, "#if !defined(%s_VERSION)\n", name);
+    fprintf(header, "#define %s_VERSION %#x\n", name, get_attrv(apicontract->attrs, ATTR_CONTRACTVERSION));
+    fprintf(header, "#endif // defined(%s_VERSION)\n\n", name);
+    free(name);
+}
+
 static void write_header_stmts(FILE *header, const statement_list_t *stmts, const type_t *iface, int ignore_funcs)
 {
   const statement_t *stmt;
@@ -1731,6 +1750,8 @@ static void write_header_stmts(FILE *header, const statement_list_t *stmts, cons
         }
         else if (type_get_type(stmt->u.type) == TYPE_COCLASS)
           write_coclass(header, stmt->u.type);
+        else if (type_get_type(stmt->u.type) == TYPE_APICONTRACT)
+          write_apicontract(header, stmt->u.type);	  
         else
         {
           write_type_definition(header, stmt->u.type);

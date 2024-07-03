@@ -275,3 +275,51 @@ ULONG WINAPI PerfStopProvider(HANDLE handle)
     heap_free( prov );
     return STATUS_SUCCESS;
 }
+
+LONG WINAPI PerfCloseQueryHandle( HANDLE query )
+{
+    FIXME( "query %p stub.\n", query );
+
+    return ERROR_SUCCESS;
+}
+
+ULONG WINAPI PerfOpenQueryHandle( const WCHAR *machine, HANDLE *query )
+{
+    FIXME( "machine %s, query %p.\n", debugstr_w(machine), query );
+
+    if (!query) return ERROR_INVALID_PARAMETER;
+    *query = (HANDLE)0xdeadbeef;
+
+    return ERROR_SUCCESS;
+}
+
+ULONG WINAPI PerfAddCounters( HANDLE query, PERF_COUNTER_IDENTIFIER *id, DWORD size )
+{
+    FIXME( "query %p, id %p, size %lu stub.\n", query, id, size );
+
+    if (!id || size < sizeof(*id) || id->Size < sizeof(*id)) return ERROR_INVALID_PARAMETER;
+
+    id->Status = ERROR_WMI_GUID_NOT_FOUND;
+    return ERROR_SUCCESS;
+}
+
+ULONG WINAPI PerfQueryCounterData( HANDLE query, PERF_DATA_HEADER *data, DWORD data_size, DWORD *size_needed )
+{
+    FIXME( "query %p, data %p, data_size %lu, size_needed %p stub.\n", query, data, data_size, size_needed );
+
+    if (!size_needed) return ERROR_INVALID_PARAMETER;
+
+    *size_needed = sizeof(PERF_DATA_HEADER);
+
+    if (!data || data_size < sizeof(PERF_DATA_HEADER)) return ERROR_NOT_ENOUGH_MEMORY;
+
+    data->dwTotalSize = sizeof(PERF_DATA_HEADER);
+    data->dwNumCounters = 0;
+    QueryPerformanceCounter( (LARGE_INTEGER *)&data->PerfTimeStamp );
+    QueryPerformanceFrequency( (LARGE_INTEGER *)&data->PerfFreq );
+    GetSystemTimeAsFileTime( (FILETIME *)&data->PerfTime100NSec );
+    FileTimeToSystemTime( (FILETIME *)&data->PerfTime100NSec, &data->SystemTime );
+
+    return ERROR_SUCCESS;
+}
+

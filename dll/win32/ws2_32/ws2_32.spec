@@ -115,3 +115,5 @@
 23  stdcall  socket(long long long)
 @ stdcall GetAddrInfoW(wstr wstr ptr ptr)
 @ stdcall GetNameInfoW(ptr long wstr long wstr long long)
+
+@ stdcall -stub inet_ntop(long ptr ptr long)

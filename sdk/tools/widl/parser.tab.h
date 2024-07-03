@@ -230,7 +230,8 @@ extern int parser_debug;
     PPTR = 440,
     POS = 441,
     NEG = 442,
-    ADDRESSOF = 443
+    ADDRESSOF = 443,
+	tAPICONTRACT = 444
   };
 #endif
 

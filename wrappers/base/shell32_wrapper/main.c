@@ -21,7 +21,7 @@
  
 WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
-HINSTANCE shell32_hInstance = 0;	
+HINSTANCE shell32_hInstance = 0;
 
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 {
@@ -39,15 +39,15 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 			if (!AppData)
 				return E_OUTOFMEMORY;
 			
-			if(GetEnvironmentVariableW(L"APPDATA", AppData, bufferSize) > 0 && GetEnvironmentVariableW(L"LOCALAPPDATA", AppData, bufferSize) == 0){
-				SetEnvironmentVariableW(L"LOCALAPPDATA", L"%USERPROFILE%\\Local Settings\\Application Data");
+			if(GetEnvironmentVariableW(L"HOMEPATH", AppData, bufferSize) > 0 && GetEnvironmentVariableW(L"LOCALAPPDATA", AppData, bufferSize) == 0){
+				SetEnvironmentVariableW(L"LOCALAPPDATA", wcscat(AppData, L"\\Local Settings\\Application Data\\"));
 			}
-			//Hack to disable sandbox for Firefox 73+
-			if(GetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", AppData, bufferSize) == 0){
-				SetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", L"1");
-			}
+			// //Hack to disable sandbox for Firefox 73+
+			// if(GetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", AppData, bufferSize) == 0){
+				// SetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", L"1");
+			// }
 			
-			SetEnvironmentVariable("COMPLUS_EnableWriteXorExecute", 0);
+			//SetEnvironmentVariable("COMPLUS_EnableWriteXorExecute", 0);
 			SetEnvironmentVariable("PROGRAMDATA", "%SYSTEMDRIVE%\\ProgramData");
 			
 			HeapFree(GetProcessHeap(), 0, AppData);

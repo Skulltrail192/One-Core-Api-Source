@@ -79,3 +79,25 @@ int WINAPI GdiGetBitmapBitsSize(BITMAPINFO * lpbmi)
     }
     return Ret;
 }
+
+BOOL
+WINAPI
+NtGdiBeginGdiRendering(
+    HBITMAP hbm,
+    BOOL bDiscard
+)
+{
+	return TRUE;
+}
+
+BOOL
+WINAPI
+NtGdiEndGdiRendering(
+    HBITMAP hbm,
+    BOOL bDiscard,
+    BOOL* pbDeviceRemoved
+)
+{
+	*pbDeviceRemoved = TRUE;
+	return TRUE;	
+}

@@ -1452,6 +1452,7 @@
 @ stdcall -stub -arch=x86_64 RtlCopyMemoryNonTemporal(ptr ptr long)
 @ stdcall -stub -arch=x86_64 RtlGetFunctionTableListHead()
 @ cdecl -stub -arch=x86_64 __misaligned_access()
+@ stdcall -arch=x86_64 RtlCopyMemory(ptr ptr int64) memcpy
 
 #Vista only support Functions
 @ stdcall -stub CsrVerifyRegion()

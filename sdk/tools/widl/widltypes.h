@@ -167,7 +167,9 @@ enum attr_type
     ATTR_VARARG,
     ATTR_VERSION,
     ATTR_VIPROGID,
-    ATTR_WIREMARSHAL
+    ATTR_WIREMARSHAL,
+    ATTR_CONTRACT,
+    ATTR_CONTRACTVERSION,	
 };
 
 enum expr_type
@@ -412,6 +414,7 @@ enum type_type
     TYPE_POINTER,
     TYPE_ARRAY,
     TYPE_BITFIELD,
+	TYPE_APICONTRACT,
 };
 
 struct _type_t {

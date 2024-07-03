@@ -50,8 +50,11 @@ void type_dispinterface_define(type_t *iface, var_list_t *props, var_list_t *met
 void type_dispinterface_define_from_iface(type_t *dispiface, type_t *iface);
 void type_module_define(type_t *module, statement_list_t *stmts);
 type_t *type_coclass_define(type_t *coclass, ifref_list_t *ifaces);
+type_t *type_apicontract_declare(char *name, struct namespace *namespace);
+type_t *type_apicontract_define(type_t *apicontract, attr_list_t *attrs);
 int type_is_equal(const type_t *type1, const type_t *type2);
 const char *type_get_name(const type_t *type, enum name_type name_type);
+attr_list_t *check_apicontract_attrs(const char *name, attr_list_t *attrs);
 
 /* FIXME: shouldn't need to export this */
 type_t *duptype(type_t *t, int dupname);
@@ -211,6 +214,9 @@ static inline int type_is_complete(const type_t *type)
     case TYPE_ARRAY:
     case TYPE_BITFIELD:
         return TRUE;
+    case TYPE_APICONTRACT:
+        assert(0);
+        break;		
     }
     return FALSE;
 }

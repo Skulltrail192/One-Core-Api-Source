@@ -583,6 +583,44 @@ typedef struct tagPOINTER_TOUCH_INFO {
   UINT32       pressure;
 } POINTER_TOUCH_INFO;
 
+typedef struct tagNONCLIENTMETRICSA_VISTA {
+	UINT cbSize;
+	int iBorderWidth;
+	int iScrollWidth;
+	int iScrollHeight;
+	int iCaptionWidth;
+	int iCaptionHeight;
+	LOGFONTA lfCaptionFont;
+	int iSmCaptionWidth;
+	int iSmCaptionHeight;
+	LOGFONTA lfSmCaptionFont;
+	int iMenuWidth;
+	int iMenuHeight;
+	LOGFONTA lfMenuFont;
+	LOGFONTA lfStatusFont;
+	LOGFONTA lfMessageFont;
+    int iPaddedBorderWidth;
+} NONCLIENTMETRICSA_VISTA, *PNONCLIENTMETRICSA_VISTA,*LPNONCLIENTMETRICSA_VISTA;
+
+typedef struct tagNONCLIENTMETRICSW_VISTA {
+	UINT cbSize;
+	int iBorderWidth;
+	int iScrollWidth;
+	int iScrollHeight;
+	int iCaptionWidth;
+	int iCaptionHeight;
+	LOGFONTW lfCaptionFont;
+	int iSmCaptionWidth;
+	int iSmCaptionHeight;
+	LOGFONTW lfSmCaptionFont;
+	int iMenuWidth;
+	int iMenuHeight;
+	LOGFONTW lfMenuFont;
+	LOGFONTW lfStatusFont;
+	LOGFONTW lfMessageFont;
+    int iPaddedBorderWidth;
+} NONCLIENTMETRICSW_VISTA, *PNONCLIENTMETRICSW_VISTA,*LPNONCLIENTMETRICSW_VISTA;
+
 struct user_object
 {
     HANDLE             handle;
@@ -592,4 +630,14 @@ struct user_object
 void USER_Lock(void);
 void USER_Unlock(void);
 
-BOOL WINAPI IsProcessDPIAware();
+BOOL 
+WINAPI 
+IsProcessDPIAware();
+
+BOOL 
+WINAPI
+SystemParametersInfoWInternal(
+	UINT uiAction,
+	UINT uiParam,
+	PVOID pvParam,
+	UINT fWinIni);

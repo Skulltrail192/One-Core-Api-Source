@@ -234,12 +234,14 @@ unsigned short get_type_vt(type_t *t)
     /* aliases should be filtered out by the type_get_type call above */
     assert(0);
     break;
-
   case TYPE_FUNCTION:
     error("get_type_vt: functions not supported\n");
     break;
 
   case TYPE_BITFIELD:
+    error("get_type_vt: bitfields not supported\n");
+    break;
+  case TYPE_APICONTRACT:
     error("get_type_vt: bitfields not supported\n");
     break;
   }

@@ -698,24 +698,12 @@ D3DKMTCheckSharedResourceAccess(
 		return STATUS_INVALID_PARAMETER;
 }
 
-BOOL
+NTSTATUS
 WINAPI
-NtGdiBeginGdiRendering(
-    HBITMAP hbm,
-    BOOL bDiscard
+D3DKMTSetProcessSchedulingPriorityClass(
+    HANDLE                         unnamedParam1,
+    D3DKMT_SCHEDULINGPRIORITYCLASS unnamedParam2
 )
 {
-	return TRUE;
-}
-
-BOOL
-WINAPI
-NtGdiEndGdiRendering(
-    HBITMAP hbm,
-    BOOL bDiscard,
-    BOOL* pbDeviceRemoved
-)
-{
-	*pbDeviceRemoved = TRUE;
-	return TRUE;	
+	return STATUS_NOT_IMPLEMENTED;
 }

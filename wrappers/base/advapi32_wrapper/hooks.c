@@ -141,7 +141,7 @@ SetTokenInformationInternal (
 									   TokenInformationLength);
 		if (!NT_SUCCESS(Status))
 		{
-			//DbgPrint("SetTokenInformationInternal:: NtSetInformationToken returned Status: 0x%08lx\n", Status);			
+			DbgPrint("SetTokenInformationInternal:: NtSetInformationToken returned Status: 0x%08lx\n", Status);			
 			SetLastError(RtlNtStatusToDosError(Status));
 			return FALSE;
 		}
