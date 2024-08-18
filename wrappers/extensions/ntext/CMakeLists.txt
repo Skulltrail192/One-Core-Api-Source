@@ -25,6 +25,7 @@ list(APPEND SOURCE
 	ldr/ldrapi.c
 	ldr/loader.c
 	rtl/acl.c
+	rtl/actctx.c
 	rtl/atom.c
 	rtl/avl.c	
 	rtl/boundary.c

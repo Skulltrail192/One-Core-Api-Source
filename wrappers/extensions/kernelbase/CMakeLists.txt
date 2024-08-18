@@ -57,7 +57,8 @@ list(APPEND SOURCE
 	psapi.c
 	reg.c
 	security.c
-	sortkey.c	
+	snapshot.c
+	sortkey.c
 	string.c
 	support.c
 	sxs.c
@@ -80,12 +81,14 @@ list(APPEND SOURCE
 	
 if(ARCH STREQUAL "i386")
     list(APPEND ASM_SOURCE
+		# asm/i386/fiber.S
+		# asm/i386/thread.S
 		asm/i386/thunk.S
 	)
 elseif(ARCH STREQUAL "amd64")
     list(APPEND ASM_SOURCE
-        #asm/amd64/thread.S
-		
+        # asm/amd64/fiber.S	
+        # asm/amd64/thread.S	
 	)
 endif()	
 	

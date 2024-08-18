@@ -446,3 +446,13 @@ CONFIGRET WINAPI CM_Get_Device_Interface_PropertyW( LPCWSTR device_interface, co
 
     return CR_CALL_NOT_IMPLEMENTED;
 }
+
+/***********************************************************************
+ *           CM_Register_Notification (cfgmgr32.@)
+ */
+CONFIGRET WINAPI CM_Unregister_Notification(HCMNOTIFICATION *notify_context )
+{
+    FIXME("%p stub!\n",  notify_context);
+
+    return CR_CALL_NOT_IMPLEMENTED;
+}

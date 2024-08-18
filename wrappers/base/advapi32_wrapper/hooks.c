@@ -42,6 +42,7 @@ GetTokenInformationInternal (
     PTOKEN_GROUPS GroupBuffer;
     DWORD dwReturnLength = *ReturnLength;
     int i, index=0;
+	char* ptr;
     // 
     if(TokenInformationClass == TokenLogonSid){
 		if (TokenInformationLength == 0) { // Chrome 98+ sandbox needs this.
@@ -83,7 +84,12 @@ GetTokenInformationInternal (
             }
         }
         InformationBuffer->GroupCount = index;
-		
+		ptr = (void*)InformationBuffer; // ugly hack, chrome sandbox of 98-109 requires different format
+#ifdef _M_IX86
+	    ptr[11] |= 0xC0; // OR the 11th byte with 0xC0;
+#elif defined(_M_AMD64)
+	    ptr[19] |= 0xC0; // OR the 12th byte, or 16th on x64 with 0xC0
+#endif		
 		*ReturnLength = sizeof(TOKEN_GROUPS) + sizeof(PVOID) + sizeof(DWORD) + SECURITY_MAX_SID_SIZE;
         // Free temp buffer.
         RtlFreeHeap(RtlGetProcessHeap(), 0, GroupBuffer);
@@ -96,25 +102,28 @@ GetTokenInformationInternal (
 		return STATUS_SUCCESS;
 	}
 	
-	if(TokenInformationClass & TokenIntegrityLevel | TokenElevationType | TokenLinkedToken | TokenElevation | TokenLogonSid){
-		
-		//DbgPrint("GetTokenInformationInternal:: Vista Token Cases\n");
-		
-		Status = NtQueryInformationToken(TokenHandle,
-										 TokenInformationClass,
-										 TokenInformation,
-										 TokenInformationLength,
-										 (PULONG)ReturnLength);
-		if (!NT_SUCCESS(Status))
-		{
-			//DbgPrint("GetTokenInformationInternal:: NtQueryInformationToken returned Status: 0x%08lx\n", Status);
-			SetLastError(RtlNtStatusToDosError(Status));
-			return FALSE;
-		}
-		
-		
-		return TRUE;
-	}
+    if(TokenInformationClass == TokenIntegrityLevel || 
+       TokenInformationClass == TokenElevation || 
+       TokenInformationClass == TokenLinkedToken || 
+       TokenInformationClass == TokenElevation){
+        
+        DbgPrint("GetTokenInformationInternal:: Unhandled Vista Token Case: %i\n", TokenInformationClass);
+        
+        Status = NtQueryInformationToken(TokenHandle,
+                                         TokenInformationClass,
+                                         TokenInformation,
+                                         TokenInformationLength,
+                                         (PULONG)ReturnLength);
+        if (!NT_SUCCESS(Status))
+        {
+            //DbgPrint("GetTokenInformationInternal:: NtQueryInformationToken returned Status: 0x%08lx\n", Status);
+            SetLastError(RtlNtStatusToDosError(Status));
+            return FALSE;
+        }
+        
+        
+        return TRUE;
+    }
 
 	return GetTokenInformation(TokenHandle,
 							   TokenInformationClass,
@@ -134,20 +143,24 @@ SetTokenInformationInternal (
 { 
     NTSTATUS Status;
 	
-	if(TokenInformationClass & TokenIntegrityLevel | TokenElevationType | TokenLinkedToken | TokenElevation){
-		Status = NtSetInformationToken(TokenHandle,
-									   TokenInformationClass,
-									   TokenInformation,
-									   TokenInformationLength);
-		if (!NT_SUCCESS(Status))
-		{
-			DbgPrint("SetTokenInformationInternal:: NtSetInformationToken returned Status: 0x%08lx\n", Status);			
-			SetLastError(RtlNtStatusToDosError(Status));
-			return FALSE;
-		}
+    if(TokenInformationClass == TokenIntegrityLevel || 
+       TokenInformationClass == TokenElevationType || 
+       TokenInformationClass == TokenLinkedToken || 
+       TokenInformationClass == TokenElevation ||
+       TokenInformationClass == TokenLogonSid){
+                 DbgPrint("SetTokenInformationInternal:: Unhandled Vista Token Case: %i\n", TokenInformationClass);
+        Status = NtSetInformationToken(TokenHandle,
+                                       TokenInformationClass,
+                                       TokenInformation,
+                                       TokenInformationLength);
+        if (!NT_SUCCESS(Status))
+        {        
+            SetLastError(RtlNtStatusToDosError(Status));
+            return FALSE;
+        }
 
-		return TRUE;		
-	}else{
+        return TRUE;
+    }else{
 		return SetTokenInformation(TokenHandle,
 								   TokenInformationClass,
 								   TokenInformation,
@@ -477,4 +490,18 @@ GetNamedSecurityInfoWInternal(
 								 ppDacl,
 								 ppSacl,
 								 ppSecurityDescriptor);								 
+}
+
+BOOL
+WINAPI
+CreateWellKnownSidInternal(IN WELL_KNOWN_SID_TYPE WellKnownSidType,
+                   IN PSID DomainSid  OPTIONAL,
+                   OUT PSID pSid,
+                   IN OUT DWORD* cbSid)
+{
+	if (WellKnownSidType == WinBuiltinAnyPackageSid) WellKnownSidType = WinLocalSid;
+	return CreateWellKnownSid(WellKnownSidType,
+	                          DomainSid,
+							  pSid,
+							  cbSid);
 }

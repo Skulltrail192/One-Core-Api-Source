@@ -200,3 +200,7 @@
 
 #Windows 7 functions
 @ stdcall CM_MapCrToWin32Err(long long) setupapi.CM_MapCrToWin32Err
+
+#Win8
+@ stdcall CM_Register_Notification(ptr ptr ptr ptr) setupapi.CM_Register_Notification
+@ stdcall CM_Unregister_Notification(ptr) setupapi.CM_Unregister_Notification

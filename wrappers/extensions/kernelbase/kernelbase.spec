@@ -1398,7 +1398,6 @@
 @ stdcall GetFirmwareType(ptr)
 @ stdcall GetPackageFamilyName(long ptr ptr)
 @ stdcall GetPackageFullName(long ptr ptr)
-@ stdcall GetPackagePathByFullName(wstr ptr wstr)
 @ stdcall GetPackagesByPackageFamily(wstr ptr ptr ptr ptr)
 @ stdcall GetProcessInformation(long long ptr long)
 @ stdcall GetProcessMitigationPolicy(long long ptr long)
@@ -1410,6 +1409,7 @@
 @ stdcall LoadPackagedLibrary(wstr long)
 @ stdcall MapViewOfFileFromApp(long long int64 long)
 @ stdcall OpenFileMappingFromApp(long long wstr)
+@ stdcall OpenPackageInfoByFullName (wstr long ptr)
 @ stdcall PackageIdFromFullName(wstr long ptr ptr)
 @ stdcall PathAllocCanonicalize(wstr long ptr)
 @ stdcall PathAllocCombine(wstr wstr long ptr)
@@ -1457,6 +1457,11 @@
 #Win8.1 functions
 @ stdcall DiscardVirtualMemory(ptr long)
 @ stdcall FindPackagesByPackageFamily(wstr long ptr ptr ptr ptr ptr)
+@ stdcall GetPackageApplicationIds (ptr ptr ptr ptr)
+@ stdcall GetPackagePathByFullName(wstr ptr wstr)
+@ stdcall PssCaptureSnapshot(long long long ptr)
+@ stdcall PssFreeSnapshot(long long)
+@ stdcall PssQuerySnapshot(long long ptr long)
 
 #Win10 functions
 @ stdcall AppPolicyGetMediaFoundationCodecLoading(ptr ptr)
@@ -1880,3 +1885,6 @@
 @ stdcall UrlIsW(wstr long) shlwapi.UrlIsW
 @ stdcall UrlUnescapeA(str ptr ptr long) shlwapi.UrlUnescapeA
 @ stdcall UrlUnescapeW(wstr ptr ptr long) shlwapi.UrlUnescapeW
+
+
+@ stdcall -stub QueryWin31IniFilesMappedToRegistry(long wstr long ptr)

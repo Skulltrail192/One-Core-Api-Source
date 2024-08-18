@@ -605,7 +605,10 @@
 @ stub pSetupWriteLogEntry
 @ stub pSetupWriteLogError
 
-#Vista Functions
+#Vista,7 and 8.1 Functions
 @ stdcall SetupDiGetDevicePropertyW(ptr ptr ptr ptr ptr long ptr long)
 @ stdcall -stub CM_Get_DevNode_PropertyW(long ptr ptr ptr ptr long)
 @ stdcall -stub CM_MapCrToWin32Err(long long)
+@ stdcall -stub CM_Register_Notification(long long)
+@ stdcall -stub CM_Get_Device_Interface_PropertyW(wstr ptr ptr ptr ptr long)
+@ stdcall -stub CM_Unregister_Notification(ptr)

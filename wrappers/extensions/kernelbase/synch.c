@@ -772,28 +772,28 @@ BOOL WINAPI DECLSPEC_HOTPATCH WaitForDebugEventEx( DEBUG_EVENT *event, DWORD tim
     }
 }	
 
-// /***********************************************************************
- // *           WaitOnAddress   (kernelbase.@)
- // */
-// BOOL WINAPI DECLSPEC_HOTPATCH WaitOnAddress(
-  // volatile VOID *Address,
-  // PVOID         CompareAddress,
-  // SIZE_T        AddressSize,
-  // DWORD         dwMilliseconds
-// )
-// {
-  // LARGE_INTEGER timeout; 
-  // NTSTATUS Status; 
-  // BOOL result;
+/***********************************************************************
+ *           WaitOnAddress   (kernelbase.@)
+ */
+BOOL WINAPI DECLSPEC_HOTPATCH WaitOnAddress(
+  volatile VOID *Address,
+  PVOID         CompareAddress,
+  SIZE_T        AddressSize,
+  DWORD         dwMilliseconds
+)
+{
+  LARGE_INTEGER timeout; 
+  NTSTATUS Status; 
+  BOOL result;
 
-  // BaseFormatTimeOut(&timeout, dwMilliseconds);
-  // Status = RtlWaitOnAddress((const void*)Address, CompareAddress, AddressSize, &timeout);
-  // BaseSetLastNTError(Status);
-  // result = FALSE;
-  // if ( NT_SUCCESS( Status) )
-    // result = Status != 0x102;
-  // return result;
-// }
+  BaseFormatTimeOut(&timeout, dwMilliseconds);
+  Status = RtlWaitOnAddress((const void*)Address, CompareAddress, AddressSize, &timeout);
+  BaseSetLastNTError(Status);
+  result = FALSE;
+  if ( NT_SUCCESS( Status) )
+    result = Status != 0x102;
+  return result;
+}
 
 static inline INT HashAddress(
 	IN	LPVOID	lpAddr)
@@ -916,69 +916,38 @@ static inline VOID DeleteACVAListEntry(
 	// return bSuccess;
 // }
 
-// WINBASEAPI VOID WINAPI WakeByAddressSingle(
-	// IN	LPVOID	lpAddr)
-// {
-	// LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
-	// LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
-	
-	// DbgPrint("(%p)", lpAddr);
-
-	// EnterCriticalSection(&lpHashTableEntry->Lock);
-	// lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
-
-	// if (lpListEntry) {
-		// RtlWakeConditionVariable(&lpListEntry->CVar);
-	// }
-
-	// LeaveCriticalSection(&lpHashTableEntry->Lock);
-// }
-
-// WINBASEAPI VOID WINAPI WakeByAddressAll(
-	// IN	LPVOID	lpAddr)
-// {
-	// LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
-	// LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
-
-	// DbgPrint("(%p)", lpAddr);
-	
-	// EnterCriticalSection(&lpHashTableEntry->Lock);
-	// lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
-
-	// if (lpListEntry) {
-		// RtlWakeAllConditionVariable(&lpListEntry->CVar);
-	// }
-
-	// LeaveCriticalSection(&lpHashTableEntry->Lock);
-// }
-
-
-//
-// This function is a wrapper around (Kex)RtlWaitOnAddress.
-//
-BOOL WINAPI WaitOnAddress(
-    IN    volatile VOID    *Address,
-    IN    PVOID            CompareAddress,
-    IN    SIZE_T            AddressSize,
-    IN    DWORD            Milliseconds OPTIONAL)
+WINBASEAPI VOID WINAPI WakeByAddressSingle(
+	IN	LPVOID	lpAddr)
 {
-    NTSTATUS Status;
-    PLARGE_INTEGER TimeOutPointer;
-    LARGE_INTEGER TimeOut;
+	LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
+	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
+	
+	DbgPrint("(%p)", lpAddr);
 
-    TimeOutPointer = BaseFormatTimeOut(&TimeOut, Milliseconds);
+	EnterCriticalSection(&lpHashTableEntry->Lock);
+	lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
 
-    Status = RtlWaitOnAddress(
-        Address,
-        CompareAddress,
-        AddressSize,
-        TimeOutPointer);
+	if (lpListEntry) {
+		RtlWakeConditionVariable(&lpListEntry->CVar);
+	}
 
-    BaseSetLastNTError(Status);
-    
-    if (NT_SUCCESS(Status) && Status != STATUS_TIMEOUT) {
-        return TRUE;
-    } else {
-        return FALSE;
-    }
+	LeaveCriticalSection(&lpHashTableEntry->Lock);
+}
+
+WINBASEAPI VOID WINAPI WakeByAddressAll(
+	IN	LPVOID	lpAddr)
+{
+	LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
+	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
+
+	DbgPrint("(%p)", lpAddr);
+	
+	EnterCriticalSection(&lpHashTableEntry->Lock);
+	lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
+
+	if (lpListEntry) {
+		RtlWakeAllConditionVariable(&lpListEntry->CVar);
+	}
+
+	LeaveCriticalSection(&lpHashTableEntry->Lock);
 }

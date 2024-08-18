@@ -749,8 +749,9 @@
 740 stdcall wvsprintfA(ptr str ptr)
 741 stdcall wvsprintfW(ptr wstr ptr)
 
-742 stub DisplayConfigGetDeviceInfo
-743 stub GetDisplayConfigBufferSizes
+@ stdcall -stub CloseTouchInputHandle(ptr)
+@ stdcall -stub DisplayConfigGetDeviceInfo(ptr)
+@ stdcall -stub GetDisplayConfigBufferSizes(long ptr ptr)
 744 stub QueryDisplayConfig
 745 stub CreateWindowInBand
 746 stub GetWindowBand
@@ -771,9 +772,16 @@
 761 stub ShutdownBlockReasonCreate
 762 stub ShutdownBlockReasonDestroy
 763 stub IsProcessDPIAware
+@ stdcall -stub RegisterPowerSettingNotification(ptr ptr long)
+@ stdcall -stub RegisterTouchWindow(ptr)
+@ stdcall -stub SetGestureConfig(ptr long long ptr long)
 764 stub SetProcessDPIAware
 765 stub SetWindowCompositionAttribute
 766 stdcall GetDpiForMonitorInternal(long long ptr ptr)
 767 stdcall GetProcessDpiAwarenessInternal(long ptr)
 768 stdcall SetProcessDpiAwarenessInternal(long)
 @ stdcall -stub SetThreadDpiAwarenessContext(ptr)
+@ stdcall -stub CloseGestureInfoHandle(ptr)
+@ stdcall -stub DisplayConfigSetDeviceInfo(ptr)
+@ stdcall -stub UnregisterPowerSettingNotification(ptr)
+@ stdcall -stub UnregisterTouchWindow(ptr)

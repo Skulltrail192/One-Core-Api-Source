@@ -15,9 +15,9 @@
 @ stdcall CM_Get_Device_Interface_List_SizeW(ptr ptr wstr long) cfgmgr32.CM_Get_Device_Interface_List_SizeW
 @ stdcall CM_Get_Device_Interface_ListW(ptr wstr wstr long long) cfgmgr32.CM_Get_Device_Interface_ListW
 @ stub CM_Get_Device_Interface_Property_KeysW
-@ stub CM_Get_Device_Interface_PropertyW
+@ stdcall CM_Get_Device_Interface_PropertyW(wstr ptr ptr ptr ptr long) setupapi.CM_Get_Device_Interface_PropertyW
 @ stub CM_Get_DevNode_Property_Keys
-@ stub CM_Get_DevNode_PropertyW
+@ stdcall CM_Get_DevNode_PropertyW(long ptr ptr ptr ptr long) setupapi.CM_Get_DevNode_PropertyW
 @ stdcall CM_Get_DevNode_Registry_PropertyW(long long ptr ptr ptr long) cfgmgr32.CM_Get_DevNode_Registry_PropertyW
 @ stdcall CM_Get_DevNode_Status(ptr ptr long long) cfgmgr32.CM_Get_DevNode_Status
 @ stdcall CM_Get_Parent(ptr long long) cfgmgr32.CM_Get_Parent
@@ -27,7 +27,7 @@
 @ stub CM_Open_Device_Interface_KeyW
 @ stdcall CM_Open_DevNode_Key(ptr long long long ptr long) cfgmgr32.CM_Open_DevNode_Key
 @ stdcall CM_Query_And_Remove_SubTreeW(long ptr wstr long long) cfgmgr32.CM_Query_And_Remove_SubTreeW
-@ stub CM_Register_Notification
+@ stdcall CM_Register_Notification(ptr ptr ptr ptr) cfgmgr32.CM_Register_Notification
 @ stub CM_Set_Class_PropertyW
 @ stdcall CM_Set_Class_Registry_PropertyW(ptr long ptr long long ptr) cfgmgr32.CM_Set_Class_Registry_PropertyW
 @ stub CM_Set_Device_Interface_PropertyW
@@ -35,4 +35,4 @@
 @ stdcall CM_Set_DevNode_Registry_PropertyW(long long ptr long long) cfgmgr32.CM_Set_DevNode_Registry_PropertyW
 @ stdcall CM_Setup_DevNode(long long) cfgmgr32.CM_Setup_DevNode
 @ stdcall CM_Uninstall_DevNode(long long) cfgmgr32.CM_Uninstall_DevNode
-@ stub CM_Unregister_Notification
+@ stdcall CM_Unregister_Notification(ptr) setupapi.CM_Unregister_Notification

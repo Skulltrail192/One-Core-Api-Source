@@ -35,7 +35,28 @@ static const int MonthLengths[2][12] =
 {
 	{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 },
 	{ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 }
-};	
+};
+
+static int  StringCompareIgnoreCaseByAscii(wchar_t* string1, wchar_t* string2, size_t count)
+{
+    wchar_t f, l;
+    int result = 0;
+
+    if (count)
+    {
+        /* validation section */
+        do {
+            f = tolower(*string1);
+            l = tolower(*string2);
+            string1++;
+            string2++;
+        } while ((--count) && f && (f == l));
+
+        result = (int)(f - l);
+    }
+
+    return result;
+}
 
 static inline BOOL IsLeapYear(int Year)
 {
@@ -1317,6 +1338,81 @@ DWORD WINAPI GetDynamicTimeZoneInformation(DYNAMIC_TIME_ZONE_INFORMATION *tzinfo
      }
      return TIME_ZoneID( (TIME_ZONE_INFORMATION*)tzinfo );
 }
+
+    // DWORD
+    // WINAPI
+    // GetDynamicTimeZoneInformation(
+        // _Out_ PDYNAMIC_TIME_ZONE_INFORMATION pTimeZoneInformation
+        // )
+    // {
+		// DWORD Result;
+		// HKEY hTimeZoneRootKey;
+		// int i;
+		// wchar_t szTimeZoneKeyName[128];
+        // WCHAR StandardName[32] = {0};
+        // //防止奇葩注册表，让
+        // DWORD cdStandardName = sizeof(StandardName);
+        // HKEY hTimeZoneKey;
+        // LSTATUS lStatus;		
+        // // if (const auto pGetDynamicTimeZoneInformation = try_get_GetDynamicTimeZoneInformation())
+        // // {
+            // // return pGetDynamicTimeZoneInformation(pTimeZoneInformation);
+        // // }
+
+        // memset(pTimeZoneInformation, 0, sizeof(*pTimeZoneInformation));
+
+        // Result = GetTimeZoneInformation((LPTIME_ZONE_INFORMATION)pTimeZoneInformation);
+
+        // if (Result == TIME_ZONE_ID_INVALID)
+        // {
+            // return Result;
+        // }
+
+            
+        // pTimeZoneInformation->DynamicDaylightTimeDisabled = TIME_ZONE_ID_UNKNOWN == Result;
+
+        // //搜索 TimeZoneKeyName 名称
+
+        // do
+        // {            
+            // if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones", 0, KEY_READ, &hTimeZoneRootKey) != ERROR_SUCCESS)
+            // {
+                // break;
+            // }            
+
+            // for (i = 0; RegEnumKeyW(hTimeZoneRootKey, i, szTimeZoneKeyName, _countof(szTimeZoneKeyName)) == ERROR_SUCCESS;++i)
+            // {                
+                // if (RegOpenKeyExW(hTimeZoneRootKey, szTimeZoneKeyName, 0, KEY_READ, &hTimeZoneKey) != ERROR_SUCCESS)
+                    // continue;
+
+                // lStatus = RegQueryValueExW(hTimeZoneKey, L"Std", NULL, NULL, (LPBYTE)StandardName, &cdStandardName);
+
+                // RegCloseKey(hTimeZoneKey);
+
+                // if (lStatus == ERROR_SUCCESS)
+                // {
+                    // //始终保持 0 截断
+                    // StandardName[_countof(StandardName) - 1] = L'\0';
+
+                    // if (StringCompareIgnoreCaseByAscii((wchar_t*)StandardName, 
+					                                   // (wchar_t*)pTimeZoneInformation->StandardName, 
+													    // _countof(pTimeZoneInformation->StandardName)) == 0)
+                    // {
+                        // memcpy(pTimeZoneInformation->TimeZoneKeyName, szTimeZoneKeyName, sizeof(szTimeZoneKeyName));
+
+                        // break;
+                    // }
+                // }
+            // }
+
+            // RegCloseKey(hTimeZoneRootKey);
+
+        // } while (FALSE);
+
+            
+        // return Result;
+
+    // }
 
 BOOL 
 WINAPI 

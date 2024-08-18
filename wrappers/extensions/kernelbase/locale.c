@@ -3724,3 +3724,76 @@ INT WINAPI DECLSPEC_HOTPATCH WideCharToMultiByteInternal( UINT codepage, DWORD f
 	return ret;
 }
 
+
+// static const struct geo_id *find_geo_id_entry( GEOID id )
+// {
+    // int min = 0, max = geo_ids_count - 1;
+
+    // while (min <= max)
+    // {
+        // int pos = (min + max) / 2;
+        // if (id < geo_ids[pos].id) max = pos - 1;
+        // else if (id > geo_ids[pos].id) min = pos + 1;
+        // else return &geo_ids[pos];
+    // }
+    // return NULL;
+// }
+
+// INT WINAPI GetUserDefaultGeoName(LPWSTR geo_name, int count)
+// {
+    // // const struct geoinfo *geoinfo;
+    // // WCHAR buffer[32];
+    // // LSTATUS status;
+    // // DWORD size;
+    // // HKEY key;
+
+    // // TRACE( "geo_name %p, count %d.\n", geo_name, count );
+
+    // // if (count && !geo_name)
+    // // {
+        // // SetLastError( ERROR_INVALID_PARAMETER );
+        // // return 0;
+    // // }
+    // // if (!(status = RegOpenKeyExW( intl_key, L"Geo", 0, KEY_ALL_ACCESS, &key )))
+    // // {
+        // // size = sizeof(buffer);
+        // // status = RegQueryValueExW( key, L"Name", NULL, NULL, (BYTE *)buffer, &size );
+        // // RegCloseKey( key );
+    // // }
+    // // if (status)
+    // // {
+        // // const struct geo_id *geo = find_geo_id_entry( GetUserGeoID( GEOCLASS_NATION ));
+        // // if (geo && geo->id != 39070)
+            // // lstrcpyW( buffer, geo->iso2 );
+        // // else
+            // // lstrcpyW( buffer, L"001" );
+    // // }
+    // // size = lstrlenW( buffer ) + 1;
+    // // if (count < size)
+    // // {
+        // // if (!count)
+            // // return size;
+        // // SetLastError( ERROR_INSUFFICIENT_BUFFER );
+        // // return 0;
+    // // }
+    // // lstrcpyW( geo_name, buffer );
+    // // return size;
+	// int i;
+	// int count = 0;
+	
+	// if (Locale == 0 || (lpName == NULL && cchName > 0) || cchName < 0)
+	// {
+		// SetLastError(ERROR_INVALID_PARAMETER);
+		// return 0;
+	// }	
+	// for(i=0;i<LOCALE_TABLE_SIZE;i++){
+		// if(Locale == LocaleTable[i].lcid){
+			// count = (wcslen(LocaleTable[i].localeName)+1);
+			// if(lpName){
+				// memcpy(lpName, LocaleTable[i].localeName, sizeof(WCHAR)*(count));
+				// lpName[count-1] = 0;
+			// }			
+			// return count;
+		// }
+	// }	
+// }

@@ -96,7 +96,6 @@
 102 stdcall CreateServiceA(long str str long long long long str str ptr str str str)
 103 stdcall CreateServiceW(long wstr wstr long long long long wstr wstr ptr wstr wstr wstr)
 104 stdcall CreateTraceInstanceId(ptr ptr) #ntdll.EtwCreateTraceInstanceId ; Windows XP doesn't have this function on Ntdll
-105 stdcall CreateWellKnownSid(long ptr ptr ptr)
 106 stdcall CredDeleteA(str long long)
 107 stdcall CredDeleteW(wstr long long)
 108 stdcall CredEnumerateA(str long ptr ptr)
@@ -880,6 +879,7 @@
 89 stdcall ConvertStringSidToSidA(ptr ptr)
 90 stdcall ConvertStringSidToSidW(ptr ptr) ;ConvertStringSidToSidWInternal
 101 stdcall CreateRestrictedToken(long long long ptr long ptr long ptr ptr) CreateRestrictedTokenInternal
+105 stdcall CreateWellKnownSid(long ptr ptr ptr) CreateWellKnownSidInternal
 248 stdcall GetKernelObjectSecurity(long long ptr long ptr) GetKernelObjectSecurityInternal
 261 stdcall GetNamedSecurityInfoW(wstr long long ptr ptr ptr ptr ptr) GetNamedSecurityInfoWInternal
 273 stdcall GetSecurityInfo(long long long ptr ptr ptr ptr ptr) GetSecurityInfoInternal

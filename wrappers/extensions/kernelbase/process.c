@@ -1142,9 +1142,11 @@ BOOL WINAPI UpdateProcThreadAttribute(LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeLi
 		}
 		break;
 	default:
-		BaseSetLastNTError(STATUS_NOT_SUPPORTED);
-		return FALSE;
-		break;
+		// BaseSetLastNTError(STATUS_NOT_SUPPORTED);
+		// return FALSE;
+		// break;
+        return TRUE;
+        break;		
 	}
 	//原代码中这段代码和检查大小放在一起
 	if (Attribute==PROC_THREAD_ATTRIBUTE_EXTENDED_FLAGS)
@@ -2267,7 +2269,9 @@ GetApplicationRecoveryCallback(IN HANDLE hProcess,
     return E_FAIL;
 }
 
-BOOL WINAPI GetProcessInformation(HANDLE ProcessHandle, PROCESS_INFORMATION_CLASS ProcessInformationClass,
+BOOL 
+WINAPI 
+GetProcessInformation(HANDLE ProcessHandle, PROCESS_INFORMATION_CLASS ProcessInformationClass,
     LPVOID ProcessInformation, DWORD ProcessInformationSize) {
     NTSTATUS st;
     PROCESSINFOCLASS NtProcessInfoClass;

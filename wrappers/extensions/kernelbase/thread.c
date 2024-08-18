@@ -22,7 +22,16 @@ Revision History:
 
 #include "main.h"
 
+
 #define THREAD_SET_LIMITED_INFORMATION   0x0400
+
+#ifndef ROUND_DOWN
+#define ROUND_DOWN(n, align) (((ULONG)n) & ~((align) - 1l))
+#endif
+
+#ifndef ROUND_UP
+#define ROUND_UP(n, align) ROUND_DOWN(((ULONG)n) + (align) - 1, (align))
+#endif
 
 WINE_DEFAULT_DEBUG_CHANNEL(kernel32);
 WINE_DECLARE_DEBUG_CHANNEL(winedbg);
@@ -30,6 +39,8 @@ WINE_DECLARE_DEBUG_CHANNEL(winedbg);
 static DWORD (WINAPI *pConsoleIMERoutine)(LPVOID);
 static DWORD (WINAPI *pCtrlRoutine)(LPVOID);
 void WINAPI RtlFreeUserStack( void *stack );
+
+extern BOOLEAN BaseRunningInServerProcess;
 
 /*******************************************************************
  *         format_exception_msg
@@ -344,18 +355,45 @@ BOOL isXPOrLower(){
 	return FALSE;
 }
 
+VOID
+WINAPI
+BaseRundownFls(_In_ PVOID FlsData)
+{
+    ULONG n, FlsHighIndex;
+    PRTL_FLS_DATA pFlsData;
+    PFLS_CALLBACK_FUNCTION lpCallback;
+
+    pFlsData = FlsData;
+
+    RtlAcquirePebLock();
+    FlsHighIndex = NtCurrentPeb()->FlsHighIndex;
+    RemoveEntryList(&pFlsData->ListEntry);
+    RtlReleasePebLock();
+
+    for (n = 1; n <= FlsHighIndex; ++n)
+    {
+        lpCallback = NtCurrentPeb()->FlsCallback[n];
+        if (lpCallback && pFlsData->Data[n])
+        {
+            lpCallback(pFlsData->Data[n]);
+        }
+    }
+
+    RtlFreeHeap(RtlGetProcessHeap(), 0, FlsData);
+}
+
 // /***********************************************************************
  // *           FlsAlloc   (KERNEL32.@) - For .Net 4.5.1 + Framework Support (native functions not work)
  // */
 // DWORD WINAPI FlsAlloc( PFLS_CALLBACK_FUNCTION lpCallback )
 // {
-	// // if(isXPOrLower()){
-		// // return TlsAlloc();				
-	// // }else{
+	// if(isXPOrLower()){
+        // return TlsAlloc();				
+	// }else{
 		// DWORD index;		
 		// if (!set_ntstatus( RtlFlsAlloc( lpCallback, &index ))) return FLS_OUT_OF_INDEXES;
 		// return index;		
-	// //}	
+	// }	
 // }
 
 // /***********************************************************************
@@ -363,11 +401,11 @@ BOOL isXPOrLower(){
  // */
 // BOOL WINAPI FlsFree( DWORD index )
 // {	
-	// // if(isXPOrLower()){
-		// // return TlsFree(index); 	
-	// // }else{
+	// if(isXPOrLower()){
+	    // return TlsFree(index); 	
+	// }else{
 		// return set_ntstatus( RtlFlsFree( index ));		
-	// //}	
+	// }	
 // }
 
 // /***********************************************************************
@@ -375,15 +413,14 @@ BOOL isXPOrLower(){
  // */
 // PVOID WINAPI FlsGetValue( DWORD index )
 // {
-	// // if(isXPOrLower()){
-		// // return TlsGetValue(index); 	
-	// // }else{
+	// if(isXPOrLower()){
+	    // return TlsGetValue(index); 	
+	// }else{
 		// void *data;
-
 		// if (!set_ntstatus( RtlFlsGetValue( index, &data ))) return NULL;
 		// SetLastError( ERROR_SUCCESS );
 		// return data;	
-	// //}		
+	// }		
 // }
 
 // /***********************************************************************
@@ -391,11 +428,11 @@ BOOL isXPOrLower(){
  // */
 // BOOL WINAPI FlsSetValue( DWORD index, PVOID lpFlsData )
 // {
-	// // if(isXPOrLower()){
-		// // return TlsSetValue(index, lpFlsData);	
-	// // }else{
+	// if(isXPOrLower()){
+	    // return TlsSetValue(index, lpFlsData);	
+	// }else{
 		// return set_ntstatus( RtlFlsSetValue( index, lpFlsData ));		
-	// //}	
+	// }	
 // }
 
 /*

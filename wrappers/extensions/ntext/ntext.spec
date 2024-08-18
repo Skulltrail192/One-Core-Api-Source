@@ -1322,12 +1322,12 @@
 @ stdcall NtWaitForMultipleObjects32(long ptr long long ptr) ntdll.NtWaitForMultipleObjects32
 @ stdcall RtlAcquirePrivilege(ptr long long ptr) ntdll.RtlAcquirePrivilege
 @ stdcall RtlAddVectoredContinueHandler(long ptr) ntdll.RtlAddVectoredContinueHandler
-@ stdcall RtlAllocateActivationContextStack(ptr) ntdll.RtlAllocateActivationContextStack
+@ stdcall RtlAllocateActivationContextStack(ptr) #ntdll.RtlAllocateActivationContextStack
 @ stdcall RtlCopyMappedMemory(ptr ptr long) ntdll.RtlCopyMappedMemory
 @ stdcall RtlDosPathNameToNtPathName_U_WithStatus(wstr ptr ptr ptr) ; 5.2 SP1, and higher
 @ stdcall RtlDosPathNameToRelativeNtPathName_U_WithStatus(wstr ptr ptr ptr) 
 @ stdcall RtlFormatMessageEx(ptr long long long long ptr ptr long ptr long) ntdll.RtlFormatMessageEx
-@ stdcall RtlFreeActivationContextStack(ptr) ntdll.RtlFreeActivationContextStack
+@ stdcall RtlFreeActivationContextStack(ptr) #ntdll.RtlFreeActivationContextStack
 @ stdcall RtlGetCriticalSectionRecursionCount(ptr) ntdll.RtlGetCriticalSectionRecursionCount
 @ stdcall RtlImageNtHeaderEx(long ptr double ptr)
 @ stdcall RtlInsertElementGenericTableFull(ptr ptr long ptr ptr long)

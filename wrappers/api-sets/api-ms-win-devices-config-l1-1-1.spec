@@ -27,7 +27,7 @@
 @ stub CM_Open_Device_Interface_KeyW
 @ stdcall CM_Open_DevNode_Key(ptr long long long ptr long) cfgmgr32.CM_Open_DevNode_Key
 @ stdcall CM_Query_And_Remove_SubTreeW(long ptr wstr long long) cfgmgr32.CM_Query_And_Remove_SubTreeW
-@ stub CM_Register_Notification
+@ stdcall CM_Register_Notification(ptr ptr ptr ptr) cfgmgr32.CM_Register_Notification
 @ stub CM_Set_Class_PropertyW
 @ stdcall CM_Set_Class_Registry_PropertyW(ptr long ptr long long ptr) cfgmgr32.CM_Set_Class_Registry_PropertyW
 @ stub CM_Set_Device_Interface_PropertyW
@@ -35,5 +35,5 @@
 @ stdcall CM_Set_DevNode_Registry_PropertyW(long long ptr long long) cfgmgr32.CM_Set_DevNode_Registry_PropertyW
 @ stdcall CM_Setup_DevNode(long long) cfgmgr32.CM_Setup_DevNode
 @ stdcall CM_Uninstall_DevNode(long long) cfgmgr32.CM_Uninstall_DevNode
-@ stub CM_Unregister_Notification
-@ stub CM_MapCrToWin32Err
+@ stdcall CM_Unregister_Notification(ptr) setupapi.CM_Unregister_Notification
+@ stdcall CM_MapCrToWin32Err(long long) setupapi.CM_MapCrToWin32Err

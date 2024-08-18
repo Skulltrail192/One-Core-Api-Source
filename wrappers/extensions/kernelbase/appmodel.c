@@ -218,3 +218,22 @@ LONG WINAPI PackageIdFromFullName(const WCHAR *full_name, UINT32 flags, UINT32 *
 {
 	return ERROR_NOT_FOUND;
 }
+
+LONG WINAPI GetPackageApplicationIds(
+  PACKAGE_INFO_REFERENCE packageInfoReference,
+  UINT32                 *bufferLength,
+  BYTE                   *buffer,
+  UINT32                 *count
+)
+{
+	return APPMODEL_ERROR_NO_PACKAGE;
+}
+
+LONG OpenPackageInfoByFullName(
+  PCWSTR                 packageFullName,
+  const UINT32           reserved,
+  PACKAGE_INFO_REFERENCE *packageInfoReference
+)
+{
+	return ERROR_NOT_FOUND;
+}

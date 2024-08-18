@@ -1,6 +1,8 @@
 
 include_directories(${REACTOS_SOURCE_DIR}/sdk/lib/crt/include)
 spec2def(msvcrt.dll msvcrt.spec ADD_IMPORTLIB)
+remove_definitions(-D_WIN32_WINNT=0x502)
+add_definitions(-D_WIN32_WINNT=0x600)
 
 add_definitions(
     -DUSE_MSVCRT_PREFIX

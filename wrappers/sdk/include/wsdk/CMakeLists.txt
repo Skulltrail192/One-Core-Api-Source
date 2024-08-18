@@ -62,8 +62,8 @@ list(APPEND SOURCE
 	uiautomationclient.idl
 	uiautomationcore.idl
 	uiribbon.idl
-	windowscontracts.idl
-	windows.foundation.idl
+	#windowscontracts.idl
+	#windows.foundation.idl
 	winedxgi.idl
 	wpcapi.idl
 	)

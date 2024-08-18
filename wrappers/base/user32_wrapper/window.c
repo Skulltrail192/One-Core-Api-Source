@@ -315,3 +315,22 @@ BOOL WINAPI IsWindowRedirectedForPrint( HWND hwnd )
      DbgPrint("(%p): stub\n", hwnd);
      return FALSE;
 }
+
+// Encountered during testing: Paint.Net 3.5.10 crashes after just a second under Win 2003 RTM alpha-testing
+// because of a bug in SetWindowLongPtr that returns the high-order bit that causes an OverflowException
+// when attempting to convert to an int.
+LONG WINAPI SetWindowLongW_Internal(HWND hWnd,int nIndex,LONG dwNewLong) {
+    LONG Result = SetWindowLongW(hWnd, nIndex, dwNewLong);
+    if (nIndex == GWL_EXSTYLE && (Result & 0x80000000) != 0) {
+        Result ^= 0x80000000;
+    }
+    return Result;
+}
+// Please only define this function for X64
+LONG_PTR WINAPI SetWindowLongPtrW_Internal(HWND hWnd,int nIndex,LONG_PTR dwNewLong) {
+    LONG_PTR Result = SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
+    if (nIndex == GWL_EXSTYLE && (Result & 0x8000000000000000) != 0) {
+        Result ^= 0x8000000000000000;
+    }
+    return Result;
+}

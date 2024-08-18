@@ -643,8 +643,8 @@
 @ stdcall SetWindowContextHelpId(long long)
 @ stdcall SetWindowLongA(long long long)
 @ stdcall -arch=x86_64 SetWindowLongPtrA(ptr long ptr)
-@ stdcall -arch=x86_64 SetWindowLongPtrW(ptr long ptr)
-@ stdcall SetWindowLongW(long long long)
+@ stdcall -arch=x86_64 SetWindowLongPtrW(ptr long ptr) SetWindowLongPtrW_Internal
+@ stdcall SetWindowLongW(long long long) SetWindowLongW_Internal
 @ stdcall SetWindowPlacement(long ptr) ;NtUserSetWindowPlacement
 @ stdcall SetWindowPos(ptr ptr long long long long long) ;NtUserSetWindowPos
 @ stdcall SetWindowRgn(long long long)

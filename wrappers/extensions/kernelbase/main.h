@@ -259,6 +259,8 @@ typedef struct _UMS_CREATE_THREAD_ATTRIBUTES {
 #define CONTEXT_AMD64_FULL (CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_FLOATING_POINT)
 #define CONTEXT_AMD64_ALL (CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_SEGMENTS | CONTEXT_AMD64_FLOATING_POINT | CONTEXT_AMD64_DEBUG_REGISTERS)
 
+#define RtlProcessHeap() (NtCurrentPeb()->ProcessHeap)
+
 static const BOOL is_win64 = (sizeof(void *) > sizeof(int));
 volatile long TzSpecificCache;
 extern ULONG BaseDllTag;
@@ -454,516 +456,6 @@ typedef enum _POWER_REQUEST_TYPE {
   PowerRequestExecutionRequired
 } POWER_REQUEST_TYPE, *PPOWER_REQUEST_TYPE;
 
-//
-//  The variable structure contains the offsets to the various pieces of
-//  locale information that is of variable length.  It is in the order
-//  in which it is given in the file.
-//
-typedef struct locale_var_s
-{
-    WORD      SEngLanguage;            // English language name
-    WORD      SAbbrevLang;             // abbreviated language name
-    WORD      SAbbrevLangISO;          // ISO abbreviated language name
-    WORD      SNativeLang;             // native language name
-    WORD      SEngCountry;             // English country name
-    WORD      SAbbrevCtry;             // abbreviated country name
-    WORD      SAbbrevCtryISO;          // ISO abbreviated country name
-    WORD      SNativeCtry;             // native country name
-    WORD      SList;                   // list separator
-    WORD      SDecimal;                // decimal separator
-    WORD      SThousand;               // thousands separator
-    WORD      SGrouping;               // grouping of digits
-    WORD      SNativeDigits;           // native digits 0-9
-    WORD      SCurrency;               // local monetary symbol
-    WORD      SIntlSymbol;             // international monetary symbol
-    WORD      SEngCurrName;            // English currency name
-    WORD      SNativeCurrName;         // native currency name
-    WORD      SMonDecSep;              // monetary decimal separator
-    WORD      SMonThousSep;            // monetary thousands separator
-    WORD      SMonGrouping;            // monetary grouping of digits
-    WORD      SPositiveSign;           // positive sign
-    WORD      SNegativeSign;           // negative sign
-    WORD      STimeFormat;             // time format
-    WORD      STime;                   // time separator
-    WORD      S1159;                   // AM designator
-    WORD      S2359;                   // PM designator
-    WORD      SShortDate;              // short date format
-    WORD      SDate;                   // date separator
-    WORD      SYearMonth;              // year month format
-    WORD      SLongDate;               // long date format
-    WORD      IOptionalCal;            // additional calendar type(s)
-    WORD      SDayName1;               // day name 1
-    WORD      SDayName2;               // day name 2
-    WORD      SDayName3;               // day name 3
-    WORD      SDayName4;               // day name 4
-    WORD      SDayName5;               // day name 5
-    WORD      SDayName6;               // day name 6
-    WORD      SDayName7;               // day name 7
-    WORD      SAbbrevDayName1;         // abbreviated day name 1
-    WORD      SAbbrevDayName2;         // abbreviated day name 2
-    WORD      SAbbrevDayName3;         // abbreviated day name 3
-    WORD      SAbbrevDayName4;         // abbreviated day name 4
-    WORD      SAbbrevDayName5;         // abbreviated day name 5
-    WORD      SAbbrevDayName6;         // abbreviated day name 6
-    WORD      SAbbrevDayName7;         // abbreviated day name 7
-    WORD      SMonthName1;             // month name 1
-    WORD      SMonthName2;             // month name 2
-    WORD      SMonthName3;             // month name 3
-    WORD      SMonthName4;             // month name 4
-    WORD      SMonthName5;             // month name 5
-    WORD      SMonthName6;             // month name 6
-    WORD      SMonthName7;             // month name 7
-    WORD      SMonthName8;             // month name 8
-    WORD      SMonthName9;             // month name 9
-    WORD      SMonthName10;            // month name 10
-    WORD      SMonthName11;            // month name 11
-    WORD      SMonthName12;            // month name 12
-    WORD      SMonthName13;            // month name 13 (if exists)
-    WORD      SAbbrevMonthName1;       // abbreviated month name 1
-    WORD      SAbbrevMonthName2;       // abbreviated month name 2
-    WORD      SAbbrevMonthName3;       // abbreviated month name 3
-    WORD      SAbbrevMonthName4;       // abbreviated month name 4
-    WORD      SAbbrevMonthName5;       // abbreviated month name 5
-    WORD      SAbbrevMonthName6;       // abbreviated month name 6
-    WORD      SAbbrevMonthName7;       // abbreviated month name 7
-    WORD      SAbbrevMonthName8;       // abbreviated month name 8
-    WORD      SAbbrevMonthName9;       // abbreviated month name 9
-    WORD      SAbbrevMonthName10;      // abbreviated month name 10
-    WORD      SAbbrevMonthName11;      // abbreviated month name 11
-    WORD      SAbbrevMonthName12;      // abbreviated month name 12
-    WORD      SAbbrevMonthName13;      // abbreviated month name 13 (if exists)
-    WORD      SEndOfLocale;            // end of locale information
-} LOCALE_VAR, *PLOCALE_VAR;
-
-//
-//  Sortkey Structure.
-//
-typedef struct sortkey_s {
-
-    union {
-        struct sm_aw_s {
-            BYTE   Alpha;              // alphanumeric weight
-            BYTE   Script;             // script member
-        } SM_AW;
-
-        WORD  Unicode;                 // unicode weight
-
-    } UW;
-
-    BYTE      Diacritic;               // diacritic weight
-    BYTE      Case;                    // case weight (with COMP)
-
-} SORTKEY, *PSORTKEY;
-
-#define MAX_FONTSIGNATURE         16   // length of font signature string
-
-//
-//  The fixed structure contains the locale information that is of
-//  fixed length and in the order in which it is given in the file.
-//
-typedef struct locale_fixed_s
-{
-    WORD      DefaultACP;              // default ACP - integer format
-    WORD      szILanguage[5];          // language id
-    WORD      szICountry[6];           // country id
-    WORD      szIGeoID[8];            // geographical location identifier
-    WORD      szIDefaultLang[5];       // default language ID
-    WORD      szIDefaultCtry[6];       // default country ID
-    WORD      szIDefaultACP[6];        // default ansi code page ID
-    WORD      szIDefaultOCP[6];        // default oem code page ID
-    WORD      szIDefaultMACCP[6];      // default mac code page ID
-    WORD      szIDefaultEBCDICCP[6];   // default ebcdic code page ID
-    WORD      szIMeasure[2];           // system of measurement
-    WORD      szIPaperSize[2];         // default paper size
-    WORD      szIDigits[3];            // number of fractional digits
-    WORD      szILZero[2];             // leading zeros for decimal
-    WORD      szINegNumber[2];         // negative number format
-    WORD      szIDigitSubstitution[2]; // digit substitution
-    WORD      szICurrDigits[3];        // # local monetary fractional digits
-    WORD      szIIntlCurrDigits[3];    // # intl monetary fractional digits
-    WORD      szICurrency[2];          // positive currency format
-    WORD      szINegCurr[3];           // negative currency format
-    WORD      szIPosSignPosn[2];       // format of positive sign
-    WORD      szIPosSymPrecedes[2];    // if mon symbol precedes positive
-    WORD      szIPosSepBySpace[2];     // if mon symbol separated by space
-    WORD      szINegSignPosn[2];       // format of negative sign
-    WORD      szINegSymPrecedes[2];    // if mon symbol precedes negative
-    WORD      szINegSepBySpace[2];     // if mon symbol separated by space
-    WORD      szITime[2];              // time format
-    WORD      szITLZero[2];            // leading zeros for time field
-    WORD      szITimeMarkPosn[2];      // time marker position
-    WORD      szIDate[2];              // short date order
-    WORD      szICentury[2];           // century format (short date)
-    WORD      szIDayLZero[2];          // leading zeros for day field (short date)
-    WORD      szIMonLZero[2];          // leading zeros for month field (short date)
-    WORD      szILDate[2];             // long date order
-    WORD      szICalendarType[3];      // type of calendar
-    WORD      szIFirstDayOfWk[2];      // first day of week
-    WORD      szIFirstWkOfYr[2];       // first week of year
-    WORD      szFontSignature[MAX_FONTSIGNATURE];
-} LOCALE_FIXED, *PLOCALE_FIXED;
-
-//
-//  Constant Types
-//
-typedef  LPWORD        P844_TABLE;     // ptr to 8:4:4 table
-
-typedef  LPWORD        PMB_TABLE;      // ptr to MB translation table
-typedef  PMB_TABLE     PGLYPH_TABLE;   // ptr to GLYPH translation table
-typedef  LPWORD        PDBCS_RANGE;    // ptr to DBCS range
-typedef  LPWORD        PDBCS_OFFSETS;  // ptr to DBCS offset section
-typedef  LPWORD        PDBCS_TABLE;    // ptr to DBCS translation table
-typedef  PVOID         PWC_TABLE;      // ptr to WC translation table
-typedef  P844_TABLE    PCTYPE;         // ptr to Character Type table
-typedef  P844_TABLE    PCASE;          // ptr to Lower or Upper Case table
-typedef  P844_TABLE    PADIGIT;        // ptr to Ascii Digits table
-typedef  P844_TABLE    PCZONE;         // ptr to Fold Compat. Zone table
-typedef  P844_TABLE    PKANA;          // ptr to Hiragana/Katakana table
-typedef  P844_TABLE    PHALFWIDTH;     // ptr to Half Width table
-typedef  P844_TABLE    PFULLWIDTH;     // ptr to Full Width table
-typedef  P844_TABLE    PCHINESE;       // ptr to Traditional/Simplified Chinese table
-typedef  P844_TABLE    PPRECOMP;       // ptr to PreComposed table
-typedef  LPWORD        PCOMP_GRID;     // ptr to Composite table 2D grid
-typedef  LPWORD        PLOC_INFO;      // ptr to locale information
-typedef  LPWORD        PCAL_INFO;      // ptr to calendar information
-
-typedef  DWORD         REVERSE_DW;     // reverse diacritic table
-typedef  REVERSE_DW   *PREVERSE_DW;    // ptr to reverse diacritic table
-typedef  DWORD         DBL_COMPRESS;   // double compression table
-typedef  DBL_COMPRESS *PDBL_COMPRESS;  // ptr to double compression table
-typedef  LPWORD        PCOMPRESS;      // ptr to compression table (2 or 3)
-
-typedef  DWORD         NLSDEFINED;     // NLS defined codepoint table
-typedef  NLSDEFINED   *PNLSDEFINED;    // ptr to NLS defined code point table
-
-//
-//  Compression Header Structure.
-//  This is the header for the compression tables.
-//
-typedef struct compress_hdr_s {
-    DWORD     Locale;                  // locale id
-    DWORD     Offset;                  // offset (in words)
-    WORD      Num2;                    // Number of 2 compressions
-    WORD      Num3;                    // Number of 3 compressions
-} COMPRESS_HDR, *PCOMPRESS_HDR;
-
-
-//
-//  Compression 2 Structure.
-//  This is for a 2 code point compression - 2 code points
-//  compress to ONE weight.
-//
-typedef struct compress_2_s {
-    WCHAR     UCP1;                    // Unicode code point 1
-    WCHAR     UCP2;                    // Unicode code point 2
-    SORTKEY   Weights;                 // sortkey weights
-} COMPRESS_2, *PCOMPRESS_2;
-
-//
-//  Compression 3 Structure.
-//  This is for a 3 code point compression - 3 code points
-//  compress to ONE weight.
-//
-typedef struct compress_3_s {
-    WCHAR     UCP1;                    // Unicode code point 1
-    WCHAR     UCP2;                    // Unicode code point 2
-    WCHAR     UCP3;                    // Unicode code point 3
-    WCHAR     Reserved;                // dword alignment
-    SORTKEY   Weights;                 // sortkey weights
-} COMPRESS_3, *PCOMPRESS_3;
-
-//
-//  Locale Hash Table Structure.
-//
-typedef struct loc_hash_s {
-    LCID           Locale;             // locale ID
-    PLOCALE_VAR    pLocaleHdr;         // ptr to locale header info
-    PLOCALE_FIXED  pLocaleFixed;       // ptr to locale fixed size info
-    PCASE          pUpperCase;         // ptr to Upper Case table
-    PCASE          pLowerCase;         // ptr to Lower Case table
-    PCASE          pUpperLinguist;     // ptr to Upper Case Linguistic table
-    PCASE          pLowerLinguist;     // ptr to Lower Case Linguistic table
-    PSORTKEY       pSortkey;           // ptr to sortkey table
-    BOOL           IfReverseDW;        // if DW should go from right to left
-    BOOL           IfCompression;      // if compression code points exist
-    BOOL           IfDblCompression;   // if double compression exists
-    BOOL           IfIdeographFailure; // if ideograph table failed to load
-    PCOMPRESS_HDR  pCompHdr;           // ptr to compression header
-    PCOMPRESS_2    pCompress2;         // ptr to 2 compression table
-    PCOMPRESS_3    pCompress3;         // ptr to 3 compression table
-    struct loc_hash_s *pNext;          // ptr to next locale hash node
-} LOC_HASH, *PLOC_HASH;
-
-typedef DWORD (*LPFN_CP_PROC)(DWORD, DWORD, LPSTR, int, LPWSTR, int, LPCPINFO);
-
-
-//
-//  CP Information Table Structure (as it is in the data file).
-//
-typedef struct cp_table_s {
-    WORD      CodePage;                // code page number
-    WORD      MaxCharSize;             // max length (bytes) of a char
-    WORD      wDefaultChar;            // default character (MB)
-    WORD      wUniDefaultChar;         // default character (Unicode)
-    WORD      wTransDefaultChar;       // translation of wDefaultChar (Unicode)
-    WORD      wTransUniDefaultChar;    // translation of wUniDefaultChar (MB)
-    BYTE      LeadByte[MAX_LEADBYTES]; // lead byte ranges
-} CP_TABLE, *PCP_TABLE;
-
-//
-//  Code Page Hash Table Structure.
-//
-typedef struct cp_hash_s {
-    UINT           CodePage;           // codepage ID
-    LPFN_CP_PROC   pfnCPProc;          // ptr to code page function proc
-    PCP_TABLE      pCPInfo;            // ptr to CPINFO table
-    PMB_TABLE      pMBTbl;             // ptr to MB translation table
-    PGLYPH_TABLE   pGlyphTbl;          // ptr to GLYPH translation table
-    PDBCS_RANGE    pDBCSRanges;        // ptr to DBCS ranges
-    PDBCS_OFFSETS  pDBCSOffsets;       // ptr to DBCS offsets
-    PWC_TABLE      pWC;                // ptr to WC table
-    struct cp_hash_s *pNext;           // ptr to next CP hash node
-} CP_HASH, *PCP_HASH;
-
-//
-//  Language Exception Header Structure.
-//
-typedef struct l_except_hdr_s {
-    DWORD     Locale;                  // locale id
-    DWORD     Offset;                  // offset to exception nodes (words)
-    DWORD     NumUpEntries;            // number of upper case entries
-    DWORD     NumLoEntries;            // number of lower case entries
-} L_EXCEPT_HDR, *PL_EXCEPT_HDR;
-
-//
-//  Language Exception Structure.
-//
-typedef struct l_except_s
-{
-    WORD      UCP;                     // unicode code point
-    WORD      AddAmount;               // amount to add to code point
-} L_EXCEPT, *PL_EXCEPT;
-
-//
-//  Hash Table Pointers.
-//
-typedef  PCP_HASH  *PCP_HASH_TBL;      // ptr to a code page hash table
-typedef  PLOC_HASH *PLOC_HASH_TBL;     // ptr to a locale hash table
-
-//
-//  CType Table Structure (Mapping table structure).
-//
-typedef struct ct_values_s {
-    WORD      CType1;                  // ctype 1 value
-    WORD      CType2;                  // ctype 2 value
-    WORD      CType3;                  // ctype 3 value
-} CT_VALUES, *PCT_VALUES;
-
-//
-//  Composite Information Structure.
-//
-typedef struct comp_info_s {
-    BYTE           NumBase;            // number base chars in grid
-    BYTE           NumNonSp;           // number non space chars in grid
-    P844_TABLE     pBase;              // ptr to base char table
-    P844_TABLE     pNonSp;             // ptr to nonspace char table
-    PCOMP_GRID     pGrid;              // ptr to 2D grid
-} COMP_INFO, *PCOMP_INFO;
-
-//
-//  Ideograph Lcid Exception Structure.
-//
-typedef struct ideograph_lcid_s {
-    DWORD     Locale;                  // locale id
-    WORD      pFileName[14];           // ptr to file name
-} IDEOGRAPH_LCID, *PIDEOGRAPH_LCID;
-
-//
-//  Expansion Structure.
-//
-typedef struct expand_s {
-    WCHAR     UCP1;                    // Unicode code point 1
-    WCHAR     UCP2;                    // Unicode code point 2
-} EXPAND, *PEXPAND;
-
-//
-//  Exception Header Structure.
-//  This is the header for the exception tables.
-//
-typedef struct except_hdr_s {
-    DWORD     Locale;                  // locale id
-    DWORD     Offset;                  // offset to exception nodes (words)
-    DWORD     NumEntries;              // number of entries for locale id
-} EXCEPT_HDR, *PEXCEPT_HDR;
-
-//
-//  Exception Structure.
-//
-//  NOTE: May also be used for Ideograph Exceptions (4 column tables).
-//
-typedef struct except_s
-{
-    WORD      UCP;                     // unicode code point
-    WORD      Unicode;                 // unicode weight
-    BYTE      Diacritic;               // diacritic weight
-    BYTE      Case;                    // case weight
-} EXCEPT, *PEXCEPT;
-
-//
-//  Multiple Weight Structure.
-//
-typedef struct multiwt_s {
-    BYTE      FirstSM;                 // value of first script member
-    BYTE      NumSM;                   // number of script members in range
-} MULTI_WT, *PMULTI_WT;
-
-//
-//  Jamo Sequence Sorting Info.
-//
-typedef struct {
-    BYTE m_bOld;                  // sequence occurs only in old Hangul flag
-    CHAR m_chLeadingIndex;        // indices used to locate prior modern Hangul syllable
-    CHAR m_chVowelIndex;
-    CHAR m_chTrailingIndex;
-    BYTE m_ExtraWeight;           // extra weights that distinguish this from
-                                  //   other old Hangul syllables, depending
-                                  //   on the jamo, this can be a weight for
-                                  //   leading jamo, vowel jamo, or trailing jamo.
-} JAMO_SORT_INFO, *PJAMO_SORT_INFO;
-
-//
-//  Jamo Combination Table Entry.
-//
-//  NOTE: Make sure this structure is WORD aligned.  Otherwise, code will
-//        fail in GetDefaultSortTable().
-//
-typedef struct {
-    WCHAR m_wcCodePoint;          // Code point value that enters this state
-    JAMO_SORT_INFO m_SortInfo;    // Sequence sorting info
-    BYTE m_bTransitionCount;      // # of possible transitions from this state
-} JAMO_COMPOSE_STATE, *PJAMO_COMPOSE_STATE;
-
-//
-//  Jamo Index Table Entry.
-//
-typedef struct {
-    JAMO_SORT_INFO SortInfo;      // sequence sorting info
-    BYTE Index;                   // index into the composition array
-    BYTE TransitionCount;         // # of possible transitions from this state
-    BYTE Reserved;                // word alignment
-} JAMO_TABLE, *PJAMO_TABLE;
-
-//
-//  Geo Information structure. This structure holds information about
-//  a geographical location on earth.
-//
-typedef struct tagGeoInfo {
-    GEOID       GeoId;
-    WCHAR       szLatitude[12];
-    WCHAR       szLongitude[12];
-    GEOCLASS    GeoClass;
-    GEOID       ParentGeoId;
-    WCHAR       szISO3166Abbrev2[4];
-    WCHAR       szISO3166Abbrev3[4];
-    WORD        wISO3166;
-    WORD        Reserved;              // dword alignment
-} GEOINFO, *PGEOINFO;
-
-//
-//  GEOID/LCID structure. This structure is used to navigate through
-//  the table that maps corresponding Language ID and Geo ID.
-//
-typedef struct tagGEOIDLCID {
-    LCID    lcid;
-    GEOID   GeoId;
-    LANGID  LangId;
-    WORD    Reserved;                  // dword alignment
-} GEOLCID, *PGEOLCID;
-
-//
-//  Sorting Version Info Structure.
-//
-typedef  struct _sortverinfo{
-    LCID  Locale;       // Locale identifier
-    DWORD Version;      // Sort version for this locale
-}SORTVERINFO, *PSORTVERINFO;
-
-//
-//  Defined Code Point Version Info Structure.
-//
-typedef  struct _definedverinfo{
-    DWORD       Version;          // Version of the Code Point table
-    DWORD       dwOffset;         // Offset to the Defined Code Point table.
-}DEFVERINFO, *PDEFVERINFO;
-
-//
-//  Table Pointers Structure.  This structure contains pointers to
-//  the various tables needed for the NLS APIs.  There should be only
-//  ONE of these for each process, and the information should be
-//  global to the process.
-//
-#define NUM_SM     256                  // total number of script members
-#define NUM_CAL    64                   // total number calendars allowed
-
-typedef struct tbl_ptrs_s {
-    PCP_HASH_TBL    pCPHashTbl;         // ptr to Code Page hash table
-    PLOC_HASH_TBL   pLocHashTbl;        // ptr to Locale hash table
-    PLOC_INFO       pLocaleInfo;        // ptr to locale table (all locales)
-    DWORD           NumCalendars;       // number of calendars
-    PCAL_INFO       pCalendarInfo;      // ptr to beginning of calendar info
-    PCAL_INFO       pCalTbl[NUM_CAL];   // ptr to calendar table array
-    P844_TABLE      pDefaultLanguage;   // ptr to default language table
-    P844_TABLE      pLinguistLanguage;  // ptr to default linguistic lang table
-    LARGE_INTEGER   LinguistLangSize;   // size of linguistic lang table
-    int             NumLangException;   // number of language exceptions
-    PL_EXCEPT_HDR   pLangExceptHdr;     // ptr to lang exception table header
-    PL_EXCEPT       pLangException;     // ptr to lang exception tables
-    PCT_VALUES      pCTypeMap;          // ptr to Ctype Mapping table
-    PCTYPE          pCType844;          // ptr to Ctype 8:4:4 table
-    PADIGIT         pADigit;            // ptr to Ascii Digits table
-    PCZONE          pCZone;             // ptr to Compatibility Zone table
-    PKANA           pHiragana;          // ptr to Hiragana table
-    PKANA           pKatakana;          // ptr to Katakana table
-    PHALFWIDTH      pHalfWidth;         // ptr to Half Width table
-    PFULLWIDTH      pFullWidth;         // ptr to Full Width table
-    PCHINESE        pTraditional;       // ptr to Traditional Chinese table
-    PCHINESE        pSimplified;        // ptr to Simplified Chinese table
-    PPRECOMP        pPreComposed;       // ptr to PreComposed Table
-    PCOMP_INFO      pComposite;         // ptr to Composite info structure
-    DWORD           NumReverseDW;       // number of REVERSE DIACRITICS
-    DWORD           NumDblCompression;  // number of DOUBLE COMPRESSION locales
-    DWORD           NumIdeographLcid;   // number of IDEOGRAPH LCIDs
-    DWORD           NumExpansion;       // number of EXPANSIONS
-    DWORD           NumCompression;     // number of COMPRESSION locales
-    DWORD           NumException;       // number of EXCEPTION locales
-    DWORD           NumMultiWeight;     // number of MULTIPLE WEIGHTS
-    int             NumJamoIndex;       // number of entires for Jamo Index Table
-    int             NumJamoComposition; // number of entires for Jamo Composition Table
-    PSORTKEY        pDefaultSortkey;    // ptr to default sortkey table
-    LARGE_INTEGER   DefaultSortkeySize; // size of default sortkey section
-    PREVERSE_DW     pReverseDW;         // ptr to reverse diacritic table
-    PDBL_COMPRESS   pDblCompression;    // ptr to double compression table
-    PIDEOGRAPH_LCID pIdeographLcid;     // ptr to ideograph lcid table
-    PEXPAND         pExpansion;         // ptr to expansion table
-    PCOMPRESS_HDR   pCompressHdr;       // ptr to compression table header
-    PCOMPRESS       pCompression;       // ptr to compression tables
-    PEXCEPT_HDR     pExceptHdr;         // ptr to exception table header
-    PEXCEPT         pException;         // ptr to exception tables
-    PMULTI_WT       pMultiWeight;       // ptr to multiple weights table
-    BYTE            SMWeight[NUM_SM];   // script member weights
-    PJAMO_TABLE     pJamoIndex;         // ptr ot Jamo Index table
-    PJAMO_COMPOSE_STATE pJamoComposition;  // ptr to Jamo Composition state machine table
-    long            nGeoInfo;           // number of GEOINFO entries
-    PGEOINFO        pGeoInfo;           // ptr to gegraphical info location table
-    long            nGeoLCID;           // number of GEOID/LCID entries
-    PGEOLCID        pGeoLCID;           // ptr to GEOID/LCID mapping table
-    DWORD           NumSortVersion;     // number of sorting version
-    PSORTVERINFO    pSortVersion;       // ptr sorting version info
-    DWORD           NumDefinedVersion;  // number of defined code point version 
-    PDEFVERINFO     pDefinedVersion;    // ptr defined code point version
-    LPWORD          pSortingTableFileBase;  // The base address of sorting table file
-} TBL_PTRS, *PTBL_PTRS;
-
 typedef struct _BASEP_ACTCTX_BLOCK
 {
      ULONG Flags;
@@ -978,85 +470,6 @@ typedef struct _BASE_ACTIVATION_CONTEXT_ACTIVATION_BLOCK {
     PVOID CallbackContext;
     PACTIVATION_CONTEXT ActivationContext;
 } BASE_ACTIVATION_CONTEXT_ACTIVATION_BLOCK, *PBASE_ACTIVATION_CONTEXT_ACTIVATION_BLOCK;
-
-extern LCID             gSystemLocale;      // system locale value
-extern RTL_CRITICAL_SECTION gcsTblPtrs;     // critical section for tbl ptrs
-extern PLOC_HASH        gpInvLocHashN;      // ptr to invariant loc hash node
-extern PLOC_HASH        gpSysLocHashN;      // ptr to system loc hash node
-extern PTBL_PTRS  pTblPtrs;   // ptr to structure of table ptrs
-
-#define IS_INVALID_LOCALE(Locale)      ( Locale & ~NLS_VALID_LOCALE_MASK )
-
-#define NLS_SECTION_LOCALE         L"\\NLS\\NlsSectionLocale"
-
-//
-typedef struct loc_cal_hdr_s
-{
-    DWORD     NumLocales;              // number of locales
-    DWORD     NumCalendars;            // number of calendars
-    DWORD     CalOffset;               // offset to calendar info (words)
-} LOC_CAL_HDR, *PLOC_CAL_HDR;
-
-
-typedef struct locale_hdr_s {
-    DWORD     Locale;                  // locale ID
-    DWORD     Offset;                  // offset to locale information
-} LOCALE_HDR, *PLOCALE_HDR;
-
-#define LOCALE_HDR_OFFSET    (sizeof(LOC_CAL_HDR) / sizeof(WORD))
-
-#define RtlProcessHeap() (NtCurrentPeb()->ProcessHeap)
-
-//
-//  String Constants.
-//
-#define MAX_PATH_LEN              512  // max length of path name
-
-//
-//  Size of stack buffer for PKEY_VALUE_FULL_INFORMATION pointer.
-//
-#define MAX_KEY_VALUE_FULLINFO                                             \
-    ( FIELD_OFFSET( KEY_VALUE_FULL_INFORMATION, Name ) + MAX_PATH_LEN )
-	
-ULONG
-OpenRegKey(
-    PHANDLE phKeyHandle,
-    LPWSTR pBaseName,
-    LPWSTR pKey,
-    ULONG fAccess);	
-	
-//
-//  Paths to registry keys.
-//
-#define NLS_HKLM_SYSTEM    L"\\Registry\\Machine\\System\\CurrentControlSet\\Control"
-#define NLS_HKLM_SOFTWARE  L"\\Registry\\Machine\\Software\\Microsoft\\Windows NT\\CurrentVersion"
-
-
-//
-//  Names of Registry Key Entries.
-//
-#define NLS_CODEPAGE_KEY           L"\\Nls\\Codepage"
-#define NLS_LANGUAGE_GROUPS_KEY    L"\\Nls\\Language Groups"
-#define NLS_LOCALE_KEY             L"\\Nls\\Locale"
-#define NLS_ALT_SORTS_KEY          L"\\Nls\\Locale\\Alternate Sorts"
-#define NLS_MUILANG_KEY            L"\\Nls\\MUILanguages"
-
-//
-//  User Info.
-//
-#define NLS_CTRL_PANEL_KEY         L"Control Panel\\International"
-#define NLS_CALENDARS_KEY          L"Control Panel\\International\\Calendars"
-#define NLS_TWO_DIGIT_YEAR_KEY     L"Control Panel\\International\\Calendars\\TwoDigitYearMax"
-#define NLS_POLICY_TWO_DIGIT_YEAR_KEY L"Software\\Policies\\Microsoft\\Control Panel\\International\\Calendars\\TwoDigitYearMax"
-
-//
-//  Get the wide character count from a byte count.
-//
-#define GET_WC_COUNT(bc)          ((bc) / sizeof(WCHAR))
-
-#define NLS_CHAR_ZERO           L'0'   // digit 0 character	
-
-#define NLS_REG_BUFFER_FREE(pBuffer)        (NLS_FREE_MEM(pBuffer))
 
 #define PATHCCH_NONE                            0x00
 #define PATHCCH_ALLOW_LONG_PATHS                0x01
@@ -1280,39 +693,6 @@ typedef struct _RTL_BARRIER
 	DWORD Reserved4;
 	DWORD Reserved5;
 } RTL_BARRIER, *PRTL_BARRIER, SYNCHRONIZATION_BARRIER, *PSYNCHRONIZATION_BARRIER, *LPSYNCHRONIZATION_BARRIER;
-
-// typedef struct _FILE_REMOTE_PROTOCOL_INFO {
-    // USHORT StructureVersion;
-    // USHORT StructureSize;
-    // ULONG Protocol;
-    // USHORT ProtocolMajorVersion;
-    // USHORT ProtocolMinorVersion;
-    // USHORT ProtocolRevision;
-    // USHORT Reserved;
-    // ULONG Flags;
-    // struct {
-        // ULONG Reserved[8];
-    // } GenericReserved;
-    // struct {
-        // ULONG Reserved[16];
-    // } ProtocolSpecificReserved;
-// } FILE_REMOTE_PROTOCOL_INFO, *PFILE_REMOTE_PROTOCOL_INFO;
-
-// typedef enum _FILE_ID_TYPE {
-    // FileIdType,
-    // ObjectIdType,
-    // ExtendedFileIdType,
-    // MaximumFileIdType
-// } FILE_ID_TYPE, *PFILE_ID_TYPE;
-
-// typedef struct _FILE_ID_DESCRIPTOR {
-    // DWORD        dwSize;
-    // FILE_ID_TYPE Type;
-    // union {
-        // LARGE_INTEGER FileId;
-        // GUID          ObjectId;
-    // } DUMMYUNIONNAME;
-// } FILE_ID_DESCRIPTOR, *LPFILE_ID_DESCRIPTOR;
 
 typedef enum
 {
@@ -1752,6 +1132,86 @@ typedef struct
     UINT   id;                     /* 04 lcid */
 } NLS_LOCALE_LCNAME_INDEX;
 
+typedef enum {
+  PSS_CAPTURE_NONE = 0x00000000,
+  PSS_CAPTURE_VA_CLONE = 0x00000001,
+  PSS_CAPTURE_RESERVED_00000002 = 0x00000002,
+  PSS_CAPTURE_HANDLES = 0x00000004,
+  PSS_CAPTURE_HANDLE_NAME_INFORMATION = 0x00000008,
+  PSS_CAPTURE_HANDLE_BASIC_INFORMATION = 0x00000010,
+  PSS_CAPTURE_HANDLE_TYPE_SPECIFIC_INFORMATION = 0x00000020,
+  PSS_CAPTURE_HANDLE_TRACE = 0x00000040,
+  PSS_CAPTURE_THREADS = 0x00000080,
+  PSS_CAPTURE_THREAD_CONTEXT = 0x00000100,
+  PSS_CAPTURE_THREAD_CONTEXT_EXTENDED = 0x00000200,
+  PSS_CAPTURE_RESERVED_00000400 = 0x00000400,
+  PSS_CAPTURE_VA_SPACE = 0x00000800,
+  PSS_CAPTURE_VA_SPACE_SECTION_INFORMATION = 0x00001000,
+  PSS_CAPTURE_IPT_TRACE = 0x00002000,
+  PSS_CAPTURE_RESERVED_00004000,
+  PSS_CREATE_BREAKAWAY_OPTIONAL = 0x04000000,
+  PSS_CREATE_BREAKAWAY = 0x08000000,
+  PSS_CREATE_FORCE_BREAKAWAY = 0x10000000,
+  PSS_CREATE_USE_VM_ALLOCATIONS = 0x20000000,
+  PSS_CREATE_MEASURE_PERFORMANCE = 0x40000000,
+  PSS_CREATE_RELEASE_SECTION = 0x80000000
+} PSS_CAPTURE_FLAGS;
+
+typedef enum {
+  PSS_QUERY_PROCESS_INFORMATION = 0,
+  PSS_QUERY_VA_CLONE_INFORMATION = 1,
+  PSS_QUERY_AUXILIARY_PAGES_INFORMATION = 2,
+  PSS_QUERY_VA_SPACE_INFORMATION = 3,
+  PSS_QUERY_HANDLE_INFORMATION = 4,
+  PSS_QUERY_THREAD_INFORMATION = 5,
+  PSS_QUERY_HANDLE_TRACE_INFORMATION = 6,
+  PSS_QUERY_PERFORMANCE_COUNTERS = 7
+} PSS_QUERY_INFORMATION_CLASS;
+
+typedef enum {
+  PSS_PROCESS_FLAGS_NONE = 0x00000000,
+  PSS_PROCESS_FLAGS_PROTECTED = 0x00000001,
+  PSS_PROCESS_FLAGS_WOW64 = 0x00000002,
+  PSS_PROCESS_FLAGS_RESERVED_03 = 0x00000004,
+  PSS_PROCESS_FLAGS_RESERVED_04 = 0x00000008,
+  PSS_PROCESS_FLAGS_FROZEN = 0x00000010
+} PSS_PROCESS_FLAGS;
+
+typedef struct _PACKAGE_INFO_REFERENCE {
+  void *reserved;
+} PACKAGE_INFO_REFERENCE;
+
+typedef struct {
+  DWORD             ExitStatus;
+  void              *PebBaseAddress;
+  ULONG_PTR         AffinityMask;
+  LONG              BasePriority;
+  DWORD             ProcessId;
+  DWORD             ParentProcessId;
+  PSS_PROCESS_FLAGS Flags;
+  FILETIME          CreateTime;
+  FILETIME          ExitTime;
+  FILETIME          KernelTime;
+  FILETIME          UserTime;
+  DWORD             PriorityClass;
+  ULONG_PTR         PeakVirtualSize;
+  ULONG_PTR         VirtualSize;
+  DWORD             PageFaultCount;
+  ULONG_PTR         PeakWorkingSetSize;
+  ULONG_PTR         WorkingSetSize;
+  ULONG_PTR         QuotaPeakPagedPoolUsage;
+  ULONG_PTR         QuotaPagedPoolUsage;
+  ULONG_PTR         QuotaPeakNonPagedPoolUsage;
+  ULONG_PTR         QuotaNonPagedPoolUsage;
+  ULONG_PTR         PagefileUsage;
+  ULONG_PTR         PeakPagefileUsage;
+  ULONG_PTR         PrivateUsage;
+  DWORD             ExecuteFlags;
+  wchar_t           ImageFileName[MAX_PATH];
+} PSS_PROCESS_INFORMATION;
+
+typedef HANDLE HPSS;
+
 ULONG
 WINAPI
 BaseSetLastNTError(
@@ -1826,11 +1286,6 @@ RtlGetThreadPreferredUILanguages(
 	_Out_opt_  PZZWSTR pwszLanguagesBuffer,
 	_Inout_    PULONG pcchLanguagesBuffer
 );
-
-ULONG GetLocaleFileInfo(
-    LCID Locale,
-    PLOC_HASH *ppNode,
-    BOOLEAN fCreateNode);
 	
 NTSYSAPI 
 NTSTATUS 
@@ -2073,6 +1528,12 @@ GetNumaProcessorNode(
     OUT PUCHAR NodeNumber
 );
 
+DECLSPEC_NORETURN
+VOID
+WINAPI
+BaseProcessStartup(
+    _In_ PPROCESS_START_ROUTINE lpStartAddress);
+
 #define ForEachListEntry(pListHead, pListEntry) for (((PLIST_ENTRY) (pListEntry)) = (pListHead)->Flink; ((PLIST_ENTRY) (pListEntry)) != (pListHead); ((PLIST_ENTRY) (pListEntry)) = ((PLIST_ENTRY) (pListEntry))->Flink)
 
 typedef unsigned __int64 QWORD, *PQWORD, *LPQWORD, **PPQWORD;
@@ -2088,5 +1549,20 @@ typedef struct _ACVAHASHTABLEENTRY {
 	LIST_ENTRY			Addresses;	// list of ACVAHASHTABLEADDRESSLISTENTRY structures
 	CRITICAL_SECTION	Lock;
 } ACVAHASHTABLEENTRY, *PACVAHASHTABLEENTRY, *LPACVAHASHTABLEENTRY;
+
+VOID
+WINAPI
+BaseThreadStartupThunk(VOID);
+
+DECLSPEC_NORETURN
+VOID
+WINAPI
+BaseFiberStartup(VOID);
+
+VOID
+WINAPI
+BaseProcessStartThunk(VOID);
+
+extern BOOLEAN BaseRunningInServerProcess;
 
 ACVAHASHTABLEENTRY WaitOnAddressHashTable[16];

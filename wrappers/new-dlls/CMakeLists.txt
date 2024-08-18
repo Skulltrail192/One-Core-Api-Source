@@ -1,5 +1,5 @@
 add_subdirectory(avrt)
-add_subdirectory(bcrypt_new)
+#add_subdirectory(bcrypt_new)
 add_subdirectory(bcryptprimitives)
 add_subdirectory(bluetoothapis)
 add_subdirectory(combase)

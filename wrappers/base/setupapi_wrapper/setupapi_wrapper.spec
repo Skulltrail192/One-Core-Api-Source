@@ -657,3 +657,4 @@
 
 #Win8
 @ stdcall CM_Register_Notification(ptr ptr ptr ptr)
+@ stdcall CM_Unregister_Notification(ptr)
