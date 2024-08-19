@@ -916,7 +916,7 @@
 @ stdcall GetSystemMetricsForDpi(long long)
 @ stdcall GetDpiForSystem()
 @ stdcall GetDpiForWindow(long)
-@ stdcall GetThreadDpiAwarenessContext()
+;@ stdcall GetThreadDpiAwarenessContext()
 @ stdcall GetWindowDpiAwarenessContext(long)
 @ stdcall SetThreadDpiAwarenessContext(ptr)
 @ stdcall SystemParametersInfoForDpi(long long ptr long long)

@@ -22,7 +22,7 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(user32);
 
-DPI_AWARENESS_CONTEXT Globalcontext = {0};
+DPI_AWARENESS_CONTEXT Globalcontext = DPI_AWARENESS_CONTEXT_UNAWARE;
 static DPI_AWARENESS dpi_awareness = 0;
 
 int WINAPI GetSystemMetricsForDpi(int nIndex, UINT dpi) {
@@ -261,11 +261,10 @@ DPI_AWARENESS_CONTEXT WINAPI GetThreadDpiAwarenessContext(void)
  */
 DPI_AWARENESS_CONTEXT WINAPI SetThreadDpiAwarenessContext( DPI_AWARENESS_CONTEXT context )
 {
+	DPI_AWARENESS_CONTEXT CurrentDpiAwareContext = Globalcontext;
 	Globalcontext = context;
-	return Globalcontext;
+	return CurrentDpiAwareContext;
 }
-
-
 
 // /***********************************************************************
  // *              GetAwarenessFromDpiAwarenessContext   (USER32.@)
