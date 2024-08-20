@@ -15,5 +15,5 @@ list(APPEND SOURCE
 add_library(tzres SHARED ${SOURCE})
 set_module_type(tzres win32dll)
 target_link_libraries(tzres wine)
-add_importlibs(tzres ole32 combase msvcrt kernelbase ntdll)
+add_importlibs(tzres ole32 combase msvcrt kernelex ntdll)
 add_cd_file(TARGET tzres DESTINATION reactos/system32 FOR all)

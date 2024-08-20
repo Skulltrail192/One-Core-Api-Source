@@ -28,6 +28,6 @@ add_library(taskschd SHARED ${SOURCE})
 add_dependencies(taskschd taskschd_idlheader)
 set_module_type(taskschd win32dll)
 target_link_libraries(taskschd wine uuid mfuuid)
-add_importlibs(taskschd oleaut32 ole32 advapi32 xmllite rpcrt4 msvcrt kernelbase ntdll)
+add_importlibs(taskschd oleaut32 ole32 advapi32 xmllite rpcrt4 msvcrt kernelex ntdll)
 
 add_cd_file(TARGET taskschd DESTINATION reactos/system32 FOR all)

@@ -14,5 +14,5 @@ list(APPEND SOURCE
 add_library(tbs SHARED ${SOURCE})
 set_module_type(tbs win32dll)
 target_link_libraries(tbs wine)
-add_importlibs(tbs ole32 combase msvcrt kernelbase ntdll)
+add_importlibs(tbs ole32 combase msvcrt kernelex ntdll)
 add_cd_file(TARGET tbs DESTINATION reactos/system32 FOR all)

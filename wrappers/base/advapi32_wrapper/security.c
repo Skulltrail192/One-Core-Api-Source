@@ -1110,7 +1110,7 @@ const char * debugstr_sid(PSID sid)
 }
 
 /******************************************************************************
- * CreateWellKnownSid   (kernelbase.@)
+ * CreateWellKnownSid   (kernelex.@)
  */
 BOOL WINAPI CreateWellKnownSid( WELL_KNOWN_SID_TYPE type, PSID domain, PSID sid, DWORD *size )
 {
@@ -1184,7 +1184,7 @@ BOOL WINAPI CreateWellKnownSid( WELL_KNOWN_SID_TYPE type, PSID domain, PSID sid,
 }
 
 /******************************************************************************
- * IsWellKnownSid   (kernelbase.@)
+ * IsWellKnownSid   (kernelex.@)
  */
 BOOL WINAPI IsWellKnownSid( PSID sid, WELL_KNOWN_SID_TYPE type )
 {

@@ -1249,7 +1249,7 @@ LSTATUS WINAPI RegRenameKey( HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpNewName )
 }
 
 /******************************************************************************
- * RegLoadAppKeyA (kernelbase.@) - unimplemented
+ * RegLoadAppKeyA (kernelex.@) - unimplemented
  *
  */
 LSTATUS WINAPI RegLoadAppKeyA(const char *file, HKEY *result, REGSAM sam, DWORD options, DWORD reserved)
@@ -1264,7 +1264,7 @@ LSTATUS WINAPI RegLoadAppKeyA(const char *file, HKEY *result, REGSAM sam, DWORD 
 }
 
 /******************************************************************************
- * RegLoadAppKeyW (kernelbase.@) - unimplemented
+ * RegLoadAppKeyW (kernelex.@) - unimplemented
  *
  */
 LSTATUS WINAPI RegLoadAppKeyW(const WCHAR *file, HKEY *result, REGSAM sam, DWORD options, DWORD reserved)

@@ -36,7 +36,7 @@ SPEC_HEADER = [
 
 ALIAS_DLL = {
     'ucrtbase': 'msvcrt',
-    'kernelbase': 'kernel32',
+    'kernelex': 'kernel32',
     'shcore': 'shlwapi',
     'combase': 'ole32',
 

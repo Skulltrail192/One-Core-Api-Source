@@ -33,5 +33,5 @@ list(APPEND SOURCE
 add_library(dwrite SHARED ${SOURCE})
 set_module_type(dwrite win32dll)
 target_link_libraries(dwrite wine uuid dwrite_uuids d2d1_uuids dxguid d3d11_uuids d3d10_uuids d3d10_1_uuids dxgi_uuids)
-add_importlibs(dwrite advapi32 msvcrt kernelbase ntdll user32 gdi32)
+add_importlibs(dwrite advapi32 msvcrt kernelex ntdll user32 gdi32)
 add_cd_file(TARGET dwrite DESTINATION reactos/system32 FOR all)

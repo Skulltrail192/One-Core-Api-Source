@@ -16,5 +16,5 @@ list(APPEND SOURCE
 add_library(tdh SHARED ${SOURCE})
 set_module_type(tdh win32dll)
 target_link_libraries(tdh wine)
-add_importlibs(tdh ole32 combase msvcrt kernelbase ntdll)
+add_importlibs(tdh ole32 combase msvcrt kernelex ntdll)
 add_cd_file(TARGET tdh DESTINATION reactos/system32 FOR all)

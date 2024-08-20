@@ -15,5 +15,5 @@ list(APPEND SOURCE
 add_library(sas SHARED ${SOURCE})
 set_module_type(sas win32dll)
 target_link_libraries(sas wine)
-add_importlibs(sas ole32 combase msvcrt kernelbase ntdll)
+add_importlibs(sas ole32 combase msvcrt kernelex ntdll)
 add_cd_file(TARGET sas DESTINATION reactos/system32 FOR all)

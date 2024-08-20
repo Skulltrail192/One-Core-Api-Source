@@ -41,6 +41,6 @@ list(APPEND SOURCE
 add_library(combase SHARED  ${SOURCE})
 set_module_type(combase win32dll ENTRYPOINT 0)
 target_link_libraries(combase wine)
-add_importlibs(combase olebase rpcrt4 msvcrt advapi32 kernel32 kernelbase ntdll)
+add_importlibs(combase olebase rpcrt4 msvcrt advapi32 kernel32 kernelex ntdll)
 add_dependencies(combase combaseidl)
 add_cd_file(TARGET combase DESTINATION reactos/system32 FOR all)

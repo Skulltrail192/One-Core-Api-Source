@@ -51,7 +51,7 @@ static struct perf_provider *perf_provider_from_handle(HANDLE prov)
 }
 
 /***********************************************************************
- *           PerfCreateInstance   (KERNELBASE.@)
+ *           PerfCreateInstance   (kernelex.@)
  */
 PPERF_COUNTERSET_INSTANCE WINAPI PerfCreateInstance( 
 	HANDLE handle, 
@@ -117,7 +117,7 @@ PPERF_COUNTERSET_INSTANCE WINAPI PerfCreateInstance(
 
 
 /***********************************************************************
- *           PerfDeleteInstance   (KERNELBASE.@)
+ *           PerfDeleteInstance   (kernelex.@)
  */
 ULONG WINAPI PerfDeleteInstance(HANDLE provider, PERF_COUNTERSET_INSTANCE *block)
 {
@@ -136,7 +136,7 @@ ULONG WINAPI PerfDeleteInstance(HANDLE provider, PERF_COUNTERSET_INSTANCE *block
 }
 
 /***********************************************************************
- *           PerfSetCounterSetInfo   (KERNELBASE.@)
+ *           PerfSetCounterSetInfo   (kernelex.@)
  */
 ULONG WINAPI PerfSetCounterSetInfo( HANDLE handle, PERF_COUNTERSET_INFO *template, ULONG size )
 {
@@ -182,7 +182,7 @@ ULONG WINAPI PerfSetCounterSetInfo( HANDLE handle, PERF_COUNTERSET_INFO *templat
 
 
 /***********************************************************************
- *           PerfSetCounterRefValue   (KERNELBASE.@)
+ *           PerfSetCounterRefValue   (kernelex.@)
  */
 ULONG WINAPI PerfSetCounterRefValue(HANDLE provider, PERF_COUNTERSET_INSTANCE *instance,
                                     ULONG counterid, void *address)
@@ -210,7 +210,7 @@ ULONG WINAPI PerfSetCounterRefValue(HANDLE provider, PERF_COUNTERSET_INSTANCE *i
 }
 
 /***********************************************************************
- *           PerfStartProviderEx   (KERNELBASE.@)
+ *           PerfStartProviderEx   (kernelex.@)
  */
 ULONG WINAPI PerfStartProviderEx( GUID *guid, PERF_PROVIDER_CONTEXT *context, HANDLE *provider )
 {
@@ -234,7 +234,7 @@ ULONG WINAPI PerfStartProviderEx( GUID *guid, PERF_PROVIDER_CONTEXT *context, HA
 }
 
 /***********************************************************************
- *           PerfStartProvider   (KERNELBASE.@)
+ *           PerfStartProvider   (kernelex.@)
  */
 ULONG WINAPI PerfStartProvider( GUID *guid, PERFLIBREQUEST callback, HANDLE *provider )
 {
@@ -250,7 +250,7 @@ ULONG WINAPI PerfStartProvider( GUID *guid, PERFLIBREQUEST callback, HANDLE *pro
 }
 
 /***********************************************************************
- *           PerfStopProvider   (KERNELBASE.@)
+ *           PerfStopProvider   (kernelex.@)
  */
 ULONG WINAPI PerfStopProvider(HANDLE handle)
 {
