@@ -229,7 +229,7 @@ LONG WINAPI GetPackageApplicationIds(
 	return APPMODEL_ERROR_NO_PACKAGE;
 }
 
-LONG OpenPackageInfoByFullName(
+LONG WINAPI OpenPackageInfoByFullName(
   PCWSTR                 packageFullName,
   const UINT32           reserved,
   PACKAGE_INFO_REFERENCE *packageInfoReference

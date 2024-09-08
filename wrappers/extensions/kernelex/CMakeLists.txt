@@ -107,10 +107,10 @@ set_subsystem(kernelex console)
 target_link_libraries(kernelex wine ${PSEH_LIB})
 
 if(ARCH STREQUAL "i386")
-	add_importlibs(kernelex kernel32 ntext advapi32 advapibase user32 shlwapi idndl)
+	add_importlibs(kernelex kernel32 ntext advapi32 user32 shlwapi idndl)
 
 elseif(ARCH STREQUAL "amd64")
-	add_importlibs(kernelex kernel32 ntext advapi32 advapibase user32 shlwapi idndl)
+	add_importlibs(kernelex kernel32 ntext advapi32 user32 shlwapi idndl)
 endif()
 
 add_cd_file(TARGET kernelex DESTINATION reactos/system32 FOR all)

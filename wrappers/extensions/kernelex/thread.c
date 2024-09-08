@@ -1557,7 +1557,7 @@ OpenThread(IN DWORD dwDesiredAccess,
     return ThreadHandle;
 }
 
-HANDLE GetCurrentTransaction()
+HANDLE WINAPI GetCurrentTransaction()
 {
 	HANDLE result; // eax
 
@@ -1567,7 +1567,7 @@ HANDLE GetCurrentTransaction()
 	return result;
 }
 
-BOOLEAN SetCurrentTransaction(HANDLE Transaction)
+BOOLEAN WINAPI SetCurrentTransaction(HANDLE Transaction)
 {
 	NtCurrentTeb()->CurrentTransactionHandle = Transaction;
 	return 1;

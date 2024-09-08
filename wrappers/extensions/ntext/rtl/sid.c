@@ -27,60 +27,52 @@ Module Name:
 
 ULONG NtdllBaseTag = 0;
 
-#undef SID_IDENTIFIER_AUTHORITY
-
-NTSTATUS 
-NTAPI 
-RtlCreateServiceSid(PUNICODE_STRING ServiceName,	PSID *ServiceSid, PULONG ServiceSidLength) 
+NTSTATUS WINAPI RtlCreateServiceSid(
+    PUNICODE_STRING ServiceName,
+    PSID ServiceSid,
+    PULONG ServiceSidLength) 
 {
-  BOOL resp; // cf@3
-  NTSTATUS result; // eax@4
-  PVOID v5; // eax@7
-  PUNICODE_STRING v6 = NULL; // [sp+8h] [bp-84h]@6
-  PVOID Src = NULL; // [sp+Ch] [bp-80h]@7
-  PSHA_CTX context = NULL; // [sp+10h] [bp-7Ch]@7
-  PSID_IDENTIFIER_AUTHORITY identifier; // [sp+6Ch] [bp-20h]@1
-  PULONG third = NULL; // [sp+74h] [bp-18h]@7
-  PVOID v16 = 0; // [sp+78h] [bp-14h]@7
-  PVOID LangIDTemp = 0; // [sp+7Ch] [bp-10h]@7
-  PVOID v18 = 0; // [sp+80h] [bp-Ch]@7
-  PVOID v19 = 0; // [sp+84h] [bp-8h]@7
-
-  identifier = 0;
-  if ( ServiceName && ServiceSidLength )
-  {
-    resp = *(DWORD *)ServiceSidLength < 0x20u;
-    *(DWORD *)ServiceSidLength = 32;
-    if ( resp )
-    {
-      result = STATUS_BUFFER_TOO_SMALL;
+    NTSTATUS Status;
+    UNICODE_STRING UpUnicodeString;
+    SHA_CTX Sha1Context;
+    SID_IDENTIFIER_AUTHORITY ServiceAuthority = {SECURITY_NT_AUTHORITY};
+    ULONG TempSize;
+    DWORD Sha1Hash[5];
+	PISID Sid = ServiceSid;
+    
+    if (!ServiceName || !ServiceSidLength)
+        return STATUS_INVALID_PARAMETER;
+    
+    TempSize = *ServiceSidLength;
+    *ServiceSidLength = 0x20;
+    
+    // Check size
+    if (TempSize < 0x20) {
+        return STATUS_BUFFER_TOO_SMALL;
     }
-    else
-    {
-      result = RtlUpcaseUnicodeString(v6, ServiceName, 1);
-      if ( result >= 0 )
-      {
-        A_SHAInit(context);
-        A_SHAUpdate(context, Src, (UINT)v6);
-        A_SHAFinal(context, third);
-        RtlFreeAnsiString((PANSI_STRING)v6);
-        RtlInitializeSid(ServiceSid, identifier, 6);
-        v5 = (PVOID)third;   
-        ServiceSid[2] = (PSID)80;
-        ServiceSid[3] = v5;
-        ServiceSid[4] = v16;
-        ServiceSid[5] = LangIDTemp;
-        ServiceSid[6] = v18;
-        ServiceSid[7] = v19;		
-        result = 0;
-      }
-    }
-  }
-  else
-  {
-    result = STATUS_INVALID_PARAMETER;
-  }
-  return result;
+    
+    // Uppercase the service name
+    Status = RtlUpcaseUnicodeString(&UpUnicodeString, ServiceName, TRUE);
+    if (!NT_SUCCESS(Status))
+        return Status;
+    
+    // Get SHA-1 hash of the Unicode string we created
+    A_SHAInit(&Sha1Context);
+    A_SHAUpdate(&Sha1Context, (void*)&(UpUnicodeString.Buffer), UpUnicodeString.Length);
+    A_SHAFinal(&Sha1Context, (void*)&Sha1Hash);
+    RtlFreeUnicodeString(&UpUnicodeString);
+    RtlInitializeSid(ServiceSid, &ServiceAuthority, 6);
+    
+    // Set the authority containing the 0x50 authority and the SHA-1 hash of the
+    // uppercase service name.
+    Sid->SubAuthority[0] = 0x50;
+    Sid->SubAuthority[1] = Sha1Hash[0];
+    Sid->SubAuthority[2] = Sha1Hash[1];
+    Sid->SubAuthority[3] = Sha1Hash[2];
+    Sid->SubAuthority[4] = Sha1Hash[3];
+    Sid->SubAuthority[5] = Sha1Hash[4];
+    
+    return STATUS_SUCCESS;
 }	
 
 BOOLEAN 

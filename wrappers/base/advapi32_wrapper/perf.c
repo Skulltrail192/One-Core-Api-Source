@@ -323,3 +323,22 @@ ULONG WINAPI PerfQueryCounterData( HANDLE query, PERF_DATA_HEADER *data, DWORD d
     return ERROR_SUCCESS;
 }
 
+ULONG WINAPI PerfSetULongCounterValue(
+  HANDLE                    Provider,
+  PPERF_COUNTERSET_INSTANCE Instance,
+  ULONG                     CounterId,
+  ULONG                     Value
+)
+{
+    return ERROR_SUCCESS;
+}
+
+ULONG WINAPI PerfSetULongLongCounterValue(
+  HANDLE                    Provider,
+  PPERF_COUNTERSET_INSTANCE Instance,
+  ULONG                     CounterId,
+  ULONGLONG                 Value
+)
+{
+    return ERROR_SUCCESS;
+}

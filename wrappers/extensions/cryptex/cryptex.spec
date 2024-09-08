@@ -242,5 +242,8 @@
 @ stdcall RegQueryInfoKeyU(ptr wstr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall RegQueryValueExU(ptr wstr ptr ptr ptr ptr)
 @ stdcall RegSetValueExU(ptr wstr long long ptr long)
+
+;Extension Functions (win7)
 @ stdcall CryptRetrieveTimeStamp(wstr long long str ptr ptr long ptr ptr ptr)
 @ stdcall CryptVerifyTimeStampSignature(ptr long ptr long ptr ptr ptr ptr)
+@ stdcall CryptExportPublicKeyInfoFromBCryptKeyHandle(ptr long str long ptr ptr long)

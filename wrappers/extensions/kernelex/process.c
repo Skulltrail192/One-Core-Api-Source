@@ -690,14 +690,23 @@ static inline BOOL logical_proc_info_add_group(
 }
 
 /* for 'data', max_len is the array count. for 'dataex', max_len is in bytes */
-static NTSTATUS create_logical_proc_info(SYSTEM_LOGICAL_PROCESSOR_INFORMATION **data,
-        SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX **dataex, DWORD *max_len)
+static NTSTATUS create_logical_proc_info(
+   LOGICAL_PROCESSOR_RELATIONSHIP relationship,
+   SYSTEM_LOGICAL_PROCESSOR_INFORMATION **data,
+   SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX **dataex, 
+   DWORD *max_len)
 {
-    DWORD pkgs_no, cores_no, lcpu_no, lcpu_per_core, cores_per_package, len = 0;
+    //DWORD pkgs_no;
+	//DWORD cores_no;
+	DWORD lcpu_no;
+	//DWORD lcpu_per_core; 
+	//DWORD cores_per_package; 
+	DWORD len = 0;
+	
     //DWORD cache_ctrs[10] = {0};
     ULONG_PTR all_cpus_mask = 0;
-    CACHE_DESCRIPTOR cache[10];
-    LONGLONG cache_sharing[10];
+    //CACHE_DESCRIPTOR cache[10];
+    //LONGLONG cache_sharing[10];
     //DWORD p;//,i,j,k;
     BOOL done = FALSE;
     PSYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer = NULL;
@@ -754,108 +763,117 @@ static NTSTATUS create_logical_proc_info(SYSTEM_LOGICAL_PROCESSOR_INFORMATION **
     }
 
     ptr = buffer;
-
-    while (byteOffset + sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION) <= returnLength) 
-    {
-        switch (ptr->Relationship) 
-        {
-        case RelationNumaNode:
-            // Non-NUMA systems report a single record of this type.
-            numaNodeCount++;
-			if(!logical_proc_info_add_numa_node(data, dataex, &len, max_len, ActiveProcessorMask, 0))
-				return STATUS_NO_MEMORY;
-			
-            break;
-
-        case RelationProcessorCore:
-            processorCoreCount++;
-
-            if(!logical_proc_info_add_by_id(dataex, &len, max_len, RelationProcessorCore, 0, ActiveProcessorMask, ptr->ProcessorCore.Flags))
-                return STATUS_NO_MEMORY;
-            // A hyperthreaded core supplies more than one logical processor.
-            logicalProcessorCount += CountSetBits(ptr->ProcessorMask);
-            break;
-
-        case RelationCache:
-            // Cache data is in ptr->Cache, one CACHE_DESCRIPTOR structure for each cache. 
-            currentCache = &ptr->Cache;
-			
-            if (currentCache->Level == 1)
-            {
-                processorL1CacheCount++;
-				cacheLevel1 = *currentCache;
-            }
-            else if (currentCache->Level == 2)
-            {
-				cacheLevel2 = *currentCache;
-                processorL2CacheCount++;
-            }
-            else if (currentCache->Level == 3)
-            {
-				cacheLevel3 = *currentCache;
-                processorL3CacheCount++;
-            }
-            if(!logical_proc_info_add_cache(data, dataex, &len, max_len, ActiveProcessorMask, currentCache))
-                 return STATUS_NO_MEMORY;			
-            break;
-
-        case RelationProcessorPackage:
-            // Logical processors share a physical package.
-			DbgPrint("processor Packages\n");
-            processorPackageCount++;
-            if(!logical_proc_info_add_by_id(dataex, &len, max_len, RelationProcessorPackage, 0, ActiveProcessorMask, ptr->ProcessorCore.Flags))
-                return STATUS_NO_MEMORY;			
-            break;
-
-        default:
-            DbgPrint(TEXT("\nError: Unsupported LOGICAL_PROCESSOR_RELATIONSHIP value.\n"));
-            break;
-        }
-        byteOffset += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
-        ptr++;
-    }	
 	
-    lcpu_no = logicalProcessorCount;
-	
-	pkgs_no = 1;
-	cores_no = processorCoreCount;
+	if(relationship == RelationNumaNode || relationship == RelationProcessorCore || relationship == RelationCache || relationship == RelationProcessorPackage || relationship == RelationAll)
+	{
 
-    DbgPrint("Kernel32 :: create_logical_proc_info :: %u logical CPUs from %u physical cores across %u packages\n",
-            lcpu_no, cores_no, pkgs_no);
+		while (byteOffset + sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION) <= returnLength) 
+		{
+			if (relationship == RelationAll || ptr->Relationship == relationship){
+				switch (ptr->Relationship) 
+				{
+					case RelationNumaNode:
+						// Non-NUMA systems report a single record of this type.
+						numaNodeCount++;
+						if(!logical_proc_info_add_numa_node(data, dataex, &len, max_len, ActiveProcessorMask, 0))
+							return STATUS_NO_MEMORY;
+						
+						break;
 
-    lcpu_per_core = lcpu_no / cores_no;
-    cores_per_package = cores_no / pkgs_no;
-	
-//(DWORD)32 << 10; /* 16 KB */
-    memset(cache, 0, sizeof(cache));
-    cache[1].Level = 1;
-	cache[1].Size = cacheLevel1.Size;
-    cache[1].Type = CacheInstruction;
-    cache[1].Associativity = cacheLevel1.Associativity; /* reasonable default */
-    cache[1].LineSize = cacheLevel1.LineSize; /* reasonable default */
-    cache[2].Level = 1;
-	cache[2].Size = cacheLevel1.Size;
-    cache[2].Type = CacheData;
-    cache[2].Associativity = cacheLevel1.Associativity;
-    cache[2].LineSize = cacheLevel1.LineSize;
-    cache[3].Level = 2;
-	cache[3].Size = cacheLevel2.Size;
-    cache[3].Type = CacheUnified;
-    cache[3].Associativity = cacheLevel2.Associativity;
-    cache[3].LineSize = cacheLevel2.LineSize;
-    cache[4].Level = 3;
-	cache[4].Size = cacheLevel3.Size;
-    cache[4].Type = CacheUnified;
-    cache[4].Associativity = cacheLevel3.Associativity;
-    cache[4].LineSize = cacheLevel3.LineSize;
-	
-    cache_sharing[1] = lcpu_per_core;
-    cache_sharing[2] = lcpu_per_core;
-    cache_sharing[3] = lcpu_per_core;
-    cache_sharing[4] = lcpu_no;
+					case RelationProcessorCore:
+						processorCoreCount++;
 
-    if(dataex)
-        logical_proc_info_add_group(dataex, &len, max_len, lcpu_no, all_cpus_mask);
+						if(!logical_proc_info_add_by_id(dataex, &len, max_len, RelationProcessorCore, 0, ActiveProcessorMask, ptr->ProcessorCore.Flags))
+							return STATUS_NO_MEMORY;
+						// A hyperthreaded core supplies more than one logical processor.
+						logicalProcessorCount += CountSetBits(ptr->ProcessorMask);
+						break;
+
+					case RelationCache:
+						// Cache data is in ptr->Cache, one CACHE_DESCRIPTOR structure for each cache. 
+						currentCache = &ptr->Cache;
+						
+						if (currentCache->Level == 1)
+						{
+							processorL1CacheCount++;
+							cacheLevel1 = *currentCache;
+						}
+						else if (currentCache->Level == 2)
+						{
+							cacheLevel2 = *currentCache;
+							processorL2CacheCount++;
+						}
+						else if (currentCache->Level == 3)
+						{
+							cacheLevel3 = *currentCache;
+							processorL3CacheCount++;
+						}
+						if(!logical_proc_info_add_cache(data, dataex, &len, max_len, ActiveProcessorMask, currentCache))
+							 return STATUS_NO_MEMORY;			
+						break;
+
+					case RelationProcessorPackage:
+						// Logical processors share a physical package.
+						DbgPrint("processor Packages\n");
+						processorPackageCount++;
+						if(!logical_proc_info_add_by_id(dataex, &len, max_len, RelationProcessorPackage, 0, ActiveProcessorMask, ptr->ProcessorCore.Flags))
+							return STATUS_NO_MEMORY;			
+						break;
+
+					default:
+						DbgPrint(TEXT("\nError: Unsupported LOGICAL_PROCESSOR_RELATIONSHIP value.\n"));
+						break;
+				}			
+			}
+
+			byteOffset += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+			ptr++;
+		}	
+		
+		lcpu_no = logicalProcessorCount;
+	
+	// pkgs_no = 1;
+	// cores_no = processorCoreCount;
+
+    // DbgPrint("Kernel32 :: create_logical_proc_info :: %u logical CPUs from %u physical cores across %u packages\n",
+            // lcpu_no, cores_no, pkgs_no);
+
+    // lcpu_per_core = lcpu_no / cores_no;
+    // cores_per_package = cores_no / pkgs_no;
+	
+// //(DWORD)32 << 10; /* 16 KB */
+    // memset(cache, 0, sizeof(cache));
+    // cache[1].Level = 1;
+	// cache[1].Size = cacheLevel1.Size;
+    // cache[1].Type = CacheInstruction;
+    // cache[1].Associativity = cacheLevel1.Associativity; /* reasonable default */
+    // cache[1].LineSize = cacheLevel1.LineSize; /* reasonable default */
+    // cache[2].Level = 1;
+	// cache[2].Size = cacheLevel1.Size;
+    // cache[2].Type = CacheData;
+    // cache[2].Associativity = cacheLevel1.Associativity;
+    // cache[2].LineSize = cacheLevel1.LineSize;
+    // cache[3].Level = 2;
+	// cache[3].Size = cacheLevel2.Size;
+    // cache[3].Type = CacheUnified;
+    // cache[3].Associativity = cacheLevel2.Associativity;
+    // cache[3].LineSize = cacheLevel2.LineSize;
+    // cache[4].Level = 3;
+	// cache[4].Size = cacheLevel3.Size;
+    // cache[4].Type = CacheUnified;
+    // cache[4].Associativity = cacheLevel3.Associativity;
+    // cache[4].LineSize = cacheLevel3.LineSize;
+	
+    // cache_sharing[1] = lcpu_per_core;
+    // cache_sharing[2] = lcpu_per_core;
+    // cache_sharing[3] = lcpu_per_core;
+    // cache_sharing[4] = lcpu_no;
+	}
+	
+	if(relationship == RelationGroup || relationship == RelationAll){
+
+       logical_proc_info_add_group(dataex, &len, max_len, lcpu_no, all_cpus_mask);
+	}
 
     if(data)
         *max_len = len * sizeof(**data);
@@ -873,7 +891,7 @@ static NTSTATUS create_logical_proc_info(SYSTEM_LOGICAL_PROCESSOR_INFORMATION **
  */
 NTSTATUS WINAPI NtQuerySystemInformationExInternal(
 	SYSTEM_INFORMATION_CLASS SystemInformationClass,
-    void *Query, 
+    LOGICAL_PROCESSOR_RELATIONSHIP relationship, 
 	ULONG QueryLength, 
 	void *SystemInformation, ULONG Length, ULONG *ResultLength)
 {
@@ -881,7 +899,7 @@ NTSTATUS WINAPI NtQuerySystemInformationExInternal(
     NTSTATUS ret = STATUS_NOT_IMPLEMENTED;
 	SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *buf;
 
-    DbgPrint("(0x%08x,%p,%u,%p,%u,%p) stub\n", SystemInformationClass, Query, QueryLength, SystemInformation,
+    DbgPrint("(0x%08x,%p,%u,%p,%u,%p) stub\n", SystemInformationClass, relationship, QueryLength, SystemInformation,
         Length, ResultLength);
 
     // switch (SystemInformationClass) {
@@ -906,7 +924,7 @@ NTSTATUS WINAPI NtQuerySystemInformationExInternal(
                 // return ret;
             // }
 
-            ret = create_logical_proc_info(NULL, &buf, &len);
+            ret = create_logical_proc_info(relationship, NULL, &buf, &len);
 			DbgPrint("NtQuerySystemInformationExInternal:: Status: %0x%08x\n", ret);
             if (ret != STATUS_SUCCESS)
             {
@@ -955,7 +973,7 @@ BOOL WINAPI GetLogicalProcessorInformationEx(LOGICAL_PROCESSOR_RELATIONSHIP rela
         return FALSE;
     }
 
-    status = NtQuerySystemInformationExInternal( 1, &relationship, sizeof(relationship),
+    status = NtQuerySystemInformationExInternal( 1, relationship, sizeof(relationship),
         buffer, *len, len );
     if (status == STATUS_INFO_LENGTH_MISMATCH)
     {

@@ -125,11 +125,18 @@ GetTokenInformationInternal (
         return TRUE;
     }
 
-	return GetTokenInformation(TokenHandle,
-							   TokenInformationClass,
-							   TokenInformation,
-							   TokenInformationLength,
-							   ReturnLength);	
+    Status = NtQueryInformationToken(TokenHandle,
+                                     TokenInformationClass,
+                                     TokenInformation,
+                                     TokenInformationLength,
+                                     (PULONG)ReturnLength);
+    if (!NT_SUCCESS(Status))
+    {
+        SetLastError(RtlNtStatusToDosError(Status));
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 BOOL

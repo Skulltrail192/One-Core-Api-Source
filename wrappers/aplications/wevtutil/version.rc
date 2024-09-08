@@ -1,0 +1,3 @@
+#define WINE_FILEDESCRIPTION_STR  "Windows Update Standalone Installer"
+#define WINE_FILENAME_STR     "wusa.exe"
+#include "common_wrappers_ver.rc"

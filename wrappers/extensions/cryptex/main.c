@@ -74,7 +74,8 @@ typedef struct _CRYPT_TIMESTAMP_CONTEXT {
 } CRYPT_TIMESTAMP_CONTEXT, *PCRYPT_TIMESTAMP_CONTEXT;
 
 //Just returning False for stub
-BOOL 
+BOOL
+WINAPI
 CryptRetrieveTimeStamp(
   LPCWSTR                    wszUrl,
   DWORD                      dwRetrievalFlags,
@@ -91,7 +92,8 @@ CryptRetrieveTimeStamp(
 	return FALSE;
 }
 
-BOOL 
+BOOL
+WINAPI
 CryptVerifyTimeStampSignature(
   const BYTE               *pbTSContentInfo,
   DWORD                    cbTSContentInfo,
@@ -101,6 +103,22 @@ CryptVerifyTimeStampSignature(
   PCRYPT_TIMESTAMP_CONTEXT *ppTsContext,
   PCCERT_CONTEXT           *ppTsSigner,
   HCERTSTORE               *phStore
+)
+{
+	return FALSE;
+}
+
+BOOL
+WINAPI 
+WINAPI 
+CryptExportPublicKeyInfoFromBCryptKeyHandle(
+  BCRYPT_KEY_HANDLE hBCryptKey,
+  DWORD dwCertEncodingType,
+  LPSTR pszPublicKeyObjId,
+  DWORD dwFlags,
+  PVOID pvAuxInfo,
+  PCERT_PUBLIC_KEY_INFO pInfo,
+  DWORD pcbInfo
 )
 {
 	return FALSE;

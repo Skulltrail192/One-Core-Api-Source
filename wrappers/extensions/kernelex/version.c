@@ -1673,3 +1673,14 @@ DWORD WINAPI VerInstallFileW(
     HeapFree( GetProcessHeap(), 0, wcurd );
     return ret;
 }
+
+BOOL
+WINAPI
+GetVersionExW(IN LPOSVERSIONINFOW lpVersionInformation)
+{
+    lpVersionInformation->dwMajorVersion      = 6;
+    lpVersionInformation->dwMinorVersion      = 1;
+    lpVersionInformation->dwBuildNumber       = 7601;
+    lpVersionInformation->dwPlatformId        = VER_PLATFORM_WIN32_NT;
+	return TRUE;
+}

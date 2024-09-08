@@ -123,7 +123,7 @@ EtwEventEnabled(
   _In_  PCEVENT_DESCRIPTOR EventDescriptor
 )
 {
-	return FALSE;
+	return TRUE;
 }
 
 ULONG
@@ -586,7 +586,7 @@ ULONG NTAPI EtwEventActivityIdControl(ULONG code, GUID *guid)
 BOOLEAN NTAPI EtwEventProviderEnabled( REGHANDLE handle, UCHAR level, ULONGLONG keyword )
 {
     DbgPrint("%s, %u, %s: stub\n", handle, level, keyword);
-    return FALSE;
+    return TRUE;
 }
 
 /*********************************************************************

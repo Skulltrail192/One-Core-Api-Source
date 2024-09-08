@@ -462,3 +462,30 @@ WCHAR** WINAPI CommandLineToArgvW(const WCHAR *cmdline, int *numargs)
 
     return argv;
 }
+
+//Move to hooks.c
+BOOL WINAPI Shell_NotifyIconW_Internal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
+    if (lpData->cbSize > NOTIFYICONDATAW_V2_SIZE) {
+        NOTIFYICONDATAW lpXPData;
+        memcpy(&lpXPData, lpData, NOTIFYICONDATAW_V2_SIZE);
+        lpXPData.cbSize = NOTIFYICONDATAW_V2_SIZE;
+        // Remove Vista flags.
+        if (lpXPData.uFlags & 0x80) { // NIF_SHOWTIP
+            lpXPData.uFlags ^= 0x80;
+        }
+        if (lpXPData.uFlags & 0x40) { // NIF_REALTIME
+            lpXPData.uFlags ^= 0x40;
+        }
+        if (lpXPData.dwInfoFlags & 0x20) {
+            // I hope it picks the right icon.
+            lpXPData.dwInfoFlags ^= 0x20;
+        }
+        if (lpXPData.dwInfoFlags & 0x80) {
+            lpXPData.dwInfoFlags ^= 0x80;
+        }
+        if (lpXPData.uVersion > 3)
+            lpXPData.uVersion = 3;
+        return Shell_NotifyIconW(dwMessage, &lpXPData);
+    }
+    return Shell_NotifyIconW(dwMessage, lpData);
+}

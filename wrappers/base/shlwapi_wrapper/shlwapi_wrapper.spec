@@ -561,7 +561,7 @@
 
 
 #This ordinal is for x86
-500 stdcall -i386 AssocGetPerceivedType(wstr ptr ptr ptr)
+500 stdcall -i386 AssocGetPerceivedType(wstr ptr ptr ptr) shlwapibase.AssocGetPerceivedType
 501 stdcall -i386 AssocIsDangerous(wstr)
 502 stdcall -i386 AssocQueryKeyA(long long str str ptr)
 503 stdcall -i386 AssocQueryKeyW(long long wstr wstr ptr)
@@ -579,7 +579,7 @@
 576 stdcall -i386 HashData(ptr long ptr long)
 577 stdcall -i386 IntlStrEqWorkerA(long str str long) StrIsIntlEqualA
 578 stdcall -i386 IntlStrEqWorkerW(long wstr wstr long) StrIsIntlEqualW
-579 stdcall -i386 IsCharSpaceA(long)
+579 stdcall -i386 IsCharSpaceA(long) shlwapibase.IsCharSpaceA
 580 stdcall -i386 PathAddBackslashA(str)
 581 stdcall -i386 PathAddBackslashW(wstr)
 582 stdcall -i386 PathAddExtensionA(str str)
@@ -697,7 +697,7 @@
 695 stdcall -i386 SHCreateStreamOnFileEx(wstr long long long ptr ptr)
 696 stdcall -i386 SHCreateStreamOnFileW(wstr long ptr)
 697 stdcall -i386 SHCreateStreamWrapper(ptr ptr long ptr)
-698 stdcall -i386 SHCreateThreadRef(ptr ptr)
+698 stdcall -i386 SHCreateThreadRef(ptr ptr) shlwapibase.SHCreateThreadRef
 699 stdcall -i386 SHDeleteEmptyKeyA(long ptr)
 700 stdcall -i386 SHDeleteEmptyKeyW(long ptr)
 701 stdcall -i386 SHDeleteKeyA(long str)
