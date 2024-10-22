@@ -92,7 +92,7 @@ HWND WINAPI WindowFromPhysicalPoint(
 )
 {
 	DbgPrint("WindowFromPhysicalPoint is UNIMPLEMENTED\n");
-	return NULL;
+	return WindowFromPoint(Point);
 }
 
 

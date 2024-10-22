@@ -23,22 +23,5 @@ WINE_DEFAULT_DEBUG_CHANNEL(process);
 
 BOOL WINAPI SetProcessRestrictionExemption(BOOL verification)
 {
-  BOOL resp; // ebx@1
-  PVOID *other; // eax@2
-
-  resp = 1;
-  
-  EnterCriticalSection(lpCriticalSection);
-  if ( verification )
-  {
-    other = GetCurrentProcess();
-    other[106] = (PVOID)(((unsigned int)other[106] ^ (verification << 8)) & 0x100 ^ (unsigned int)other[106]);
-  }
-  else
-  {
-    resp = 0;
-    SetLastError(5);
-  }
-  LeaveCriticalSection(lpCriticalSection);
-  return resp;
+     return TRUE;
 }

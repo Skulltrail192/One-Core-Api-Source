@@ -847,7 +847,6 @@
 @ stub SetMagnificationLensCtxInformation
 @ stdcall SetMirrorRendering(ptr ptr)
 @ stdcall SetProcessDPIAware() ;implemented
-@ stdcall SetProcessRestrictionExemption(long)  
 @ stdcall SetPhysicalCursorPos(long long)
 @ stdcall SetWindowRelative(ptr ptr)
 @ stdcall SetWindowDisplayAffinity(ptr long)
@@ -918,5 +917,6 @@
 @ stdcall GetDpiForWindow(long)
 ;@ stdcall GetThreadDpiAwarenessContext()
 @ stdcall GetWindowDpiAwarenessContext(long)
+@ stdcall SetProcessRestrictionExemption(long)  
 @ stdcall SetThreadDpiAwarenessContext(ptr)
 @ stdcall SystemParametersInfoForDpi(long long ptr long long)

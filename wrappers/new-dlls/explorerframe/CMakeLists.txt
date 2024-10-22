@@ -16,5 +16,6 @@ list(APPEND SOURCE
 add_library(explorerframe SHARED ${SOURCE} version.rc)
 set_module_type(explorerframe win32dll)
 target_link_libraries(explorerframe uuid wine)
-add_importlibs(explorerframe msvcrt kernel32 ntdll ole32 comctl32 shell32 user32)
+add_delay_importlibs(explorerframe shell32)
+add_importlibs(explorerframe msvcrt kernel32 ntdll ole32 comctl32 user32)
 add_cd_file(TARGET explorerframe DESTINATION reactos/system32 FOR all)

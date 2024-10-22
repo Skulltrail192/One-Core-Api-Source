@@ -86,15 +86,14 @@ BOOL WINAPI GetWindowDisplayAffinity(
 )
 {
     DbgPrint("(%p, %p): stub\n", hWnd, dwAffinity);
-	
-	if (!hWnd || !dwAffinity)
-	    {
-	    SetLastError(hWnd ? ERROR_NOACCESS : ERROR_INVALID_WINDOW_HANDLE);
-	    return FALSE;
-	}
-	
-	*dwAffinity = WDA_NONE;
-	return TRUE;
+    
+    if (!hWnd || !dwAffinity) {
+        SetLastError(hWnd ? ERROR_NOACCESS : ERROR_INVALID_WINDOW_HANDLE);
+        return FALSE;
+    }
+    SetLastError(0); // Some password managers such as PWSafe throw an error when this does not exist.
+    *dwAffinity = WDA_NONE;
+    return TRUE;
 }
 
 BOOL WINAPI SetWindowDisplayAffinity(
@@ -102,14 +101,7 @@ BOOL WINAPI SetWindowDisplayAffinity(
   _In_  DWORD dwAffinity
 )
 {
-	    DbgPrint("(%p, %u): stub\n", hWnd, dwAffinity);
-	
-	    if (!hWnd)
-	    {
-	        SetLastError(ERROR_INVALID_WINDOW_HANDLE);
-	        return FALSE;
-	    }
-	
-	    SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-	    return FALSE;
+        DbgPrint("(%p, %u): stub\n", hWnd, dwAffinity);
+        SetLastError(0);
+        return TRUE; // Some password managers throw an error when this code fails
 }

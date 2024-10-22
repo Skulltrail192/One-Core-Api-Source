@@ -5,10 +5,10 @@
 5   stdcall -noname PathFindOnPathExA(str ptr long)
 6   stdcall -noname PathFindOnPathExW(wstr ptr long)
 7   stdcall -ordinal SHAllocShared(ptr long long)
-8   stdcall -ordinal SHLockShared(ptr long)
+8   stdcall -ordinal SHLockShared(long long)
 9   stdcall -ordinal SHUnlockShared(ptr)
-10  stdcall -ordinal SHFreeShared(ptr long)
-11  stdcall -noname SHMapHandle(ptr long long long long)
+10  stdcall -ordinal SHFreeShared(long long)
+11  stdcall -noname SHMapHandle(long long long long long)
 12  stdcall -noname SHCreateMemStream(ptr long)
 13  stdcall -noname RegisterDefaultAcceptHeaders(ptr ptr)
 14  stdcall -ordinal GetAcceptLanguagesA(ptr ptr)
@@ -254,7 +254,7 @@
 254 stub -noname StopWatchExW
 255 stub -noname EventTraceHandler
 256 stdcall -noname IUnknown_GetSite(ptr ptr ptr)
-257 stdcall -noname SHCreateWorkerWindowA(ptr ptr long long ptr long)
+257 stdcall -noname SHCreateWorkerWindowA(long ptr long long ptr long)
 258 stub -noname SHRegisterWaitForSingleObject
 259 stub -noname SHUnregisterWait
 260 stdcall -noname SHQueueUserWorkItem(long long long long long long long)
@@ -275,7 +275,7 @@
 275 stub -noname RegisterGlobalHotkeyA
 276 stdcall -noname WhichPlatform()
 277 stub -noname SHDialogBox
-278 stdcall -noname SHCreateWorkerWindowW(ptr ptr long long ptr long)
+278 stdcall -noname SHCreateWorkerWindowW(long long long long long long)
 279 stdcall -noname SHInvokeDefaultCommand(ptr ptr ptr)
 280 stdcall -noname SHRegGetIntW(ptr wstr long)
 281 stdcall -noname SHPackDispParamsV(ptr ptr long ptr)
@@ -417,7 +417,7 @@
 417 stdcall -noname SHWinHelpOnDemandA(long str long ptr long)
 418 stdcall -noname MLFreeLibrary(long)
 419 stdcall -noname SHFlushSFCacheWrap()
-420 stub -noname SHLWAPI_420 # CMemStream::Commit ??
+420 stub -noname SHPersistDataObject
 421 stub -noname SHLoadPersistedDataObject
 422 stdcall -noname SHGlobalCounterCreateNamedA(str long)
 423 stdcall -noname SHGlobalCounterCreateNamedW(wstr long)
@@ -463,7 +463,7 @@
 463 stdcall -noname SHExpandEnvironmentStringsForUserA(ptr str ptr long) userenv.ExpandEnvironmentStringsForUserA
 464 stdcall -noname SHExpandEnvironmentStringsForUserW(ptr wstr ptr long) userenv.ExpandEnvironmentStringsForUserW
 465 stub -noname PathUnExpandEnvStringsForUserA
-466 stdcall -stub -noname PathUnExpandEnvStringsForUserW(ptr wstr ptr long)
+466 stub -noname PathUnExpandEnvStringsForUserW
 467 stub -ordinal SHRunIndirectRegClientCommand
 468 stub -noname RunIndirectRegCommand
 469 stub -noname RunRegCommand
@@ -497,18 +497,18 @@
 497 stdcall -noname SHPropertyBag_WriteLONG(ptr wstr long)
 498 stub -noname SHPropertyBag_ReadBOOLOld
 499 stub -noname SHPropertyBag_WriteBOOL
-500 stdcall AssocGetPerceivedType(wstr ptr ptr ptr)
-501 stdcall AssocIsDangerous(wstr)
-502 stdcall AssocQueryKeyA(long long str str ptr)
-503 stdcall AssocQueryKeyW(long long wstr wstr ptr)
-504 stdcall AssocQueryStringA(long long str str ptr ptr)
+@ stdcall AssocGetPerceivedType(wstr ptr ptr ptr)
+@ stdcall AssocIsDangerous(wstr)
+@ stdcall AssocQueryKeyA(long long str str ptr)
+@ stdcall AssocQueryKeyW(long long wstr wstr ptr)
+@ stdcall AssocQueryStringA(long long str str ptr ptr)
 505 stub -noname SHPropertyBag_ReadGUID
 506 stub -noname SHPropertyBag_WriteGUID
-507 stdcall -stub -noname SHPropertyBag_ReadDWORD(ptr ptr ptr)
+507 stub -noname SHPropertyBag_ReadDWORD
 508 stub -noname SHPropertyBag_WriteDWORD
 509 stdcall -noname IUnknown_OnFocusChangeIS(ptr ptr long)
 510 stdcall -noname SHLockSharedEx(ptr long long)
-511 stdcall -stub -noname PathFileExistsDefExtAndAttributesW(wstr long ptr)
+511 stub -noname PathFileExistsDefExtAndAttributesW
 512 stub -ordinal IStream_ReadPidl
 513 stub -ordinal IStream_WritePidl
 514 stdcall -noname IUnknown_ProfferService(ptr ptr ptr ptr)
@@ -533,12 +533,12 @@
 533 stub -noname SHGetPerScreenResName
 534 stub -noname SHPropertyBag_ReadBOOL
 535 stub -noname SHPropertyBag_Delete
-536 stdcall -stub -noname IUnknown_QueryServicePropertyBag(ptr long ptr ptr)
+536 stub -noname IUnknown_QueryServicePropertyBag
 537 stub -noname SHBoolSystemParametersInfo
 538 stdcall -noname IUnknown_QueryServiceForWebBrowserApp(ptr ptr ptr)
 539 stub -noname IUnknown_ShowBrowserBar
 540 stub -noname SHInvokeCommandOnContextMenu
-541 stub -noname SHInvokeCommandsOnContextMen
+541 stub -noname SHInvokeCommandsOnContextMenu
 542 stdcall -noname GetUIVersion()
 543 stdcall -noname CreateColorSpaceWrapW(ptr) gdi32.CreateColorSpaceW
 544 stub -noname QuerySourceCreateFromKey
@@ -550,17 +550,17 @@
 550 stub -noname GetTemplateInfoFromHandle
 551 stub -noname IShellFolder_CompareIDs
 552 stub -noname SHEvaluateSystemCommandTemplate
-553 stdcall IsInternetESCEnabled()
-554 stdcall -noname -stub SHGetAllAccessSA()
+553 stdcall -noname IsInternetESCEnabled()
+554 stub -noname SHGetAllAccessSA
 555 stdcall AssocQueryStringByKeyA(long long ptr str ptr ptr)
 556 stub -noname SHCoExtensionAllowed
 557 stub -noname SHCoCreateExtension
 558 stub -noname SHCoExtensionCollectStats
 559 stub -noname SHGetSignatureInfo
-560 stdcall -stub -noname SHWindowsPolicyGetValue(ptr ptr ptr)
+560 stub -noname SHWindowsPolicyGetValue
 561 stub -noname AssocGetUrlAction
 562 stub -noname SHGetPrivateProfileInt
-563 stdcall -stub -noname SHGetPrivateProfileSection(wstr ptr long ptr)
+563 stub -noname SHGetPrivateProfileSection
 564 stub -noname SHGetPrivateProfileSectionNames
 565 stub -noname SHGetPrivateProfileString
 566 stub -noname SHGetPrivateProfileStruct
@@ -571,7 +571,7 @@
 571 stdcall ColorAdjustLuma(long long long)
 572 stdcall ColorHLSToRGB(long long long)
 573 stdcall ColorRGBToHLS(long ptr ptr ptr)
-@ stdcall -private DllGetVersion(ptr)
+@ stdcall DllGetVersion(ptr)
 575 stdcall GetMenuPosFromID(ptr long)
 576 stdcall HashData(ptr long ptr long)
 577 stdcall IntlStrEqWorkerA(long str str long) StrIsIntlEqualA
@@ -687,7 +687,7 @@
 687 stdcall PathUnmakeSystemFolderW(wstr)
 688 stdcall PathUnquoteSpacesA(str)
 689 stdcall PathUnquoteSpacesW(wstr)
-690 stdcall SHAutoComplete(ptr long)
+690 stdcall -stub SHAutoComplete(ptr long)
 691 stdcall SHCopyKeyA(long str long long)
 692 stdcall SHCopyKeyW(long wstr long long)
 693 stdcall SHCreateShellPalette(long)
@@ -857,9 +857,13 @@
 857 stdcall wvnsprintfA(ptr long str ptr)
 858 stdcall wvnsprintfW(ptr long wstr ptr)
 
-#Windows Vista Functions
+500 stdcall -arch=x86_64 -noname ualstrcpynW(wstr wstr long) StrCpyNW
+501 stdcall -arch=x86_64 -noname SHLWAPI_501(wstr wstr)
+502 stdcall -arch=x86_64 -noname SHLWAPI_502(wstr wstr)
+503 stdcall -arch=x86_64 -noname ualstrlenW(wstr)
+504 stdcall -arch=x86_64 -noname ualstrcpyW(wstr wstr) StrCpyW
+
+#For One-Core-API api-set
+@ stdcall -stub PathCreateFromUrlAlloc(wstr ptr long)
 @ stdcall -stub PathMatchSpecExA(str str long)
 @ stdcall -stub PathMatchSpecExW(wstr wstr long)
-@ stdcall -stub PathCreateFromUrlAlloc(wstr wstr long)
-@ stdcall -stub StrFormatByteSizeEx(long long long wstr long)
-@ stdcall -stub SHAutoCompGetPidl(ptr ptr long ptr)

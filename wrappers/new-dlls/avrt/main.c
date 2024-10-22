@@ -100,3 +100,46 @@ BOOL WINAPI AvSetMmThreadPriority(HANDLE AvrtHandle, AVRT_PRIORITY prio)
     FIXME("(%p)->(%u) stub\n", AvrtHandle, prio);
     return TRUE;
 }
+
+HANDLE WINAPI AvSetMmMaxThreadCharacteristicsA(const char *task1, const char *task2, DWORD *index)
+{
+    WCHAR *task1W = NULL, *task2W = NULL;
+    HANDLE ret;
+
+    if (task1 && !(task1W = strdupAW(task1)))
+    {
+        SetLastError(ERROR_OUTOFMEMORY);
+        return NULL;
+    }
+
+    if (task2 && !(task2W = strdupAW(task2)))
+    {
+        SetLastError(ERROR_OUTOFMEMORY);
+        return NULL;
+    }
+
+    ret = AvSetMmMaxThreadCharacteristicsW(task1W, task2W, index);
+
+    free(task2W);
+    free(task1W);
+    return ret;
+}
+
+HANDLE WINAPI AvSetMmMaxThreadCharacteristicsW(const WCHAR *task1, const WCHAR *task2, DWORD *index)
+{
+    FIXME("(%s,%s,%p): stub\n", debugstr_w(task1), debugstr_w(task2), index);
+
+    if (!task1 || task2)
+    {
+        SetLastError(ERROR_INVALID_TASK_NAME);
+        return NULL;
+    }
+
+    if (!index)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return NULL;
+    }
+
+    return (HANDLE)0x12345678;
+}

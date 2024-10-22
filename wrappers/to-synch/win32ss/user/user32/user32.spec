@@ -785,3 +785,6 @@
 @ stdcall -stub DisplayConfigSetDeviceInfo(ptr)
 @ stdcall -stub UnregisterPowerSettingNotification(ptr)
 @ stdcall -stub UnregisterTouchWindow(ptr)
+@ stdcall -stub GetPointerDevice(long ptr)
+@ stdcall -stub GetPointerDevices(ptr ptr)
+@ stdcall -stub RegisterPointerDeviceNotifications(ptr long)

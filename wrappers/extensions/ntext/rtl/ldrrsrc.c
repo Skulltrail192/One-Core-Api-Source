@@ -457,11 +457,6 @@ Return Value:
             break;
             }
         if (Status != STATUS_OBJECT_NAME_NOT_FOUND && RetryCount == 0) {
-            //
-            //  Error other than the file name with .mui not found.
-            //  Most likely directory is missing.  Skip file name w/o .mui
-            //  and goto fallback directory.
-            //
             RetryCount++;
             }
 
@@ -542,23 +537,6 @@ LdrUnloadAlternateResourceModule(
     IN PVOID Module
     )
 
-/*++
-
-Routine Description:
-
-    This function unmaps an alternate resource module from the process'
-    address space and updates alternate resource module table.
-
-Arguments:
-
-    Module - handle of the base module.
-
-Return Value:
-
-    TBD.
-
---*/
-
 {
     ULONG ModuleIndex;
     PALT_RESOURCE_MODULE AltModule;
@@ -581,9 +559,6 @@ Return Value:
         RtlLeaveCriticalSection(&LocaleCritSection);
         return FALSE;
         }
-    //
-    //  Adjust to the actual index
-    //
     ModuleIndex --;
 
     AltModule = &AlternateResourceModules[ModuleIndex];
@@ -596,10 +571,6 @@ Return Value:
 
     __try {
         if (ModuleIndex != AlternateResourceModuleCount - 1){
-            //
-            //  Consolidate the array.  Skip this if unloaded item
-            //  is the last element.
-            //
             RtlMoveMemory(
                 AltModule,
                 AltModule + 1,
@@ -648,42 +619,13 @@ BOOLEAN
 LdrFlushAlternateResourceModules(
     VOID
     )
-
-/*++
-
-Routine Description:
-
-    This function unmaps all the alternate resouce modules for the
-    process address space. This function would be used mainly by
-    CSRSS, and any sub-systems that are permanent during logon and
-    logoff.
-
-
-Arguments:
-
-    None
-
-Return Value:
-
-    TRUE  : Successful
-    FALSE : Failed
-
---*/
-
 {
     ULONG ModuleIndex;
     PALT_RESOURCE_MODULE AltModule;
 
-    //
-    // Grab the loader lock
-    //
     RtlEnterCriticalSection(&LocaleCritSection);
 
     if (AlternateResourceModuleCount > 0) {
-        //
-        // Let's unmap the alternate resource modules from the process
-        // address space
-        //
         for (ModuleIndex=0;
              ModuleIndex<AlternateResourceModuleCount;
              ModuleIndex++) {
@@ -696,9 +638,6 @@ Return Value:
                 }
             }
 
-        //
-        // Cleanup alternate resource modules memory
-        //
         RtlFreeHeap(RtlProcessHeap(), 0, AlternateResourceModules);
         AlternateResourceModules = NULL;
         AlternateResourceModuleCount = 0;
@@ -706,10 +645,6 @@ Return Value:
 
         }
 
-    //
-    // Re-Initialize the UI language for the current process,
-    // and leave the LoaderLock
-    //
     UILangId = 0;
     RtlLeaveCriticalSection(&LocaleCritSection);
 
@@ -741,34 +676,6 @@ LdrpAccessResourceDataNoMultipleLanguage(
     OUT PVOID *Address OPTIONAL,
     OUT PULONG Size OPTIONAL
     )
-
-/*++
-
-Routine Description:
-
-    This function returns the data necessary to actually examine the
-    contents of a particular resource, without allowing for the .mui
-    feature. It used to be the tail of LdrpAccessResourceData, from
-    which it is now called.
-
-Arguments:
-
-    DllHandle - Supplies a handle to the image file that the resource is
-        contained in.
-
-    ResourceDataEntry - Supplies a pointer to the resource data entry in
-        the resource data directory of the image file specified by the
-        DllHandle parameter.  This pointer should have been one returned
-        by the LdrFindResource function.
-
-    Address - Optional pointer to a variable that will receive the
-        address of the resource specified by the first two parameters.
-
-    Size - Optional pointer to a variable that will receive the size of
-        the resource specified by the first two parameters.
-
---*/
-
 {
     PIMAGE_RESOURCE_DIRECTORY ResourceDirectory;
     ULONG ResourceSize;
@@ -808,12 +715,6 @@ Arguments:
 
             VirtualAddressOffset = (ULONG_PTR)DllHandle + ResourceRVA - (ULONG_PTR)ResourceDirectory;
 
-            //
-            // Now, we must check to see if the resource is not in the
-            // same section as the resource table.  If it's in .rsrc1,
-            // we've got to adjust the RVA in the ResourceDataEntry
-            // to point to the correct place in the non-VA data file.
-            //
             NtSection = RtlSectionTableFromVirtualAddress( NtHeaders, DllHandle, ResourceRVA);
 
             if (!NtSection) {
@@ -864,37 +765,10 @@ LdrpAccessResourceData(
     OUT PULONG Size OPTIONAL
     )
 
-/*++
-
-Routine Description:
-
-    This function returns the data necessary to actually examine the
-    contents of a particular resource.
-
-Arguments:
-
-    DllHandle - Supplies a handle to the image file that the resource is
-        contained in.
-
-    ResourceDataEntry - Supplies a pointer to the resource data entry in
-   the resource data directory of the image file specified by the
-        DllHandle parameter.  This pointer should have been one returned
-        by the LdrFindResource function.
-
-    Address - Optional pointer to a variable that will receive the
-        address of the resource specified by the first two parameters.
-
-    Size - Optional pointer to a variable that will receive the size of
-        the resource specified by the first two parameters.
-
---*/
-
 {
     PIMAGE_RESOURCE_DIRECTORY ResourceDirectory;
     ULONG ResourceSize;
     PIMAGE_NT_HEADERS NtHeaders;
-    //ULONG_PTR VirtualAddressOffset;
-    //PIMAGE_SECTION_HEADER NtSection;
 	NTSTATUS Status = STATUS_SUCCESS;
 
     RTL_PAGED_CODE();
@@ -916,14 +790,10 @@ Arguments:
                         (PVOID)((ULONG_PTR)DllHandle & ~0x00000001)
                         );
         if (NtHeaders) {
-            // Find the bounds of the image so we can see if this resource entry is in an alternate
-            // resource dll.
-
             ULONG_PTR ImageStart = (ULONG_PTR)DllHandle & ~0x00000001;
             SIZE_T ImageSize = 0;
 
             if ((ULONG_PTR)DllHandle & 0x00000001) {
-                // mapped as datafile.  Ask mm for the size
                 MEMORY_BASIC_INFORMATION MemInfo;
 
                 Status = NtQueryVirtualMemory(
@@ -945,7 +815,6 @@ Arguments:
             }
 
             if (!(((ULONG_PTR)ResourceDataEntry >= ImageStart) && ((ULONG_PTR)ResourceDataEntry < (ImageStart + ImageSize)))) {
-                // Doesn't fall within the specified image.  Must be an alternate dll.
                 DllHandle = LdrLoadAlternateResourceModule (DllHandle, NULL);
             }
         }
@@ -969,36 +838,6 @@ LdrAccessResource(
     OUT PVOID *Address OPTIONAL,
     OUT PULONG Size OPTIONAL
     )
-
-/*++
-
-Routine Description:
-
-    This function locates the address of the specified resource in the
-    specified DLL and returns its address.
-
-Arguments:
-
-    DllHandle - Supplies a handle to the image file that the resource is
-        contained in.
-
-    ResourceDataEntry - Supplies a pointer to the resource data entry in
-        the resource data section of the image file specified by the
-        DllHandle parameter.  This pointer should have been one returned
-        by the LdrFindResource function.
-
-    Address - Optional pointer to a variable that will receive the
-        address of the resource specified by the first two parameters.
-
-    Size - Optional pointer to a variable that will receive the size of
-        the resource specified by the first two parameters.
-
-Return Value:
-
-    TBD
-
---*/
-
 {
     RTL_PAGED_CODE();
 

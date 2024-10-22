@@ -760,3 +760,10 @@
 @ stdcall RegDeleteKeyValueW(ptr wstr str)
 @ stdcall RegSetKeyValueA(ptr str str long ptr long)
 @ stdcall RegSetKeyValueW(ptr wstr wstr long ptr long)
+
+
+#For hooks
+@ stdcall SetNamedSecurityInfoWNative(wstr long ptr ptr ptr ptr ptr) SetNamedSecurityInfoW
+@ stdcall SetSecurityInfoNative(long long long ptr ptr ptr ptr) SetSecurityInfo
+@ stdcall GetSecurityInfoNative(long long long ptr ptr ptr ptr ptr) GetSecurityInfo
+@ stdcall GetNamedSecurityInfoWNative(wstr long long ptr ptr ptr ptr ptr) GetNamedSecurityInfoW

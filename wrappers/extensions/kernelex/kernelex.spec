@@ -1465,6 +1465,7 @@
 
 #Win10 functions
 @ stdcall AppPolicyGetMediaFoundationCodecLoading(ptr ptr)
+@ stdcall GetSystemCpuSetInformation(ptr long ptr ptr long)
 @ stdcall GetThreadDescription(long ptr)
 @ stdcall InitializeContext2(ptr long ptr ptr int64)
 @ stdcall IsWow64Process2(ptr ptr ptr)
@@ -1472,11 +1473,13 @@
 @ stdcall QueryInterruptTimePrecise(ptr)
 @ stdcall QueryUnbiasedInterruptTimePrecise(ptr)
 @ stdcall SetThreadDescription(long ptr)
+@ stdcall SetThreadSelectedCpuSets(ptr ptr long)
 @ stdcall WaitForDebugEventEx(ptr long)
 
-#Windows Server 2022 functions
+#Windows 11 and Server 2022 functions
 #@ stdcall GetTempPath2A(long str)
 #@ stdcall GetTempPath2W(long wstr)
+@ stdcall SetProcessDefaultCpuSets(ptr ptr long)
 
 #Import from advapibase or registry function
 @ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) advapibase.AccessCheck

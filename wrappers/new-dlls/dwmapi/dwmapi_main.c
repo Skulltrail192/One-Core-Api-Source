@@ -109,16 +109,31 @@ HRESULT WINAPI DwmGetColorizationColor(DWORD *colorization, BOOL opaque_blend)
 /**********************************************************************
  *                  DwmFlush              (DWMAPI.@)
  */
+// Applied Wine PR #6006 to fix WINE Bug 56935: "Softube VST plugin UI breaks"
 HRESULT WINAPI DwmFlush(void)
 {
-    //FIXME("() stub\n");
-	BOOL isCompositionEnabled;
-	DwmIsCompositionEnabled(&isCompositionEnabled);
-	
-	if (isCompositionEnabled) 
-		return S_OK;
-	else 
-		return DWM_E_COMPOSITIONDISABLED;
+    static volatile LONG last_time;
+    static BOOL once;
+    DWORD now, interval, last = last_time, target;
+    int freq;
+
+    if (!once++) FIXME("() semi-stub\n");
+
+    // simulate the WaitForVBlank-like blocking behavior
+    freq = get_display_frequency();
+    interval = 1000 / freq;
+    now = GetTickCount();
+    if (now - last < interval)
+        target = last + interval;
+    else
+    {
+        // act as if we were called midway between 2 vsyncs
+        target = now + interval / 2;
+    }
+    Sleep(target - now);
+    InterlockedCompareExchange(&last_time, target, last);
+
+    return S_OK;
 }
 
 /**********************************************************************

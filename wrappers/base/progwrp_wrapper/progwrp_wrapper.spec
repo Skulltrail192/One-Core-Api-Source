@@ -1656,6 +1656,10 @@
 @ stdcall IsCharUpperW(long) user32.IsCharUpperW
 @ stdcall LoadStringA(ptr long ptr long)
 @ stdcall LoadStringW(ptr long ptr long)
+@ stdcall GetPointerDevice(long ptr)
+@ stdcall GetPointerDevices(ptr ptr)
+@ stdcall RegisterPointerDeviceNotifications(ptr long)
+@ stdcall UnhookWindowsHookEx(long)
 
 #API-SET functions
 @ stdcall QuirkIsEnabled3(ptr ptr)
@@ -2011,3 +2015,7 @@
 
 #shcore functions
 @ stdcall GetDpiForMonitor(long long ptr ptr)
+
+#crypt32 functions
+@ stdcall CryptProtectMemory(ptr long long)
+@ stdcall CryptUnprotectMemory(ptr long long)

@@ -60,17 +60,17 @@
 60 stub -noname CreateThemeDataFromObjects
 61 stdcall -noname OpenThemeDataEx(ptr wstr long)
 62 stub -noname ServerClearStockObjects
-63 stub -noname MarkSelection
-#64 ProcessLoadTheme_RunDLLW
-#65 SetSystemVisualStyle
-#66 ServiceClearStockObjects
+63 stub -noname MarkSection
+64 stdcall -noname ProcessLoadTheme_RunDLLW(long long ptr long)
+65 stdcall -noname SetSystemVisualStyle(wstr long long ptr)
+66 stdcall -noname ServiceClearStockObjects(long ptr)
 67 stdcall GetThemeIntList(ptr long long long ptr)
 68 stdcall GetThemeMargins(ptr ptr long long long ptr ptr)
 69 stdcall GetThemeMetric(ptr ptr long long long ptr)
 70 stdcall GetThemePartSize(ptr ptr long long ptr long ptr)
 71 stdcall GetThemePosition(ptr long long long ptr)
 72 stdcall GetThemePropertyOrigin(ptr long long long ptr)
-#73 IsThemeActiveByPolicy
+73 stdcall -noname IsThemeActiveByPolicy()
 74 stdcall GetThemeRect(ptr long long long ptr)
 75 stdcall GetThemeString(ptr long long long wstr long)
 76 stdcall GetThemeSysBool(ptr long)
@@ -93,3 +93,6 @@
 93 stdcall SetThemeAppProperties(long)
 94 stdcall SetWindowTheme(ptr wstr wstr)
 95 stdcall ThemeInitApiHook(long ptr)
+
+;For Extension hooks
+@ stdcall OpenThemeDataNative(ptr wstr)

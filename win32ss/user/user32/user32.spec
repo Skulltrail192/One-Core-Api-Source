@@ -757,7 +757,6 @@
 746 stub GetWindowBand
 747 stub RegisterSessionPort
 748 stub EnableMouseInPointer
-749 stub GetPointerDevices
 750 stub GetCurrentInputMessageSource
 751 stub GetPhysicalCursorPos
 752 stub SetPhysicalCursorPos
@@ -785,3 +784,6 @@
 @ stdcall -stub DisplayConfigSetDeviceInfo(ptr)
 @ stdcall -stub UnregisterPowerSettingNotification(ptr)
 @ stdcall -stub UnregisterTouchWindow(ptr)
+@ stdcall -stub GetPointerDevice(long ptr)
+@ stdcall -stub GetPointerDevices(ptr ptr)
+@ stdcall -stub RegisterPointerDeviceNotifications(ptr long)

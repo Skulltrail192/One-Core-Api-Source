@@ -20,6 +20,8 @@ Revision History:
 #include "main.h"
 #include "locale.h"
 
+WINE_DEFAULT_DEBUG_CHANNEL(locale);
+
 #define LOCALE_WINDOWS              0x01
 #define LOCALE_NEUTRALDATA          0x10
 #define LOCALE_SPECIFICDATA         0x20
@@ -311,7 +313,20 @@ NeutralToSpecific NeutralToSpecificMap[] =
 	{ L"zu", L"zu-ZA" },
 };
 
-WINE_DEFAULT_DEBUG_CHANNEL(locale); 
+INT 
+WINAPI 
+FindNLSStringEx(
+	const WCHAR *localename, 
+	DWORD flags, 
+	const WCHAR *src,
+    INT src_size, 
+	const WCHAR *value, 
+	INT value_size,
+    INT *found, 
+	NLSVERSIONINFO *version_info, 
+	void *reserved,
+    LPARAM sort_handle
+);
 
 struct sortguid
 {
@@ -3242,21 +3257,6 @@ GetNLSVersion(
     return GetNLSVersionEx( func, locale, (NLSVERSIONINFOEX *)info );
 }
 
-INT 
-WINAPI 
-FindNLSStringEx(
-	const WCHAR *localename, 
-	DWORD flags, 
-	const WCHAR *src,
-    INT src_size, 
-	const WCHAR *value, 
-	INT value_size,
-    INT *found, 
-	NLSVERSIONINFO *version_info, 
-	void *reserved,
-    LPARAM sort_handle
-);
-
 int 
 WINAPI 
 FindNLSString(
@@ -3269,10 +3269,10 @@ FindNLSString(
   _Out_opt_  LPINT pcchFound
 )
 {
-	const WCHAR localename;
+	const WCHAR localename[10]; // VS2012 Toolbox Crash bugfix
 	
-	LCIDToLocaleName(Locale, &localename, MAX_STRING_LEN, 0);
-	return FindNLSStringEx(&localename,
+	LCIDToLocaleName(Locale, localename, MAX_STRING_LEN, 0);
+	return FindNLSStringEx(localename,
 						   dwFindNLSStringFlags,
 						   lpStringSource,
 						   cchSource,
@@ -3284,66 +3284,204 @@ FindNLSString(
 						   0);
 }
 
-/******************************************************************************
- *           FindNLSStringEx (KERNEL32.@)
- */
+// /******************************************************************************
+ // *           FindNLSStringEx (KERNEL32.@)
+ // */
 
-INT 
-WINAPI 
-FindNLSStringEx(
-	const WCHAR *localename, 
-	DWORD flags, 
-	const WCHAR *src,
-    INT src_size, 
-	const WCHAR *value, 
-	INT value_size,
-    INT *found, 
-	NLSVERSIONINFO *version_info, 
-	void *reserved,
-    LPARAM sort_handle
-)
-{
+// INT 
+// WINAPI 
+// FindNLSStringEx(
+	// const WCHAR *localename, 
+	// DWORD flags, 
+	// const WCHAR *src,
+    // INT src_size, 
+	// const WCHAR *value, 
+	// INT value_size,
+    // INT *found, 
+	// NLSVERSIONINFO *version_info, 
+	// void *reserved,
+    // LPARAM sort_handle
+// )
+// {
 
-    /* FIXME: this function should normalize strings before calling CompareStringEx() */
-    DWORD mask = flags;
-    int offset, inc, count;
+    // /* FIXME: this function should normalize strings before calling CompareStringEx() */
+    // DWORD mask = flags;
+    // int offset, inc, count;
 
-    TRACE("%s %x %s %d %s %d %p %p %p %ld\n", wine_dbgstr_w(localename), flags,
-          wine_dbgstr_w(src), src_size, wine_dbgstr_w(value), value_size, found,
-          version_info, reserved, sort_handle);
+    // TRACE("%s %x %s %d %s %d %p %p %p %ld\n", wine_dbgstr_w(localename), flags,
+          // wine_dbgstr_w(src), src_size, wine_dbgstr_w(value), value_size, found,
+          // version_info, reserved, sort_handle);
 
-    if (version_info != NULL || reserved != NULL || sort_handle != 0 ||
-        !IsValidLocaleName(localename) || src == NULL || src_size == 0 ||
-        src_size < -1 || value == NULL || value_size == 0 || value_size < -1)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return -1;
-    }
-    if (src_size == -1)
-        src_size = strlenW(src);
-    if (value_size == -1)
-        value_size = strlenW(value);
+    // if (version_info != NULL || reserved != NULL || sort_handle != 0 ||
+        // !IsValidLocaleName(localename) || src == NULL || src_size == 0 ||
+        // src_size < -1 || value == NULL || value_size == 0 || value_size < -1)
+    // {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return -1;
+    // }
+    // if (src_size == -1)
+        // src_size = strlenW(src);
+    // if (value_size == -1)
+        // value_size = strlenW(value);
 
-    src_size -= value_size;
-    if (src_size < 0) return -1;
+    // src_size -= value_size;
+    // if (src_size < 0) return -1;
 
-    mask = flags & ~(FIND_FROMSTART | FIND_FROMEND | FIND_STARTSWITH | FIND_ENDSWITH);
-    count = flags & (FIND_FROMSTART | FIND_FROMEND) ? src_size + 1 : 1;
-    offset = flags & (FIND_FROMSTART | FIND_STARTSWITH) ? 0 : src_size;
-    inc = flags & (FIND_FROMSTART | FIND_STARTSWITH) ? 1 : -1;
-    while (count--)
-    {
-        if (CompareStringEx(localename, mask, src + offset, value_size, value, value_size, NULL, NULL, 0) == CSTR_EQUAL)
-        {
-            if (found)
-                *found = value_size;
-            return offset;
-        }
-        offset += inc;
-    }
+    // mask = flags & ~(FIND_FROMSTART | FIND_FROMEND | FIND_STARTSWITH | FIND_ENDSWITH);
+    // count = flags & (FIND_FROMSTART | FIND_FROMEND) ? src_size + 1 : 1;
+    // offset = flags & (FIND_FROMSTART | FIND_STARTSWITH) ? 0 : src_size;
+    // inc = flags & (FIND_FROMSTART | FIND_STARTSWITH) ? 1 : -1;
+    // while (count--)
+    // {
+        // if (CompareStringEx(localename, mask, src + offset, value_size, value, value_size, NULL, NULL, 0) == CSTR_EQUAL)
+        // {
+            // if (found)
+                // *found = value_size;
+            // return offset;
+        // }
+        // offset += inc;
+    // }
 
-    return -1;
-}
+    // return -1;
+// }
+
+    // int
+    // WINAPI
+    // FindNLSStringEx(
+        // _In_opt_ LPCWSTR _szLocaleName,
+        // _In_ DWORD _fFindNLSStringFlags,
+        // _In_reads_(_cchSource) LPCWSTR _szStringSource,
+        // _In_ int _cchSource,
+        // _In_reads_(_cchValue) LPCWSTR _szStringValue,
+        // _In_ int _cchValue,
+        // _Out_opt_ LPINT _pcchFound,
+        // _In_opt_ LPNLSVERSIONINFO _pVersionInformation,
+        // _In_opt_ LPVOID _pReserved,
+        // _In_opt_ LPARAM _hSortHandle
+        // )
+    // {
+        // // if (auto const _pfnFindNLSStringEx = try_get_FindNLSStringEx())
+        // // {
+            // // return _pfnFindNLSStringEx(_szLocaleName, _fFindNLSStringFlags, _szStringSource, _cchSource, _szStringValue, _cchValue, _pcchFound, _pVersionInformation, _pReserved, _hSortHandle);
+        // // }
+
+        // //__WarningMessage__("FindNLSStringEx 暂时只支持搜索 _cchValue 的子字符串。");
+
+        // const DWORD _fFindFlags = _fFindNLSStringFlags & (FIND_STARTSWITH | FIND_ENDSWITH | FIND_FROMSTART | FIND_FROMEND);
+        // const LCID _Locale = LocaleNameToLCID(_szLocaleName, 0);
+		// const DWORD _fCmpFlags = _fFindNLSStringFlags & ~(FIND_STARTSWITH | FIND_ENDSWITH | FIND_FROMSTART | FIND_FROMEND);
+		// INT _nResult;
+        // LPCWSTR _szStr;
+        // LPCWSTR _szStrEnd;		
+		
+		// if (_fFindFlags & (_fFindFlags - 1))
+        // {
+            // SetLastError(ERROR_INVALID_FLAGS);
+            // return -1;
+        // }
+
+        // if (_pVersionInformation || _pReserved|| _hSortHandle
+            // || _szStringSource == NULL || _cchSource == 0 || _cchSource < -1
+            // || _szStringValue == NULL || _cchValue == 0 || _cchValue < -1)
+        // {
+            // SetLastError(ERROR_INVALID_PARAMETER);
+            // return -1;
+        // }
+
+        
+        // if (_Locale == 0)
+        // {
+            // SetLastError(ERROR_INVALID_PARAMETER);
+            // return -1;
+        // }
+
+        // if (_cchSource == -1)
+        // {
+            // _cchSource = wcslen(_szStringSource);
+        // }
+
+        // if (_cchValue == -1)
+        // {
+            // _cchValue = wcslen(_szStringValue);
+        // }
+
+        // if (_cchSource < _cchValue)
+            // return -1;
+
+       
+        // if ((_fFindNLSStringFlags & (FIND_ENDSWITH | FIND_FROMEND)) == 0)
+        // {
+            // // 从头开始搜索
+            // if (_fFindNLSStringFlags & FIND_STARTSWITH)
+            // {
+                // _nResult = CompareStringW(_Locale, _fCmpFlags, _szStringSource, _cchValue, _szStringValue, _cchValue);
+                // if (_nResult == CSTR_EQUAL)
+                // {
+                    // if (_pcchFound)
+                        // *_pcchFound = _cchValue;
+
+                    // return 0;
+                // }
+            // }
+            // else
+            // {
+                // _szStr = _szStringSource;
+                // _szStrEnd = _szStringSource + _cchSource - _cchValue + 1;
+                // for (; _szStr != _szStrEnd;++_szStr)
+                // {
+                    // _nResult = CompareStringW(_Locale, _fCmpFlags, _szStr, _cchValue, _szStringValue, _cchValue);
+                    // if (_nResult == 0)
+                        // return -1;
+
+                    // if (_nResult == CSTR_EQUAL)
+                    // {
+                        // if (_pcchFound)
+                            // *_pcchFound = _cchValue;
+
+                        // return _szStr - _szStringSource;
+                    // }
+                // }
+            // }
+        // }
+        // else
+        // {
+            // // 反向搜索
+            // _szStr = _szStringSource + _cchSource - _cchValue;
+            // if (_fFindNLSStringFlags & FIND_ENDSWITH)
+            // {
+                // _nResult = CompareStringW(_Locale, _fCmpFlags, _szStr, _cchValue, _szStringValue, _cchValue);
+                // if (_nResult == CSTR_EQUAL)
+                // {
+                    // if (_pcchFound)
+                        // *_pcchFound = _cchValue;
+
+                    // return _szStr - _szStringSource;
+                // }
+            // }
+            // else
+            // {
+                // for(;; --_szStr)
+                // {
+                    // _nResult = CompareStringW(_Locale, _fCmpFlags, _szStr, _cchValue, _szStringValue, _cchValue);
+                    // if (_nResult == 0)
+                        // return -1;
+
+                    // if (_nResult == CSTR_EQUAL)
+                    // {
+                        // if (_pcchFound)
+                            // *_pcchFound = _cchValue;
+
+                        // return _szStr - _szStringSource;
+                    // }
+                    
+                    // if (_szStr == _szStringSource)
+                        // break;
+                // } 
+            // }
+        // }
+
+        // return -1;
+    // }
 
 /******************************************************************************
  *	ResolveLocaleName   (kernelex.@)

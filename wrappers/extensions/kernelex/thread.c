@@ -1572,3 +1572,13 @@ BOOLEAN WINAPI SetCurrentTransaction(HANDLE Transaction)
 	NtCurrentTeb()->CurrentTransactionHandle = Transaction;
 	return 1;
 }
+
+/***********************************************************************
+ *           SetThreadSelectedCpuSets   (kernelbase.@)
+ */
+BOOL WINAPI SetThreadSelectedCpuSets(HANDLE thread, const ULONG *cpu_set_ids, ULONG count)
+{
+    FIXME( "thread %p, cpu_set_ids %p, count %lu stub.\n", thread, cpu_set_ids, count );
+
+    return TRUE;
+}

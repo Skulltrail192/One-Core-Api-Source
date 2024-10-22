@@ -225,28 +225,6 @@ BOOL WINAPI RemoveClipboardFormatListener(
 	return TRUE;
 }
 
-BOOL WINAPI PhysicalToLogicalPoint(
-  _In_     HWND hWnd,
-  _Inout_  LPPOINT lpPoint
-)
-{
-	DbgPrint("PhysicalToLogicalPoint is UNIMPLEMENTED\n");  
-	lpPoint->x = 0;
-	lpPoint->y = 0;
-	return TRUE;
-}
-
-BOOL WINAPI LogicalToPhysicalPoint(
-  _In_     HWND hWnd,
-  _Inout_  LPPOINT lpPoint
-)
-{
-	DbgPrint("LogicalToPhysicalPoint is UNIMPLEMENTED\n");  
-	lpPoint->x = 0;
-	lpPoint->y = 0;
-	return TRUE;
-}
-
 HDESK WINAPI CreateDesktopExA(
   _In_        LPCTSTR lpszDesktop,
   _Reserved_  LPCTSTR lpszDevice,
@@ -404,33 +382,8 @@ DWORD WINAPI RegisterSessionPort(HANDLE a1, HANDLE a2)
 
 BOOL WINAPI GetCIMSSM(INPUT_MESSAGE_SOURCE *inputMessageSource)
 {
-  BOOL resp; // esi@5
-  INPUT_MESSAGE_DEVICE_TYPE type; // [sp+10h] [bp-24h]@2
-  INPUT_MESSAGE_ORIGIN_ID origin; // [sp+14h] [bp-20h]@4
-  CPPEH_RECORD ms_exc; // [sp+1Ch] [bp-18h]@6
-
-  EnterCriticalSection(lpCriticalSection);
-  origin = inputMessageSource->originId ;
-  if ( !inputMessageSource || !GetCurrentInputMessageSource(&type, 0) || type || origin )
-  {
-    SetLastError(87);
-    resp = 0;
-  }
-  else
-  {
-    resp = GetCurrentInputMessageSource(&type, 1);
-    if ( resp )
-    {
-      ms_exc.registration.TryLevel = 0;
-      if ( (PVOID)inputMessageSource >= W32UserProbeAddress )
-        W32UserProbeAddress = 0;
-      inputMessageSource->deviceType = type;
-      inputMessageSource->originId = origin;
-      ms_exc.registration.TryLevel = -2;
-    }
-  }
-  LeaveCriticalSection(lpCriticalSection);
-  return resp;
+   SetLastError(87);
+   return FALSE;
 }
 
 DWORD WINAPI MBToWCSEx(

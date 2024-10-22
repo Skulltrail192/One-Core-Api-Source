@@ -2322,3 +2322,31 @@ GetProcessInformation(HANDLE ProcessHandle, PROCESS_INFORMATION_CLASS ProcessInf
         return FALSE;
     }
 }
+
+/***********************************************************************
+ *           GetSystemCpuSetInformation   (kernelbase.@)
+ */
+BOOL WINAPI GetSystemCpuSetInformation(SYSTEM_CPU_SET_INFORMATION *info, ULONG buffer_length, ULONG *return_length,
+                                            HANDLE process, ULONG flags)
+{
+	//To implement
+    // if (flags)
+        // FIXME("Unsupported flags %#lx.\n", flags);
+
+    // *return_length = 0;
+
+    // return set_ntstatus( NtQuerySystemInformationEx( SystemCpuSetInformation, &process, sizeof(process), info,
+            // buffer_length, return_length ));
+	SetLastError(0);
+	return FALSE;
+}
+
+/***********************************************************************
+ *           SetProcessDefaultCpuSets   (kernelbase.@)
+ */
+BOOL WINAPI SetProcessDefaultCpuSets(HANDLE process, const ULONG *cpu_set_ids, ULONG count)
+{
+    FIXME( "process %p, cpu_set_ids %p, count %lu stub.\n", process, cpu_set_ids, count );
+
+    return TRUE;
+}

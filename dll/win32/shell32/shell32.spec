@@ -113,15 +113,16 @@
 114 stdcall Control_RunDLLA(ptr ptr str long)
 115 stdcall Control_RunDLLAsUserW(ptr ptr wstr long)
 116 stdcall Control_RunDLLW(ptr ptr wstr long)
-@ stdcall -private DllCanUnloadNow()
-@ stdcall -private DllGetClassObject(ptr ptr ptr)
+@ stdcall DllCanUnloadNow()
+@ stdcall DllGetClassObject(ptr ptr ptr)
+@ stdcall DllGetVersion(ptr)
+@ stdcall DllInstall(long wstr)
+@ stdcall DllRegisterServer()
+@ stdcall DllUnregisterServer()
 119 stdcall IsLFNDrive(ptr) IsLFNDriveAW
-@ stdcall -private DllGetVersion(ptr)
 121 stdcall SHFlushClipboard()
 122 stdcall -noname RunDll_CallEntry16(long long long str long)
 123 stdcall -noname SHFreeUnusedLibraries()
-@ stdcall -private DllInstall(long wstr)
-@ stdcall -private DllRegisterServer()
 126 stdcall -noname SHOutOfMemoryMessageBox(long long long)
 127 stdcall -noname SHWinHelp(long long long long)
 128 stdcall -noname SHDllGetClassObject(ptr ptr ptr) DllGetClassObject
@@ -129,7 +130,6 @@
 130 stdcall -noname DAD_DragEnter(long)
 131 stdcall DAD_DragEnterEx(long double)
 132 stdcall DAD_DragLeave()
-@ stdcall -private DllUnregisterServer()
 134 stdcall DAD_DragMove(double)
 135 stdcall DoEnvironmentSubstA(str str)
 136 stdcall DAD_SetDragImage(long long)
@@ -480,3 +480,10 @@
 @ stdcall -stub SHCreateItemFromParsingName(wstr ptr ptr ptr)
 @ stdcall -stub SHGetPropertyStoreForWindow(long ptr ptr)
 @ stdcall -stub SHQueryUserNotificationState(ptr) 
+
+#For extension
+@ stdcall ShellExecuteWNative(long wstr wstr wstr wstr long) ShellExecuteW
+@ stdcall Shell_NotifyIconNative(long ptr) Shell_NotifyIcon
+@ stdcall Shell_NotifyIconANative(long ptr) Shell_NotifyIconANative
+@ stdcall Shell_NotifyIconWNative(long ptr) Shell_NotifyIconW
+@ stdcall DllGetClassObjectNative(ptr ptr ptr) DllGetClassObject

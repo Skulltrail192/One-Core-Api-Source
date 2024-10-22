@@ -480,3 +480,8 @@
 @ stdcall -stub SHCreateItemFromParsingName(wstr ptr ptr ptr)
 @ stdcall -stub SHGetPropertyStoreForWindow(long ptr ptr)
 @ stdcall -stub SHQueryUserNotificationState(ptr) 
+
+#For extension
+364 stdcall ShellExecuteWNative(long wstr wstr wstr wstr long) ShellExecuteW
+368 stdcall Shell_NotifyIconWNative(long ptr) Shell_NotifyIconW
+@ stdcall DllGetClassObjectNative(ptr ptr ptr) DllGetClassObject
