@@ -52,6 +52,6 @@ add_library(shellex SHARED ${SOURCE} ${CMAKE_CURRENT_BINARY_DIR}/shell32_classes
 set_module_type(shellex win32dll ENTRYPOINT DllMain)
 target_link_libraries(shellex wine uuid)
 #add_pch(shellex precomp.h SOURCE)
-add_delay_importlibs(shellex setupapi propsys secur32 psapi)
-add_importlibs(shellex advapi32 user32 msvcrt kernelex ntdll shell32 shlwapi ole32 netapi32 rpcrt4 comctl32 userenv gdi32 browseui version)
+add_delay_importlibs(shellex propsys secur32 psapi)
+add_importlibs(shellex advapi32 user32 msvcrt kernel32 ntdll shell32 shlwapi secur32 ole32 netapi32 rpcrt4 propsys comctl32 userenv gdi32 browseui psapi version)
 add_cd_file(TARGET shellex DESTINATION reactos/system32 FOR all)

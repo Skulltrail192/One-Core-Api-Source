@@ -655,23 +655,23 @@
 
 #Missing on XP
 100 stdcall CreateProcessWithTokenW(ptr long wstr wstr long ptr wstr ptr ptr)
-202 stdcall ElfReportEventAndSourceW(long long ptr long long long ptr ptr long long ptr ptr long ptr ptr) ;advapibase.ElfReportEventAndSourceW
-297 stdcall I_QueryTagInformation(long long ptr)
-462 stdcall RegConnectRegistryExA(str ptr long ptr)
-463 stdcall RegConnectRegistryExW(wstr ptr long ptr)	
-470 stdcall RegDeleteKeyExA(long str long long)
-471 stdcall RegDeleteKeyExW(long wstr long long) 
 476 stdcall RegDisableReflectionKey(ptr)
-477 stdcall RegEnableReflectionKey(ptr)	
-502 stdcall RegQueryReflectionKey(ptr ptr)	 ;native on Server 2003, but, missing on XP (needed for synchronization)
 
 #Missing on XP SP1
 190 stdcall ElfFlushEventLog(long) advapibase.ElfFlushEventLog
 
 #Missing on Server 2003 RTM and XP 
+202 stdcall ElfReportEventAndSourceW(long long ptr long long long ptr ptr long long ptr ptr long ptr ptr)
+297 stdcall I_QueryTagInformation(long long ptr)
+462 stdcall RegConnectRegistryExA(str ptr long ptr)
+463 stdcall RegConnectRegistryExW(wstr ptr long ptr)
+470 stdcall RegDeleteKeyExA(long str long long)
+471 stdcall RegDeleteKeyExW(long wstr long long)
+477 stdcall RegEnableReflectionKey(ptr)	 
 @ stdcall RegDisablePredefinedCacheEx() 
 @ stdcall RegGetValueA(long str str long ptr ptr ptr) 
 @ stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) 
+502 stdcall RegQueryReflectionKey(ptr ptr)	 ;native on Server 2003, but, missing on XP (needed for synchronization)
 
 #Vista function, however, is supported by advapi32 from XP/2003 post-SP with updates
 ;@ stdcall LogonUserExExW(str str str long long ptr ptr ptr ptr ptr ptr) advapibase.LogonUserExExW

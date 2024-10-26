@@ -1999,7 +1999,7 @@ NTSTATUS BCryptHash(BCRYPT_ALG_HANDLE hAlgorithm, PUCHAR pbSecret, ULONG cbSecre
    
    cbHashObject = ResultLength;
    
-   pbHashObject = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, cbHashObject);
+   pbHashObject = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->Peb->ProcessHeap, 0, cbHashObject);
    
    if(!pbHashObject)
 	   return STATUS_NO_MEMORY;
@@ -2027,7 +2027,7 @@ NTSTATUS BCryptHash(BCRYPT_ALG_HANDLE hAlgorithm, PUCHAR pbSecret, ULONG cbSecre
   DestroyAndReturn:
      BCryptDestroyHash(hHash);
   ReturnAndDeallocate:
-     RtlFreeHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, pbHashObject);
+     RtlFreeHeap(NtCurrentTeb()->Peb->ProcessHeap, 0, pbHashObject);
      return Status;
 
 }
@@ -2035,209 +2035,209 @@ NTSTATUS BCryptHash(BCRYPT_ALG_HANDLE hAlgorithm, PUCHAR pbSecret, ULONG cbSecre
  #define SIZE_MAX 0xFFFFFFFF
 
 
-NTSTATUS BCryptDeriveKeyPBKDF2(BCRYPT_ALG_HANDLE hPrf, const char *pbPassword, size_t cbPassword, const uint8_t *pbSalt,
-    size_t cbSalt, uint8_t *pbDerivedKey, size_t cbDerivedKey, ULONGLONG cIterations)
-{
-	UCHAR* aSalt, *obuf; // Update this, use variable digest length obtained from BCryptGetProperty call
-	UCHAR* d1, *d2;
-	ULONG i, j;
-	ULONG count, ResultLength;
-	size_t r;
-	DWORD DigestLength;
-	BCRYPT_HASH_HANDLE hHash;
-	NTSTATUS Status = STATUS_SUCCESS;
+// NTSTATUS BCryptDeriveKeyPBKDF2(BCRYPT_ALG_HANDLE hPrf, const char *pbPassword, size_t cbPassword, const uint8_t *pbSalt,
+    // size_t cbSalt, uint8_t *pbDerivedKey, size_t cbDerivedKey, ULONGLONG cIterations)
+// {
+	// UCHAR* aSalt, *obuf; // Update this, use variable digest length obtained from BCryptGetProperty call
+	// UCHAR* d1, *d2;
+	// ULONG i, j;
+	// ULONG count, ResultLength;
+	// size_t r;
+	// DWORD DigestLength;
+	// BCRYPT_HASH_HANDLE hHash;
+	// NTSTATUS Status = STATUS_SUCCESS;
 
-	if (cIterations < 1 || cbDerivedKey == 0 || !hPrf)
-		return STATUS_INVALID_PARAMETER;
-	if (cbSalt == 0 || cbSalt > SIZE_MAX - 4)
-		return STATUS_INVALID_PARAMETER;
+	// if (cIterations < 1 || cbDerivedKey == 0 || !hPrf)
+		// return STATUS_INVALID_PARAMETER;
+	// if (cbSalt == 0 || cbSalt > SIZE_MAX - 4)
+		// return STATUS_INVALID_PARAMETER;
 	
-	Status = BCryptGetProperty(hPrf, L"HashDigestLength", (PUCHAR)&DigestLength, sizeof(DWORD), &ResultLength, 0);
-	if(Status < STATUS_SUCCESS)
-		return Status;
+	// Status = BCryptGetProperty(hPrf, L"HashDigestLength", (PUCHAR)&DigestLength, sizeof(DWORD), &ResultLength, 0);
+	// if(Status < STATUS_SUCCESS)
+		// return Status;
 	
 	
-	if ((aSalt = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, cbSalt + 4)) == NULL)
-		return STATUS_NO_MEMORY;
+	// if ((aSalt = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->Peb->ProcessHeap, 0, cbSalt + 4)) == NULL)
+		// return STATUS_NO_MEMORY;
 	
-	if ((obuf = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, DigestLength)) == NULL)
-	{
-		BCryptFree(aSalt); // undocumented function exported from BCrypt - basically a wrapper for RtlFreeHeap with flags = 0 and PEB heap
-		return STATUS_NO_MEMORY;
-	}
+	// if ((obuf = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->Peb->ProcessHeap, 0, DigestLength)) == NULL)
+	// {
+		// BCryptFree(aSalt); // undocumented function exported from BCrypt - basically a wrapper for RtlFreeHeap with flags = 0 and PEB heap
+		// return STATUS_NO_MEMORY;
+	// }
 	
-	if ((d1 = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, DigestLength)) == NULL)
-	{
-		BCryptFree(aSalt);
-		BCryptFree(obuf);
-		return STATUS_NO_MEMORY;
-	}
+	// if ((d1 = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->Peb->ProcessHeap, 0, DigestLength)) == NULL)
+	// {
+		// BCryptFree(aSalt);
+		// BCryptFree(obuf);
+		// return STATUS_NO_MEMORY;
+	// }
 
-	if ((d2 = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->ProcessEnvironmentBlock->ProcessHeap, 0, DigestLength)) == NULL)
-	{
-		BCryptFree(aSalt);
-		BCryptFree(obuf);
-		BCryptFree(d1);
-		return STATUS_NO_MEMORY;
-	}	
+	// if ((d2 = (PUCHAR)RtlAllocateHeap(NtCurrentTeb()->Peb->ProcessHeap, 0, DigestLength)) == NULL)
+	// {
+		// BCryptFree(aSalt);
+		// BCryptFree(obuf);
+		// BCryptFree(d1);
+		// return STATUS_NO_MEMORY;
+	// }	
 
-	memcpy(aSalt, pbSalt, cbSalt);
+	// memcpy(aSalt, pbSalt, cbSalt);
 
-	for (count = 1; cbDerivedKey > 0; count++) {
-		aSalt[cbSalt + 0] = (count >> 24) & 0xff;
-		aSalt[cbSalt + 1] = (count >> 16) & 0xff;
-		aSalt[cbSalt + 2] = (count >> 8) & 0xff;
-		aSalt[cbSalt + 3] = count & 0xff;
-		Status = BCryptHash(hPrf, (PUCHAR)pbPassword, cbPassword, aSalt, cbSalt + 4, d1, DigestLength);
-		if (Status < STATUS_SUCCESS)
-			goto FreeMemory;
-		memcpy(obuf, d1, DigestLength);
+	// for (count = 1; cbDerivedKey > 0; count++) {
+		// aSalt[cbSalt + 0] = (count >> 24) & 0xff;
+		// aSalt[cbSalt + 1] = (count >> 16) & 0xff;
+		// aSalt[cbSalt + 2] = (count >> 8) & 0xff;
+		// aSalt[cbSalt + 3] = count & 0xff;
+		// Status = BCryptHash(hPrf, (PUCHAR)pbPassword, cbPassword, aSalt, cbSalt + 4, d1, DigestLength);
+		// if (Status < STATUS_SUCCESS)
+			// goto FreeMemory;
+		// memcpy(obuf, d1, DigestLength);
 
-		for (i = 1; i < cIterations; i++) {
-			Status = BCryptHash(hPrf, (PUCHAR)pbPassword, cbPassword, d1, DigestLength, d2, DigestLength);
-		if (Status < STATUS_SUCCESS)
-			goto FreeMemory;			
-			memcpy(d1, d2, DigestLength);
-			for (j = 0; j < DigestLength; j++)
-				obuf[j] ^= d1[j];
-		}
+		// for (i = 1; i < cIterations; i++) {
+			// Status = BCryptHash(hPrf, (PUCHAR)pbPassword, cbPassword, d1, DigestLength, d2, DigestLength);
+		// if (Status < STATUS_SUCCESS)
+			// goto FreeMemory;			
+			// memcpy(d1, d2, DigestLength);
+			// for (j = 0; j < DigestLength; j++)
+				// obuf[j] ^= d1[j];
+		// }
 
-		r = min(cbDerivedKey, DigestLength);
-		memcpy(pbDerivedKey, obuf, r);
-		pbDerivedKey += r;
-		cbDerivedKey -= r;
-	};
+		// r = min(cbDerivedKey, DigestLength);
+		// memcpy(pbDerivedKey, obuf, r);
+		// pbDerivedKey += r;
+		// cbDerivedKey -= r;
+	// };
 	
-FreeMemory:	
-	memset(aSalt, 0, cbSalt + 4);
-	BCryptFree(aSalt);
-	memset(d1, 0, DigestLength);
-	BCryptFree(d1);
-	memset(d2, 0, DigestLength);
-    BCryptFree(d2);
-	memset(obuf, 0, DigestLength);
-	BCryptFree(obuf);
+// FreeMemory:	
+	// memset(aSalt, 0, cbSalt + 4);
+	// BCryptFree(aSalt);
+	// memset(d1, 0, DigestLength);
+	// BCryptFree(d1);
+	// memset(d2, 0, DigestLength);
+    // BCryptFree(d2);
+	// memset(obuf, 0, DigestLength);
+	// BCryptFree(obuf);
 	
-	return Status;
-}
+	// return Status;
+// }
 
-    NTSTATUS,
-    WINAPI,
-    BCryptDeriveKeyCapi,
-        _In_                            BCRYPT_HASH_HANDLE  hHash,
-        _In_opt_                        BCRYPT_ALG_HANDLE   hTargetAlg,
-        _Out_writes_bytes_( cbDerivedKey )    PUCHAR              pbDerivedKey,
-        _In_                            ULONG               cbDerivedKey,
-        _In_                            ULONG               dwFlags
-        )
-    {
-        if (const auto _pfnBCryptDeriveKeyCapi = try_get_BCryptDeriveKeyCapi())
-        {
-            return _pfnBCryptDeriveKeyCapi(hHash, hTargetAlg, pbDerivedKey, cbDerivedKey, dwFlags);
-        }
+    // NTSTATUS,
+    // WINAPI,
+    // BCryptDeriveKeyCapi,
+        // _In_                            BCRYPT_HASH_HANDLE  hHash,
+        // _In_opt_                        BCRYPT_ALG_HANDLE   hTargetAlg,
+        // _Out_writes_bytes_( cbDerivedKey )    PUCHAR              pbDerivedKey,
+        // _In_                            ULONG               cbDerivedKey,
+        // _In_                            ULONG               dwFlags
+        // )
+    // {
+        // if (const auto _pfnBCryptDeriveKeyCapi = try_get_BCryptDeriveKeyCapi())
+        // {
+            // return _pfnBCryptDeriveKeyCapi(hHash, hTargetAlg, pbDerivedKey, cbDerivedKey, dwFlags);
+        // }
 
-        if (dwFlags != 0 || (pbDerivedKey == nullptr && cbDerivedKey))
-        {
-            return STATUS_INVALID_PARAMETER;
-        }
+        // if (dwFlags != 0 || (pbDerivedKey == nullptr && cbDerivedKey))
+        // {
+            // return STATUS_INVALID_PARAMETER;
+        // }
 
-        ULONG _cbResult = 0;
-        DWORD _uHashLength = 0;
-        int _Status = ::BCryptGetProperty(hHash, BCRYPT_HASH_LENGTH, (PUCHAR)&_uHashLength, sizeof(_uHashLength), &_cbResult, 0);
-        if (_Status < 0)
-            return _Status;
+        // ULONG _cbResult = 0;
+        // DWORD _uHashLength = 0;
+        // int _Status = ::BCryptGetProperty(hHash, BCRYPT_HASH_LENGTH, (PUCHAR)&_uHashLength, sizeof(_uHashLength), &_cbResult, 0);
+        // if (_Status < 0)
+            // return _Status;
 
-        constexpr auto kMaxHashLength = 512 / 8;
-        if (kMaxHashLength < _uHashLength || _uHashLength * 2 < cbDerivedKey)
-        {
-            return STATUS_INVALID_PARAMETER;
-        }
+        // constexpr auto kMaxHashLength = 512 / 8;
+        // if (kMaxHashLength < _uHashLength || _uHashLength * 2 < cbDerivedKey)
+        // {
+            // return STATUS_INVALID_PARAMETER;
+        // }
 
-        UCHAR _Hash[kMaxHashLength * 2];
-        _Status = BCryptFinishHash(hHash, _Hash, _uHashLength, 0);
-        if (_Status < 0)
-            return _Status;
+        // UCHAR _Hash[kMaxHashLength * 2];
+        // _Status = BCryptFinishHash(hHash, _Hash, _uHashLength, 0);
+        // if (_Status < 0)
+            // return _Status;
 
-        auto v19 = _uHashLength < cbDerivedKey;
+        // auto v19 = _uHashLength < cbDerivedKey;
 
-        wchar_t szAlgorithmNameBuffer[4];
-        if (hTargetAlg && cbDerivedKey == 16 && _uHashLength < 32
-            && BCryptGetProperty(hTargetAlg, BCRYPT_ALGORITHM_NAME, (PUCHAR)szAlgorithmNameBuffer, sizeof(szAlgorithmNameBuffer), &_cbResult, 0) >= 0
-            && StringCompareIgnoreCaseByAscii(szAlgorithmNameBuffer, L"AES", -1) == 0)
-        {
-            v19 = true;
-        }
+        // wchar_t szAlgorithmNameBuffer[4];
+        // if (hTargetAlg && cbDerivedKey == 16 && _uHashLength < 32
+            // && BCryptGetProperty(hTargetAlg, BCRYPT_ALGORITHM_NAME, (PUCHAR)szAlgorithmNameBuffer, sizeof(szAlgorithmNameBuffer), &_cbResult, 0) >= 0
+            // && StringCompareIgnoreCaseByAscii(szAlgorithmNameBuffer, L"AES", -1) == 0)
+        // {
+            // v19 = true;
+        // }
 
-        if (!v19)
-        {
-            memcpy(pbDerivedKey, _Hash, cbDerivedKey);
-            return STATUS_SUCCESS;
-        }
+        // if (!v19)
+        // {
+            // memcpy(pbDerivedKey, _Hash, cbDerivedKey);
+            // return STATUS_SUCCESS;
+        // }
 
-        UCHAR _FirstHash[kMaxHashLength];
-        UCHAR _SecondHash[kMaxHashLength];
+        // UCHAR _FirstHash[kMaxHashLength];
+        // UCHAR _SecondHash[kMaxHashLength];
 
-        memset(_FirstHash, 0x36, sizeof(_FirstHash));
-        memset(_SecondHash, 0x5C, sizeof(_SecondHash));
+        // memset(_FirstHash, 0x36, sizeof(_FirstHash));
+        // memset(_SecondHash, 0x5C, sizeof(_SecondHash));
 
-        for (DWORD i = 0; i != _uHashLength; ++i)
-        {
-            _FirstHash[i] ^= _Hash[i];
-            _SecondHash[i] ^= _Hash[i];
-        }
+        // for (DWORD i = 0; i != _uHashLength; ++i)
+        // {
+            // _FirstHash[i] ^= _Hash[i];
+            // _SecondHash[i] ^= _Hash[i];
+        // }
 
-        BCRYPT_ALG_HANDLE hProvider;
-        _Status = BCryptGetProperty(hHash, BCRYPT_PROVIDER_HANDLE, (PUCHAR)&hProvider, sizeof(hProvider), &_cbResult, 0);
-        if (_Status < 0)
-            return _Status;
+        // BCRYPT_ALG_HANDLE hProvider;
+        // _Status = BCryptGetProperty(hHash, BCRYPT_PROVIDER_HANDLE, (PUCHAR)&hProvider, sizeof(hProvider), &_cbResult, 0);
+        // if (_Status < 0)
+            // return _Status;
 
-        DWORD _cbHashObjectLength = 0;
-        _Status = BCryptGetProperty(hProvider, BCRYPT_OBJECT_LENGTH, (PUCHAR)&_cbHashObjectLength, sizeof(_cbHashObjectLength), &_cbResult, 0);
-        if (_Status < 0)
-            return _Status;
+        // DWORD _cbHashObjectLength = 0;
+        // _Status = BCryptGetProperty(hProvider, BCRYPT_OBJECT_LENGTH, (PUCHAR)&_cbHashObjectLength, sizeof(_cbHashObjectLength), &_cbResult, 0);
+        // if (_Status < 0)
+            // return _Status;
 
-        auto _pHashObjectBuffer = (PUCHAR)_malloca(_cbHashObjectLength);
-        if (!_pHashObjectBuffer)
-            return STATUS_NO_MEMORY;
+        // auto _pHashObjectBuffer = (PUCHAR)_malloca(_cbHashObjectLength);
+        // if (!_pHashObjectBuffer)
+            // return STATUS_NO_MEMORY;
 
-        BCRYPT_HASH_HANDLE hHash2 = NULL;
-        do
-        {
-            _Status = BCryptCreateHash(hProvider, &hHash2, _pHashObjectBuffer, _cbHashObjectLength, nullptr, 0, 0);
-            if (_Status < 0)
-                break;
+        // BCRYPT_HASH_HANDLE hHash2 = NULL;
+        // do
+        // {
+            // _Status = BCryptCreateHash(hProvider, &hHash2, _pHashObjectBuffer, _cbHashObjectLength, nullptr, 0, 0);
+            // if (_Status < 0)
+                // break;
 
-            _Status = BCryptHashData(hHash2, _FirstHash, sizeof(_FirstHash), 0);
-            if (_Status < 0)
-                break;
+            // _Status = BCryptHashData(hHash2, _FirstHash, sizeof(_FirstHash), 0);
+            // if (_Status < 0)
+                // break;
 
-            _Status = BCryptFinishHash(hHash2, _Hash, _uHashLength, 0);
-            if (_Status < 0)
-                break;
-            BCryptDestroyHash(hHash2);
-            hHash2 = NULL;
+            // _Status = BCryptFinishHash(hHash2, _Hash, _uHashLength, 0);
+            // if (_Status < 0)
+                // break;
+            // BCryptDestroyHash(hHash2);
+            // hHash2 = NULL;
 
-            _Status = BCryptCreateHash(hProvider, &hHash2, _pHashObjectBuffer, _cbHashObjectLength, nullptr, 0, 0);
-            if (_Status < 0)
-                break;
+            // _Status = BCryptCreateHash(hProvider, &hHash2, _pHashObjectBuffer, _cbHashObjectLength, nullptr, 0, 0);
+            // if (_Status < 0)
+                // break;
 
-            _Status = BCryptHashData(hHash2, _SecondHash, sizeof(_SecondHash), 0);
-            if (_Status < 0)
-                break;
+            // _Status = BCryptHashData(hHash2, _SecondHash, sizeof(_SecondHash), 0);
+            // if (_Status < 0)
+                // break;
 
-            _Status = BCryptFinishHash(hHash2, _Hash + _uHashLength, _uHashLength, 0);
-            if (_Status < 0)
-                break;
+            // _Status = BCryptFinishHash(hHash2, _Hash + _uHashLength, _uHashLength, 0);
+            // if (_Status < 0)
+                // break;
 
-            memcpy(pbDerivedKey, _Hash, cbDerivedKey);
-            _Status = STATUS_SUCCESS;
+            // memcpy(pbDerivedKey, _Hash, cbDerivedKey);
+            // _Status = STATUS_SUCCESS;
 
-        } while (false);
+        // } while (false);
 
-        if (hHash2)
-            BCryptDestroyHash(hHash2);
+        // if (hHash2)
+            // BCryptDestroyHash(hHash2);
 
-        if (_pHashObjectBuffer)
-            _freea(_pHashObjectBuffer);
-        return _Status;
-    }
+        // if (_pHashObjectBuffer)
+            // _freea(_pHashObjectBuffer);
+        // return _Status;
+    // }

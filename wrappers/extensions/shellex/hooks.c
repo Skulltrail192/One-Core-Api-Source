@@ -128,7 +128,8 @@ BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) 
     return Shell_NotifyIconANative(dwMessage, lpData);
 }
 
-BOOLEAN CheckIfIsExplorer(){
+BOOLEAN 
+CheckIfIsExplorer(){
     // Get the current Process ID
     DWORD currentProcessId = GetCurrentProcessId();
 
@@ -144,8 +145,17 @@ BOOLEAN CheckIfIsExplorer(){
         return FALSE;
     }
 
+    // // Obter o nome do executável do processo atual
+    // if (GetModuleFileName(NULL, processName, sizeof(processName)) == 0) {
+        // DbgPrint("Falha ao obter o nome do processo.\n");
+    // } else {
+        // DbgPrint("Processo atual: %s\n", processName);
+        // DbgPrint("ID do processo atual: %lu\n", processId);
+		// DbgPrint("O nome somente do executável e: %s\n", PathFindFileName(processName));
+    // }
+
     // Compare executable name with "explorer.exe"
-    if (wcsicmp(exePath, L"explorer.exe") == 0) {
+    if (wcsicmp(PathFindFileNameW(exePath), L"EXPLORER.EXE") == 0) {
         return TRUE;
     } else {
 		return FALSE;
@@ -161,18 +171,7 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	IClassFactory * pcf = NULL;
 	HRESULT	hres;
 	int i;
-    OSVERSIONINFO osvi;
-    BOOL bIsWindowsVistaorLater;
-
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-
-    GetVersionEx(&osvi);
-
-    bIsWindowsVistaorLater = 
-       ( (osvi.dwMajorVersion > 6) ||
-       ( (osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 0) ));	
-
+	
 	TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
 
 	if (!ppv) return E_INVALIDARG;
@@ -184,7 +183,7 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	        //TRACE("index[%u]\n", i);
 			if(IsEqualIID(&CLSID_ShellLink, rclsid))
 			{
-				if(bIsWindowsVistaorLater && !CheckIfIsExplorer()){
+				if(!CheckIfIsExplorer()){
 					pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
 					break;
 				}else{

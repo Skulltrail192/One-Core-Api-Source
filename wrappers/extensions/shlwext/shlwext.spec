@@ -561,7 +561,7 @@
 
 
 #This ordinal is for x86
-#500 stdcall -i386 AssocGetPerceivedType(wstr ptr ptr ptr) shlwapibase.AssocGetPerceivedType
+500 stdcall -i386 AssocGetPerceivedType(wstr ptr ptr ptr) ;shlwapibase.AssocGetPerceivedType
 501 stdcall -i386 AssocIsDangerous(wstr)
 502 stdcall -i386 AssocQueryKeyA(long long str str ptr)
 503 stdcall -i386 AssocQueryKeyW(long long wstr wstr ptr)
