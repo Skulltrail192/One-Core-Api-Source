@@ -414,7 +414,7 @@ GetTokenInformationInternal (
 	if(TokenInformationClass == TokenElevationType ){
 		TokenInformation = (PVOID)2;
 		TokenInformationLength = sizeof(ULONG);
-		return STATUS_SUCCESS;
+		return TRUE;
 	}
 	
     if(TokenInformationClass == TokenIntegrityLevel || 

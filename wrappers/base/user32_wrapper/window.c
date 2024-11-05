@@ -334,3 +334,9 @@ LONG_PTR WINAPI SetWindowLongPtrW_Internal(HWND hWnd,int nIndex,LONG_PTR dwNewLo
     }
     return Result;
 }
+
+// Even though this API claims it's from "1903+" it exists on 10.0.10240.
+// Fixes Chromium 132 "Crash On Move Window"
+BOOL WINAPI IsWindowArranged(HWND hwnd) {
+    return FALSE; // No such thing as "Aero Snap" on XP.
+}

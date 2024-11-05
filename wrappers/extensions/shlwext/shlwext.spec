@@ -863,7 +863,6 @@
 
 555 stdcall -arch=x86_64 AssocGetPerceivedType(wstr ptr ptr ptr)
 567 stdcall -arch=x86_64 AssocIsDangerous(wstr)
-@ stdcall -arch=x86_64 AssocQueryKeyA(long long str str ptr)
 569 stdcall -arch=x86_64 AssocQueryKeyW(long long wstr wstr ptr)
 570 stdcall -arch=x86_64 AssocQueryStringA(long long str str ptr ptr)
 571 stdcall -arch=x86_64 AssocQueryStringByKeyA(long long ptr str ptr ptr)
@@ -1168,8 +1167,8 @@
 @ stdcall StrFormatByteSizeEx(long long long wstr long)
 ;@ stdcall SHAutoCompGetPidl(ptr ptr long ptr) ;cause error on VirtulBox Machine on x64. Is from Longhorn?
 
-@ varargs ShellMessageBoxW(long long wstr wstr long) shell32.ShellMessageBoxW
 @ varargs ShellMessageBoxA(long long str str long) shell32.ShellMessageBoxA
+@ varargs ShellMessageBoxW(long long wstr wstr long) shell32.ShellMessageBoxW
 
 #Vista functions with special ordinal
 568 stdcall IStream_Copy(ptr ptr long)
@@ -1178,5 +1177,6 @@
 @ stdcall -i386 AssocQueryStringW(long long wstr wstr ptr ptr) ;Change from ordinal 568 to standard export
 @ stdcall PathIsNetworkPathA(str) ;Change from ordinal 628 (x86) to standard export
 @ stdcall -i386 PathIsContentTypeA(str str) ;Change from ordinal 618 (x86) to standard export
+@ stdcall -arch=x86_64 AssocQueryKeyA(long long str str ptr) ;Change from ordinal 568 (x64) to standard export
 @ stdcall -arch=x86_64 PathGetArgsW(wstr) ;Change from ordinal 618 (x64) to standard export
-@ stdcall -arch=x86_64 PathIsDirectoryW(wstr) ;Change from ordinal 633 (x64) to standard export
+@ stdcall -arch=x86_64 PathIsDirectoryW(wstr) ;Change from ordinal 628 (x64) to standard export

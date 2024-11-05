@@ -1,6 +1,6 @@
 add_subdirectory(advapiex)
-add_subdirectory(bcryptext)
-add_subdirectory(browseex)
+#add_subdirectory(bcryptext)
+#add_subdirectory(browseex)
 add_subdirectory(cfgmgrex)
 add_subdirectory(comdlgex)
 add_subdirectory(cryptex)

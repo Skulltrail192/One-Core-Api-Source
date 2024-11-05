@@ -288,7 +288,7 @@
 @ stdcall Control_RunDLLW(ptr ptr wstr long)
 @ stdcall -private DllCanUnloadNow()
 @ stdcall -private DllGetVersion(ptr)
-@ stdcall -private DllInstall(long wstr)
+#@ stdcall -private DllInstall(long wstr)
 @ stdcall -private DllRegisterServer()
 @ stdcall -private DllUnregisterServer()
 @ stdcall DoEnvironmentSubstA(str str)

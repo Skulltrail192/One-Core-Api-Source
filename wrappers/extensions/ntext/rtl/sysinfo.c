@@ -19,6 +19,7 @@
 #define NDEBUG 
  
 #include <main.h>
+#include <ntstrsafe.h>
 
 BOOLEAN globalVerificationTablet = TRUE;
 BOOLEAN globalVerificationMediaCenter = TRUE;
@@ -967,3 +968,50 @@ RtlGetDeviceFamilyInfoEnum(
 		*pulDeviceForm = 0;
 	}	
 }
+
+// /*
+ // * @implemented
+ // * @note User-mode version of RtlGetVersion in ntoskrnl/rtl/misc.c
+ // */
+// NTSTATUS NTAPI
+// RtlGetVersion(IN OUT PRTL_OSVERSIONINFOW lpVersionInformation)
+// {
+    // SIZE_T Length;
+    // PPEB Peb = NtCurrentPeb();
+
+    // if (lpVersionInformation->dwOSVersionInfoSize != sizeof(RTL_OSVERSIONINFOW) &&
+        // lpVersionInformation->dwOSVersionInfoSize != sizeof(RTL_OSVERSIONINFOEXW))
+    // {
+        // return STATUS_INVALID_PARAMETER;
+    // }
+
+    // lpVersionInformation->dwMajorVersion = 6;
+    // lpVersionInformation->dwMinorVersion = 1;
+    // lpVersionInformation->dwBuildNumber = 7601;
+    // lpVersionInformation->dwPlatformId = Peb->OSPlatformId;
+    // RtlZeroMemory(lpVersionInformation->szCSDVersion, sizeof(lpVersionInformation->szCSDVersion));
+	
+	// Length =  wcslen(L"Service Pack 1");
+
+    // /* If we have a CSD version string, initialized by Application Compatibility... */
+    // RtlStringCbCopyExW(lpVersionInformation->szCSDVersion, 
+                        // ARRAYSIZE(lpVersionInformation->szCSDVersion),                        
+                        // L"Service Pack 1", NULL , NULL, STRSAFE_NULL_ON_FAILURE);
+    // /* Always null-terminate the user CSD version string */
+    // //lpVersionInformation->szCSDVersion[Length] = UNICODE_NULL;
+
+    // if (lpVersionInformation->dwOSVersionInfoSize == sizeof(RTL_OSVERSIONINFOEXW))
+    // {
+        // PRTL_OSVERSIONINFOEXW InfoEx = (PRTL_OSVERSIONINFOEXW)lpVersionInformation;
+        // InfoEx->wServicePackMajor = (Peb->OSCSDVersion >> 8) & 0xFF;
+        // InfoEx->wServicePackMinor = Peb->OSCSDVersion & 0xFF;
+        // InfoEx->wSuiteMask = SharedUserData->SuiteMask & 0xFFFF;
+        // InfoEx->wProductType = SharedUserData->NtProductType;
+        // InfoEx->wReserved = 0;
+
+        // /* HACK: ReactOS specific changes, see bug-reports CORE-6611 and CORE-4620 (aka. #5003) */
+        // //SetRosSpecificInfo(InfoEx);
+    // }
+
+    // return STATUS_SUCCESS;
+// }

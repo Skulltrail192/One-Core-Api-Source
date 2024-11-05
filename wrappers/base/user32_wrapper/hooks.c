@@ -127,3 +127,51 @@ SystemParametersInfoAInternal(
   }
   return SystemParametersInfoA(uiAction, uiParam, pvParam, fWinIni); 			   
 }	
+
+/*
+ * GetUserObjectSecurity
+ *
+ * Retrieves security information for user object specified
+ * with handle 'hObject'. Descriptor returned in self-relative
+ * format.
+ *
+ * Arguments:
+ *  1) hObject - handle to an object to retrieve information for
+ *  2) pSecurityInfo - type of information to retrieve
+ *  3) pSecurityDescriptor - buffer which receives descriptor
+ *  4) dwLength - size, in bytes, of buffer 'pSecurityDescriptor'
+ *  5) pdwLengthNeeded - reseives actual size of descriptor
+ *
+ * Return Vaules:
+ *  TRUE on success
+ *  FALSE on failure, call GetLastError() for more information
+ */
+/*
+ * @implemented
+ */
+BOOL
+WINAPI
+GetUserObjectSecurityInternal(
+    IN HANDLE hObject,
+    IN PSECURITY_INFORMATION pSecurityInfo,
+    OUT PSECURITY_DESCRIPTOR pSecurityDescriptor,
+    IN DWORD dwLength,
+    OUT PDWORD pdwLengthNeeded
+)
+{
+    NTSTATUS Status;
+
+    Status = NtQuerySecurityObject(hObject,
+                                   *pSecurityInfo,
+                                   pSecurityDescriptor,
+                                   dwLength,
+                                   pdwLengthNeeded);
+    if (!NT_SUCCESS(Status))
+    {
+		DbgPrint("GetUserObjectSecurity::NtQuerySecurityObject returned Status: 0x%08lx\n", Status);
+        UserSetLastNTError(Status);
+        return FALSE;
+    }
+
+    return TRUE;
+}

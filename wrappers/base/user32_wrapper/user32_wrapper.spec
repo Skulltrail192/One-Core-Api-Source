@@ -752,7 +752,7 @@
 @ stdcall GetAutoRotationState(ptr)
 
 #Hooks
-@ stdcall GetUserObjectSecurity (long ptr ptr long ptr) GetUserObjectSecurityInternal
+@ stdcall GetUserObjectSecurity (long ptr ptr long ptr) #GetUserObjectSecurityInternal
 @ stdcall SystemParametersInfoA(long long ptr long) SystemParametersInfoAInternal
 @ stdcall SystemParametersInfoW(long long ptr long) SystemParametersInfoWInternal
 
@@ -912,6 +912,7 @@
 @ stdcall AreDpiAwarenessContextsEqual(long long)
 @ stdcall EnableNonClientDpiScaling(long)
 @ stdcall IsValidDpiAwarenessContext(long)
+@ stdcall IsWindowArranged(long)
 @ stdcall GetSystemMetricsForDpi(long long)
 @ stdcall GetDpiForSystem()
 @ stdcall GetDpiForWindow(long)

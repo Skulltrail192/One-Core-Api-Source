@@ -58,7 +58,7 @@ HANDLE get_BaseNamedObjects_handle(void)
 }
 
 /***********************************************************************
- *           InitializeCriticalSectionEx   (kernelex.@)
+ *           InitializeCriticalSectionEx   (kernelbase.@)
  */
 BOOL WINAPI InitializeCriticalSectionEx(LPCRITICAL_SECTION lpCriticalSection,DWORD dwSpinCount,DWORD Flags)
 {
@@ -144,45 +144,49 @@ CreateEventExW(
 	ACCESS_MASK DesiredAccess
 )
 {
-  HANDLE Handle; // esi
-  NTSTATUS Status; // eax
-  OBJECT_ATTRIBUTES Obja; // [esp+4h] [ebp-20h]
-  POBJECT_ATTRIBUTES pObja;
-  LSA_UNICODE_STRING ObjectName; // [esp+1Ch] [ebp-8h]
+	return CreateEventW(lpEventAttributes,
+						dwFlags & CREATE_EVENT_MANUAL_RESET ? NotificationEvent : SynchronizationEvent,
+						(dwFlags & CREATE_EVENT_INITIAL_SET) != 0,
+						lpName);	
+  // HANDLE Handle; // esi
+  // NTSTATUS Status; // eax
+  // OBJECT_ATTRIBUTES Obja; // [esp+4h] [ebp-20h]
+  // POBJECT_ATTRIBUTES pObja;
+  // LSA_UNICODE_STRING ObjectName; // [esp+1Ch] [ebp-8h]
 
-  if ( dwFlags & 0xFFFFFFFC )
-  {
-    BaseSetLastNTError(STATUS_INVALID_PARAMETER_3);
-    return NULL;
-  }
-  if ( ARGUMENT_PRESENT(lpName) )
-  {
-    RtlInitUnicodeString(&ObjectName, lpName);
-    pObja = BaseFormatObjectAttributes(&Obja, lpEventAttributes, &ObjectName);
-  }
-  else
-  {
-    pObja = BaseFormatObjectAttributes(&Obja, lpEventAttributes, NULL);
-  }
-  Status = NtCreateEvent(
-                   &Handle,
-                   DesiredAccess,
-                   pObja,
-                   dwFlags & CREATE_EVENT_MANUAL_RESET ? NotificationEvent : SynchronizationEvent,
-                   (BOOLEAN)dwFlags & CREATE_EVENT_INITIAL_SET);
-	if ( NT_SUCCESS(Status) ) {
-        if ( Status == STATUS_OBJECT_NAME_EXISTS ) {
-            SetLastError(ERROR_ALREADY_EXISTS);
-            }
-        else {
-            SetLastError(0);
-            }
-        return Handle;
-        }
-    else {
-        BaseSetLastNTError(Status);
-        return NULL;
-        }
+  // if ( dwFlags & 0xFFFFFFFC )
+  // {
+    // BaseSetLastNTError(STATUS_INVALID_PARAMETER_3);
+    // return NULL;
+  // }
+  // if ( ARGUMENT_PRESENT(lpName) )
+  // {
+    // RtlInitUnicodeString(&ObjectName, lpName);
+    // pObja = BaseFormatObjectAttributes(&Obja, lpEventAttributes, &ObjectName);
+  // }
+  // else
+  // {
+    // pObja = BaseFormatObjectAttributes(&Obja, lpEventAttributes, NULL);
+  // }
+  // Status = NtCreateEvent(
+                   // &Handle,
+                   // DesiredAccess,
+                   // pObja,
+                   // dwFlags & CREATE_EVENT_MANUAL_RESET ? NotificationEvent : SynchronizationEvent,
+                   // (BOOLEAN)dwFlags & CREATE_EVENT_INITIAL_SET);
+	// if ( NT_SUCCESS(Status) ) {
+        // if ( Status == STATUS_OBJECT_NAME_EXISTS ) {
+            // SetLastError(ERROR_ALREADY_EXISTS);
+            // }
+        // else {
+            // SetLastError(0);
+            // }
+        // return Handle;
+        // }
+    // else {
+        // BaseSetLastNTError(Status);
+        // return NULL;
+        // }
 }
 
 /***********************************************************************
@@ -225,33 +229,37 @@ CreateSemaphoreExW(
 	DWORD access 
 )
 {
-    HANDLE ret = 0;
-    UNICODE_STRING nameW;
-    OBJECT_ATTRIBUTES attr;
-    NTSTATUS status;
+	return CreateSemaphoreW(sa,
+						    initial,
+						    max,
+						    name);	
+    // HANDLE ret = 0;
+    // UNICODE_STRING nameW;
+    // OBJECT_ATTRIBUTES attr;
+    // NTSTATUS status;
 
-    attr.Length                   = sizeof(attr);
-    attr.RootDirectory            = 0;
-    attr.ObjectName               = NULL;
-    attr.Attributes               = OBJ_OPENIF | ((sa && sa->bInheritHandle) ? OBJ_INHERIT : 0);
-    attr.SecurityDescriptor       = sa ? sa->lpSecurityDescriptor : NULL;
-    attr.SecurityQualityOfService = NULL;
-    if (name)
-    {
-        RtlInitUnicodeString( &nameW, name );
-        attr.ObjectName = &nameW;
-        attr.RootDirectory = get_BaseNamedObjects_handle();
-    }
+    // attr.Length                   = sizeof(attr);
+    // attr.RootDirectory            = 0;
+    // attr.ObjectName               = NULL;
+    // attr.Attributes               = OBJ_OPENIF | ((sa && sa->bInheritHandle) ? OBJ_INHERIT : 0);
+    // attr.SecurityDescriptor       = sa ? sa->lpSecurityDescriptor : NULL;
+    // attr.SecurityQualityOfService = NULL;
+    // if (name)
+    // {
+        // RtlInitUnicodeString( &nameW, name );
+        // attr.ObjectName = &nameW;
+        // attr.RootDirectory = get_BaseNamedObjects_handle();
+    // }
 
-    status = NtCreateSemaphore( &ret, access, &attr, initial, max );
+    // status = NtCreateSemaphore( &ret, access, &attr, initial, max );
 	
-	DbgPrint("CreateSemaphoreExW :: NtCreateSemaphore Status: %0x%08x\n", status);
+	// DbgPrint("CreateSemaphoreExW :: NtCreateSemaphore Status: %0x%08x\n", status);
 	
-    if (status == STATUS_OBJECT_NAME_EXISTS)
-        SetLastError( ERROR_ALREADY_EXISTS );
-    else
-        SetLastError( RtlNtStatusToDosError(status) );
-    return ret;
+    // if (status == STATUS_OBJECT_NAME_EXISTS)
+        // SetLastError( ERROR_ALREADY_EXISTS );
+    // else
+        // SetLastError( RtlNtStatusToDosError(status) );
+    // return ret;
 }
 
 /***********************************************************************
@@ -310,40 +318,42 @@ CreateMutexExW(
     DWORD                 dwDesiredAccess	
 )
 {
-    NTSTATUS Status;
-    OBJECT_ATTRIBUTES Obja;
-    POBJECT_ATTRIBUTES pObja;
-    HANDLE Handle;
-    UNICODE_STRING ObjectName;
+    // forward to CreateMutexW.
+    return CreateMutexW(lpMutexAttributes, (dwFlags & CREATE_MUTEX_INITIAL_OWNER) != 0, lpName);	
+    // NTSTATUS Status;
+    // OBJECT_ATTRIBUTES Obja;
+    // POBJECT_ATTRIBUTES pObja;
+    // HANDLE Handle;
+    // UNICODE_STRING ObjectName;
 
-    if ( ARGUMENT_PRESENT(lpName) ) {
-        RtlInitUnicodeString(&ObjectName,lpName);
-        pObja = BaseFormatObjectAttributes(&Obja,lpMutexAttributes,&ObjectName);
-        }
-    else {
-        pObja = BaseFormatObjectAttributes(&Obja,lpMutexAttributes,NULL);
-        }
+    // if ( ARGUMENT_PRESENT(lpName) ) {
+        // RtlInitUnicodeString(&ObjectName,lpName);
+        // pObja = BaseFormatObjectAttributes(&Obja,lpMutexAttributes,&ObjectName);
+        // }
+    // else {
+        // pObja = BaseFormatObjectAttributes(&Obja,lpMutexAttributes,NULL);
+        // }
 
-    Status = NtCreateMutant(
-                &Handle,
-                dwDesiredAccess,
-                pObja,
-                (dwFlags & CREATE_MUTEX_INITIAL_OWNER) != 0
-                );
+    // Status = NtCreateMutant(
+                // &Handle,
+                // dwDesiredAccess,
+                // pObja,
+                // (dwFlags & CREATE_MUTEX_INITIAL_OWNER) != 0
+                // );
 
-    if ( NT_SUCCESS(Status) ) {
-        if ( Status == STATUS_OBJECT_NAME_EXISTS ) {
-            SetLastError(ERROR_ALREADY_EXISTS);
-            }
-        else {
-            SetLastError(0);
-            }
-        return Handle;
-        }
-    else {
-        BaseSetLastNTError(Status);
-        return NULL;
-        }
+    // if ( NT_SUCCESS(Status) ) {
+        // if ( Status == STATUS_OBJECT_NAME_EXISTS ) {
+            // SetLastError(ERROR_ALREADY_EXISTS);
+            // }
+        // else {
+            // SetLastError(0);
+            // }
+        // return Handle;
+        // }
+    // else {
+        // BaseSetLastNTError(Status);
+        // return NULL;
+        // }
 }
 
 HANDLE 
@@ -626,7 +636,7 @@ DeleteSynchronizationBarrier(
 }
 
 /***********************************************************************
- *	GetOverlappedResultEx   (kernelex.@)
+ *	GetOverlappedResultEx   (kernelbase.@)
  */
 BOOL WINAPI DECLSPEC_HOTPATCH GetOverlappedResultEx( HANDLE file, OVERLAPPED *overlapped,
                                                      DWORD *result, DWORD timeout, BOOL alertable )
@@ -745,7 +755,7 @@ GetQueuedCompletionStatusEx(
 }
 
 /******************************************************************************
- *           WaitForDebugEventEx   (kernelex.@)
+ *           WaitForDebugEventEx   (kernelbase.@)
  */
 BOOL WINAPI DECLSPEC_HOTPATCH WaitForDebugEventEx( DEBUG_EVENT *event, DWORD timeout )
 {
@@ -772,28 +782,28 @@ BOOL WINAPI DECLSPEC_HOTPATCH WaitForDebugEventEx( DEBUG_EVENT *event, DWORD tim
     }
 }	
 
-/***********************************************************************
- *           WaitOnAddress   (kernelex.@)
- */
-BOOL WINAPI DECLSPEC_HOTPATCH WaitOnAddress(
-  volatile VOID *Address,
-  PVOID         CompareAddress,
-  SIZE_T        AddressSize,
-  DWORD         dwMilliseconds
-)
-{
-  LARGE_INTEGER timeout; 
-  NTSTATUS Status; 
-  BOOL result;
+// /***********************************************************************
+ // *           WaitOnAddress   (kernelbase.@)
+ // */
+// BOOL WINAPI DECLSPEC_HOTPATCH WaitOnAddress(
+  // volatile VOID *Address,
+  // PVOID         CompareAddress,
+  // SIZE_T        AddressSize,
+  // DWORD         dwMilliseconds
+// )
+// {
+  // LARGE_INTEGER timeout; 
+  // NTSTATUS Status; 
+  // BOOL result;
 
-  BaseFormatTimeOut(&timeout, dwMilliseconds);
-  Status = RtlWaitOnAddress((const void*)Address, CompareAddress, AddressSize, &timeout);
-  BaseSetLastNTError(Status);
-  result = FALSE;
-  if ( NT_SUCCESS( Status) )
-    result = Status != 0x102;
-  return result;
-}
+  // BaseFormatTimeOut(&timeout, dwMilliseconds);
+  // Status = RtlWaitOnAddress((const void*)Address, CompareAddress, AddressSize, &timeout);
+  // BaseSetLastNTError(Status);
+  // result = FALSE;
+  // if ( NT_SUCCESS( Status) )
+    // result = Status != 0x102;
+  // return result;
+// }
 
 static inline INT HashAddress(
 	IN	LPVOID	lpAddr)
@@ -916,38 +926,69 @@ static inline VOID DeleteACVAListEntry(
 	// return bSuccess;
 // }
 
-WINBASEAPI VOID WINAPI WakeByAddressSingle(
-	IN	LPVOID	lpAddr)
-{
-	LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
-	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
+// WINBASEAPI VOID WINAPI WakeByAddressSingle(
+	// IN	LPVOID	lpAddr)
+// {
+	// LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
+	// LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
 	
-	DbgPrint("(%p)", lpAddr);
+	// DbgPrint("(%p)", lpAddr);
 
-	EnterCriticalSection(&lpHashTableEntry->Lock);
-	lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
+	// EnterCriticalSection(&lpHashTableEntry->Lock);
+	// lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
 
-	if (lpListEntry) {
-		RtlWakeConditionVariable(&lpListEntry->CVar);
-	}
+	// if (lpListEntry) {
+		// RtlWakeConditionVariable(&lpListEntry->CVar);
+	// }
 
-	LeaveCriticalSection(&lpHashTableEntry->Lock);
-}
+	// LeaveCriticalSection(&lpHashTableEntry->Lock);
+// }
 
-WINBASEAPI VOID WINAPI WakeByAddressAll(
-	IN	LPVOID	lpAddr)
-{
-	LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
-	LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
+// WINBASEAPI VOID WINAPI WakeByAddressAll(
+	// IN	LPVOID	lpAddr)
+// {
+	// LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
+	// LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
 
-	DbgPrint("(%p)", lpAddr);
+	// DbgPrint("(%p)", lpAddr);
 	
-	EnterCriticalSection(&lpHashTableEntry->Lock);
-	lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
+	// EnterCriticalSection(&lpHashTableEntry->Lock);
+	// lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
 
-	if (lpListEntry) {
-		RtlWakeAllConditionVariable(&lpListEntry->CVar);
-	}
+	// if (lpListEntry) {
+		// RtlWakeAllConditionVariable(&lpListEntry->CVar);
+	// }
 
-	LeaveCriticalSection(&lpHashTableEntry->Lock);
+	// LeaveCriticalSection(&lpHashTableEntry->Lock);
+// }
+
+
+//
+// This function is a wrapper around (Kex)RtlWaitOnAddress.
+//
+BOOL WINAPI WaitOnAddress(
+    IN    volatile VOID    *Address,
+    IN    PVOID            CompareAddress,
+    IN    SIZE_T            AddressSize,
+    IN    DWORD            Milliseconds OPTIONAL)
+{
+    NTSTATUS Status;
+    PLARGE_INTEGER TimeOutPointer;
+    LARGE_INTEGER TimeOut;
+
+    TimeOutPointer = BaseFormatTimeOut(&TimeOut, Milliseconds);
+
+    Status = RtlWaitOnAddress(
+        Address,
+        CompareAddress,
+        AddressSize,
+        TimeOutPointer);
+
+    BaseSetLastNTError(Status);
+    
+    if (NT_SUCCESS(Status) && Status != STATUS_TIMEOUT) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
 }

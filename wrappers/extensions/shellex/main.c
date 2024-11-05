@@ -27,7 +27,7 @@ WNDPROC lpPrevWndFunc;
 
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 {
-	//DWORD bufferSize = 65535;
+	DWORD bufferSize = 65535;
 	LPWSTR AppData;
 	
     TRACE("fdwReason %u\n", fdwReason);
@@ -41,9 +41,9 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpv)
 			if (!AppData)
 				return E_OUTOFMEMORY;
 			
-			//if(GetEnvironmentVariableW(L"HOMEPATH", AppData, bufferSize) > 0 && GetEnvironmentVariableW(L"LOCALAPPDATA", AppData, bufferSize) == 0){
-			SetEnvironmentVariableW(L"LOCALAPPDATA", wcscat(AppData, L"\\Local Settings\\Application Data\\"));
-			//}
+			if(GetEnvironmentVariableW(L"HOMEPATH", AppData, bufferSize) > 0 || GetEnvironmentVariableW(L"LOCALAPPDATA", AppData, bufferSize) == 0){
+				SetEnvironmentVariableW(L"LOCALAPPDATA", wcscat(AppData, L"\\Local Settings\\Application Data\\"));
+			}
 			// //Hack to disable sandbox for Firefox 73+
 			// if(GetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", AppData, bufferSize) == 0){
 				// SetEnvironmentVariableW(L"MOZ_DISABLE_CONTENT_SANDBOX", L"1");

@@ -21,6 +21,8 @@
 #include "winbase.h"
 #include "winver.h"
 
+#undef WINE_PRODUCTNAME_STR
+
 #define WINE_PRODUCTNAME_STR    "Shorthorn Operating System"
 
 /* Convert Wine #defines to ReactOS #defines */

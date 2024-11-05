@@ -129,7 +129,7 @@ BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) 
 }
 
 BOOLEAN 
-CheckIfIsExplorer(){
+CheckIfIsExplorerOrMsiExec(){
     // Get the current Process ID
     DWORD currentProcessId = GetCurrentProcessId();
 
@@ -155,7 +155,7 @@ CheckIfIsExplorer(){
     // }
 
     // Compare executable name with "explorer.exe"
-    if (wcsicmp(PathFindFileNameW(exePath), L"EXPLORER.EXE") == 0) {
+    if ((wcsicmp(PathFindFileNameW(exePath), L"EXPLORER.EXE") == 0) || wcsicmp(PathFindFileNameW(exePath), L"MSIEXEC.EXE") == 0) {
         return TRUE;
     } else {
 		return FALSE;
@@ -183,7 +183,7 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	        //TRACE("index[%u]\n", i);
 			if(IsEqualIID(&CLSID_ShellLink, rclsid))
 			{
-				if(!CheckIfIsExplorer()){
+				if(!CheckIfIsExplorerOrMsiExec()){
 					pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
 					break;
 				}else{

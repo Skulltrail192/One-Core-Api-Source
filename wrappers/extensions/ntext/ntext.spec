@@ -1714,6 +1714,7 @@
 @ stdcall RtlCheckTokenCapability(ptr ptr ptr)
 @ stdcall RtlCheckTokenMembershipEx(ptr ptr long ptr)
 @ stdcall RtlCreateBoundaryDescriptor(ptr long)
+@ stdcall RtlDecompressBufferEx(long ptr long ptr long ptr ptr)
 @ stdcall RtlDeleteBoundaryDescriptor(ptr)
 @ stdcall -arch=x86_64 RtlDeleteGrowableFunctionTable(ptr)
 @ stdcall RtlDeregisterSecureMemoryCacheCallback(ptr)

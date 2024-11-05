@@ -132,3 +132,6 @@
 @ stdcall -arch=x86_64 WSCWriteNameSpaceOrder32(ptr long)
 @ stdcall -arch=x86_64 WSCWriteProviderOrder32(ptr long)
 @ stdcall -arch=x86_64 WSCUpdateProvider32(ptr wstr ptr long ptr)
+
+#Vista stubs
+@ stdcall -stub inet_ntop(long ptr str long)
