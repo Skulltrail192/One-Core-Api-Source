@@ -1,0 +1,1 @@
+@ stdcall UiaRaiseNotificationEvent(ptr long long wstr wstr)
