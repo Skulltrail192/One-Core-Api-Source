@@ -8,16 +8,16 @@
 @ stdcall CoCreateGuid(ptr) ole32.CoCreateGuid
 @ stdcall CoCreateInstance(ptr ptr long ptr ptr) ole32.CoCreateInstance
 @ stdcall CoCreateInstanceEx(ptr ptr long ptr long ptr) ole32.CoCreateInstanceEx
-@ stub CoCreateInstanceFromApp
-@ stub CoDecodeProxy
-@ stub CoDecrementMTAUsage
+@ stdcall CoCreateInstanceFromApp(ptr ptr long ptr long ptr) combase.CoCreateInstanceFromApp
+@ stdcall CoDecodeProxy(long int64 ptr) combase.CoDecodeProxy
+@ stdcall CoDecrementMTAUsage(ptr) combase.CoDecrementMTAUsage
 @ stdcall CoDisableCallCancellation(ptr) ole32.CoDisableCallCancellation
-@ stub CoDisconnectContext
+@ stdcall CoDisconnectContext(long) ole32.CoDisconnectContext
 @ stdcall CoDisconnectObject(ptr long) ole32.CoDisconnectObject
 @ stdcall CoEnableCallCancellation(ptr) ole32.CoEnableCallCancellation
 @ stdcall CoFreeUnusedLibraries() ole32.CoFreeUnusedLibraries
 @ stdcall CoFreeUnusedLibrariesEx(long long) ole32.CoFreeUnusedLibrariesEx
-@ stub CoGetApartmentType ;(ptr ptr) ole32.CoGetApartmentType
+@ stdcall CoGetApartmentType(ptr ptr) combase.CoGetApartmentType
 @ stdcall CoGetCallContext(ptr ptr) ole32.CoGetCallContext
 @ stdcall CoGetCallerTID(ptr) ole32.CoGetCallerTID
 @ stdcall CoGetCancelObject(long long ptr) ole32.CoGetCancelObject
@@ -35,7 +35,7 @@
 @ stdcall CoGetStdMarshalEx(ptr long ptr) ole32.CoGetStdMarshalEx
 @ stdcall CoGetTreatAsClass(ptr ptr) ole32.CoGetTreatAsClass
 @ stdcall CoImpersonateClient() ole32.CoImpersonateClient
-@ stub CoIncrementMTAUsage
+@ stdcall CoIncrementMTAUsage(ptr) combase.CoIncrementMTAUsage
 @ stdcall CoInitializeEx(ptr long) ole32.CoInitializeEx
 @ stdcall CoInitializeSecurity(ptr long ptr ptr long long ptr long ptr) ole32.CoInitializeSecurity
 @ stdcall CoInvalidateRemoteMachineBindings(str) CoInvalidateRemoteMachineBindings
@@ -47,7 +47,7 @@
 @ stdcall CoQueryAuthenticationServices(ptr ptr) ole32.CoQueryAuthenticationServices
 @ stdcall CoQueryClientBlanket(ptr ptr ptr ptr ptr ptr ptr) ole32.CoQueryClientBlanket
 @ stdcall CoQueryProxyBlanket(ptr ptr ptr ptr ptr ptr ptr ptr) ole32.CoQueryProxyBlanket
-@ stub CoRegisterActivationFilter
+@ stdcall CoRegisterActivationFilter(ptr) ole32.CoRegisterActivationFilter
 @ stdcall CoRegisterClassObject(ptr ptr long long ptr) ole32.CoRegisterClassObject
 @ stdcall CoRegisterPSClsid(ptr ptr) ole32.CoRegisterPSClsid
 @ stdcall CoRegisterSurrogate(ptr) ole32.CoRegisterSurrogate
@@ -76,7 +76,7 @@
 @ stdcall ProgIDFromCLSID(ptr ptr) ole32.ProgIDFromCLSID
 @ stdcall PropVariantClear(ptr) ole32.PropVariantClear
 @ stdcall PropVariantCopy(ptr ptr) ole32.PropVariantCopy
-@ stub RoGetAgileReference
+@ stdcall RoGetAgileReference(long long ptr ptr) combase.RoGetAgileReference
 @ stdcall StringFromCLSID(ptr ptr) ole32.StringFromCLSID
 @ stdcall StringFromGUID2(ptr ptr long) ole32.StringFromGUID2
 @ stdcall StringFromIID(ptr ptr) ole32.StringFromIID

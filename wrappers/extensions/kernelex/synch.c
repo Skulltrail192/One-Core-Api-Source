@@ -144,49 +144,10 @@ CreateEventExW(
 	ACCESS_MASK DesiredAccess
 )
 {
-	return CreateEventW(lpEventAttributes,
-						dwFlags & CREATE_EVENT_MANUAL_RESET ? NotificationEvent : SynchronizationEvent,
-						(dwFlags & CREATE_EVENT_INITIAL_SET) != 0,
-						lpName);	
-  // HANDLE Handle; // esi
-  // NTSTATUS Status; // eax
-  // OBJECT_ATTRIBUTES Obja; // [esp+4h] [ebp-20h]
-  // POBJECT_ATTRIBUTES pObja;
-  // LSA_UNICODE_STRING ObjectName; // [esp+1Ch] [ebp-8h]
-
-  // if ( dwFlags & 0xFFFFFFFC )
-  // {
-    // BaseSetLastNTError(STATUS_INVALID_PARAMETER_3);
-    // return NULL;
-  // }
-  // if ( ARGUMENT_PRESENT(lpName) )
-  // {
-    // RtlInitUnicodeString(&ObjectName, lpName);
-    // pObja = BaseFormatObjectAttributes(&Obja, lpEventAttributes, &ObjectName);
-  // }
-  // else
-  // {
-    // pObja = BaseFormatObjectAttributes(&Obja, lpEventAttributes, NULL);
-  // }
-  // Status = NtCreateEvent(
-                   // &Handle,
-                   // DesiredAccess,
-                   // pObja,
-                   // dwFlags & CREATE_EVENT_MANUAL_RESET ? NotificationEvent : SynchronizationEvent,
-                   // (BOOLEAN)dwFlags & CREATE_EVENT_INITIAL_SET);
-	// if ( NT_SUCCESS(Status) ) {
-        // if ( Status == STATUS_OBJECT_NAME_EXISTS ) {
-            // SetLastError(ERROR_ALREADY_EXISTS);
-            // }
-        // else {
-            // SetLastError(0);
-            // }
-        // return Handle;
-        // }
-    // else {
-        // BaseSetLastNTError(Status);
-        // return NULL;
-        // }
+    return CreateEventW(lpEventAttributes,
+                        (dwFlags & CREATE_EVENT_MANUAL_RESET) != 0,
+                        (dwFlags & CREATE_EVENT_INITIAL_SET) != 0,
+                        lpName);
 }
 
 /***********************************************************************
@@ -232,34 +193,7 @@ CreateSemaphoreExW(
 	return CreateSemaphoreW(sa,
 						    initial,
 						    max,
-						    name);	
-    // HANDLE ret = 0;
-    // UNICODE_STRING nameW;
-    // OBJECT_ATTRIBUTES attr;
-    // NTSTATUS status;
-
-    // attr.Length                   = sizeof(attr);
-    // attr.RootDirectory            = 0;
-    // attr.ObjectName               = NULL;
-    // attr.Attributes               = OBJ_OPENIF | ((sa && sa->bInheritHandle) ? OBJ_INHERIT : 0);
-    // attr.SecurityDescriptor       = sa ? sa->lpSecurityDescriptor : NULL;
-    // attr.SecurityQualityOfService = NULL;
-    // if (name)
-    // {
-        // RtlInitUnicodeString( &nameW, name );
-        // attr.ObjectName = &nameW;
-        // attr.RootDirectory = get_BaseNamedObjects_handle();
-    // }
-
-    // status = NtCreateSemaphore( &ret, access, &attr, initial, max );
-	
-	// DbgPrint("CreateSemaphoreExW :: NtCreateSemaphore Status: %0x%08x\n", status);
-	
-    // if (status == STATUS_OBJECT_NAME_EXISTS)
-        // SetLastError( ERROR_ALREADY_EXISTS );
-    // else
-        // SetLastError( RtlNtStatusToDosError(status) );
-    // return ret;
+						    name);
 }
 
 /***********************************************************************
@@ -319,41 +253,7 @@ CreateMutexExW(
 )
 {
     // forward to CreateMutexW.
-    return CreateMutexW(lpMutexAttributes, (dwFlags & CREATE_MUTEX_INITIAL_OWNER) != 0, lpName);	
-    // NTSTATUS Status;
-    // OBJECT_ATTRIBUTES Obja;
-    // POBJECT_ATTRIBUTES pObja;
-    // HANDLE Handle;
-    // UNICODE_STRING ObjectName;
-
-    // if ( ARGUMENT_PRESENT(lpName) ) {
-        // RtlInitUnicodeString(&ObjectName,lpName);
-        // pObja = BaseFormatObjectAttributes(&Obja,lpMutexAttributes,&ObjectName);
-        // }
-    // else {
-        // pObja = BaseFormatObjectAttributes(&Obja,lpMutexAttributes,NULL);
-        // }
-
-    // Status = NtCreateMutant(
-                // &Handle,
-                // dwDesiredAccess,
-                // pObja,
-                // (dwFlags & CREATE_MUTEX_INITIAL_OWNER) != 0
-                // );
-
-    // if ( NT_SUCCESS(Status) ) {
-        // if ( Status == STATUS_OBJECT_NAME_EXISTS ) {
-            // SetLastError(ERROR_ALREADY_EXISTS);
-            // }
-        // else {
-            // SetLastError(0);
-            // }
-        // return Handle;
-        // }
-    // else {
-        // BaseSetLastNTError(Status);
-        // return NULL;
-        // }
+    return CreateMutexW(lpMutexAttributes, (dwFlags & CREATE_MUTEX_INITIAL_OWNER) != 0, lpName);
 }
 
 HANDLE 
@@ -690,69 +590,354 @@ BOOL getQueuedCompletionStatus(
 		&lpEnt->lpOverlapped, dwMilliseconds);
 }
 
-BOOL 
-WINAPI 
-GetQueuedCompletionStatusEx(
-  HANDLE             CompletionPort,
-  LPOVERLAPPED_ENTRY lpCompletionPortEntries,
-  ULONG              ulCount,
-  PULONG             ulNumEntriesRemoved,
-  DWORD              dwMilliseconds,
-  BOOL               fAlertable
-) 
-{
-	int i = 0;
-	LPOVERLAPPED_ENTRY currentEntry;
-    NTSTATUS status;
-    DWORD ret;	
-    LARGE_INTEGER TimeOut;
-    PLARGE_INTEGER pTimeOut;
-	
-	pTimeOut = BaseFormatTimeOut(&TimeOut, dwMilliseconds);	
-	
-	// validate arguments
-	if(!lpCompletionPortEntries
-	|| !ulCount || !ulNumEntriesRemoved) {
-		RtlSetLastWin32Error(ERROR_INVALID_PARAMETER);
-		return FALSE; 
-	}	
-
-		//DbgPrint("GetQueuedCompletionStatusEx: fAlertable");
-		
-	// retrieve multiple entries
-	for(i = 0;i < ulCount; i++)
-	{	
-		currentEntry = lpCompletionPortEntries+i;
-		status = currentEntry->Internal;
-		if (status == STATUS_PENDING)
-		{
-			if (!dwMilliseconds)
-			{
-				SetLastError( ERROR_IO_INCOMPLETE );
-				return FALSE;
-			}
-			ret = WaitForSingleObjectEx( currentEntry->lpOverlapped->hEvent ? currentEntry->lpOverlapped->hEvent : CompletionPort, dwMilliseconds, fAlertable );
-			if (ret == WAIT_FAILED)
-				return FALSE;
-			else if (ret)
-			{
-				SetLastError( ret );
-				return FALSE;
-			}
-
-			status = currentEntry->Internal;
-			//if (status == STATUS_PENDING) status = STATUS_SUCCESS;
-			if (status != WAIT_OBJECT_0) break;	
-		}	
-		if(!getQueuedCompletionStatus(CompletionPort, 
-		currentEntry, dwMilliseconds)) break;
-		dwMilliseconds = 0;
-	}
-
-	*ulNumEntriesRemoved = i;
-
-	return TRUE;
+void ConvertOverlappedToEntry(ULONG_PTR lpCompletionKey, LPOVERLAPPED src, LPOVERLAPPED_ENTRY dst) {
+    dst->lpOverlapped = src;
+    dst->dwNumberOfBytesTransferred = src->InternalHigh;
+    dst->lpCompletionKey = lpCompletionKey;
+    dst->Internal = 0; // we can use the 'Internal' for OCA purposes, but right now we don't do anything.
 }
+
+//Generated by ChatGPT. Thank you AI
+BOOL WINAPI GetQueuedCompletionStatusEx(
+    HANDLE hCompletionPort,
+    LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+    ULONG ulCount,
+    PULONG ulNumEntriesRemoved,
+    DWORD dwMilliseconds,
+    BOOL bAlertable
+) {
+    DWORD dwBytesTransferred;
+    ULONG_PTR lpCompletionKey;
+    LPOVERLAPPED lpOverlapped;
+	ULONG i;
+	BOOL _bRet;
+	DWORD _uStartTick;
+	DWORD _uResult;
+	DWORD _uTickSpan;
+	//OVERLAPPED_ENTRY _Entry;
+	DWORD kMaxSleepTime;
+	
+    if (!lpCompletionPortEntries || ulCount == 0 || !ulNumEntriesRemoved) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    *ulNumEntriesRemoved = 0;
+	
+	//_Entry = lpCompletionPortEntries[0];
+	
+        if (bAlertable)
+        {
+            kMaxSleepTime = 10;
+            // 使用 SleepEx 进行等待触发 APC
+            if (dwMilliseconds == INFINITE)
+            {
+                for (;;)
+                {
+					_bRet = GetQueuedCompletionStatus(
+							hCompletionPort,
+							&dwBytesTransferred,
+							&lpCompletionKey,
+							&lpOverlapped,
+							0);
+							
+                    if (_bRet)
+                    {
+						lpCompletionPortEntries[*ulNumEntriesRemoved].lpCompletionKey = lpCompletionKey;
+						lpCompletionPortEntries[*ulNumEntriesRemoved].lpOverlapped = lpOverlapped;
+						lpCompletionPortEntries[*ulNumEntriesRemoved].dwNumberOfBytesTransferred = dwBytesTransferred;
+						(*ulNumEntriesRemoved)++;						
+                        break;
+                    }
+
+                    if (GetLastError() != WAIT_TIMEOUT)
+                    {
+                        return FALSE;
+                    }
+
+                    if (SleepEx(kMaxSleepTime, TRUE) == WAIT_IO_COMPLETION)
+                    {
+                        SetLastError(WAIT_IO_COMPLETION);
+                        return FALSE;
+                    }
+                }
+            }
+			else
+			{				
+				// 使用 WaitForSingleObjectEx 进行等待触发 APC
+				_uStartTick = GetTickCount();
+				for (;;)
+				{
+					_uResult = WaitForSingleObjectEx(hCompletionPort, dwMilliseconds, TRUE);
+					if (_uResult == WAIT_OBJECT_0)
+					{
+						_bRet = GetQueuedCompletionStatus(
+							hCompletionPort,
+							&dwBytesTransferred,
+							&lpCompletionKey,
+							&lpOverlapped,
+							dwMilliseconds
+						);					
+						// 完成端口有数据了
+						// _bRet = GetQueuedCompletionStatus(CompletionPort, &_Entry.dwNumberOfBytesTransferred, &_Entry.lpCompletionKey, &_Entry.lpOverlapped, 0);
+						// if (_bRet)
+						// {
+							// *ulNumEntriesRemoved = 1;
+							// break;
+						// }
+						if (_bRet || lpOverlapped) {
+							lpCompletionPortEntries[*ulNumEntriesRemoved].lpCompletionKey = lpCompletionKey;
+							lpCompletionPortEntries[*ulNumEntriesRemoved].lpOverlapped = lpOverlapped;
+							lpCompletionPortEntries[*ulNumEntriesRemoved].dwNumberOfBytesTransferred = dwBytesTransferred;
+							(*ulNumEntriesRemoved)++;
+
+							// Continue collecting if we haven't hit the desired count yet
+							if (*ulNumEntriesRemoved < ulCount) {
+								dwMilliseconds = 0; // Set timeout to zero after the first iteration
+								continue;
+							}
+						}					
+
+						if (GetLastError() != WAIT_TIMEOUT)
+						{
+							return FALSE;
+						}
+
+						// 无限等待时无脑继续等即可。
+						if (dwMilliseconds == INFINITE)
+						{
+							continue;
+						}
+
+						// 计算剩余等待时间，如果剩余等待时间归零则返回
+						_uTickSpan = GetTickCount() - _uStartTick;
+						if (_uTickSpan >= dwMilliseconds)
+						{
+							SetLastError(WAIT_TIMEOUT);
+							return FALSE;
+						}
+						dwMilliseconds -= _uTickSpan;
+						_uStartTick += _uTickSpan;
+						continue;
+					}
+					else if (_uResult == WAIT_IO_COMPLETION || _uResult == WAIT_TIMEOUT)
+					{
+						// 很奇怪，微软原版遇到 APC唤醒直接会设置 LastError WAIT_IO_COMPLETION
+						// 遇到超时，LastError WAIT_TIMEOUT（注意不是预期的 ERROR_TIMEOUT）不知道是故意还是有意。
+						SetLastError(_uResult);
+						return FALSE;
+					}
+					else if (_uResult == WAIT_ABANDONED)
+					{
+						SetLastError(ERROR_ABANDONED_WAIT_0);
+						return FALSE;
+					}
+					else if (_uResult == WAIT_FAILED)
+					{
+						// LastError
+						return FALSE;
+					}
+					else
+					{
+						// LastError ???
+						return FALSE;
+					}
+				}
+			}
+
+            return TRUE;
+        }else{
+			for (i = 0; i < ulCount; i++) {
+				_bRet = GetQueuedCompletionStatus(
+					hCompletionPort,
+					&dwBytesTransferred,
+					&lpCompletionKey,
+					&lpOverlapped,
+					dwMilliseconds
+				);
+
+				if (_bRet || lpOverlapped) {
+					lpCompletionPortEntries[*ulNumEntriesRemoved].lpCompletionKey = lpCompletionKey;
+					lpCompletionPortEntries[*ulNumEntriesRemoved].lpOverlapped = lpOverlapped;
+					lpCompletionPortEntries[*ulNumEntriesRemoved].dwNumberOfBytesTransferred = dwBytesTransferred;
+					(*ulNumEntriesRemoved)++;
+
+					// Continue collecting if we haven't hit the desired count yet
+					if (*ulNumEntriesRemoved < ulCount) {
+						dwMilliseconds = 0; // Set timeout to zero after the first iteration
+						continue;
+					}
+					return TRUE; // All requested entries were retrieved
+				} else {
+					// Error occurred or timeout
+					if (*ulNumEntriesRemoved > 0) {
+						return TRUE; // Partial success
+					}
+					return FALSE; // Complete failure
+				}
+			}			
+		}
+
+    return TRUE;
+}
+
+// BOOL WINAPI GetQueuedCompletionStatusEx(
+    // HANDLE hCompletionPort,
+    // LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+    // ULONG ulCount,
+    // PULONG ulNumEntriesRemoved,
+    // DWORD dwMilliseconds,
+    // BOOL bAlertable // This parameter is not present in Longhorn 4074 -> BOOM CRASH. I hope no pre reset targeted applications use this function.
+// ) {
+    // DWORD dwBytesTransferred;
+    // ULONG_PTR lpCompletionKey;
+    // LPOVERLAPPED lpOverlapped;
+	// BOOL result;
+    
+    // if (bAlertable) 
+        // DbgPrint("GetQueuedCompletionStatusEx: Called as alertable!\n");
+
+    // if (!lpCompletionPortEntries || ulCount == 0 || !ulNumEntriesRemoved) {
+        // SetLastError(ERROR_INVALID_PARAMETER);
+        // return FALSE;
+    // }
+    
+    // result = GetQueuedCompletionStatus(
+        // hCompletionPort,
+        // &dwBytesTransferred,
+        // &lpCompletionKey,
+        // &lpOverlapped,
+        // dwMilliseconds
+    // );
+    // if (!result || !lpOverlapped) {
+        // *ulNumEntriesRemoved = 0;
+        // return FALSE; // All requested entries were retrieved
+    // }
+    // lpCompletionPortEntries[0].lpCompletionKey = lpCompletionKey;
+    // lpCompletionPortEntries[0].lpOverlapped = lpOverlapped;
+    // lpCompletionPortEntries[0].dwNumberOfBytesTransferred = dwBytesTransferred;
+    // *ulNumEntriesRemoved = 1;
+    // return TRUE;
+// }
+
+// BOOL 
+// WINAPI 
+// GetQueuedCompletionStatusEx(
+  // HANDLE             CompletionPort,
+  // LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+  // ULONG              ulCount,
+  // PULONG             ulNumEntriesRemoved,
+  // DWORD              dwMilliseconds,
+  // BOOL               fAlertable
+// ) 
+// {
+    // NTSTATUS Status;
+    // IO_STATUS_BLOCK IoStatus;
+    // ULONG_PTR CompletionKey;
+    // LARGE_INTEGER Time;
+    // PLARGE_INTEGER TimePtr;
+	// OVERLAPPED_ENTRY lpCompletionPortEntriesNew;
+	// OVERLAPPED_ENTRY lpCompletionPortEntry;
+    // int i;
+
+	// for(i=0;i<ulCount;i++){
+		// /* Convert the timeout and then call the native API */
+		// TimePtr = BaseFormatTimeOut(&Time, dwMilliseconds);
+		// Status = NtRemoveIoCompletion(CompletionPort,
+									  // (PVOID*)&lpCompletionPortEntries->lpCompletionKey,
+									  // (PVOID*)&lpCompletionPortEntries->lpOverlapped,
+									  // &IoStatus,
+									  // TimePtr);
+		// if (!(NT_SUCCESS(Status)) || (Status == STATUS_TIMEOUT))
+		// {
+			// /* Clear out the overlapped output */
+			// *lpOverlapped = NULL;
+
+			// /* Check what kind of error we got */
+			// if (Status == STATUS_TIMEOUT)
+			// {
+				// /* Timeout error is set directly since there's no conversion */
+				// SetLastError(WAIT_TIMEOUT);
+			// }
+			// else
+			// {
+				// /* Any other error gets converted */
+				// BaseSetLastNTError(Status);
+			// }
+
+			// /* This is a failure case */
+			// return FALSE;
+		// }
+		
+		// ConvertOverlappedToEntry(lpCompletionPortEntries->lpCompletionKey, &lpCompletionPortEntries->lpOverlapped, &lpCompletionPortEntry);
+
+		// /* Check for error */
+		// if (!NT_SUCCESS(IoStatus.Status))
+		// {
+			// /* Convert and fail */
+			// BaseSetLastNTError(IoStatus.Status);
+			// return FALSE;
+		// }
+		// lpCompletionPortEntries++;
+	// }
+
+    // /* Return success */
+    // return TRUE;	
+	
+	
+	// int i = 0;
+	// LPOVERLAPPED_ENTRY currentEntry;
+    // NTSTATUS status;
+    // DWORD ret;	
+    // LARGE_INTEGER TimeOut;
+    // PLARGE_INTEGER pTimeOut;
+	
+	// pTimeOut = BaseFormatTimeOut(&TimeOut, dwMilliseconds);	
+	
+	// // validate arguments
+	// if(!lpCompletionPortEntries
+	// || !ulCount || !ulNumEntriesRemoved) {
+		// RtlSetLastWin32Error(ERROR_INVALID_PARAMETER);
+		// return FALSE; 
+	// }	
+
+		// //DbgPrint("GetQueuedCompletionStatusEx: fAlertable");
+		
+	// // retrieve multiple entries
+	// for(i = 0;i < ulCount; i++)
+	// {	
+		// currentEntry = lpCompletionPortEntries+i;
+		// status = currentEntry->Internal;
+		// if (status == STATUS_PENDING)
+		// {
+			// if (!dwMilliseconds)
+			// {
+				// SetLastError( ERROR_IO_INCOMPLETE );
+				// return FALSE;
+			// }
+			// ret = WaitForSingleObjectEx( currentEntry->lpOverlapped->hEvent ? currentEntry->lpOverlapped->hEvent : CompletionPort, dwMilliseconds, fAlertable );
+			// if (ret == WAIT_FAILED)
+				// return FALSE;
+			// else if (ret)
+			// {
+				// SetLastError( ret );
+				// return FALSE;
+			// }
+
+			// status = currentEntry->Internal;
+			// //if (status == STATUS_PENDING) status = STATUS_SUCCESS;
+			// if (status != WAIT_OBJECT_0) break;	
+		// }	
+		// if(!getQueuedCompletionStatus(CompletionPort, 
+		// currentEntry, dwMilliseconds)) break;
+		// dwMilliseconds = 0;
+	// }
+
+	// *ulNumEntriesRemoved = i;
+
+	// return TRUE;
+//}
+
 
 /******************************************************************************
  *           WaitForDebugEventEx   (kernelbase.@)
@@ -882,86 +1067,6 @@ static inline VOID DeleteACVAListEntry(
 	RemoveEntryList((PLIST_ENTRY) lpListEntry);
 	HeapFree(GetProcessHeap(), 0, lpListEntry);
 }
-
-// WINBASEAPI BOOL WINAPI WaitOnAddress(
-	// IN	volatile LPVOID	lpAddr,					// address to wait on
-	// IN	LPVOID			lpCompare,				// pointer to location of old value of lpAddr
-	// IN	SIZE_T			cb,						// number of bytes to compare
-	// IN	DWORD			dwMilliseconds OPTIONAL)// maximum number of milliseconds to wait
-// {
-	// LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
-	// LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
-	// DWORD dwLastError;
-	// BOOL bSuccess;
-
-	// DbgPrint("(%p, %p, %Iu, %I32u)", lpAddr, lpCompare, cb, dwMilliseconds);
-
-	// if (!lpAddr || !lpCompare) {
-		// SetLastError(ERROR_INVALID_PARAMETER);
-		// return FALSE;
-	// } else if (!(cb == 1 || cb == 2 || cb == 4 || cb == 8)) {
-		// SetLastError(ERROR_INVALID_PARAMETER);
-		// return FALSE;
-	// }
-
-	// EnterCriticalSection(&lpHashTableEntry->Lock);
-	
-	// if (!CompareVolatileMemory(lpAddr, lpCompare, cb)) {
-		// LeaveCriticalSection(&lpHashTableEntry->Lock);
-		// SetLastError(ERROR_SUCCESS);
-		// return TRUE;
-	// }
-
-	// lpListEntry = FindOrCreateACVAListEntryForAddress(lpHashTableEntry, lpAddr);
-	// lpListEntry->dwWaiters++;
-	// bSuccess = SleepConditionVariableCS(&lpListEntry->CVar, &lpHashTableEntry->Lock, dwMilliseconds);
-	// dwLastError = GetLastError();
-
-	// if (--lpListEntry->dwWaiters == 0) {
-		// DeleteACVAListEntry(lpListEntry);
-	// }
-
-	// LeaveCriticalSection(&lpHashTableEntry->Lock);
-	// SetLastError(dwLastError);
-	// return bSuccess;
-// }
-
-// WINBASEAPI VOID WINAPI WakeByAddressSingle(
-	// IN	LPVOID	lpAddr)
-// {
-	// LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
-	// LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
-	
-	// DbgPrint("(%p)", lpAddr);
-
-	// EnterCriticalSection(&lpHashTableEntry->Lock);
-	// lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
-
-	// if (lpListEntry) {
-		// RtlWakeConditionVariable(&lpListEntry->CVar);
-	// }
-
-	// LeaveCriticalSection(&lpHashTableEntry->Lock);
-// }
-
-// WINBASEAPI VOID WINAPI WakeByAddressAll(
-	// IN	LPVOID	lpAddr)
-// {
-	// LPACVAHASHTABLEENTRY lpHashTableEntry = &WaitOnAddressHashTable[HashAddress(lpAddr)];
-	// LPACVAHASHTABLEADDRESSLISTENTRY lpListEntry;
-
-	// DbgPrint("(%p)", lpAddr);
-	
-	// EnterCriticalSection(&lpHashTableEntry->Lock);
-	// lpListEntry = FindACVAListEntryForAddress(lpHashTableEntry, lpAddr);
-
-	// if (lpListEntry) {
-		// RtlWakeAllConditionVariable(&lpListEntry->CVar);
-	// }
-
-	// LeaveCriticalSection(&lpHashTableEntry->Lock);
-// }
-
 
 //
 // This function is a wrapper around (Kex)RtlWaitOnAddress.

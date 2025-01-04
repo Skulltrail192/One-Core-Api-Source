@@ -20,72 +20,83 @@ Revision History:
 
 #include <main.h>
 
+EXECUTION_STATE
+WINAPI
+SetThreadExecutionState(EXECUTION_STATE esFlags);
+
+#define ES_SYSTEM_REQUIRED   ((DWORD)0x00000001)
+#define ES_DISPLAY_REQUIRED  ((DWORD)0x00000002)
+#define ES_USER_PRESENT      ((DWORD)0x00000004)
+#define ES_AWAYMODE_REQUIRED ((DWORD)0x00000040)
+#define ES_CONTINUOUS        ((DWORD)0x80000000)
+
 BOOL 
 WINAPI 
 PowerSetRequest(
-	HANDLE PowerRequest, 
+	HANDLE             PowerRequest,
 	POWER_REQUEST_TYPE RequestType
 )
 {
-  NTSTATUS status; // eax@1
-  BOOL result; // eax@2
-  HANDLE InputBuffer; // [sp+0h] [bp-Ch]@1
-
-  status = NtPowerInformation(PowerRequestAction, &InputBuffer, 0xCu, &RequestType, 0);
-  if ( !NT_SUCCESS(status) )
-  {
-    BaseSetLastNTError(status);
-    result = FALSE;
-  }
-  else
-  {
-    result = TRUE;
-  }
-  return result;
+	//LONG dwQuantity;
+	//DWORD dwSize;
+	ULONG PreviousRequest;
+	
+	switch (RequestType)
+	{
+	case PowerRequestDisplayRequired:
+		PreviousRequest = SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+		SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | PreviousRequest);
+		return TRUE;
+	case PowerRequestSystemRequired:
+		PreviousRequest = SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
+		SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | PreviousRequest);
+		return TRUE;
+	case PowerRequestAwayModeRequired:
+		PreviousRequest = SetThreadExecutionState(ES_CONTINUOUS | ES_AWAYMODE_REQUIRED);
+		SetThreadExecutionState(ES_CONTINUOUS | ES_AWAYMODE_REQUIRED | PreviousRequest);
+		return TRUE;
+	case PowerRequestExecutionRequired:
+		PreviousRequest = SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
+		SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | PreviousRequest);
+		return TRUE;
+	}
+	SetLastError(ERROR_INVALID_PARAMETER);
+	return FALSE;
 }
 
 BOOL 
 WINAPI 
 PowerClearRequest(
-	HANDLE PowerRequest, 
+	HANDLE             PowerRequest,
 	POWER_REQUEST_TYPE RequestType
 )
 {
-  NTSTATUS status; // eax@1
-  BOOL result; // eax@2
-  HANDLE InputBuffer; // [sp+0h] [bp-Ch]@1
-
-  status = NtPowerInformation(PowerRequestAction, &InputBuffer, 0xCu, &RequestType, 0);
-  if ( !NT_SUCCESS(status) )
-  {
-    BaseSetLastNTError(status);
-    result = FALSE;
-  }
-  else
-  {
-    result = TRUE;
-  }
-  return result;
+	// LONG dwQuantity;
+	// DWORD dwSize;
+	switch (RequestType)
+	{
+	case PowerRequestDisplayRequired:
+		SetThreadExecutionState(SetThreadExecutionState(ES_CONTINUOUS) & ~ES_DISPLAY_REQUIRED);
+		return TRUE;
+	case PowerRequestSystemRequired:
+		SetThreadExecutionState(SetThreadExecutionState(ES_CONTINUOUS) & ~ES_SYSTEM_REQUIRED);
+		return TRUE;
+	case PowerRequestAwayModeRequired:
+		SetThreadExecutionState(SetThreadExecutionState(ES_CONTINUOUS) & ~ES_AWAYMODE_REQUIRED);
+		return TRUE;
+	case PowerRequestExecutionRequired:
+		SetThreadExecutionState(SetThreadExecutionState(ES_CONTINUOUS) & ~ES_SYSTEM_REQUIRED);
+		return TRUE;
+	}
+	SetLastError(ERROR_INVALID_PARAMETER);
+	return FALSE;
 }
 
 HANDLE 
 WINAPI 
 PowerCreateRequest(
-	REASON_CONTEXT *context
+	PREASON_CONTEXT Context
 )
 {
-  NTSTATUS status; // eax@1
-  PVOID address = NULL; // ST10_4@4
-  HANDLE proAddress; // eax@4
-  HANDLE OutputBuffer; // [sp+0h] [bp-8h]@1
-
-  OutputBuffer = (HANDLE)-1;
-  if(status = NtPowerInformation(PowerRequestCreate, address, 0x1Cu, &OutputBuffer, 4u), status < 0) 
-    BaseSetLastNTError(status);
-  if ( address )
-  {
-    proAddress = GetProcessHeap();
-    HeapFree(proAddress, 0, address);
-  }
-  return OutputBuffer;
+	return CreateSemaphoreA(NULL, 0, 1, NULL);
 }

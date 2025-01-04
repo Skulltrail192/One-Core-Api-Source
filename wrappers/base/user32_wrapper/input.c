@@ -30,3 +30,19 @@ BOOL WINAPI EnableMouseInPointer(BOOL enable)
     SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
     return FALSE;
 }
+
+// HSYNTHETICPOINTERDEVICE WINAPI CreateSyntheticPointerDevice(POINTER_INPUT_TYPE type, ULONG max_count, POINTER_FEEDBACK_MODE mode)
+// {
+    // FIXME( "type %ld, max_count %ld, mode %d stub!\n", type, max_count, mode);
+    // SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
+    // return NULL;
+// }
+
+// BOOL WINAPI InjectSyntheticPointerInput(
+   // HSYNTHETICPOINTERDEVICE device,
+   // const POINTER_TYPE_INFO *pointerInfo,
+   // UINT32                  count
+// )
+// {
+	// return FALSE;
+// }

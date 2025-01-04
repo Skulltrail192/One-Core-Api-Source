@@ -217,3 +217,20 @@ SetCurrentConsoleFontEx(
 {
 	return SetConsoleFont(hConsoleOutput, lpConsoleCurrentFontEx->nFont);
 }
+
+/******************************************************************************
+ *	ClosePseudoConsole   (kernelbase.@)
+ */
+void WINAPI ClosePseudoConsole( HPCON handle )
+{
+    struct pseudo_console *pseudo_console = handle;
+
+    if (!pseudo_console) return;
+    if (pseudo_console->signal) CloseHandle( pseudo_console->signal );
+    if (pseudo_console->process)
+    {
+        WaitForSingleObject( pseudo_console->process, INFINITE );
+        CloseHandle( pseudo_console->process );
+    }
+    if (pseudo_console->reference) CloseHandle( pseudo_console->reference );
+}

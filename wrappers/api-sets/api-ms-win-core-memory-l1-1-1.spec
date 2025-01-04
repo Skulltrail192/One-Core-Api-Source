@@ -1,4 +1,4 @@
-@ stub CreateFileMappingFromApp ;(ptr ptr long int64 wstr) kernel32.CreateFileMappingFromApp
+@ stdcall CreateFileMappingFromApp(long ptr long int64 wstr) kernelex.CreateFileMappingFromApp
 @ stdcall CreateFileMappingNumaW(ptr ptr long long long wstr long) kernel32.CreateFileMappingNumaW
 @ stdcall CreateFileMappingW(long ptr long long long wstr) kernel32.CreateFileMappingW
 @ stdcall CreateMemoryResourceNotification(long) kernel32.CreateMemoryResourceNotification
@@ -9,16 +9,16 @@
 @ stdcall GetWriteWatch(long ptr long ptr ptr ptr) kernel32.GetWriteWatch
 @ stdcall MapViewOfFile(long long long long long) kernel32.MapViewOfFile
 @ stdcall MapViewOfFileEx(long long long long long ptr) kernel32.MapViewOfFileEx
-@ stub MapViewOfFileFromApp  ;(ptr long int64 long) kernel32.MapViewOfFileFromApp
+@ stdcall MapViewOfFileFromApp(long long int64 long) kernelex.MapViewOfFileFromApp
 @ stdcall OpenFileMappingW(long long wstr) kernel32.OpenFileMappingW
-@ stub PrefetchVirtualMemory ;(ptr long ptr long) kernel32.PrefetchVirtualMemory
+@ stdcall PrefetchVirtualMemory(ptr ptr ptr long) kernelex.PrefetchVirtualMemory
 @ stdcall QueryMemoryResourceNotification(ptr ptr) kernel32.QueryMemoryResourceNotification
 @ stdcall ReadProcessMemory(long ptr ptr long ptr) kernel32.ReadProcessMemory
 @ stdcall ResetWriteWatch(ptr long) kernel32.ResetWriteWatch
 @ stdcall SetProcessWorkingSetSizeEx(long long long long) kernel32.SetProcessWorkingSetSizeEx
 @ stdcall SetSystemFileCacheSize(long long long) kernel32.SetSystemFileCacheSize
 @ stdcall UnmapViewOfFile(ptr) kernel32.UnmapViewOfFile
-@ stub UnmapViewOfFileEx ;(ptr long) kernel32.UnmapViewOfFileEx
+@ stdcall UnmapViewOfFileEx(ptr long) kernelex.UnmapViewOfFileEx
 @ stdcall VirtualAlloc(ptr long long long) kernel32.VirtualAlloc
 @ stdcall VirtualAllocEx(long ptr long long long) kernel32.VirtualAllocEx
 @ stdcall VirtualFree(ptr long long) kernel32.VirtualFree

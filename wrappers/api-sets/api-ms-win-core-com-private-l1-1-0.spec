@@ -6,8 +6,8 @@
 @ stub CoCreateObjectInContext
 @ stub CoDeactivateObject
 @ stub CoGetActivationState ;(int128 long ptr) ole32.CoGetActivationState
-@ stub CoGetApartmentID
-@ stub CoGetCallState ;(long ptr) ole32.CoGetCallState
+@ stdcall CoGetApartmentID(long ptr) ole32.CoGetApartmentID
+@ stdcall CoGetCallState(long ptr) combase.CoGetCallState
 @ stub CoGetClassVersion
 @ stub CoGetErrorInfo
 @ stdcall CoGetInstanceFromFile(ptr ptr ptr long long wstr long ptr) ole32.CoGetInstanceFromFile

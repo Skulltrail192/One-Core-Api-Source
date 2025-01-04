@@ -20,7 +20,11 @@ Revision History:
 
 #include "main.h"
 
-BOOL GetFirmwareType(WORD* firmwareType)
+BOOL 
+WINAPI 
+GetFirmwareType(
+	WORD* firmwareType
+	)
 {
     HKEY hKey;
     DWORD dwType = 0;

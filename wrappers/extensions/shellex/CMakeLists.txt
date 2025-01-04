@@ -10,7 +10,7 @@ include_directories(${REACTOS_SOURCE_DIR}/wrappers/dependencies/propsys)
 include_directories(${REACTOS_SOURCE_DIR}/wrappers/dependencies/shellbase)
 spec2def(shellex.dll shellex.spec)
 
-set(baseaddress_shellex     0x6b630000)
+set(baseaddress_shellex    0x6b630000)
 
 list(APPEND SOURCE
 	assoc.c
@@ -23,7 +23,6 @@ list(APPEND SOURCE
 	misc.c
 	path.c
 	pidl.c
-	shellexec.c
 	shellitem.c
 	shelllink.c
 	shellole.c

@@ -40,6 +40,8 @@ BaseDllInitialize(
 {
     /* Cache the PEB and Session ID */
     //Peb = NtCurrentPeb();
+	DWORD bufferSize = 65535;
+	LPWSTR AppData;	
 
     switch (dwReason)
     {
@@ -75,7 +77,18 @@ BaseDllInitialize(
 				lpHashTableEntry = &WaitOnAddressHashTable[i];
 				InitializeCriticalSection(&lpHashTableEntry->Lock);
 				InitializeListHead(&lpHashTableEntry->Addresses);
-			}			
+			}
+			AppData = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+			if (!AppData)
+				return E_OUTOFMEMORY;
+			
+			if(GetEnvironmentVariableW(L"HOMEPATH", AppData, bufferSize) > 0 || GetEnvironmentVariableW(L"LOCALAPPDATA", AppData, bufferSize) == 0){
+				SetEnvironmentVariableW(L"LOCALAPPDATA", wcscat(AppData, L"\\Local Settings\\Application Data\\"));
+			}
+
+			SetEnvironmentVariable("PROGRAMDATA", "%SYSTEMDRIVE%\\ProgramData");
+			
+			HeapFree(GetProcessHeap(), 0, AppData);			
             break;
         }
 

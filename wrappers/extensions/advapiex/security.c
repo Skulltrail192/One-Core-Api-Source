@@ -56,17 +56,6 @@ AddMandatoryAce(
   return result;
 }
 
-BOOL CredUnprotectW(
-  BOOL   fAsSelf,
-  LPWSTR pszProtectedCredentials,
-  DWORD  cchProtectedCredentials,
-  LPWSTR pszCredentials,
-  DWORD  *pcchMaxChars
-)
-{
-	return FALSE;
-}
-
 /*
  * @implemented
  */

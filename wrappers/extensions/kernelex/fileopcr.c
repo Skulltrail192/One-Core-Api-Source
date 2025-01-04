@@ -229,29 +229,186 @@ CreateFileTransactedA(
 					   hTemplateFile);
 }
 
-HANDLE 
-WINAPI 
-CreateFile2(
-  _In_      LPCWSTR lpFileName,
-  _In_      DWORD dwDesiredAccess,
-  _In_      DWORD dwShareMode,
-  _In_      DWORD dwCreationDisposition,
-  _In_opt_  LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams
-)
+HANDLE WINAPI CreateFile2(
+	IN	PCWSTR								FileName,
+	IN	ULONG								DesiredAccess,
+	IN	ULONG								ShareMode,
+	IN	ULONG								CreationDisposition,
+	IN	PCREATEFILE2_EXTENDED_PARAMETERS	ExtendedParameters OPTIONAL)
 {
-   if(!pCreateExParams)
-     return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, 0, NULL);
-	 
-   return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, pCreateExParams->lpSecurityAttributes, dwCreationDisposition, pCreateExParams->dwFileAttributes | pCreateExParams->dwFileFlags | pCreateExParams->dwSecurityQosFlags, pCreateExParams->hTemplateFile);	
+	if (ExtendedParameters) {
+		ULONG FlagsAndAttributes;
+
+		if (ExtendedParameters->dwSize < sizeof(CREATEFILE2_EXTENDED_PARAMETERS)) {
+			BaseSetLastNTError(STATUS_INVALID_PARAMETER);
+			return INVALID_HANDLE_VALUE;
+		}
+
+		FlagsAndAttributes = ExtendedParameters->dwFileFlags |
+							 ExtendedParameters->dwSecurityQosFlags |
+							 ExtendedParameters->dwFileAttributes;
+
+		return CreateFileW(
+			FileName,
+			DesiredAccess,
+			ShareMode,
+			ExtendedParameters->lpSecurityAttributes,
+			CreationDisposition,
+			FlagsAndAttributes,
+			ExtendedParameters->hTemplateFile);
+	} else {
+		return CreateFileW(
+			FileName,
+			DesiredAccess,
+			ShareMode,
+			NULL,
+			CreationDisposition,
+			0,
+			NULL);
+	}
 }
 
-HRESULT
-WINAPI
-CopyFile2(
-  _In_      PCWSTR                        pwszExistingFileName,
-  _In_      PCWSTR                        pwszNewFileName,
-  _In_opt_  COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters
-)
+#define COPY_FILE_COPY_SYMLINK                  0x00000800
+#define COPY_FILE_NO_BUFFERING                  0x00001000
+#define COPY_FILE_DIRECTORY						0x00000080		// Win10
+#define COPY_FILE_REQUEST_SECURITY_PRIVILEGES	0x00002000		// Win8
+#define COPY_FILE_RESUME_FROM_PAUSE				0x00004000		// Win8
+#define COPY_FILE_SKIP_ALTERNATE_STREAMS		0x00008000		// Win10
+#define COPY_FILE_NO_OFFLOAD					0x00040000		// Win8
+#define COPY_FILE_OPEN_AND_COPY_REPARSE_POINT	0x00200000		// Win10
+#define COPY_FILE_IGNORE_EDP_BLOCK				0x00400000		// Win10
+#define COPY_FILE_IGNORE_SOURCE_ENCRYPTION		0x00800000		// Win10
+#define COPY_FILE_DONT_REQUEST_DEST_WRITE_DAC	0x02000000		// Win10
+#define COPY_FILE_DISABLE_PRE_ALLOCATION		0x04000000		// Win10
+#define COPY_FILE_ENABLE_LOW_FREE_SPACE_MODE	0x08000000		// Win10
+#define COPY_FILE_REQUEST_COMPRESSED_TRAFFIC	0x10000000		// Win10
+#define COPY_FILE_ENABLE_SPARSE_COPY			0x20000000		// Win11
+
+#define COPY_FILE_WIN7_VALID_FLAGS				(COPY_FILE_FAIL_IF_EXISTS | COPY_FILE_RESTARTABLE | \
+												 COPY_FILE_OPEN_SOURCE_FOR_WRITE | COPY_FILE_ALLOW_DECRYPTED_DESTINATION | \
+												 COPY_FILE_COPY_SYMLINK | COPY_FILE_NO_BUFFERING)
+
+#define COPY_FILE_WIN8_VALID_FLAGS				(COPY_FILE_WIN7_VALID_FLAGS | COPY_FILE_REQUEST_SECURITY_PRIVILEGES | \
+												 COPY_FILE_RESUME_FROM_PAUSE | COPY_FILE_NO_OFFLOAD)
+
+#define COPY_FILE_WIN10_VALID_FLAGS				(COPY_FILE_WIN8_VALID_FLAGS | COPY_FILE_DIRECTORY | COPY_FILE_SKIP_ALTERNATE_STREAMS | \
+												 COPY_FILE_OPEN_AND_COPY_REPARSE_POINT | COPY_FILE_IGNORE_EDP_BLOCK | \
+												 COPY_FILE_IGNORE_SOURCE_ENCRYPTION | COPY_FILE_DONT_REQUEST_DEST_WRITE_DAC | \
+												 COPY_FILE_DISABLE_PRE_ALLOCATION | COPY_FILE_ENABLE_LOW_FREE_SPACE_MODE | \
+												 COPY_FILE_REQUEST_COMPRESSED_TRAFFIC)
+
+#define COPY_FILE_WIN11_VALID_FLAGS				(COPY_FILE_WIN10_VALID_FLAGS | COPY_FILE_ENABLE_SPARSE_COPY)
+
+#define COPY_FILE_ALL_VALID_FLAGS				(COPY_FILE_WIN11_VALID_FLAGS)
+
+
+#ifndef _DEBUG
+#  define ASSUME __assume
+#  define NOT_REACHED ASSUME(FALSE)
+#else
+#  define ASSUME ASSERT
+#  define NOT_REACHED ASSUME(("Execution should not have reached this point", FALSE))
+#endif
+
+static DWORD CALLBACK KxBasepCopyFile2ProgressRoutine(
+	IN	LARGE_INTEGER	TotalFileSize,
+	IN	LARGE_INTEGER	TotalBytesTransferred,
+	IN	LARGE_INTEGER	StreamSize,
+	IN	LARGE_INTEGER	StreamBytesTransferred,
+	IN	DWORD			StreamNumber,
+	IN	DWORD			CallbackReason,
+	IN	HANDLE			SourceFile,
+	IN	HANDLE			DestinationFile,
+	IN	PVOID			Context OPTIONAL)
 {
-   return CopyFileW(pwszExistingFileName, pwszNewFileName, FALSE);
+	COPYFILE2_MESSAGE Message;
+	PCOPYFILE2_EXTENDED_PARAMETERS Copyfile2Parameters;
+
+	ASSERT (Context != NULL);
+
+	RtlZeroMemory(&Message, sizeof(Message));
+
+	switch (CallbackReason) {
+	case CALLBACK_CHUNK_FINISHED:
+		Message.Type = COPYFILE2_CALLBACK_CHUNK_FINISHED;
+		Message.Info.ChunkFinished.dwStreamNumber = StreamNumber;
+		Message.Info.ChunkFinished.uliTotalFileSize.QuadPart = TotalFileSize.QuadPart;
+		Message.Info.ChunkFinished.uliTotalBytesTransferred.QuadPart = TotalBytesTransferred.QuadPart;
+		Message.Info.ChunkFinished.uliStreamSize.QuadPart = StreamSize.QuadPart;
+		Message.Info.ChunkFinished.uliStreamBytesTransferred.QuadPart = StreamBytesTransferred.QuadPart;
+		break;
+	case CALLBACK_STREAM_SWITCH:
+		Message.Type = COPYFILE2_CALLBACK_STREAM_STARTED;
+		Message.Info.StreamStarted.dwStreamNumber = StreamNumber;
+		Message.Info.StreamStarted.hDestinationFile = DestinationFile;
+		Message.Info.StreamStarted.hSourceFile = SourceFile;
+		Message.Info.StreamStarted.uliStreamSize.QuadPart = StreamSize.QuadPart;
+		Message.Info.StreamStarted.uliTotalFileSize.QuadPart = TotalFileSize.QuadPart;
+		break;
+	default:
+		ASSUME (FALSE);
+	}
+
+	Copyfile2Parameters = (PCOPYFILE2_EXTENDED_PARAMETERS) Context;
+
+	return Copyfile2Parameters->pProgressRoutine(
+		&Message,
+		Copyfile2Parameters->pvCallbackContext);
+}
+
+HRESULT 
+WINAPI 
+CopyFile2(
+	IN	PCWSTR							ExistingFileName,
+	IN	PCWSTR							NewFileName,
+	IN	PCOPYFILE2_EXTENDED_PARAMETERS	ExtendedParameters OPTIONAL)
+{
+	BOOL Success;
+	ULONG EffectiveCopyFlags;
+
+	if (ExtendedParameters == NULL) {
+		Success = CopyFileW(
+			ExistingFileName,
+			NewFileName,
+			FALSE);
+
+		if (Success) {
+			return S_OK;
+		} else {
+			return HRESULT_FROM_WIN32(GetLastError());
+		}
+	}
+
+	if (ExtendedParameters->dwSize != sizeof(COPYFILE2_EXTENDED_PARAMETERS)) {
+		//
+		// Windows 11 defines a COPYFILE2_EXTENDED_PARAMETERS_V2 struture.
+		// When apps start using it, we will support it too.
+		//
+
+		DbgPrint(
+			"Unrecognized dwSize member of ExtendedParameters: %lu\n",
+			ExtendedParameters->dwSize);
+
+		return E_INVALIDARG;
+	}
+
+	if (ExtendedParameters->dwCopyFlags & ~COPY_FILE_ALL_VALID_FLAGS) {
+		return E_INVALIDARG;
+	}
+
+	EffectiveCopyFlags = ExtendedParameters->dwCopyFlags & COPY_FILE_WIN7_VALID_FLAGS;
+
+	Success = CopyFileExW(
+		ExistingFileName,
+		NewFileName,
+		ExtendedParameters->pProgressRoutine ? KxBasepCopyFile2ProgressRoutine : NULL,
+		ExtendedParameters,
+		ExtendedParameters->pfCancel,
+		EffectiveCopyFlags  & ~(COPY_FILE_NO_BUFFERING + COPY_FILE_COPY_SYMLINK));
+
+	if (Success) {
+		return S_OK;
+	} else {
+		return HRESULT_FROM_WIN32(GetLastError());
+	}
 }

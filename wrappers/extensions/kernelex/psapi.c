@@ -20,25 +20,6 @@ Revision History:
 
 #include <main.h>
 
-// #include <stdarg.h>
-
-// #define WIN32_NO_STATUS
-// #include <windef.h>
-// #include <winbase.h>
-// #include <winnls.h>
-// #define NTOS_MODE_USER
-// #include <ndk/exfuncs.h>
-// #include <ndk/mmfuncs.h>
-// #include <ndk/psfuncs.h>
-// #include <ndk/rtlfuncs.h>
-
-// #include <psapi.h>
-
-// #include <pseh/pseh2.h>
-
-// #define NDEBUG
-// #include <debug.h>
-
 #define MAX_MODULES 0x2710      // Matches 10.000 modules
 #define INIT_MEMORY_SIZE 0x1000 // Matches 4kB
 
@@ -138,7 +119,7 @@ FindDeviceDriver(IN PVOID ImageBase,
 /*
  * @implemented
  */
-static BOOL NTAPI
+static BOOL WINAPI
 FindModule(IN HANDLE hProcess,
            IN HMODULE hModule OPTIONAL,
            OUT PLDR_DATA_TABLE_ENTRY Module)

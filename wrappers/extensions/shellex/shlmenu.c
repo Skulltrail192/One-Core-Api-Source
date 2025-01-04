@@ -1131,7 +1131,7 @@ SHOpenWithDialog(
 	LPCWSTR strCmd= L"shell32.dll,OpenAs_RunDLL ";
 	StrCatW(strCmd, poainfo->pcszFile);
 
-	ShellExecuteWNative(hwnd,
+	ShellExecuteW(hwnd,
 				  L"open", 
 				  L"Rundll32.exe",
 				  strCmd,

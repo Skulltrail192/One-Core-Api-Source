@@ -29,6 +29,8 @@
 #include "ocidl.h"
 #include "shellscalingapi.h"
 #include "shlwapi.h"
+#include "featurestagingapi.h"
+#include "shcore.h"
 
 #include "wine/debug.h"
 #include "wine/heap.h"
@@ -2534,10 +2536,65 @@ BOOL WINAPI IsOS(DWORD feature)
     return FALSE;
 }
 
+/*************************************************************************
+ * SubscribeFeatureStateChangeNotification        [SHCORE.@]
+ */
+void WINAPI SubscribeFeatureStateChangeNotification(FEATURE_STATE_CHANGE_SUBSCRIPTION *subscription,
+                                                    FEATURE_STATE_CHANGE_CALLBACK *callback, void *context)
+{
+    FIXME("(%p, %p, %p) stub\n", subscription, callback, context);
+}
+
+/*************************************************************************
+ * GetFeatureEnabledState        [SHCORE.@]
+ */
+FEATURE_ENABLED_STATE WINAPI GetFeatureEnabledState(UINT32 feature, FEATURE_CHANGE_TIME change_time)
+{
+    FIXME("(%u, %u) stub\n", feature, change_time);
+    return FEATURE_ENABLED_STATE_DEFAULT;
+}
+
+/*************************************************************************
+ * RegisterScaleChangeEvent        [SHCORE.@]
+ */
+HRESULT WINAPI RegisterScaleChangeEvent(HANDLE handle, DWORD_PTR *cookie)
+{
+    FIXME("(%p, %p) stub\n", handle, cookie);
+    return E_NOTIMPL;
+}
+
+/*************************************************************************
+ * RegisterScaleChangeNotifications        [SHCORE.@]
+ */
+HRESULT WINAPI RegisterScaleChangeNotifications(DISPLAY_DEVICE_TYPE display_device, HWND hwnd, UINT msg, DWORD *cookie)
+{
+    FIXME("(%d, %p, %u, %p) stub\n", display_device, hwnd, msg, cookie);
+
+    if (cookie) *cookie = 0;
+
+    return E_NOTIMPL;
+}
+
+/*************************************************************************
+ * CreateRandomAccessStreamOverStream        [SHCORE.@]
+ */
+HRESULT WINAPI CreateRandomAccessStreamOverStream(IStream *stream, BSOS_OPTIONS options, REFIID riid, void **ppv)
+{
+    FIXME("(%p, %d, %s, %p) stub\n", stream, options, debugstr_guid(riid), ppv);
+    return E_NOTIMPL;
+}
+
 /***********************************************************************
  *		DllCanUnloadNow (COMCAT.@)
  */
 HRESULT WINAPI DllCanUnloadNow(void)
 {
     return S_FALSE;
+}
+
+void UnsubscribeFeatureStateChangeNotification(
+  FEATURE_STATE_CHANGE_SUBSCRIPTION subscription
+)
+{
+	;
 }

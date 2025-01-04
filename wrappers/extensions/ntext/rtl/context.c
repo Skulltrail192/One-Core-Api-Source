@@ -4,7 +4,7 @@ Copyright (c) 2022 Shorthorn Project
 
 Module Name:
 
-    xstate.c
+    context.c
 
 Abstract:
 
@@ -365,7 +365,6 @@ NTSTATUS NTAPI RtlGetExtendedContextLength2( ULONG context_flags, ULONG *length,
     *length = size;
     return STATUS_SUCCESS;
 }
-
 
 /**********************************************************************
  *              RtlGetExtendedContextLength    (NTDLL.@)

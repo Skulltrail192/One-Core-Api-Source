@@ -20,7 +20,10 @@ Revision History:
  
 #include "main.h"
  
-WINE_DEFAULT_DEBUG_CHANNEL(ole32);
+WINE_DEFAULT_DEBUG_CHANNEL(rpc);
+
+static struct list registered_classes;
+static CRITICAL_SECTION registered_classes_cs;
  
  static RPC_BINDING_HANDLE get_rpc_handle(unsigned short *protseq, unsigned short *endpoint)
 {
@@ -114,7 +117,7 @@ static BOOL start_rpcss(void)
 
     if (StartServiceW(service, 0, NULL) || GetLastError() == ERROR_SERVICE_ALREADY_RUNNING)
     {
-        ULONGLONG start_time = GetTickCount64();
+        ULONGLONG start_time = GetTickCount();
         do
         {
             DWORD dummy;
@@ -126,7 +129,7 @@ static BOOL start_rpcss(void)
                 ret = TRUE;
                 break;
             }
-            if (GetTickCount64() - start_time > 30000) break;
+            if (GetTickCount() - start_time > 30000) break;
             Sleep( 100 );
 
         } while (status.dwCurrentState == SERVICE_START_PENDING);
@@ -145,4 +148,14 @@ static BOOL start_rpcss(void)
 static LONG WINAPI rpc_filter(EXCEPTION_POINTERS *eptr)
 {
     return I_RpcExceptionFilter(eptr->ExceptionRecord->ExceptionCode);
+}
+
+
+/******************************************************************************
+ *            CoDecodeProxy    (combase.@)
+ */
+HRESULT WINAPI CoDecodeProxy(DWORD client_pid, UINT64 proxy_addr, ServerInformation *server_info)
+{
+    FIXME("%lx, %s, %p.\n", client_pid, proxy_addr, server_info);
+    return E_NOTIMPL;
 }

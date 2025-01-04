@@ -34,6 +34,26 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+/*
+ * RegGetValue() restrictions
+ */
+
+#define RRF_RT_REG_NONE         (1 << 0)
+#define RRF_RT_REG_SZ           (1 << 1)
+#define RRF_RT_REG_EXPAND_SZ    (1 << 2)
+#define RRF_RT_REG_BINARY       (1 << 3)
+#define RRF_RT_REG_DWORD        (1 << 4)
+#define RRF_RT_REG_MULTI_SZ     (1 << 5)
+#define RRF_RT_REG_QWORD        (1 << 6)
+#define RRF_RT_DWORD            (RRF_RT_REG_BINARY | RRF_RT_REG_DWORD)
+#define RRF_RT_QWORD            (RRF_RT_REG_BINARY | RRF_RT_REG_QWORD)
+//#define RRF_RT_ANY              0xffff
+#define RRF_SUBKEY_WOW6464KEY   (1 << 16)
+#define RRF_SUBKEY_WOW6432KEY   (1 << 17)
+#define RRF_WOW64_MASK          (RRF_SUBKEY_WOW6432KEY | RRF_SUBKEY_WOW6464KEY)
+#define RRF_NOEXPAND            (1 << 28)
+#define RRF_ZEROONFAILURE       (1 << 29)
+
 /* FUNCTIONS ****************************************************************/
 FORCEINLINE
 BOOL
@@ -219,6 +239,13 @@ typedef struct _PERF_DATA_HEADER {
     LONGLONG PerfFreq;
     SYSTEMTIME SystemTime;
 } PERF_DATA_HEADER, *PPERF_DATA_HEADER;
+
+typedef enum _CRED_PROTECTION_TYPE {
+  CredUnprotected,
+  CredUserProtection,
+  CredTrustedProtection,
+  CredForSystemProtection
+} CRED_PROTECTION_TYPE, *PCRED_PROTECTION_TYPE;
 
 /* memory allocation functions */
 

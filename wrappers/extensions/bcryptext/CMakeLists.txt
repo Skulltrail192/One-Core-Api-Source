@@ -13,5 +13,5 @@ list(APPEND SOURCE
 add_library(bcryptext SHARED ${SOURCE})
 set_module_type(bcryptext win32dll)
 target_link_libraries(bcryptext wine)
-add_importlibs(bcryptext advapi32 msvcrt kernel32 ntdll)
+add_importlibs(bcryptext bcrypt advapi32 msvcrt kernel32 ntdll)
 add_cd_file(TARGET bcryptext DESTINATION reactos/system32 FOR all)

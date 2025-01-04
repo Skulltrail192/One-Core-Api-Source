@@ -535,7 +535,13 @@ DWORD
 WINAPI 
 CancelMibChangeNotify2(HANDLE handle)
 {
-    FIXME("(handle %p): stub\n", handle);
+    FIXME("(handle %p): stub\n", handle);	
+        // NotifyIpInterfaceChange返回的句柄始终等于 2
+    if (_hNotificationHandle != (HANDLE)2))
+    {
+            return ERROR_INVALID_PARAMETER;
+    }	
+
     return NO_ERROR;
 }
 
@@ -1794,4 +1800,16 @@ DWORD WINAPI ConvertInterfaceLuidToAlias( const NET_LUID *luid, WCHAR *alias, SI
     alias[name.Length / sizeof(WCHAR)] = '\0';
 
     return err;
+}
+
+DWORD WINAPI GetAnycastIpAddressTable(ADDRESS_FAMILY family, MIB_ANYCASTIPADDRESS_TABLE **table)
+{
+    FIXME( "(%u, %p) stub\n", family, table );
+    if (!table || (family != AF_INET && family != AF_INET6 && family != AF_UNSPEC))
+        return ERROR_INVALID_PARAMETER;
+
+    *table = heap_alloc_zero(sizeof(MIB_ANYCASTIPADDRESS_TABLE));
+    if (!*table) return ERROR_NOT_ENOUGH_MEMORY;
+    (*table)->NumEntries = 0;
+    return NO_ERROR;
 }

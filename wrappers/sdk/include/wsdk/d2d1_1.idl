@@ -17,9 +17,9 @@
  */
 
 import "d2d1.idl";
+import "d2d1effects.idl";
 
 interface ID2D1DeviceContext;
-interface ID2D1PathGeometry1;
 interface ID2D1Properties;
 interface IPrintDocumentPackageTarget;
 interface ID2D1PrintControl;
@@ -33,6 +33,7 @@ cpp_quote("#ifndef __dwrite_h__")
 /* already defined in dwrite.h but needed for WIDL */
 typedef struct DWRITE_GLYPH_RUN_DESCRIPTION DWRITE_GLYPH_RUN_DESCRIPTION;
 cpp_quote("#endif /* __dwrite_h__ */")
+cpp_quote("#define D2D1_INVALID_PROPERTY_INDEX UINT_MAX")
 
 typedef enum D2D1_DEVICE_CONTEXT_OPTIONS
 {
@@ -156,7 +157,7 @@ typedef enum D2D1_LAYER_OPTIONS1
     D2D1_LAYER_OPTIONS1_FORCE_DWORD = 0xffffffff,
 } D2D1_LAYER_OPTIONS1;
 
-typedef struct D2D1_PROPERTY_BINDING D2D1_PROPERTY_BINDING;
+struct D2D1_PROPERTY_BINDING;
 typedef D2D_MATRIX_4X4_F D2D1_MATRIX_4X4_F;
 
 typedef enum D2D1_PROPERTY_TYPE
@@ -345,6 +346,22 @@ interface ID2D1GdiMetafile : ID2D1Resource
     );
     HRESULT GetBounds(
         [out] D2D1_RECT_F *bounds
+    );
+}
+
+[
+    object,
+    uuid(62baa2d2-ab54-41b7-b872-787e0106a421),
+    local,
+]
+interface ID2D1PathGeometry1 : ID2D1PathGeometry
+{
+    HRESULT ComputePointAndSegmentAtLength(
+        [in] float length,
+        [in] UINT32 start_segment,
+        [in, optional] const D2D1_MATRIX_3X2_F *transform,
+        [in] float tolerance,
+        [out] D2D1_POINT_DESCRIPTION *point_desc
     );
 }
 
@@ -558,7 +575,7 @@ interface ID2D1CommandSink : IUnknown
         [in] IDWriteRenderingParams *text_rendering_params
     );
     HRESULT SetTransform(
-        [in] D2D1_MATRIX_3X2_F *transform
+        [in] const D2D1_MATRIX_3X2_F *transform
     );
     HRESULT SetPrimitiveBlend(
         [in] D2D1_PRIMITIVE_BLEND primitive_blend
@@ -606,7 +623,7 @@ interface ID2D1CommandSink : IUnknown
     HRESULT DrawImage(
         [in] ID2D1Image *image,
         [in] const D2D1_POINT_2F *target_offset,
-        [in] const D2D1_POINT_2F *image_rect,
+        [in] const D2D1_RECT_F *image_rect,
         [in] D2D1_INTERPOLATION_MODE interpolation_mode,
         [in] D2D1_COMPOSITE_MODE composite_mode
     );
@@ -781,7 +798,7 @@ interface ID2D1DeviceContext : ID2D1RenderTarget
     BOOL IsBufferPrecisionSupported(
         [in] D2D1_BUFFER_PRECISION buffer_precision
     );
-    void GetImageLocalBounds(
+    HRESULT GetImageLocalBounds(
         [in] ID2D1Image *image,
         [out] D2D1_RECT_F *local_bounds
     );
@@ -919,14 +936,14 @@ interface ID2D1Factory1 : ID2D1Factory
     HRESULT RegisterEffectFromStream(
         [in] REFCLSID effect_id,
         [in] IStream *property_xml,
-        [in, size_is(binding_count)] const D2D1_PROPERTY_BINDING *bindings,
+        [in, size_is(binding_count)] const struct D2D1_PROPERTY_BINDING *bindings,
         [in] UINT32 binding_count,
         [in] PD2D1_EFFECT_FACTORY effect_factory
     );
     HRESULT RegisterEffectFromString(
         [in] REFCLSID effect_id,
         [in] const WCHAR *property_xml,
-        [in, size_is(binding_count)] const D2D1_PROPERTY_BINDING *bindings,
+        [in, size_is(binding_count)] const struct D2D1_PROPERTY_BINDING *bindings,
         [in] UINT32 binding_count,
         [in] PD2D1_EFFECT_FACTORY effect_factory
     );

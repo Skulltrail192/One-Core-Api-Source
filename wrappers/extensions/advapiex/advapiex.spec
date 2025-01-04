@@ -462,7 +462,6 @@
 485 stdcall RegGetKeySecurity(long long ptr ptr)
 488 stdcall RegLoadKeyA(long str str)
 489 stdcall RegLoadKeyW(long wstr wstr)
-490 stdcall RegNotifyChangeKeyValue(long long long long long)
 491 stdcall RegOpenCurrentUser(long ptr)
 492 stdcall RegOpenKeyA(long str ptr)
 493 stdcall RegOpenKeyExA(long str long long ptr)
@@ -669,8 +668,7 @@
 471 stdcall RegDeleteKeyExW(long wstr long long)
 477 stdcall RegEnableReflectionKey(ptr)	 
 @ stdcall RegDisablePredefinedCacheEx() 
-@ stdcall RegGetValueA(long str str long ptr ptr ptr) 
-@ stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) 
+486 stdcall RegGetValueA(long str str long ptr ptr ptr) 
 502 stdcall RegQueryReflectionKey(ptr ptr)	 ;native on Server 2003, but, missing on XP (needed for synchronization)
 
 #Vista function, however, is supported by advapi32 from XP/2003 post-SP with updates
@@ -678,6 +676,13 @@
 
 #Vista Functions implemented (without redirection)
 @ stdcall AddMandatoryAce(ptr long long long ptr)
+@ stdcall CredFindBestCredentialA(str long long ptr) 
+@ stdcall CredFindBestCredentialW(wstr long long ptr)
+@ stdcall CredIsProtectedA(str ptr)
+@ stdcall CredIsProtectedW(wstr ptr)
+@ stdcall CredProtectA(long str long str long ptr)
+@ stdcall CredProtectW(long wstr long wstr long ptr)
+@ stdcall CredUnprotectA(long str long str ptr)
 @ stdcall CredUnprotectW(long wstr long wstr ptr)
 @ stdcall EnableTraceEx(ptr ptr int64 long long long long long long long ptr) 
 @ stdcall EventAccessControl(ptr long ptr long long)
@@ -776,19 +781,11 @@
 ; @ stdcall ControlServiceExW(ptr long long ptr)
 ; @ stdcall CredBackupCredentials(long ptr ptr long long)
 ; @ stdcall CredEncryptAndMarshalBinaryBlob(long long long)
-; @ stdcall CredFindBestCredentialA(str long long ptr) 
-; @ stdcall CredFindBestCredentialW(wstr long long ptr)
-; @ stdcall CredIsProtectedA(str ptr)
-; @ stdcall CredIsProtectedW(wstr ptr)
 ; @ stdcall CredpConvertOneCredentialSize(long long)
 ; @ stdcall CredpEncodeSecret(long ptr long long long)
 ; @ stdcall CredProfileUnloaded()
-; @ stdcall CredProtectA(long str long str long ptr)
-; @ stdcall CredProtectW(long wstr long wstr long ptr)
 ; @ stdcall CredReadByTokenHandle(long ptr long long long)
 ; @ stdcall CredRestoreCredentials(ptr ptr long long)
-; @ stdcall CredUnprotectA(long str long str ptr)
-; @ stdcall CredUnprotectW(long wstr long wstr ptr)
 ; @ stdcall EnumerateTraceGuidsEx(long ptr long ptr long ptr)
 ; @ stdcall EventAccessQuery(ptr ptr ptr)
 ; @ stdcall EventAccessRemove(ptr)
@@ -881,6 +878,8 @@
 322 stdcall IsWellKnownSid(ptr long) IsWellKnownSidInternal
 429 stdcall OpenProcessToken(long long ptr) #OpenProcessTokenInternal
 434 stdcall OpenThreadToken(ptr long long ptr) #OpenThreadTokenInternal
+487 stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) RegGetValueWInternal
+490 stdcall RegNotifyChangeKeyValue(long long long long long) RegNotifyChangeKeyValueInternal
 563 stdcall SetKernelObjectSecurity(long long ptr) SetKernelObjectSecurityInternal
 567 stdcall SetNamedSecurityInfoW(wstr long ptr ptr ptr ptr ptr) SetNamedSecurityInfoWInternal
 576 stdcall SetSecurityInfo(long long long ptr ptr ptr ptr) SetSecurityInfoInternal

@@ -174,6 +174,7 @@
 @ stdcall ConvertStringToGuidW( ptr ptr )
 @ stdcall CreateSortedAddressPairs(ptr long ptr long long ptr ptr)
 @ stdcall FreeMibTable(ptr)
+@ stdcall GetAnycastIpAddressTable( long ptr )
 @ stdcall GetBestRoute2(ptr long ptr ptr long ptr ptr)
 @ stdcall GetIfEntry2(ptr)
 @ stdcall GetIfTable2Ex(long ptr)

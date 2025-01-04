@@ -991,7 +991,7 @@ typedef struct COPYFILE2_EXTENDED_PARAMETERS {
   BOOL                        *pfCancel;
   PCOPYFILE2_PROGRESS_ROUTINE pProgressRoutine;
   PVOID                       pvCallbackContext;
-} COPYFILE2_EXTENDED_PARAMETERS;
+} COPYFILE2_EXTENDED_PARAMETERS, *PCOPYFILE2_EXTENDED_PARAMETERS;
 
 typedef enum _OFFER_PRIORITY {
     VmOfferPriorityVeryLow = 1,
@@ -1584,6 +1584,13 @@ typedef struct _ACVAHASHTABLEENTRY {
 	LIST_ENTRY			Addresses;	// list of ACVAHASHTABLEADDRESSLISTENTRY structures
 	CRITICAL_SECTION	Lock;
 } ACVAHASHTABLEENTRY, *PACVAHASHTABLEENTRY, *LPACVAHASHTABLEENTRY;
+
+struct pseudo_console
+{
+    HANDLE signal;
+    HANDLE reference;
+    HANDLE process;
+};
 
 VOID
 WINAPI

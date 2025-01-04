@@ -1657,327 +1657,6 @@ IsProcessorFeaturePresentInternal (
 	return resp;
 }
 
-BOOL
-WINAPI
-CreateProcessInternalExW(
-    HANDLE hUserToken,
-    LPCWSTR lpApplicationName,
-    LPWSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFOW lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation,
-    PHANDLE hRestrictedUserToken
-    )
-{
-	BOOL resp;
-    static const WCHAR chromeexeW[] = {'c','h','r','o','m','e','.','e','x','e',0};
-    static const WCHAR nosandboxW[] = {' ','-','-','n','o','-','s','a','n','d','b','o','x',0};	
-	//LPWSTR new_command_line;	
-	
-	// // if(lpStartupInfo->cb == sizeof(STARTUPINFOEX))
-	 // if(dwCreationFlags & EXTENDED_STARTUPINFO_PRESENT)
-	 // {
-		
-		// // LPSTARTUPINFOEX startupInfoEx = (LPSTARTUPINFOEX)lpStartupInfo;
-		
-		// // startupInfo.cb = sizeof(STARTUPINFOEX);
-		// // startupInfo.lpReserved = startupInfoEx->StartupInfo.lpReserved;
-		// // startupInfo.lpDesktop = startupInfoEx->StartupInfo.lpDesktop;
-		// // startupInfo.lpTitle = startupInfoEx->StartupInfo.lpTitle;
-		// // startupInfo.dwX = startupInfoEx->StartupInfo.dwX;
-		// // startupInfo.dwY = startupInfoEx->StartupInfo.dwY;
-		// // startupInfo.dwXSize = startupInfoEx->StartupInfo.dwXSize;
-		// // startupInfo.dwYSize = startupInfoEx->StartupInfo.dwYSize;
-		// // startupInfo.dwXCountChars = startupInfoEx->StartupInfo.dwXCountChars;
-		// // startupInfo.dwYCountChars = startupInfoEx->StartupInfo.dwYCountChars;
-		// // startupInfo.dwFillAttribute = startupInfoEx->StartupInfo.dwFillAttribute;
-		// // startupInfo.dwFlags = startupInfoEx->StartupInfo.dwFlags;
-		// // startupInfo.wShowWindow = startupInfoEx->StartupInfo.wShowWindow;
-		// // startupInfo.cbReserved2 = startupInfoEx->StartupInfo.cbReserved2;
-		// // startupInfo.lpReserved2 = startupInfoEx->StartupInfo.lpReserved2;
-		// // startupInfo.hStdInput = startupInfoEx->StartupInfo.hStdInput;
-		// // startupInfo.hStdOutput = startupInfoEx->StartupInfo.hStdOutput;
-		// // startupInfo.hStdError = startupInfoEx->StartupInfo.hStdError;
-		
-		// dwCreationFlags = DEBUG_PROCESS;			
-		
-		 // DbgPrint("CreateProcessInternalExW :: lpStartupInfo is STARTUPINFOEX structure\n");
-	 // };
-
-         // if (strstrW(lpApplicationName, chromeexeW))
-         // {
-             // LPWSTR new_command_line;
-
-             // new_command_line = HeapAlloc(GetProcessHeap(), 0,
-                 // sizeof(WCHAR) * (strlenW(lpCommandLine) + strlenW(nosandboxW) + 1));
-
-             // if (!new_command_line) return FALSE;
-
-             // strcpyW(new_command_line, lpCommandLine);
-             // strcatW(new_command_line, nosandboxW);
-
-            // // TRACE("CrossOver hack changing command line to %s\n", debugstr_w(new_command_line));
-
-             // //if (tidy_cmdline != cmd_line) HeapFree( GetProcessHeap(), 0, tidy_cmdline );
-             // lpCommandLine = new_command_line;
-         // }
-	
-	// if (strstrW(lpApplicationName, chromeexeW))
-	// {
-		// new_command_line = lpCommandLine;
-		
-		// strcatW(new_command_line, nosandboxW);	
-		
-		// lpCommandLine = new_command_line;
-	// }	
-	
-	resp = CreateProcessInternalW(hUserToken,
-								  lpApplicationName,
-								  lpCommandLine,
-								  lpProcessAttributes,
-								  lpThreadAttributes,
-								  bInheritHandles,
-								  dwCreationFlags,
-								  lpEnvironment,
-								  lpCurrentDirectory,
-								  lpStartupInfo,//&startupInfo,
-								  lpProcessInformation,
-								  hRestrictedUserToken);
-								  
-	DbgPrint("CreateProcessInternalW :: returned value is %d\n", resp);	
-
-	return resp;
-								  
-}
-
-BOOL
-WINAPI
-CreateProcessExW(
-    LPCWSTR lpApplicationName,
-    LPWSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFOW lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation
-)
-{
-	STARTUPINFOW startupInfo;
-	BOOL resp;
-	//STARTUPINFO si;
-	//PROCESS_INFORMATION pi;
-	
-	startupInfo = *lpStartupInfo;
-	
-	// // if(lpStartupInfo->cb == sizeof(STARTUPINFOEX))
-	 // if(dwCreationFlags & EXTENDED_STARTUPINFO_PRESENT)
-	// {
-		// ZeroMemory(&si, sizeof(si)); // inspected
-		// si.cb = sizeof(si);
-
-		// // The default ShowWindow flag is SW_SHOWDEFAULT which is what NT's CMD.EXE
-		// // uses.  However, everything else uses SW_SHOWNORMAL, such as the shell,
-		// // task manager, VC's debugger, and 9x's COMMAND.COM. Since SW_SHOWNORMAL
-		// // is more common, that is what we want to simulate.
-		// si.dwFlags = STARTF_USESHOWWINDOW;
-		// si.wShowWindow = SW_SHOWNORMAL;
-		
-	    // ZeroMemory(&pi, sizeof(pi)); // inspected	
-		// // LPSTARTUPINFOEX startupInfoEx = (LPSTARTUPINFOEX)lpStartupInfo;
-		
-		// // startupInfo.cb = sizeof(STARTUPINFOEX);
-		// // startupInfo.lpReserved = startupInfoEx->StartupInfo.lpReserved;
-		// // startupInfo.lpDesktop = startupInfoEx->StartupInfo.lpDesktop;
-		// // startupInfo.lpTitle = startupInfoEx->StartupInfo.lpTitle;
-		// // startupInfo.dwX = startupInfoEx->StartupInfo.dwX;
-		// // startupInfo.dwY = startupInfoEx->StartupInfo.dwY;
-		// // startupInfo.dwXSize = startupInfoEx->StartupInfo.dwXSize;
-		// // startupInfo.dwYSize = startupInfoEx->StartupInfo.dwYSize;
-		// // startupInfo.dwXCountChars = startupInfoEx->StartupInfo.dwXCountChars;
-		// // startupInfo.dwYCountChars = startupInfoEx->StartupInfo.dwYCountChars;
-		// // startupInfo.dwFillAttribute = startupInfoEx->StartupInfo.dwFillAttribute;
-		// // startupInfo.dwFlags = startupInfoEx->StartupInfo.dwFlags;
-		// // startupInfo.wShowWindow = startupInfoEx->StartupInfo.wShowWindow;
-		// // startupInfo.cbReserved2 = startupInfoEx->StartupInfo.cbReserved2;
-		// // startupInfo.lpReserved2 = startupInfoEx->StartupInfo.lpReserved2;
-		// // startupInfo.hStdInput = startupInfoEx->StartupInfo.hStdInput;
-		// // startupInfo.hStdOutput = startupInfoEx->StartupInfo.hStdOutput;
-		// // startupInfo.hStdError = startupInfoEx->StartupInfo.hStdError;
-		
-		// // dwCreationFlags = DEBUG_PROCESS;
-
-		// return CreateProcessW(NULL,
-					   // lpCommandLine,
-					   // NULL,
-					   // NULL,
-					   // FALSE,
-					   // DEBUG_PROCESS,
-					   // NULL,
-					   // lpCurrentDirectory,
-					   // &si, 
-					   // &pi);
-		
-		// DbgPrint("CreateProcessExW :: lpStartupInfo is STARTUPINFOEX structure\n");
-	// }	
-	
-	resp = CreateProcessW(lpApplicationName,
-						  lpCommandLine,
-						  lpProcessAttributes,
-						  lpThreadAttributes,
-						  bInheritHandles,
-						  dwCreationFlags,
-						  lpEnvironment,
-						  lpCurrentDirectory,
-						  lpStartupInfo,//&startupInfo,
-						  lpProcessInformation);
-						  
-	DbgPrint("CreateProcessW :: returned value is %d\n", resp);	
-
-	return resp;
-								  
-}
-
-BOOL
-WINAPI
-CreateProcessInternalExA(
-    HANDLE hUserToken,
-    LPCSTR lpApplicationName,
-    LPSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCSTR lpCurrentDirectory,
-    LPSTARTUPINFOA lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation,
-    PHANDLE hRestrictedUserToken
-)
-{
-	// STARTUPINFOA startupInfo;
-	
-	BOOL resp;
-	
-	// // if(lpStartupInfo->cb == sizeof(STARTUPINFOEX))
-	 // if(dwCreationFlags & EXTENDED_STARTUPINFO_PRESENT)
-	 // {
-		
-		// // LPSTARTUPINFOEX startupInfoEx = (LPSTARTUPINFOEX)lpStartupInfo;
-		
-		// // startupInfo.cb = sizeof(STARTUPINFOEX);
-		// // startupInfo.lpReserved = startupInfoEx->StartupInfo.lpReserved;
-		// // startupInfo.lpDesktop = startupInfoEx->StartupInfo.lpDesktop;
-		// // startupInfo.lpTitle = startupInfoEx->StartupInfo.lpTitle;
-		// // startupInfo.dwX = startupInfoEx->StartupInfo.dwX;
-		// // startupInfo.dwY = startupInfoEx->StartupInfo.dwY;
-		// // startupInfo.dwXSize = startupInfoEx->StartupInfo.dwXSize;
-		// // startupInfo.dwYSize = startupInfoEx->StartupInfo.dwYSize;
-		// // startupInfo.dwXCountChars = startupInfoEx->StartupInfo.dwXCountChars;
-		// // startupInfo.dwYCountChars = startupInfoEx->StartupInfo.dwYCountChars;
-		// // startupInfo.dwFillAttribute = startupInfoEx->StartupInfo.dwFillAttribute;
-		// // startupInfo.dwFlags = startupInfoEx->StartupInfo.dwFlags;
-		// // startupInfo.wShowWindow = startupInfoEx->StartupInfo.wShowWindow;
-		// // startupInfo.cbReserved2 = startupInfoEx->StartupInfo.cbReserved2;
-		// // startupInfo.lpReserved2 = startupInfoEx->StartupInfo.lpReserved2;
-		// // startupInfo.hStdInput = startupInfoEx->StartupInfo.hStdInput;
-		// // startupInfo.hStdOutput = startupInfoEx->StartupInfo.hStdOutput;
-		// // startupInfo.hStdError = startupInfoEx->StartupInfo.hStdError;
-		
-		// dwCreationFlags = DEBUG_PROCESS;		
-		
-		 // DbgPrint("CreateProcessInternalExA :: lpStartupInfo is STARTUPINFOEX structure\n");
-	 // } 
-	
-	resp = CreateProcessInternalA(hUserToken,
-								  lpApplicationName,
-								  lpCommandLine,
-								  lpProcessAttributes,
-								  lpThreadAttributes,
-								  bInheritHandles,
-								  dwCreationFlags,
-								  lpEnvironment,
-								  lpCurrentDirectory,
-								  lpStartupInfo,//&startupInfo,
-								  lpProcessInformation,
-								  hRestrictedUserToken);	
-
-	DbgPrint("CreateProcessInternalA :: returned value is %d\n", resp);
-	return resp;	
-}
-
-BOOL
-WINAPI
-CreateProcessExA(
-    LPCSTR lpApplicationName,
-    LPSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCSTR lpCurrentDirectory,
-    LPSTARTUPINFOA lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation
-)
-{
-	// STARTUPINFOA startupInfo;
-	
-	BOOL resp;
-	
-	// if(lpStartupInfo->cb == sizeof(STARTUPINFOEX))
-	 //if(dwCreationFlags & EXTENDED_STARTUPINFO_PRESENT)
-	 //{
-		
-		// LPSTARTUPINFOEX startupInfoEx = (LPSTARTUPINFOEX)lpStartupInfo;
-		
-		// startupInfo.cb = sizeof(STARTUPINFOEX);
-		// startupInfo.lpReserved = startupInfoEx->StartupInfo.lpReserved;
-		// startupInfo.lpDesktop = startupInfoEx->StartupInfo.lpDesktop;
-		// startupInfo.lpTitle = startupInfoEx->StartupInfo.lpTitle;
-		// startupInfo.dwX = startupInfoEx->StartupInfo.dwX;
-		// startupInfo.dwY = startupInfoEx->StartupInfo.dwY;
-		// startupInfo.dwXSize = startupInfoEx->StartupInfo.dwXSize;
-		// startupInfo.dwYSize = startupInfoEx->StartupInfo.dwYSize;
-		// startupInfo.dwXCountChars = startupInfoEx->StartupInfo.dwXCountChars;
-		// startupInfo.dwYCountChars = startupInfoEx->StartupInfo.dwYCountChars;
-		// startupInfo.dwFillAttribute = startupInfoEx->StartupInfo.dwFillAttribute;
-		// startupInfo.dwFlags = startupInfoEx->StartupInfo.dwFlags;
-		// startupInfo.wShowWindow = startupInfoEx->StartupInfo.wShowWindow;
-		// startupInfo.cbReserved2 = startupInfoEx->StartupInfo.cbReserved2;
-		// startupInfo.lpReserved2 = startupInfoEx->StartupInfo.lpReserved2;
-		// startupInfo.hStdInput = startupInfoEx->StartupInfo.hStdInput;
-		// startupInfo.hStdOutput = startupInfoEx->StartupInfo.hStdOutput;
-		// startupInfo.hStdError = startupInfoEx->StartupInfo.hStdError;
-		
-		//dwCreationFlags = DEBUG_PROCESS;			
-		
-		// DbgPrint("CreateProcessExA :: lpStartupInfo is STARTUPINFOEX structure\n");
-	//}
-	
-	return CreateProcessA(lpApplicationName,
-						  lpCommandLine,
-						  lpProcessAttributes,
-						  lpThreadAttributes,
-						  bInheritHandles,
-						  dwCreationFlags,
-						  lpEnvironment,
-						  lpCurrentDirectory,
-						  lpStartupInfo,//&startupInfo,
-						  lpProcessInformation);	
-						 
-	DbgPrint("CreateProcessA :: returned value is %d\n", resp);		
-
-	return resp;
-}
-
 /***********************************************************************
  *           CreateUmsCompletionList   (KERNEL32.@)
  */
@@ -2177,48 +1856,38 @@ BOOL WINAPI IsWow64Process2(HANDLE hProcess, PUSHORT pProcessMachine, PUSHORT pN
   WOW64 and native platforms.
 */
 {
-	BOOL Wow64Process;
-	
-	if(!pProcessMachine)
-	{
-		SetLastError(ERROR_INVALID_PARAMETER);
-		return FALSE;
-	}
-	
-	if(!IsWow64Process(hProcess, &Wow64Process))
-	{
-		return FALSE;
-	}
-	
-	if(!Wow64Process)
-	{
-		*pProcessMachine = IMAGE_FILE_MACHINE_UNKNOWN;
-	}
-	else
-	{
-		#ifdef _X86_ || _AMD64_ || _IA64_
-		*pProcessMachine = IMAGE_FILE_MACHINE_I386;
-		#elif _ARM64_ || _ARM_
-		*pProcessMachine = IMAGE_FILE_MACHINE_ARM;
-		#endif
-		// No other Windows architecture has WOW64.
-		
-	}
-	
+    BOOL Wow64Process;
+    BOOL Wow64CurrentProcess;
+    
+    if(!pProcessMachine)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    
+    if(!IsWow64Process(hProcess, &Wow64Process) || !IsWow64Process(GetCurrentProcess(), &Wow64CurrentProcess))
+        return FALSE;
+
+    #ifdef _AMD64_
+        *pProcessMachine = Wow64Process ? IMAGE_FILE_MACHINE_AMD64 : IMAGE_FILE_MACHINE_I386; // Yeaa....
+    #else
+        if (Wow64CurrentProcess)
+		{
+            *pProcessMachine = Wow64CurrentProcess ? IMAGE_FILE_MACHINE_I386 : IMAGE_FILE_MACHINE_AMD64; // This is on a 64 bit system
+        } else {
+            *pProcessMachine = IMAGE_FILE_MACHINE_I386; // TODO: look at 16-bit process behavior (NTVDM)
+        }
+    #endif
     if(pNativeMachine)
     {
-		#ifdef _X86_
-		 *pNativeMachine = IMAGE_FILE_MACHINE_I386;
-		#elif _AMD64_
-		 *pNativeMachine = IMAGE_FILE_MACHINE_AMD64;
-		#elif _ARM_
-		 *pNativeMachine = IMAGE_FILE_MACHINE_ARM;
-		#elif _ARM64_
-		 *pNativeMachine = IMAGE_FILE_MACHINE_ARM64;
-    	#endif
-	}
-	
-	return TRUE;
+        #ifdef _AMD64_
+            *pNativeMachine = IMAGE_FILE_MACHINE_AMD64; // The true successor to IsWow64Process can only return AMD64.
+        #else
+            *pNativeMachine = Wow64CurrentProcess ? IMAGE_FILE_MACHINE_AMD64 : IMAGE_FILE_MACHINE_I386;
+        #endif
+    }
+    
+    return TRUE;
 }
 
 int GetProcessUserModeExceptionPolicy(int a1)
@@ -2321,24 +1990,6 @@ GetProcessInformation(HANDLE ProcessHandle, PROCESS_INFORMATION_CLASS ProcessInf
         BaseSetLastNTError(st);
         return FALSE;
     }
-}
-
-/***********************************************************************
- *           GetSystemCpuSetInformation   (kernelbase.@)
- */
-BOOL WINAPI GetSystemCpuSetInformation(SYSTEM_CPU_SET_INFORMATION *info, ULONG buffer_length, ULONG *return_length,
-                                            HANDLE process, ULONG flags)
-{
-	//To implement
-    // if (flags)
-        // FIXME("Unsupported flags %#lx.\n", flags);
-
-    // *return_length = 0;
-
-    // return set_ntstatus( NtQuerySystemInformationEx( SystemCpuSetInformation, &process, sizeof(process), info,
-            // buffer_length, return_length ));
-	SetLastError(0);
-	return FALSE;
 }
 
 /***********************************************************************

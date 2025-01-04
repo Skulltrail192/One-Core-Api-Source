@@ -38,6 +38,13 @@ WINE_DEFAULT_DEBUG_CHANNEL(uxtheme_wrapper);
 
 HANDLE hHeap = 0;
 
+HTHEME 
+WINAPI 
+OpenThemeDataInternal(
+  HWND    hwnd,
+  LPCWSTR pszClassList
+);
+
 typedef HANDLE HANIMATIONBUFFER;
 
 typedef int (WINAPI *DTT_CALLBACK_PROC)( HDC, LPWSTR, int, LPRECT, UINT, LPARAM );
@@ -127,8 +134,11 @@ HRESULT WINAPI GetThemeTransitionDuration(HTHEME hTheme, int iPartId, int iState
 {
     FIXME("(%p, %u, %u, %u, %u, %p) stub\n", hTheme, iPartId, iStateIdFrom, iStateIdTo,
           iPropId, pdwDuration);
-
-    return E_NOTIMPL;
+    if (!pdwDuration)
+		return E_INVALIDARG;
+    
+    *pdwDuration = 0; // No theme on Windows XP has transitions.
+    return S_OK;
 }
 
 //unimplemented
@@ -508,4 +518,14 @@ HRESULT WINAPI BufferedPaintStopAllAnimations(HWND hwnd)
     FIXME("Stub (%p)\n", hwnd);
 
     return E_NOTIMPL;
+}
+
+HTHEME WINAPI OpenThemeDataForDpi(
+  HWND    hwnd,
+  LPCWSTR pszClassList,
+  UINT    dpi
+)
+{
+	return OpenThemeDataInternal(hwnd,
+	                             pszClassList);
 }

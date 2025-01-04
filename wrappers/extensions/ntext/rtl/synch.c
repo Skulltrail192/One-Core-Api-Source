@@ -71,7 +71,7 @@ typedef struct _ADDRESS_WAIT_BLOCK
 	struct _ADDRESS_WAIT_BLOCK* back;
 	// 它是前驱
 	struct _ADDRESS_WAIT_BLOCK* notify;
-	// 似乎指向Root，但是Root时才指向自己，其余情况为 nullptr，这是一种安全性？
+	// 似乎指向Root，但是Root时才指向自己，其余情况为 NULL，这是一种安全性？
 	struct _ADDRESS_WAIT_BLOCK* next;
 	volatile long         flag;
 } ADDRESS_WAIT_BLOCK;
@@ -129,6 +129,56 @@ RtlpInitializeWaitOnAddressKeyedEvent( RTL_RUN_ONCE *once, void *param, void **c
 }
 
 
+static LARGE_INTEGER* __fastcall NtFormatTimeOut(LARGE_INTEGER* Timeout, DWORD dwMilliseconds)
+{
+    if (dwMilliseconds == INFINITE)
+        return NULL;
+
+    Timeout->QuadPart = -10000ll * dwMilliseconds;
+
+    return Timeout;
+}
+
+static NTSTATUS NTAPI SecondWaitWorkaroundNtWaitForKeyedEvent(
+    IN HANDLE               KeyedEventHandle,
+    IN YY_CV_WAIT_BLOCK*              Key,
+    IN BOOLEAN              Alertable,
+    IN PLARGE_INTEGER       Timeout OPTIONAL
+)
+{
+	NTSTATUS Status;
+   // 目前只有Windows XP收到报告说会卡死，所以我们这里判断一下
+   if (Timeout == NULL)// && NtCurrentTeb()->ProcessEnvironmentBlock->OSMajorVersion < 6)
+   {
+       LARGE_INTEGER _nTimeOut;
+       NtFormatTimeOut(&_nTimeOut, 0);
+       for (; Key->uWakeupThreadId == 0;)
+       {
+           Status = NtWaitForKeyedEvent(KeyedEventHandle, (PVOID)Key, Alertable, &_nTimeOut);
+           if (Status != STATUS_TIMEOUT)
+              return STATUS_TIMEOUT;
+           }
+
+           // 等5毫秒应该足够唤醒线程调用Release了
+           // 这里只是经验假设，可能不能彻底规避问题。但是正常情况下应该足以缓解死等问题。
+           NtWaitForKeyedEvent(KeyedEventHandle, Key, Alertable, NtFormatTimeOut(&_nTimeOut, 5));
+           return STATUS_SUCCESS;
+    }
+    return NtWaitForKeyedEvent(KeyedEventHandle, Key, Alertable, Timeout);
+}
+
+static NTSTATUS NTAPI SecondWaitWorkaroundNtReleaseKeyedEvent(
+	IN HANDLE               KeyedEventHandle,
+	IN YY_CV_WAIT_BLOCK*             Key,
+	IN BOOLEAN              Alertable,
+	IN PLARGE_INTEGER       Timeout OPTIONAL
+)
+{
+   InterlockedExchange((volatile long*)&Key->uWakeupThreadId, HandleToUlong(NtCurrentTeb()->ClientId.UniqueThread));
+   return NtReleaseKeyedEvent(KeyedEventHandle, Key, Alertable, Timeout);
+}
+
+
 static ULONG_PTR* GetBlockByWaitOnAddressHashTable(LPVOID Address)
 {
 	static volatile ULONG_PTR WaitOnAddressHashTable[128];
@@ -141,7 +191,7 @@ static ULONG_PTR* GetBlockByWaitOnAddressHashTable(LPVOID Address)
 VOID InitializeGlobalKeyedEventHandle()
 {
 	HANDLE KeyedEventHandle;
-	//Windows XP等平台则 使用系统自身的 CritSecOutOfMemoryEvent，Vista或者更高平台 我们直接返回 nullptr 即可。
+	//Windows XP等平台则 使用系统自身的 CritSecOutOfMemoryEvent，Vista或者更高平台 我们直接返回 NULL 即可。
 	if (GlobalKeyedEventHandle == NULL)
 	{
 		const wchar_t Name[] = L"\\KernelObjects\\CritSecOutOfMemoryEvent";
@@ -1065,8 +1115,7 @@ void NTAPI RtlReleaseSRWLockShared(RTL_SRWLOCK* SRWLock)
 
 BOOL NTAPI RtlTryAcquireSRWLockExclusive(RTL_SRWLOCK* SRWLock)
 {
-	BOOL IsLocked=InterlockedBitTestAndSet((LONG*)SRWLock,SRW_HOLD_BIT);
-	return !(IsLocked==TRUE);
+    return !(InterlockedBitTestAndSet((LONG*)SRWLock,SRW_HOLD_BIT)==TRUE);
 }
 
 BOOL NTAPI RtlTryAcquireSRWLockShared(RTL_SRWLOCK* SRWLock)
@@ -1132,7 +1181,7 @@ static BOOL __fastcall RtlpQueueWaitBlockToSRWLock(YY_CV_WAIT_BLOCK* pBolck, RTL
 				
 	for (;;)
 	{
-		Current = *(volatile long*)SRWLock;
+		Current = *(volatile size_t*)SRWLock;
 
 		if ((Current & 0x1) == 0)
 			break;
@@ -1169,7 +1218,7 @@ static BOOL __fastcall RtlpQueueWaitBlockToSRWLock(YY_CV_WAIT_BLOCK* pBolck, RTL
 		}
 
 		//清泠 发现的Bug，我们应该返回 TRUE，减少必要的内核等待。
-		if (InterlockedCompareExchange((volatile long*)SRWLock, New, Current) == Current)
+		if ((size_t)InterlockedCompareExchangePointer((void *volatile *)SRWLock, (volatile long*)New, (volatile long*)Current) == Current)
 			return TRUE;
 
 		RtlBackoff(&backoff);
@@ -1200,7 +1249,7 @@ static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *Conditi
 
 		if ((ConditionVariableStatus & 0x7) == 0x7)
 		{
-			ConditionVariableStatus = InterlockedExchange((volatile long*)ConditionVariable, 0);
+			ConditionVariableStatus = (size_t)InterlockedExchangePointer((void *volatile *)ConditionVariable, 0);
 
 			*ppInsert = YY_CV_GET_BLOCK(ConditionVariableStatus);
 
@@ -1220,7 +1269,7 @@ static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *Conditi
 
 		if (MaxWakeCount <= Count)
 		{
-			LastStatus = InterlockedCompareExchange((volatile long*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
+			LastStatus = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)(pWaitBlock), (volatile long*)ConditionVariableStatus);
 
 			if (LastStatus == ConditionVariableStatus)
 			{
@@ -1252,7 +1301,7 @@ static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *Conditi
 
 			if (MaxWakeCount <= Count)
 			{
-				LastStatus = InterlockedCompareExchange((volatile long*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
+				LastStatus = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)(pWaitBlock), (volatile long*)ConditionVariableStatus);
 
 				if (LastStatus == ConditionVariableStatus)
 				{
@@ -1263,7 +1312,7 @@ static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *Conditi
 			}
 			else
 			{
-				LastStatus = InterlockedCompareExchange((volatile long*)ConditionVariable, 0, ConditionVariableStatus);
+				LastStatus = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)0, (volatile long*)ConditionVariableStatus);
 
 
 				if (LastStatus == ConditionVariableStatus)
@@ -1287,7 +1336,7 @@ static void __fastcall RtlpWakeConditionVariable(RTL_CONDITION_VARIABLE *Conditi
 		{
 			if (pWake->SRWLock == NULL || RtlpQueueWaitBlockToSRWLock(pWake, pWake->SRWLock, (pWake->flag >> 2) & 0x1) == FALSE)
 			{
-				NtReleaseKeyedEvent(GlobalKeyedEventHandle, pWake, 0, NULL);
+				SecondWaitWorkaroundNtReleaseKeyedEvent(GlobalKeyedEventHandle, pWake, 0, NULL);
 			}
 		}
 
@@ -1306,7 +1355,7 @@ RtlWakeConditionVariable(
 	size_t Current;
 	size_t Last;
 
-	Current = *(volatile long*)ConditionVariable;
+	Current = *(volatile size_t*)ConditionVariable;
 
 	for (; Current; Current = Last)
 	{
@@ -1317,13 +1366,13 @@ RtlWakeConditionVariable(
 				return;
 			}
 
-			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, Current + 1, Current);
+			Last = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)(Current + 1), (volatile long*)Current);
 			if (Last == Current)
 				return;
 		}
 		else
 		{
-			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, Current | 0x8, Current);
+			Last = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)(Current | 0x8), (volatile long*)Current);
 			if (Last == Current)
 			{
 				RtlpWakeConditionVariable(ConditionVariable, Current + 8, 1);
@@ -1339,7 +1388,7 @@ RtlWakeAllConditionVariable(
 	_Inout_ RTL_CONDITION_VARIABLE *ConditionVariable
 )
 {
-	size_t Current = *(volatile long*)ConditionVariable;
+	size_t Current = (size_t)ConditionVariable;
 	size_t Last;
 	YY_CV_WAIT_BLOCK* pBlock;
 	YY_CV_WAIT_BLOCK* Tmp;
@@ -1348,13 +1397,13 @@ RtlWakeAllConditionVariable(
 	{
 		if (Current & 0x8)
 		{
-			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, Current | 0x7, Current);
+			Last = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)(Current | 0x7), (volatile long*)Current);
 			if (Last == Current)
 				return;
 		}
 		else
 		{
-			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, 0, Current);
+			Last = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)0, (volatile long*)Current);
 			if (Last == Current)
 			{
 
@@ -1364,7 +1413,7 @@ RtlWakeAllConditionVariable(
 
 					if (!InterlockedBitTestAndReset((volatile LONG*)&pBlock->flag, 1))
 					{
-						NtReleaseKeyedEvent(GlobalKeyedEventHandle, pBlock, FALSE, NULL);
+						SecondWaitWorkaroundNtReleaseKeyedEvent(GlobalKeyedEventHandle, pBlock, FALSE, NULL);
 					}
 
 					pBlock = Tmp;
@@ -1378,43 +1427,43 @@ RtlWakeAllConditionVariable(
 		
 static void __fastcall RtlpOptimizeConditionVariableWaitList(RTL_CONDITION_VARIABLE *ConditionVariable, size_t ConditionVariableStatus)
 {
-	YY_CV_WAIT_BLOCK *pWaitBlock;
-	YY_CV_WAIT_BLOCK *pItem;
-	YY_CV_WAIT_BLOCK *temp;
-	size_t LastStatus;
-				
-	for (;;)
-	{
-		pWaitBlock = YY_CV_GET_BLOCK(ConditionVariableStatus);
-		pItem = pWaitBlock;
+    YY_CV_WAIT_BLOCK *pWaitBlock;
+    YY_CV_WAIT_BLOCK *pItem;
+    YY_CV_WAIT_BLOCK *temp;
+    size_t LastStatus;
+                
+    for (;;)
+    {
+        pWaitBlock = YY_CV_GET_BLOCK(ConditionVariableStatus);
+        pItem = pWaitBlock;
 
-		for (; pItem->notify == NULL;)
-		{
-			temp = pItem;
-			pItem = pItem->back;
-			pItem->next = temp;
-		}
+        for (; pItem->notify == NULL;)
+        {
+            temp = pItem;
+            pItem = pItem->back;
+            pItem->next = temp;
+        }
 
-		pWaitBlock->notify = pItem->notify;
+        pWaitBlock->notify = pItem->notify;
 
-		LastStatus = InterlockedCompareExchange((volatile long*)ConditionVariable, (size_t)(pWaitBlock), ConditionVariableStatus);
+        LastStatus = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)pWaitBlock, (volatile long*)ConditionVariableStatus);
 
-		if (LastStatus == ConditionVariableStatus)
-			break;
+        if (LastStatus == ConditionVariableStatus)
+            return;
 
-		ConditionVariableStatus = LastStatus;
-
-		if (ConditionVariableStatus & 7)
-		{
-			RtlpWakeConditionVariable(ConditionVariable, ConditionVariableStatus, 0);
-			return;
-		}
-	}
+        if (LastStatus & 7)
+        {
+            RtlpWakeConditionVariable(ConditionVariable, LastStatus, 0);
+            return;
+        }
+        
+        ConditionVariableStatus = LastStatus;
+    }
 }
 
 static BOOL __fastcall RtlpWakeSingle(RTL_CONDITION_VARIABLE *ConditionVariable, YY_CV_WAIT_BLOCK* pBlock)
 {
-	volatile long Current = *(volatile long*)ConditionVariable;
+	size_t Current = (size_t)ConditionVariable;
 	YY_CV_WAIT_BLOCK *pWaitBlock;
 	YY_CV_WAIT_BLOCK *pSuccessor;
 	size_t Last;
@@ -1427,7 +1476,7 @@ static BOOL __fastcall RtlpWakeSingle(RTL_CONDITION_VARIABLE *ConditionVariable,
 	{
 		if (Current & 0x8)
 		{
-			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, Current | 0x7, Current);
+			Last = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)(Current | 0x7), (volatile long*)Current);
 
 			if (Last == Current)
 				return FALSE;
@@ -1438,7 +1487,7 @@ static BOOL __fastcall RtlpWakeSingle(RTL_CONDITION_VARIABLE *ConditionVariable,
 		{
 			New = Current | 0x8;
 
-			Last = InterlockedCompareExchange((volatile long*)ConditionVariable, New, Current);
+			Last = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)New, (volatile long*)Current);
 
 			if (Last == Current)
 			{
@@ -1474,7 +1523,7 @@ static BOOL __fastcall RtlpWakeSingle(RTL_CONDITION_VARIABLE *ConditionVariable,
 
 								New = back == 0 ? back : back ^ ((New ^ back) & 0xF);
 
-								Last = InterlockedCompareExchange((volatile long*)ConditionVariable, New, Current);
+								Last = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)New, (volatile long*)Current);
 
 								if (Last == Current)
 								{
@@ -1534,6 +1583,7 @@ RtlSleepConditionVariableCS(
 	StackWaitBlock.next = NULL;
 	StackWaitBlock.flag = 2;
 	StackWaitBlock.SRWLock = NULL;
+	StackWaitBlock.uWakeupThreadId = 0;
 	OldConditionVariable = *(size_t*)ConditionVariable;			
 
 	for (;;)
@@ -1552,7 +1602,7 @@ RtlSleepConditionVariableCS(
 			StackWaitBlock.notify = &StackWaitBlock;
 		}
 
-		LastConditionVariable = InterlockedCompareExchange((volatile long*)ConditionVariable, NewConditionVariable, OldConditionVariable);
+		LastConditionVariable = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)NewConditionVariable, (volatile long*)OldConditionVariable);
 
 		if (LastConditionVariable == OldConditionVariable)
 			break;
@@ -1567,6 +1617,8 @@ RtlSleepConditionVariableCS(
 	{
 		RtlpOptimizeConditionVariableWaitList(ConditionVariable, NewConditionVariable);
 	}
+	
+	InitializeGlobalKeyedEventHandle();
 
 	//自旋
 	for (SpinCount = ConditionVariableSpinCount; SpinCount; --SpinCount)
@@ -1583,7 +1635,8 @@ RtlSleepConditionVariableCS(
 
 		if (Status == STATUS_TIMEOUT && RtlpWakeSingle(ConditionVariable, &StackWaitBlock) == FALSE)
 		{
-			NtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, NULL);
+			SecondWaitWorkaroundNtWaitForKeyedEvent(GlobalKeyedEventHandle, &StackWaitBlock, 0, NULL);
+			//NtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, NULL);
 			Status = STATUS_SUCCESS;
 		}
 	}
@@ -1609,83 +1662,88 @@ RtlSleepConditionVariableSRW(
 	size_t New;
 	size_t Last;
 	NTSTATUS Status = STATUS_SUCCESS;
-
-	if (Flags & ~RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
-	{
-		return STATUS_INVALID_PARAMETER_2;
-	}
-
-	StackWaitBlock.next = NULL;
-	StackWaitBlock.flag = 2;
-	StackWaitBlock.SRWLock = NULL;
-
-	if (Flags& RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
-	{
-		StackWaitBlock.flag |= 0x4;
-	}
-
-	Current = *(volatile long*)ConditionVariable;
-
-	for (;;)
-	{
-		New = (size_t)(&StackWaitBlock) | (Current & YY_CV_MASK);
-
-		if (StackWaitBlock.back = YY_CV_GET_BLOCK(Current))
+	
+	do{
+		if (Flags & ~RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
 		{
-			StackWaitBlock.notify = NULL;
+			break;
+		}		
 
-			New |= 0x8;
+		StackWaitBlock.next = NULL;
+		StackWaitBlock.flag = 2;
+		StackWaitBlock.SRWLock = NULL;
+		StackWaitBlock.uWakeupThreadId = 0;
+
+		if (Flags& RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
+		{
+			StackWaitBlock.flag |= 0x4;
 		}
+
+		Current = *(volatile size_t*)ConditionVariable;
+
+		for (;;)
+		{
+			New = (size_t)(&StackWaitBlock) | (Current & YY_CV_MASK);
+
+			if (StackWaitBlock.back = YY_CV_GET_BLOCK(Current))
+			{
+				StackWaitBlock.notify = NULL;
+
+				New |= 0x8;
+			}
+			else
+			{
+				StackWaitBlock.notify = &StackWaitBlock;
+			}
+
+			Last = (size_t)InterlockedCompareExchangePointer((void *volatile *)ConditionVariable, (volatile long*)New, (volatile long*)Current);
+
+			if (Last == Current)
+			{
+				break;
+			}
+
+			Current = Last;
+		}
+
+		if (Flags& RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
+			RtlReleaseSRWLockShared(SRWLock);
 		else
+			RtlReleaseSRWLockExclusive(SRWLock);
+
+		if ((Current ^ New) & 0x8)
 		{
-			StackWaitBlock.notify = &StackWaitBlock;
+			//新增0x8 标记位才调用 RtlpOptimizeConditionVariableWaitList
+			RtlpOptimizeConditionVariableWaitList(ConditionVariable, New);
+		}
+		
+		InitializeGlobalKeyedEventHandle();
+
+		//自旋
+		for (SpinCount = ConditionVariableSpinCount; SpinCount; --SpinCount)
+		{
+			if (!(StackWaitBlock.flag & 2))
+				break;
+
+			YieldProcessor();
 		}
 
-		Last = InterlockedCompareExchange((volatile long*)ConditionVariable, New, Current);
-
-		if (Last == Current)
+		if (InterlockedBitTestAndReset((volatile LONG*)&StackWaitBlock.flag, 1))
 		{
-			break;
+			Status = NtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, dwMilliseconds);
+
+			if (Status == STATUS_TIMEOUT && RtlpWakeSingle(ConditionVariable, &StackWaitBlock) == FALSE)
+			{
+				SecondWaitWorkaroundNtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, NULL);
+				Status = STATUS_SUCCESS;
+			}
 		}
 
-		Current = Last;
-	}
-
-	if (Flags& RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
-		RtlReleaseSRWLockShared(SRWLock);
-	else
-		RtlReleaseSRWLockExclusive(SRWLock);
-
-	if ((Current ^ New) & 0x8)
-	{
-		//新增0x8 标记位才调用 RtlpOptimizeConditionVariableWaitList
-		RtlpOptimizeConditionVariableWaitList(ConditionVariable, New);
-	}
-
-	//自旋
-	for (SpinCount = ConditionVariableSpinCount; SpinCount; --SpinCount)
-	{
-		if (!(StackWaitBlock.flag & 2))
-			break;
-
-		YieldProcessor();
-	}
-
-	if (InterlockedBitTestAndReset((volatile LONG*)&StackWaitBlock.flag, 1))
-	{
-		Status = NtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, dwMilliseconds);
-
-		if (Status == STATUS_TIMEOUT && RtlpWakeSingle(ConditionVariable, &StackWaitBlock) == FALSE)
-		{
-			NtWaitForKeyedEvent(GlobalKeyedEventHandle, (PVOID)&StackWaitBlock, 0, NULL);
-			Status = STATUS_SUCCESS;
-		}
-	}
-
-	if (Flags& RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
-		RtlAcquireSRWLockShared(SRWLock);
-	else
-		RtlAcquireSRWLockExclusive(SRWLock);
+		if (Flags& RTL_CONDITION_VARIABLE_LOCKMODE_SHARED)
+			RtlAcquireSRWLockShared(SRWLock);
+		else
+			RtlAcquireSRWLockExclusive(SRWLock);
+	} while (FALSE);
 
 	return Status;
 }
@@ -1762,7 +1820,8 @@ typedef struct _KEX_RTL_WAIT_ON_ADDRESS_HASH_BUCKET {
 // hashes addresses will become larger and slower by more than a factor of 2.
 // demo: https://godbolt.org/z/K9q9KheYj
 //
-static KEX_RTL_WAIT_ON_ADDRESS_HASH_BUCKET KexRtlWaitOnAddressHashTable[32] = {0};
+#define KexRtlWoaHashEntries 32 // Must be a power of two.
+static KEX_RTL_WAIT_ON_ADDRESS_HASH_BUCKET KexRtlWaitOnAddressHashTable[KexRtlWoaHashEntries] = {0};
 
 #pragma warning(disable:4715) // not all control paths return a value
 static inline BOOLEAN KexRtlpEqualVolatileMemory(
@@ -1783,8 +1842,9 @@ static inline BOOLEAN KexRtlpEqualVolatileMemory(
 static FORCEINLINE PKEX_RTL_WAIT_ON_ADDRESS_HASH_BUCKET KexRtlpGetWoaHashBucket(
 	IN	volatile VOID	*Address)
 {
-	return &KexRtlWaitOnAddressHashTable[
-		(((ULONG_PTR) Address) >> 4) % ARRAYSIZE(KexRtlWaitOnAddressHashTable)];
+    return &KexRtlWaitOnAddressHashTable[
+        (((ULONG_PTR) Address) >> 4) & (KexRtlWoaHashEntries - 1)]; 
+// Improved from VxKex by using & operation instead of % operation, improving performance for debug builds and likely ancient compilers.
 }
 
 //
@@ -1843,11 +1903,11 @@ NTSTATUS NTAPI RtlWaitOnAddress(
 	// ASSERT (AddressSize == 1 || AddressSize == 2 ||
 			// AddressSize == 4 || AddressSize == 8);
 
-	if (AddressSize != 1 && AddressSize != 2 &&
-		AddressSize != 4 && AddressSize != 8) {
+    if (AddressSize != 4 && AddressSize != 2 &&
+        AddressSize != 1 && AddressSize != 8) {
 
-		return STATUS_INVALID_PARAMETER;
-	}
+        return STATUS_INVALID_PARAMETER;
+    }
 
 	//
 	// Figure out which hash bucket we belong in.

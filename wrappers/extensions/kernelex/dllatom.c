@@ -22,7 +22,7 @@ Revision History:
 
 WINE_DEFAULT_DEBUG_CHANNEL(dllatom); 
 
-ATOM GlobalAddAtomExA(
+ATOM WINAPI GlobalAddAtomExA(
   LPCSTR lpString,
   DWORD  Flags //Ignored for now
 )
@@ -30,7 +30,7 @@ ATOM GlobalAddAtomExA(
 	return GlobalAddAtomA(lpString);
 }
 
-ATOM GlobalAddAtomExW(
+ATOM WINAPI GlobalAddAtomExW(
   LPCWSTR lpString,
   DWORD  Flags //Ignored for now
 )

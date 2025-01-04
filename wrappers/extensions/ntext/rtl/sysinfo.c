@@ -1,25 +1,26 @@
-/*
- * Copyright 2009 Henri Verbeet for CodeWeavers
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- */
-#define NDEBUG 
+/*++
+
+Copyright (c) 2018 Shorthorn Project
+
+Module Name:
+
+    sysinfo.c
+
+Abstract:
+
+    Implement System Information functions
+
+Author:
+
+    Skulltrail 07-November-2024
+
+Revision History:
+
+--*/
  
-#include <main.h>
-#include <ntstrsafe.h>
+#define NDEBUG
+
+#include <main.h> 
 
 BOOLEAN globalVerificationTablet = TRUE;
 BOOLEAN globalVerificationMediaCenter = TRUE;
@@ -968,50 +969,3 @@ RtlGetDeviceFamilyInfoEnum(
 		*pulDeviceForm = 0;
 	}	
 }
-
-// /*
- // * @implemented
- // * @note User-mode version of RtlGetVersion in ntoskrnl/rtl/misc.c
- // */
-// NTSTATUS NTAPI
-// RtlGetVersion(IN OUT PRTL_OSVERSIONINFOW lpVersionInformation)
-// {
-    // SIZE_T Length;
-    // PPEB Peb = NtCurrentPeb();
-
-    // if (lpVersionInformation->dwOSVersionInfoSize != sizeof(RTL_OSVERSIONINFOW) &&
-        // lpVersionInformation->dwOSVersionInfoSize != sizeof(RTL_OSVERSIONINFOEXW))
-    // {
-        // return STATUS_INVALID_PARAMETER;
-    // }
-
-    // lpVersionInformation->dwMajorVersion = 6;
-    // lpVersionInformation->dwMinorVersion = 1;
-    // lpVersionInformation->dwBuildNumber = 7601;
-    // lpVersionInformation->dwPlatformId = Peb->OSPlatformId;
-    // RtlZeroMemory(lpVersionInformation->szCSDVersion, sizeof(lpVersionInformation->szCSDVersion));
-	
-	// Length =  wcslen(L"Service Pack 1");
-
-    // /* If we have a CSD version string, initialized by Application Compatibility... */
-    // RtlStringCbCopyExW(lpVersionInformation->szCSDVersion, 
-                        // ARRAYSIZE(lpVersionInformation->szCSDVersion),                        
-                        // L"Service Pack 1", NULL , NULL, STRSAFE_NULL_ON_FAILURE);
-    // /* Always null-terminate the user CSD version string */
-    // //lpVersionInformation->szCSDVersion[Length] = UNICODE_NULL;
-
-    // if (lpVersionInformation->dwOSVersionInfoSize == sizeof(RTL_OSVERSIONINFOEXW))
-    // {
-        // PRTL_OSVERSIONINFOEXW InfoEx = (PRTL_OSVERSIONINFOEXW)lpVersionInformation;
-        // InfoEx->wServicePackMajor = (Peb->OSCSDVersion >> 8) & 0xFF;
-        // InfoEx->wServicePackMinor = Peb->OSCSDVersion & 0xFF;
-        // InfoEx->wSuiteMask = SharedUserData->SuiteMask & 0xFFFF;
-        // InfoEx->wProductType = SharedUserData->NtProductType;
-        // InfoEx->wReserved = 0;
-
-        // /* HACK: ReactOS specific changes, see bug-reports CORE-6611 and CORE-4620 (aka. #5003) */
-        // //SetRosSpecificInfo(InfoEx);
-    // }
-
-    // return STATUS_SUCCESS;
-// }

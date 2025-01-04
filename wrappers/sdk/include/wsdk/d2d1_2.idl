@@ -17,6 +17,7 @@
  */
 
 import "d2d1_1.idl";
+import "d2d1effects_1.idl";
 
 typedef enum D2D1_RENDERING_PRIORITY
 {
@@ -86,5 +87,17 @@ interface ID2D1Factory2 : ID2D1Factory1
     HRESULT CreateDevice(
         [in] IDXGIDevice *dxgi_device,
         [out] ID2D1Device1 **device
+    );
+}
+
+[
+    object,
+    uuid(9eb767fd-4269-4467-b8c2-eb30cb305743),
+    local,
+]
+interface ID2D1CommandSink1 : ID2D1CommandSink
+{
+    HRESULT SetPrimitiveBlend1(
+        [in] D2D1_PRIMITIVE_BLEND primitive_blend
     );
 }

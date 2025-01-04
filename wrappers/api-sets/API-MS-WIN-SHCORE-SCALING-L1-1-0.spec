@@ -1,3 +1,3 @@
 @ stdcall GetScaleFactorForDevice(long) shcore.GetScaleFactorForDevice
-@ stub RegisterScaleChangeNotifications
+@ stdcall RegisterScaleChangeNotifications(long ptr long ptr) shcore.RegisterScaleChangeNotifications
 @ stub RevokeScaleChangeNotifications

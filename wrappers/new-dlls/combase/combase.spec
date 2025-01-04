@@ -17,8 +17,10 @@
 @ stdcall CoCreateGuid(ptr)
 @ stdcall CoCreateInstance(ptr ptr long ptr ptr)
 @ stdcall CoCreateInstanceEx(ptr ptr long ptr long ptr)
+@ stdcall CoCreateInstanceFromApp(ptr ptr long ptr long ptr)
 @ stdcall CoCreateObjectInContext(ptr ptr ptr ptr) ole32.CoCreateObjectInContext
 @ stdcall CoDeactivateObject(long long) ole32.CoDeactivateObject
+@ stdcall CoDecodeProxy(long int64 ptr)
 @ stdcall CoDisableCallCancellation(ptr)
 @ stdcall CoDisconnectObject(ptr long)
 @ stdcall CoDosDateTimeToFileTime(long long ptr) kernel32.DosDateTimeToFileTime
@@ -329,11 +331,6 @@
 
 #win Vista functions
 @ stdcall CoDisconnectContext(long)
-#Comment because link with propsys cause a error on Office 2010 installation
-; @ stdcall PropVariantToVariant(ptr ptr) propsys.PropVariantToVariant
-; @ stdcall StgDeserializePropVariant(ptr long ptr) propsys.StgDeserializePropVariant
-; @ stdcall StgSerializePropVariant(ptr ptr ptr) propsys.StgSerializePropVariant
-; @ stdcall VariantToPropVariant(ptr ptr) propsys.VariantToPropVariant
 
 #win7 functions
 @ stdcall CoDecrementMTAUsage(ptr)
@@ -434,6 +431,9 @@
 @ stdcall HRGN_UserMarshal(ptr ptr ptr) ole32.HRGN_UserMarshal
 @ stdcall HRGN_UserSize(ptr long ptr) ole32.HRGN_UserSize
 @ stdcall HRGN_UserUnmarshal(ptr ptr ptr) ole32.HRGN_UserUnmarshal
+
+;Win8.1 functions
+@ stdcall RoGetAgileReference(long ptr ptr ptr)
 
 #combase specific functions
 @ stdcall GetRestrictedErrorInfo(ptr)

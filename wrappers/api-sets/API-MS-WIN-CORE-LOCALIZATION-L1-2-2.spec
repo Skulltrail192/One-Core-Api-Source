@@ -27,7 +27,7 @@
 @ stdcall IdnToUnicode(long wstr long ptr long) kernel32.IdnToUnicode
 @ stdcall IsDBCSLeadByte(long) kernel32.IsDBCSLeadByte
 @ stdcall IsDBCSLeadByteEx(long long) kernel32.IsDBCSLeadByteEx
-@ stub IsNLSDefinedString
+@ stdcall IsNLSDefinedString(long long ptr long long) kernel32.IsNLSDefinedString
 @ stdcall IsValidCodePage(long) kernel32.IsValidCodePage
 @ stdcall IsValidLocale(long long) kernel32.IsValidLocale
 @ stdcall IsValidLocaleName(wstr) kernel32.IsValidLocaleName

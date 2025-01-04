@@ -49,7 +49,7 @@ static ULONG STDMETHODCALLTYPE d2d_mesh_AddRef(ID2D1Mesh *iface)
     struct d2d_mesh *mesh = impl_from_ID2D1Mesh(iface);
     ULONG refcount = InterlockedIncrement(&mesh->refcount);
 
-    TRACE("%p increasing refcount to %u.\n", iface, refcount);
+    TRACE("%p increasing refcount to %lu.\n", iface, refcount);
 
     return refcount;
 }
@@ -59,12 +59,12 @@ static ULONG STDMETHODCALLTYPE d2d_mesh_Release(ID2D1Mesh *iface)
     struct d2d_mesh *mesh = impl_from_ID2D1Mesh(iface);
     ULONG refcount = InterlockedDecrement(&mesh->refcount);
 
-    TRACE("%p decreasing refcount to %u.\n", iface, refcount);
+    TRACE("%p decreasing refcount to %lu.\n", iface, refcount);
 
     if (!refcount)
     {
         ID2D1Factory_Release(mesh->factory);
-        heap_free(mesh);
+        free(mesh);
     }
 
     return refcount;
@@ -97,7 +97,7 @@ static const struct ID2D1MeshVtbl d2d_mesh_vtbl =
 
 HRESULT d2d_mesh_create(ID2D1Factory *factory, struct d2d_mesh **mesh)
 {
-    if (!(*mesh = heap_alloc_zero(sizeof(**mesh))))
+    if (!(*mesh = calloc(1, sizeof(**mesh))))
         return E_OUTOFMEMORY;
 
     (*mesh)->ID2D1Mesh_iface.lpVtbl = &d2d_mesh_vtbl;

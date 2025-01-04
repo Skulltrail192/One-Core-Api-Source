@@ -54,22 +54,6 @@ CoDisconnectContext(
 }
 
 /***********************************************************************
- *      CoGetActivationState (ole32.@)
- */
-HRESULT WINAPI CoGetActivationState(GUID guid, DWORD unknown, DWORD *unknown2)
-{
-    return E_NOTIMPL;
-}
-
-/***********************************************************************
- *      CoGetCallState (ole32.@)
- */
-HRESULT WINAPI CoGetCallState(int unknown, PULONG unknown2)
-{
-    return E_NOTIMPL;
-}
-
-/***********************************************************************
  *           InternalTlsAllocData    (combase.@)
  */
 HRESULT WINAPI InternalTlsAllocData(struct tlsdata **data)

@@ -1003,10 +1003,10 @@
 @ stdcall SetProcessDEPPolicy(long) 
 
 #Own implementation only for support - hooks
-@ stdcall CreateProcessA(str str ptr ptr long long ptr str ptr ptr) CreateProcessExA
-@ stdcall CreateProcessInternalA(ptr str str ptr ptr long long ptr str ptr ptr long) CreateProcessInternalExA
-@ stdcall CreateProcessInternalW(ptr wstr wstr ptr ptr long long ptr wstr ptr ptr long) CreateProcessInternalExW
-@ stdcall CreateProcessW(wstr wstr ptr ptr long long ptr wstr ptr ptr) CreateProcessExW
+@ stdcall CreateProcessA(str str ptr ptr long long ptr str ptr ptr) ;CreateProcessExA
+@ stdcall CreateProcessInternalA(ptr str str ptr ptr long long ptr str ptr ptr long) ;CreateProcessInternalExA
+@ stdcall CreateProcessInternalW(ptr wstr wstr ptr ptr long long ptr wstr ptr ptr long) ;CreateProcessInternalExW
+@ stdcall CreateProcessW(wstr wstr ptr ptr long long ptr wstr ptr ptr) ;CreateProcessExW
 @ stdcall GetModuleHandleA(str) 
 @ stdcall GetModuleHandleW(wstr)
 @ stdcall GetProcAddress(long str) 
@@ -1098,7 +1098,7 @@
 @ stdcall FindFirstFileNameW(wstr long ptr wstr)
 @ stdcall FindFirstFileTransactedA(str long ptr long ptr long ptr)
 @ stdcall FindFirstFileTransactedW(wstr long ptr long ptr long ptr)
-# @ stub FindFirstFileNameTransactedW
+@ stdcall FindFirstFileNameTransactedW(wstr long ptr wstr ptr)
 @ stdcall FindFirstStreamTransactedW(wstr long ptr long ptr)
 @ stdcall FindNextFileNameW(long ptr wstr)
 @ stdcall FindNLSString(long long ptr long wstr long ptr)
@@ -1160,7 +1160,6 @@
 @ stdcall GetOverlappedResultEx(long ptr ptr long long)
 @ stdcall GetPhysicallyInstalledSystemMemory(ptr)
 @ stdcall GetProductInfo(long long long long ptr) 
-@ stub GetProductName
 @ stdcall GetQueuedCompletionStatusEx(ptr ptr long ptr long long) ;it doesn't work with Visual Code for now
 @ stdcall GetStringScripts(long wstr long wstr long) idndl.DownlevelGetStringScripts
 @ stdcall GetSystemDefaultLocaleName(ptr long)
@@ -1392,6 +1391,7 @@
 @ stdcall GetCurrentPackageId(ptr ptr)
 @ stdcall GetCurrentPackageFamilyName(ptr ptr)
 @ stdcall GetCurrentPackageFullName(ptr ptr)
+@ stdcall GetCurrentPackageInfo(long ptr ptr ptr)
 @ stdcall GetCurrentPackagePath(ptr ptr)
 @ stdcall GetCurrentThreadStackLimits(ptr ptr)
 @ stdcall GetDynamicTimeZoneInformationEffectiveYears(ptr ptr ptr)
@@ -1453,6 +1453,7 @@
 @ stdcall SetProcessInformation(long long ptr long)
 @ stdcall SetProcessGroupAffinity(long ptr ptr)
 @ stdcall SetThreadInformation(long long ptr long)
+@ stdcall UnmapViewOfFileEx(ptr long)
 
 #Win8.1 functions
 @ stdcall DiscardVirtualMemory(ptr long)
@@ -1465,8 +1466,10 @@
 
 #Win10 functions
 @ stdcall AppPolicyGetMediaFoundationCodecLoading(ptr ptr)
+@ stdcall ClosePseudoConsole(ptr)
 @ stdcall GetSystemCpuSetInformation(ptr long ptr ptr long)
 @ stdcall GetThreadDescription(long ptr)
+@ stdcall GetUserDefaultGeoName(ptr long)
 @ stdcall InitializeContext2(ptr long ptr ptr int64)
 @ stdcall IsWow64Process2(ptr ptr ptr)
 @ stdcall QueryInterruptTime(ptr)
@@ -1477,51 +1480,53 @@
 @ stdcall WaitForDebugEventEx(ptr long)
 
 #Windows 11 and Server 2022 functions
-#@ stdcall GetTempPath2A(long str)
-#@ stdcall GetTempPath2W(long wstr)
+@ stdcall FlsGetValue2(long)
+@ stdcall GetTempPath2A(long str)
+@ stdcall GetTempPath2W(long wstr)
 @ stdcall SetProcessDefaultCpuSets(ptr ptr long)
+@ stdcall TlsGetValue2(long)
 
-#Import from advapibase or registry function
-@ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) advapibase.AccessCheck
-@ stdcall AccessCheckAndAuditAlarmW(wstr ptr wstr wstr ptr long ptr long ptr ptr ptr) advapibase.AccessCheckAndAuditAlarmW
-@ stdcall AccessCheckByType(ptr ptr long long ptr long ptr ptr ptr ptr ptr) advapibase.AccessCheckByType
-@ stdcall AccessCheckByTypeAndAuditAlarmW(wstr ptr wstr wstr ptr ptr long long long ptr long ptr long ptr ptr ptr) advapibase.AccessCheckByTypeAndAuditAlarmW
+#Import from advapi32 or registry function
+@ stdcall AccessCheck(ptr long long ptr ptr ptr ptr ptr) advapi32.AccessCheck
+@ stdcall AccessCheckAndAuditAlarmW(wstr ptr wstr wstr ptr long ptr long ptr ptr ptr) advapi32.AccessCheckAndAuditAlarmW
+@ stdcall AccessCheckByType(ptr ptr long long ptr long ptr ptr ptr ptr ptr) advapi32.AccessCheckByType
+@ stdcall AccessCheckByTypeAndAuditAlarmW(wstr ptr wstr wstr ptr ptr long long long ptr long ptr long ptr ptr ptr) advapi32.AccessCheckByTypeAndAuditAlarmW
 @ stdcall AccessCheckByTypeResultList(ptr ptr ptr long ptr long ptr ptr ptr ptr ptr)
-@ stdcall AccessCheckByTypeResultListAndAuditAlarmByHandleW(wstr ptr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) advapibase.AccessCheckByTypeResultListAndAuditAlarmByHandleW
-@ stdcall AccessCheckByTypeResultListAndAuditAlarmW(wstr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) advapibase.AccessCheckByTypeResultListAndAuditAlarmW
-@ stdcall AddAccessAllowedAce(ptr long long ptr) advapibase.AddAccessAllowedAce
-@ stdcall AddAccessAllowedAceEx(ptr long long long ptr) advapibase.AddAccessAllowedAceEx
-@ stdcall AddAccessAllowedObjectAce(ptr long long long ptr ptr ptr) advapibase.AddAccessAllowedObjectAce
-@ stdcall AddAccessDeniedAce(ptr long long ptr) advapibase.AddAccessDeniedAce
-@ stdcall AddAccessDeniedAceEx(ptr long long long ptr) advapibase.AddAccessDeniedAceEx
-@ stdcall AddAccessDeniedObjectAce(ptr long long long ptr ptr ptr) advapibase.AddAccessDeniedObjectAce
-@ stdcall AddAce(ptr long long ptr long) advapibase.AddAce
-@ stdcall AddAuditAccessAce(ptr long long ptr long long) advapibase.AddAuditAccessAce
-@ stdcall AddAuditAccessAceEx(ptr long long long ptr long long) advapibase.AddAuditAccessAceEx
-@ stdcall AddAuditAccessObjectAce(ptr long long long ptr ptr ptr long long) advapibase.AddAuditAccessObjectAce
+@ stdcall AccessCheckByTypeResultListAndAuditAlarmByHandleW(wstr ptr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) advapi32.AccessCheckByTypeResultListAndAuditAlarmByHandleW
+@ stdcall AccessCheckByTypeResultListAndAuditAlarmW(wstr ptr wstr wstr ptr long long long long ptr long ptr long ptr ptr ptr) advapi32.AccessCheckByTypeResultListAndAuditAlarmW
+@ stdcall AddAccessAllowedAce(ptr long long ptr) advapi32.AddAccessAllowedAce
+@ stdcall AddAccessAllowedAceEx(ptr long long long ptr) advapi32.AddAccessAllowedAceEx
+@ stdcall AddAccessAllowedObjectAce(ptr long long long ptr ptr ptr) advapi32.AddAccessAllowedObjectAce
+@ stdcall AddAccessDeniedAce(ptr long long ptr) advapi32.AddAccessDeniedAce
+@ stdcall AddAccessDeniedAceEx(ptr long long long ptr) advapi32.AddAccessDeniedAceEx
+@ stdcall AddAccessDeniedObjectAce(ptr long long long ptr ptr ptr) advapi32.AddAccessDeniedObjectAce
+@ stdcall AddAce(ptr long long ptr long) advapi32.AddAce
+@ stdcall AddAuditAccessAce(ptr long long ptr long long) advapi32.AddAuditAccessAce
+@ stdcall AddAuditAccessAceEx(ptr long long long ptr long long) advapi32.AddAuditAccessAceEx
+@ stdcall AddAuditAccessObjectAce(ptr long long long ptr ptr ptr long long) advapi32.AddAuditAccessObjectAce
 @ stdcall AddMandatoryAce(ptr long long long ptr)
-@ stdcall AdjustTokenGroups(long long ptr long ptr ptr) advapibase.AdjustTokenGroups
-@ stdcall AdjustTokenPrivileges(long long ptr long ptr ptr) advapibase.AdjustTokenPrivileges
-@ stdcall AllocateAndInitializeSid(ptr long long long long long long long long long ptr) advapibase.AllocateAndInitializeSid
-@ stdcall AllocateLocallyUniqueId(ptr) advapibase.AllocateLocallyUniqueId
-@ stdcall AreAllAccessesGranted(long long) advapibase.AreAllAccessesGranted
-@ stdcall AreAnyAccessesGranted(long long) advapibase.AreAnyAccessesGranted
-@ stdcall CheckTokenMembership(long ptr ptr) advapibase.CheckTokenMembership
-@ stdcall ConvertToAutoInheritPrivateObjectSecurity(ptr ptr ptr ptr long ptr) advapibase.ConvertToAutoInheritPrivateObjectSecurity
-@ stdcall CopySid(long ptr ptr) advapibase.CopySid
-@ stdcall CreatePrivateObjectSecurity(ptr ptr ptr long long ptr) advapibase.CreatePrivateObjectSecurity
-@ stdcall CreatePrivateObjectSecurityEx(ptr ptr ptr ptr long long long ptr) advapibase.CreatePrivateObjectSecurityEx
-@ stdcall CreatePrivateObjectSecurityWithMultipleInheritance(ptr ptr ptr ptr long long long long ptr) advapibase.CreatePrivateObjectSecurityWithMultipleInheritance
-@ stdcall CreateRestrictedToken(long long long ptr long ptr long ptr ptr) advapibase.CreateRestrictedToken
-@ stdcall CreateProcessAsUserA(long str str ptr ptr long long ptr str ptr ptr) advapibase.CreateProcessAsUserA
-@ stdcall CreateProcessAsUserW(long wstr wstr ptr ptr long long ptr wstr ptr ptr) advapibase.CreateProcessAsUserW
-@ stdcall CreateWellKnownSid(long ptr ptr ptr) advapibase.CreateWellKnownSid
-@ stdcall DeleteAce(ptr long) advapibase.DeleteAce
-@ stdcall DestroyPrivateObjectSecurity(ptr) advapibase.DestroyPrivateObjectSecurity
-@ stdcall DuplicateToken(long long ptr) advapibase.DuplicateToken
-@ stdcall DuplicateTokenEx(long long ptr long long ptr) advapibase.DuplicateTokenEx
-@ stdcall EqualPrefixSid(ptr ptr) advapibase.EqualPrefixSid
-@ stdcall EqualSid(ptr ptr) advapibase.EqualSid
+@ stdcall AdjustTokenGroups(long long ptr long ptr ptr) advapi32.AdjustTokenGroups
+@ stdcall AdjustTokenPrivileges(long long ptr long ptr ptr) advapi32.AdjustTokenPrivileges
+@ stdcall AllocateAndInitializeSid(ptr long long long long long long long long long ptr) advapi32.AllocateAndInitializeSid
+@ stdcall AllocateLocallyUniqueId(ptr) advapi32.AllocateLocallyUniqueId
+@ stdcall AreAllAccessesGranted(long long) advapi32.AreAllAccessesGranted
+@ stdcall AreAnyAccessesGranted(long long) advapi32.AreAnyAccessesGranted
+@ stdcall CheckTokenMembership(long ptr ptr) advapi32.CheckTokenMembership
+@ stdcall ConvertToAutoInheritPrivateObjectSecurity(ptr ptr ptr ptr long ptr) advapi32.ConvertToAutoInheritPrivateObjectSecurity
+@ stdcall CopySid(long ptr ptr) advapi32.CopySid
+@ stdcall CreatePrivateObjectSecurity(ptr ptr ptr long long ptr) advapi32.CreatePrivateObjectSecurity
+@ stdcall CreatePrivateObjectSecurityEx(ptr ptr ptr ptr long long long ptr) advapi32.CreatePrivateObjectSecurityEx
+@ stdcall CreatePrivateObjectSecurityWithMultipleInheritance(ptr ptr ptr ptr long long long long ptr) advapi32.CreatePrivateObjectSecurityWithMultipleInheritance
+@ stdcall CreateRestrictedToken(long long long ptr long ptr long ptr ptr) advapi32.CreateRestrictedToken
+@ stdcall CreateProcessAsUserA(long str str ptr ptr long long ptr str ptr ptr) advapi32.CreateProcessAsUserA
+@ stdcall CreateProcessAsUserW(long wstr wstr ptr ptr long long ptr wstr ptr ptr) advapi32.CreateProcessAsUserW
+@ stdcall CreateWellKnownSid(long ptr ptr ptr) advapi32.CreateWellKnownSid
+@ stdcall DeleteAce(ptr long) advapi32.DeleteAce
+@ stdcall DestroyPrivateObjectSecurity(ptr) advapi32.DestroyPrivateObjectSecurity
+@ stdcall DuplicateToken(long long ptr) advapi32.DuplicateToken
+@ stdcall DuplicateTokenEx(long long ptr long long ptr) advapi32.DuplicateTokenEx
+@ stdcall EqualPrefixSid(ptr ptr) advapi32.EqualPrefixSid
+@ stdcall EqualSid(ptr ptr) advapi32.EqualSid
 @ stdcall EventActivityIdControl(long ptr) ntext.EtwEventActivityIdControl
 @ stdcall EventEnabled(int64 ptr) ntext.EtwEventEnabled
 @ stdcall EventProviderEnabled(int64 long int64) ntext.EtwEventProviderEnabled
@@ -1530,57 +1535,57 @@
 @ stdcall EventWrite(int64 ptr long ptr) ntext.EtwEventWrite
 @ stdcall EventWriteString(int64 long int64 ptr) ntext.EtwEventWriteString
 @ stdcall EventWriteTransfer(int64 ptr ptr ptr long ptr) ntext.EtwEventWriteTransfer
-@ stdcall FindFirstFreeAce(ptr ptr) advapibase.FindFirstFreeAce
-@ stdcall FreeSid(ptr) advapibase.FreeSid
-@ stdcall GetAce(ptr long ptr) advapibase.GetAce
-@ stdcall GetAclInformation(ptr ptr long long) advapibase.GetAclInformation
-@ stdcall GetFileSecurityA(str long ptr long ptr) advapibase.GetFileSecurityA
-@ stdcall GetFileSecurityW(wstr long ptr long ptr) advapibase.GetFileSecurityW
-@ stdcall GetLengthSid(ptr) advapibase.GetLengthSid
-@ stdcall GetPrivateObjectSecurity(ptr long ptr long ptr) advapibase.GetPrivateObjectSecurity
-@ stdcall GetSecurityDescriptorControl(ptr ptr ptr) advapibase.GetSecurityDescriptorControl
-@ stdcall GetSecurityDescriptorDacl(ptr ptr ptr ptr) advapibase.GetSecurityDescriptorDacl
+@ stdcall FindFirstFreeAce(ptr ptr) advapi32.FindFirstFreeAce
+@ stdcall FreeSid(ptr) advapi32.FreeSid
+@ stdcall GetAce(ptr long ptr) advapi32.GetAce
+@ stdcall GetAclInformation(ptr ptr long long) advapi32.GetAclInformation
+@ stdcall GetFileSecurityA(str long ptr long ptr) advapi32.GetFileSecurityA
+@ stdcall GetFileSecurityW(wstr long ptr long ptr) advapi32.GetFileSecurityW
+@ stdcall GetLengthSid(ptr) advapi32.GetLengthSid
+@ stdcall GetPrivateObjectSecurity(ptr long ptr long ptr) advapi32.GetPrivateObjectSecurity
+@ stdcall GetSecurityDescriptorControl(ptr ptr ptr) advapi32.GetSecurityDescriptorControl
+@ stdcall GetSecurityDescriptorDacl(ptr ptr ptr ptr) advapi32.GetSecurityDescriptorDacl
 @ stdcall GetSecurityDescriptorLength(ptr) ntext.RtlLengthSecurityDescriptor
-@ stdcall GetSecurityDescriptorOwner(ptr ptr ptr) advapibase.GetSecurityDescriptorOwner
-@ stdcall GetSecurityDescriptorSacl(ptr ptr ptr ptr) advapibase.GetSecurityDescriptorSacl
-@ stdcall GetSidIdentifierAuthority(ptr) advapibase.GetSidIdentifierAuthority
-@ stdcall GetSidLengthRequired(long) advapibase.GetSidLengthRequired
-@ stdcall GetSidSubAuthority(ptr long) advapibase.GetSidSubAuthority
-@ stdcall GetSidSubAuthorityCount(ptr) advapibase.GetSidSubAuthorityCount
-@ stdcall GetTokenInformation(long long ptr long ptr) advapibase.GetTokenInformation
-@ stdcall GetTraceEnableFlags(int64) advapibase.GetTraceEnableFlags
-@ stdcall GetTraceEnableLevel(int64) advapibase.GetTraceEnableLevel
-@ stdcall -ret64 GetTraceLoggerHandle(ptr) advapibase.GetTraceLoggerHandle
-@ stdcall GetWindowsAccountDomainSid(ptr ptr ptr) advapibase.GetWindowsAccountDomainSid
-@ stdcall ImpersonateAnonymousToken(long) advapibase.ImpersonateAnonymousToken
-@ stdcall ImpersonateLoggedOnUser(long) advapibase.ImpersonateLoggedOnUser
-@ stdcall ImpersonateNamedPipeClient(long) advapibase.ImpersonateNamedPipeClient
-@ stdcall ImpersonateSelf(long) advapibase.ImpersonateSelf
-@ stdcall InitializeAcl(ptr long long) advapibase.InitializeAcl
-@ stdcall InitializeSid(ptr ptr long) advapibase.InitializeSid
-@ stdcall IsTokenRestricted(long) advapibase.IsTokenRestricted
-@ stdcall IsValidAcl(ptr) advapibase.IsValidAcl
-@ stdcall InitializeSecurityDescriptor(ptr long) advapibase.InitializeSecurityDescriptor
-@ stdcall IsWellKnownSid(ptr long) advapibase.IsWellKnownSid
-@ stdcall IsValidSecurityDescriptor(ptr) advapibase.IsValidSecurityDescriptor
-@ stdcall IsValidSid(ptr) advapibase.IsValidSid
-@ stdcall MakeAbsoluteSD(ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr) advapibase.MakeAbsoluteSD
-@ stdcall MakeSelfRelativeSD(ptr ptr ptr) advapibase.MakeSelfRelativeSD
-@ stdcall MapGenericMask(ptr ptr) advapibase.MapGenericMask
-@ stdcall ObjectCloseAuditAlarmW(wstr ptr long) advapibase.ObjectCloseAuditAlarmW
-@ stdcall ObjectDeleteAuditAlarmW(wstr ptr long) advapibase.ObjectDeleteAuditAlarmW
-@ stdcall ObjectOpenAuditAlarmW(wstr ptr wstr wstr ptr long long long ptr long long ptr) advapibase.ObjectOpenAuditAlarmW
-@ stdcall ObjectPrivilegeAuditAlarmW(wstr ptr long long ptr long) advapibase.ObjectPrivilegeAuditAlarmW
-@ stdcall PrivilegeCheck(ptr ptr ptr) advapibase.PrivilegeCheck
-@ stdcall PrivilegedServiceAuditAlarmW(wstr wstr long ptr long) advapibase.PrivilegedServiceAuditAlarmW
-@ stdcall OpenProcessToken(ptr long ptr) advapibase.OpenProcessToken
-@ stdcall OpenThreadToken(ptr long long ptr) advapibase.OpenThreadToken
-@ stdcall RegCloseKey(ptr) advapibase.RegCloseKey 
+@ stdcall GetSecurityDescriptorOwner(ptr ptr ptr) advapi32.GetSecurityDescriptorOwner
+@ stdcall GetSecurityDescriptorSacl(ptr ptr ptr ptr) advapi32.GetSecurityDescriptorSacl
+@ stdcall GetSidIdentifierAuthority(ptr) advapi32.GetSidIdentifierAuthority
+@ stdcall GetSidLengthRequired(long) advapi32.GetSidLengthRequired
+@ stdcall GetSidSubAuthority(ptr long) advapi32.GetSidSubAuthority
+@ stdcall GetSidSubAuthorityCount(ptr) advapi32.GetSidSubAuthorityCount
+@ stdcall GetTokenInformation(long long ptr long ptr) advapi32.GetTokenInformation
+@ stdcall GetTraceEnableFlags(int64) advapi32.GetTraceEnableFlags
+@ stdcall GetTraceEnableLevel(int64) advapi32.GetTraceEnableLevel
+@ stdcall -ret64 GetTraceLoggerHandle(ptr) advapi32.GetTraceLoggerHandle
+@ stdcall GetWindowsAccountDomainSid(ptr ptr ptr) advapi32.GetWindowsAccountDomainSid
+@ stdcall ImpersonateAnonymousToken(long) advapi32.ImpersonateAnonymousToken
+@ stdcall ImpersonateLoggedOnUser(long) advapi32.ImpersonateLoggedOnUser
+@ stdcall ImpersonateNamedPipeClient(long) advapi32.ImpersonateNamedPipeClient
+@ stdcall ImpersonateSelf(long) advapi32.ImpersonateSelf
+@ stdcall InitializeAcl(ptr long long) advapi32.InitializeAcl
+@ stdcall InitializeSid(ptr ptr long) advapi32.InitializeSid
+@ stdcall IsTokenRestricted(long) advapi32.IsTokenRestricted
+@ stdcall IsValidAcl(ptr) advapi32.IsValidAcl
+@ stdcall InitializeSecurityDescriptor(ptr long) advapi32.InitializeSecurityDescriptor
+@ stdcall IsWellKnownSid(ptr long) advapi32.IsWellKnownSid
+@ stdcall IsValidSecurityDescriptor(ptr) advapi32.IsValidSecurityDescriptor
+@ stdcall IsValidSid(ptr) advapi32.IsValidSid
+@ stdcall MakeAbsoluteSD(ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr) advapi32.MakeAbsoluteSD
+@ stdcall MakeSelfRelativeSD(ptr ptr ptr) advapi32.MakeSelfRelativeSD
+@ stdcall MapGenericMask(ptr ptr) advapi32.MapGenericMask
+@ stdcall ObjectCloseAuditAlarmW(wstr ptr long) advapi32.ObjectCloseAuditAlarmW
+@ stdcall ObjectDeleteAuditAlarmW(wstr ptr long) advapi32.ObjectDeleteAuditAlarmW
+@ stdcall ObjectOpenAuditAlarmW(wstr ptr wstr wstr ptr long long long ptr long long ptr) advapi32.ObjectOpenAuditAlarmW
+@ stdcall ObjectPrivilegeAuditAlarmW(wstr ptr long long ptr long) advapi32.ObjectPrivilegeAuditAlarmW
+@ stdcall PrivilegeCheck(ptr ptr ptr) advapi32.PrivilegeCheck
+@ stdcall PrivilegedServiceAuditAlarmW(wstr wstr long ptr long) advapi32.PrivilegedServiceAuditAlarmW
+@ stdcall OpenProcessToken(ptr long ptr) advapi32.OpenProcessToken
+@ stdcall OpenThreadToken(ptr long long ptr) advapi32.OpenThreadToken
+@ stdcall RegCloseKey(ptr) advapi32.RegCloseKey 
 @ stdcall RegCopyTreeW(ptr str ptr)
 @ stdcall RegCreateKeyExA(long str long ptr long long ptr ptr ptr)
 @ stdcall RegCreateKeyExW(long wstr long ptr long long ptr ptr ptr)
 @ stdcall RegDeleteKeyValueA(long str str)
-@ stdcall RegDeleteKeyValueW(long wstr wstr) advapibase.RegDeleteKeyValueW
+@ stdcall RegDeleteKeyValueW(long wstr wstr) advapi32.RegDeleteKeyValueW
 @ stdcall RegDeleteKeyExA(long str long long) 
 @ stdcall RegDeleteKeyExW(long wstr long long) 
 @ stdcall RegDeleteTreeA(long str)
@@ -1592,55 +1597,55 @@
 @ stdcall RegEnumKeyExW(long long ptr ptr ptr ptr ptr ptr)
 @ stdcall RegEnumValueA(long long ptr ptr ptr ptr ptr ptr)
 @ stdcall RegEnumValueW(long long ptr ptr ptr ptr ptr ptr)
-@ stdcall RegFlushKey(long) advapibase.RegFlushKey 
-@ stdcall RegGetKeySecurity(long long ptr ptr) advapibase.RegGetKeySecurity 
-@ stdcall RegGetValueA(long str str long ptr ptr ptr) advapibase.RegGetValueA 
+@ stdcall RegFlushKey(long) advapi32.RegFlushKey 
+@ stdcall RegGetKeySecurity(long long ptr ptr) advapi32.RegGetKeySecurity 
+@ stdcall RegGetValueA(long str str long ptr ptr ptr) advapi32.RegGetValueA 
 @ stdcall RegGetValueW(long wstr wstr long ptr ptr ptr) advapi32.RegGetValueW
 @ stdcall RegLoadAppKeyA(str ptr long long long)
 @ stdcall RegLoadAppKeyW(wstr ptr long long long)
-@ stdcall RegLoadKeyA(long str str) advapibase.RegLoadKeyA 
-@ stdcall RegLoadKeyW(long wstr wstr) advapibase.RegLoadKeyW 
+@ stdcall RegLoadKeyA(long str str) advapi32.RegLoadKeyA 
+@ stdcall RegLoadKeyW(long wstr wstr) advapi32.RegLoadKeyW 
 @ stdcall RegLoadMUIStringA(long str str long ptr long str)
 @ stdcall RegLoadMUIStringW(long wstr wstr long ptr long wstr)
-@ stdcall RegNotifyChangeKeyValue(long long long long long) advapibase.RegNotifyChangeKeyValue 
-@ stdcall RegOpenCurrentUser(long ptr) advapibase.RegOpenCurrentUser 
+@ stdcall RegNotifyChangeKeyValue(long long long long long) advapi32.RegNotifyChangeKeyValue 
+@ stdcall RegOpenCurrentUser(long ptr) advapi32.RegOpenCurrentUser 
 @ stdcall RegOpenKeyExA(long str long long ptr)
 @ stdcall RegOpenKeyExW(long wstr long long ptr)
-@ stdcall RegOpenUserClassesRoot(ptr long long ptr) advapibase.RegOpenUserClassesRoot 
+@ stdcall RegOpenUserClassesRoot(ptr long long ptr) advapi32.RegOpenUserClassesRoot 
 @ stdcall RegQueryInfoKeyA(long ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall RegQueryInfoKeyW(long ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall RegQueryValueExA(long str ptr ptr ptr ptr)
 @ stdcall RegQueryValueExW(long wstr ptr ptr ptr ptr)
-@ stdcall RegRestoreKeyA(long str long) advapibase.RegRestoreKeyA 
-@ stdcall RegRestoreKeyW(long wstr long) advapibase.RegRestoreKeyW 
-@ stdcall RegSaveKeyExA(ptr str ptr long) advapibase.RegSaveKeyExA 
-@ stdcall RegSaveKeyExW(ptr str ptr long) advapibase.RegSaveKeyExW 
-@ stdcall RegSetKeySecurity(long long ptr) advapibase.RegSetKeySecurity 
+@ stdcall RegRestoreKeyA(long str long) advapi32.RegRestoreKeyA 
+@ stdcall RegRestoreKeyW(long wstr long) advapi32.RegRestoreKeyW 
+@ stdcall RegSaveKeyExA(ptr str ptr long) advapi32.RegSaveKeyExA 
+@ stdcall RegSaveKeyExW(ptr str ptr long) advapi32.RegSaveKeyExW 
+@ stdcall RegSetKeySecurity(long long ptr) advapi32.RegSetKeySecurity 
 @ stdcall RegSetKeyValueA(long str str long ptr long)
 @ stdcall RegSetKeyValueW(long wstr wstr long ptr long)
-@ stdcall RegSetValueExA(long str long long ptr long) advapibase.RegSetValueExA ;Need use native Windows RegSetValueExA from advapi32. Reactos and wine's version may corrupt and cause error on .Net Framework 4.5.1+. Error on .Net Framework: Unhandled Exception: System.AccessViolationException: Attempted to read or write protected memory. This is often an indication that other memory is corrupt.at System.AddIn.Hosting.Program.Main(String[] args)
-@ stdcall RegSetValueExW(long wstr long long ptr long) advapibase.RegSetValueExW
-@ stdcall RegUnLoadKeyA(long str) advapibase.RegUnLoadKeyA 
-@ stdcall RegUnLoadKeyW(long wstr) advapibase.RegUnLoadKeyW
-@ stdcall RevertToSelf() advapibase.RevertToSelf
-@ stdcall RegisterTraceGuidsW(ptr ptr ptr long ptr wstr wstr ptr) advapibase.RegisterTraceGuidsW
-@ stdcall SetAclInformation(ptr ptr long long) advapibase.SetAclInformation
-@ stdcall SetFileSecurityA(str long ptr) advapibase.SetFileSecurityA
-@ stdcall SetFileSecurityW(wstr long ptr) advapibase.SetFileSecurityW
-@ stdcall SetKernelObjectSecurity(long long ptr) advapibase.SetKernelObjectSecurity
-@ stdcall SetPrivateObjectSecurity(long ptr ptr ptr long) advapibase.SetPrivateObjectSecurity
-@ stdcall SetSecurityDescriptorControl(ptr long long) advapibase.SetSecurityDescriptorControl
-@ stdcall SetSecurityDescriptorDacl(ptr long ptr long) advapibase.SetSecurityDescriptorDacl
-@ stdcall SetSecurityDescriptorGroup(ptr ptr long) advapibase.SetSecurityDescriptorGroup
-@ stdcall SetSecurityDescriptorOwner(ptr ptr long) advapibase.SetSecurityDescriptorOwner
-@ stdcall SetSecurityDescriptorSacl(ptr long ptr long) advapibase.SetSecurityDescriptorSacl
-@ stdcall SetThreadToken(ptr ptr) advapibase.SetThreadToken
-@ stdcall SetTokenInformation(long long ptr long) advapibase.SetTokenInformation
+@ stdcall RegSetValueExA(long str long long ptr long) advapi32.RegSetValueExA ;Need use native Windows RegSetValueExA from advapi32. Reactos and wine's version may corrupt and cause error on .Net Framework 4.5.1+. Error on .Net Framework: Unhandled Exception: System.AccessViolationException: Attempted to read or write protected memory. This is often an indication that other memory is corrupt.at System.AddIn.Hosting.Program.Main(String[] args)
+@ stdcall RegSetValueExW(long wstr long long ptr long) advapi32.RegSetValueExW
+@ stdcall RegUnLoadKeyA(long str) advapi32.RegUnLoadKeyA 
+@ stdcall RegUnLoadKeyW(long wstr) advapi32.RegUnLoadKeyW
+@ stdcall RevertToSelf() advapi32.RevertToSelf
+@ stdcall RegisterTraceGuidsW(ptr ptr ptr long ptr wstr wstr ptr) advapi32.RegisterTraceGuidsW
+@ stdcall SetAclInformation(ptr ptr long long) advapi32.SetAclInformation
+@ stdcall SetFileSecurityA(str long ptr) advapi32.SetFileSecurityA
+@ stdcall SetFileSecurityW(wstr long ptr) advapi32.SetFileSecurityW
+@ stdcall SetKernelObjectSecurity(long long ptr) advapi32.SetKernelObjectSecurity
+@ stdcall SetPrivateObjectSecurity(long ptr ptr ptr long) advapi32.SetPrivateObjectSecurity
+@ stdcall SetSecurityDescriptorControl(ptr long long) advapi32.SetSecurityDescriptorControl
+@ stdcall SetSecurityDescriptorDacl(ptr long ptr long) advapi32.SetSecurityDescriptorDacl
+@ stdcall SetSecurityDescriptorGroup(ptr ptr long) advapi32.SetSecurityDescriptorGroup
+@ stdcall SetSecurityDescriptorOwner(ptr ptr long) advapi32.SetSecurityDescriptorOwner
+@ stdcall SetSecurityDescriptorSacl(ptr long ptr long) advapi32.SetSecurityDescriptorSacl
+@ stdcall SetThreadToken(ptr ptr) advapi32.SetThreadToken
+@ stdcall SetTokenInformation(long long ptr long) advapi32.SetTokenInformation
 @ stdcall SystemFunction036(ptr long) 
-@ stdcall TraceEvent(int64 ptr) advapibase.TraceEvent
-@ varargs TraceMessage(int64 long ptr long) advapibase.TraceMessage
-@ stdcall TraceMessageVa(int64 long ptr long ptr) advapibase.TraceMessageVa
-@ stdcall UnregisterTraceGuids(int64) advapibase.UnregisterTraceGuids
+@ stdcall TraceEvent(int64 ptr) advapi32.TraceEvent
+@ varargs TraceMessage(int64 long ptr long) advapi32.TraceMessage
+@ stdcall TraceMessageVa(int64 long ptr long ptr) advapi32.TraceMessageVa
+@ stdcall UnregisterTraceGuids(int64) advapi32.UnregisterTraceGuids
 
 #Import from Version
 @ stdcall VerQueryValueA(ptr str ptr ptr)

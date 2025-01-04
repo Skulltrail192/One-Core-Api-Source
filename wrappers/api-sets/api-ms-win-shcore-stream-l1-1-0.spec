@@ -1,10 +1,10 @@
-@ stub IStream_Copy
+@ stdcall IStream_Copy(ptr ptr long) shcore.IStream_Copy
 @ stdcall IStream_Read(ptr ptr long) shcore.IStream_Read
-@ stub IStream_ReadStr
+@ stdcall IStream_ReadStr(ptr wstr) shcore.IStream_ReadStr
 @ stdcall IStream_Reset(ptr) shcore.IStream_Reset
 @ stdcall IStream_Size(ptr ptr) shcore.IStream_Size
 @ stdcall IStream_Write(ptr ptr long) shcore.IStream_Write
-@ stub IStream_WriteStr
+@ stdcall IStream_WriteStr(ptr wstr) shcore.IStream_WriteStr
 @ stdcall SHCreateMemStream(ptr long) shcore.SHCreateMemStream
 @ stdcall SHCreateStreamOnFileA(str long ptr) shcore.SHCreateStreamOnFileA
 @ stdcall SHCreateStreamOnFileEx(wstr long long long ptr ptr) shcore.SHCreateStreamOnFileEx

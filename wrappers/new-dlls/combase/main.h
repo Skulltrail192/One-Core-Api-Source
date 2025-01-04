@@ -31,6 +31,7 @@
 #include "wine/debug.h"
 #include "wine/exception.h"
 #include "servprov.h"
+#include "combaseapi.h"
 
 #define APTTYPEQUALIFIER_APPLICATION_STA 6
 #define APTTYPEQUALIFIER_RESERVED_1 7

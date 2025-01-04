@@ -37,6 +37,7 @@ list(APPEND SOURCE
 	rtl/extfeatures.c
 	rtl/exception.c
 	rtl/heap.c
+	rtl/hooks.c
 	rtl/imagedir.c
 	rtl/interlck.c
 	rtl/ldrrsrc.c
@@ -82,7 +83,7 @@ if(MSVC)
     add_target_link_flags(ntext "/RELEASE")
 endif()
 
-target_link_libraries(ntext libcntpr uuid ${PSEH_LIB})
+target_link_libraries(ntext uuid ${PSEH_LIB})
 
 add_importlibs(ntext ntdll)
 

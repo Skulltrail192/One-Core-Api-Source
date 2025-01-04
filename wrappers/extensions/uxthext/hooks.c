@@ -41,7 +41,9 @@ OpenThemeDataNative(
   LPCWSTR pszClassList
 );
 
-HTHEME WINAPI OpenThemeDataInternal(
+HTHEME 
+WINAPI 
+OpenThemeDataInternal(
   HWND    hwnd,
   LPCWSTR pszClassList
 )

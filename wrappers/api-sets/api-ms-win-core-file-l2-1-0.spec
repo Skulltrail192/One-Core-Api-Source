@@ -1,4 +1,4 @@
-@ stub CopyFile2  ;(wstr wstr ptr) kernel32.CopyFile2
+@ stdcall CopyFile2(wstr wstr ptr) kernelex.CopyFile2
 @ stdcall CopyFileExW(wstr wstr ptr ptr ptr long) kernel32.CopyFileExW
 @ stdcall CreateDirectoryExW(wstr wstr ptr) kernel32.CreateDirectoryExW
 @ stdcall CreateHardLinkW(wstr wstr ptr) kernel32.CreateHardLinkW

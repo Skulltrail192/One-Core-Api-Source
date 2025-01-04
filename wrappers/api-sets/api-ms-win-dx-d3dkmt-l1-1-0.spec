@@ -1,60 +1,60 @@
-@ stub D3DKMTAcquireKeyedMutex
+@ stdcall D3DKMTAcquireKeyedMutex(ptr) d3dkmt.D3DKMTAcquireKeyedMutex
 @ stub D3DKMTAcquireKeyedMutex2
 @ stub D3DKMTCacheHybridQueryValue
 @ stub D3DKMTCheckExclusiveOwnership
-@ stub D3DKMTCheckMonitorPowerState
+@ stdcall D3DKMTCheckMonitorPowerState(ptr) gdi32.D3DKMTCheckMonitorPowerState
 @ stub D3DKMTCheckOcclusion
-@ stub D3DKMTCheckSharedResourceAccess
-@ stub D3DKMTCheckVidPnExclusiveOwnership
-@ stub D3DKMTCloseAdapter
-@ stub D3DKMTConfigureSharedResource
-@ stub D3DKMTCreateAllocation
-@ stub D3DKMTCreateAllocation2
-@ stub D3DKMTCreateContext
+@ stdcall D3DKMTCheckSharedResourceAccess(ptr) gdi32.D3DKMTCheckSharedResourceAccess
+@ stdcall D3DKMTCheckVidPnExclusiveOwnership(ptr) gdi32.D3DKMTCheckVidPnExclusiveOwnership
+@ stdcall D3DKMTCloseAdapter(ptr) d3dkmt.D3DKMTCloseAdapter
+@ stdcall D3DKMTConfigureSharedResource(ptr) d3dkmt.D3DKMTConfigureSharedResource
+@ stdcall D3DKMTCreateAllocation(ptr) d3dkmt.D3DKMTCreateAllocation
+@ stdcall D3DKMTCreateAllocation2(ptr) d3dkmt.D3DKMTCreateAllocation2
+@ stdcall D3DKMTCreateContext(ptr) d3dkmt.D3DKMTCreateContext
 @ stdcall D3DKMTCreateDCFromMemory(ptr) gdi32.D3DKMTCreateDCFromMemory
-@ stub D3DKMTCreateDevice
+@ stdcall D3DKMTCreateDevice(ptr) d3dkmt.D3DKMTCreateDevice
 @ stub D3DKMTCreateKeyedMutex
 @ stub D3DKMTCreateKeyedMutex2
 @ stub D3DKMTCreateOutputDupl
 @ stub D3DKMTCreateOverlay
-@ stub D3DKMTCreateSynchronizationObject
-@ stub D3DKMTCreateSynchronizationObject2
-@ stub D3DKMTDestroyAllocation
-@ stub D3DKMTDestroyContext
+@ stdcall D3DKMTCreateSynchronizationObject(ptr) d3dkmt.D3DKMTCreateSynchronizationObject
+@ stdcall D3DKMTCreateSynchronizationObject2(ptr) d3dkmt.D3DKMTCreateSynchronizationObject2
+@ stdcall D3DKMTDestroyAllocation(ptr) d3dkmt.D3DKMTDestroyAllocation
+@ stdcall D3DKMTDestroyContext(ptr) d3dkmt.D3DKMTDestroyContext
 @ stdcall D3DKMTDestroyDCFromMemory(ptr) gdi32.D3DKMTDestroyDCFromMemory
-@ stub D3DKMTDestroyDevice
-@ stub D3DKMTDestroyKeyedMutex
+@ stdcall D3DKMTDestroyDevice(ptr) d3dkmt.D3DKMTDestroyDevice
+@ stdcall D3DKMTDestroyKeyedMutex(ptr) d3dkmt.D3DKMTDestroyKeyedMutex
 @ stub D3DKMTDestroyOutputDupl
 @ stub D3DKMTDestroyOverlay
-@ stub D3DKMTDestroySynchronizationObject
+@ stdcall D3DKMTDestroySynchronizationObject(ptr) d3dkmt.D3DKMTDestroySynchronizationObject
 @ stdcall D3DKMTEscape(ptr) gdi32.D3DKMTEscape
 @ stub D3DKMTFlipOverlay
 @ stub D3DKMTGetCachedHybridQueryValue
-@ stub D3DKMTGetContextSchedulingPriority
-@ stub D3DKMTGetDeviceState
-@ stub D3DKMTGetDisplayModeList
-@ stub D3DKMTGetMultisampleMethodList
+@ stdcall D3DKMTGetContextSchedulingPriority(ptr) d3dkmt.D3DKMTGetContextSchedulingPriority
+@ stdcall D3DKMTGetDeviceState(ptr) d3dkmt.D3DKMTGetDeviceState
+@ stdcall D3DKMTGetDisplayModeList(ptr) d3dkmt.D3DKMTGetDisplayModeList
+@ stdcall D3DKMTGetMultisampleMethodList(ptr) d3dkmt.D3DKMTGetMultisampleMethodList
 @ stub D3DKMTGetOverlayState
 @ stub D3DKMTGetPresentHistory
 @ stub D3DKMTGetPresentQueueEvent
 @ stub D3DKMTGetProcessSchedulingPriorityClass
-@ stub D3DKMTGetRuntimeData
+@ stdcall D3DKMTGetRuntimeData(ptr) d3dkmt.D3DKMTGetRuntimeData
 @ stub D3DKMTGetScanLine
-@ stub D3DKMTGetSharedPrimaryHandle
+@ stdcall D3DKMTGetSharedPrimaryHandle(ptr) d3dkmt.D3DKMTGetSharedPrimaryHandle
 @ stub D3DKMTGetSharedResourceAdapterLuid
 @ stub D3DKMTInvalidateActiveVidPn
-@ stub D3DKMTLock
+@ stdcall D3DKMTLock(ptr) d3dkmt.D3DKMTLock
 @ stub D3DKMTOfferAllocations
-@ stub D3DKMTOpenAdapterFromDeviceName
-@ stub D3DKMTOpenAdapterFromGdiDisplayName
+@ stdcall D3DKMTOpenAdapterFromDeviceName(ptr) d3dkmt.D3DKMTOpenAdapterFromDeviceName
+@ stdcall D3DKMTOpenAdapterFromGdiDisplayName(ptr) d3dkmt.D3DKMTOpenAdapterFromGdiDisplayName
 @ stdcall D3DKMTOpenAdapterFromHdc(ptr) gdi32.D3DKMTOpenAdapterFromHdc
-@ stub D3DKMTOpenKeyedMutex
-@ stub D3DKMTOpenKeyedMutex2
+@ stdcall D3DKMTOpenKeyedMutex(ptr) gdi32.D3DKMTOpenKeyedMutex
+;@ stdcall D3DKMTOpenKeyedMutex2(ptr) gdi32.D3DKMTOpenKeyedMutex2
 @ stub D3DKMTOpenNtHandleFromName
-@ stub D3DKMTOpenResource
-@ stub D3DKMTOpenResource2
+@ stdcall D3DKMTOpenResource(ptr) d3dkmt.D3DKMTOpenResource
+@ stdcall D3DKMTOpenResource2(ptr) d3dkmt.D3DKMTOpenResource2
 @ stub D3DKMTOpenResourceFromNtHandle
-@ stub D3DKMTOpenSynchronizationObject
+@ stdcall D3DKMTOpenSynchronizationObject(ptr) d3dkmt.D3DKMTOpenSynchronizationObject
 @ stub D3DKMTOpenSyncObjectFromNtHandle
 @ stub D3DKMTOutputDuplGetFrameInfo
 @ stub D3DKMTOutputDuplGetMetaData
@@ -62,36 +62,36 @@
 @ stub D3DKMTOutputDuplPresent
 @ stub D3DKMTOutputDuplReleaseFrame
 @ stub D3DKMTPollDisplayChildren
-@ stub D3DKMTPresent
-@ stub D3DKMTQueryAdapterInfo
-@ stub D3DKMTQueryAllocationResidency
+@ stdcall D3DKMTPresent(ptr) d3dkmt.D3DKMTPresent
+@ stdcall D3DKMTQueryAdapterInfo(ptr) d3dkmt.D3DKMTQueryAdapterInfo
+@ stdcall D3DKMTQueryAllocationResidency(ptr) d3dkmt.D3DKMTQueryAllocationResidency
 @ stub D3DKMTQueryRemoteVidPnSourceFromGdiDisplayName
 @ stub D3DKMTQueryResourceInfo
 @ stub D3DKMTQueryResourceInfoFromNtHandle
-@ stub D3DKMTQueryStatistics
+@ stdcall D3DKMTQueryStatistics(ptr) gdi32.D3DKMTQueryStatistics
 @ stub D3DKMTReclaimAllocations
-@ stub D3DKMTReleaseKeyedMutex
+@ stdcall D3DKMTReleaseKeyedMutex(ptr) d3dkmt.D3DKMTReleaseKeyedMutex
 @ stub D3DKMTReleaseKeyedMutex2
 @ stub D3DKMTReleaseProcessVidPnSourceOwners
-@ stub D3DKMTRender
-@ stub D3DKMTSetAllocationPriority
-@ stub D3DKMTSetContextSchedulingPriority
-@ stub D3DKMTSetDisplayMode
-@ stub D3DKMTSetDisplayPrivateDriverFormat
-@ stub D3DKMTSetGammaRamp
-@ stub D3DKMTSetProcessSchedulingPriorityClass
-@ stub D3DKMTSetQueuedLimit
+@ stdcall D3DKMTRender(ptr) d3dkmt.D3DKMTRender
+@ stdcall D3DKMTSetAllocationPriority(ptr) d3dkmt.D3DKMTSetAllocationPriority
+@ stdcall D3DKMTSetContextSchedulingPriority(ptr) d3dkmt.D3DKMTSetContextSchedulingPriority
+@ stdcall D3DKMTSetDisplayMode(ptr) d3dkmt.D3DKMTSetDisplayMode
+@ stdcall D3DKMTSetDisplayPrivateDriverFormat(ptr) d3dkmt.D3DKMTSetDisplayPrivateDriverFormat
+@ stdcall D3DKMTSetGammaRamp(ptr) d3dkmt.D3DKMTSetGammaRamp
+@ stdcall D3DKMTSetProcessSchedulingPriorityClass(long long) gdi32.D3DKMTSetProcessSchedulingPriorityClass
+@ stdcall D3DKMTSetQueuedLimit(ptr) gdi32.D3DKMTSetQueuedLimit
 @ stub D3DKMTSetStereoEnabled
-@ stub D3DKMTSetVidPnSourceOwner
+@ stdcall D3DKMTSetVidPnSourceOwner(ptr) d3dkmt.D3DKMTSetVidPnSourceOwner
 @ stub D3DKMTSharedPrimaryLockNotification
 @ stub D3DKMTSharedPrimaryUnLockNotification
 @ stub D3DKMTShareObjects
-@ stub D3DKMTSignalSynchronizationObject
-@ stub D3DKMTSignalSynchronizationObject2
-@ stub D3DKMTUnlock
+@ stdcall D3DKMTSignalSynchronizationObject(ptr) d3dkmt.D3DKMTSignalSynchronizationObject
+@ stdcall D3DKMTSignalSynchronizationObject2(ptr) d3dkmt.D3DKMTSignalSynchronizationObject2
+@ stdcall D3DKMTUnlock(ptr) d3dkmt.D3DKMTUnlock
 @ stub D3DKMTUpdateOverlay
 @ stub D3DKMTWaitForIdle
-@ stub D3DKMTWaitForSynchronizationObject
-@ stub D3DKMTWaitForSynchronizationObject2
-@ stub D3DKMTWaitForVerticalBlankEvent
+@ stdcall D3DKMTWaitForSynchronizationObject(ptr) d3dkmt.D3DKMTWaitForSynchronizationObject
+@ stdcall D3DKMTWaitForSynchronizationObject2(ptr) d3dkmt.D3DKMTWaitForSynchronizationObject2
+@ stdcall D3DKMTWaitForVerticalBlankEvent(ptr) d3dkmt.D3DKMTWaitForVerticalBlankEvent
 @ stdcall GdiEntry13() gdi32.GdiEntry13

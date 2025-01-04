@@ -1,10 +1,10 @@
-@ stub IStream_Copy ;(ptr ptr long) shlwapi.IStream_Copy
+@ stdcall IStream_Copy(ptr ptr long) shlwapi.IStream_Copy
 @ stdcall IStream_Read(ptr ptr long) shlwapi.IStream_Read
-@ stub IStream_ReadStr ;(ptr wstr) shlwapi.IStream_ReadStr
+@ stdcall IStream_ReadStr(ptr wstr) shlwapi.IStream_ReadStr
 @ stdcall IStream_Reset(ptr) shlwapi.IStream_Reset
 @ stdcall IStream_Size(ptr ptr) shlwapi.IStream_Size
 @ stdcall IStream_Write(ptr ptr long) shlwapi.IStream_Write
-@ stub IStream_WriteStr ;(ptr wstr) shlwapi.IStream_WriteStr
+@ stdcall IStream_WriteStr(ptr wstr) shlwapi.IStream_WriteStr
 @ stdcall IUnknown_AtomicRelease(long) shlwapi.IUnknown_AtomicRelease
 @ stdcall IUnknown_GetSite(ptr ptr ptr) shlwapi.IUnknown_GetSite
 @ stdcall IUnknown_QueryService(ptr ptr ptr ptr) shlwapi.IUnknown_QueryService

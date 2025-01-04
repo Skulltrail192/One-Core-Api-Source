@@ -20,16 +20,20 @@ Revision History:
 
 #include <main.h>
 
+static NTSTATUS NTAPI NtLoadKeyToFixOffice2013Installer(POBJECT_ATTRIBUTES TargetKey, POBJECT_ATTRIBUTES SourceFile) {
+    return NtLoadKey(TargetKey, SourceFile);
+}
 NTSTATUS 
 NTAPI
 NtLoadKeyEx(
-	IN POBJECT_ATTRIBUTES TargetKey,
-	IN POBJECT_ATTRIBUTES SourceFile,
-	IN ULONG Flags,
-	IN HANDLE TrustClassKey
+    IN POBJECT_ATTRIBUTES TargetKey,
+    IN POBJECT_ATTRIBUTES SourceFile,
+    IN ULONG Flags,
+    IN HANDLE TrustClassKey
 ) 
 {
-	return NtLoadKey(TargetKey, SourceFile);
+	DbgPrint("NtOpenKeyEx:: parameters ignored %i , %p\n", Flags, TrustClassKey);
+    return NtLoadKeyToFixOffice2013Installer(TargetKey, SourceFile);
 }
 
 NTSTATUS 
@@ -368,6 +372,13 @@ NtOpenTransaction(
 	return STATUS_NOT_IMPLEMENTED;
 }
 
+static 
+NTSTATUS 
+NTAPI 
+NtOpenKeyToFixOffice2013Installer(PHANDLE retkey, ACCESS_MASK access, const OBJECT_ATTRIBUTES *attr) {
+    return NtOpenKey( retkey, access, attr);
+}
+
 NTSTATUS 
 WINAPI 
 NtOpenKeyEx( 
@@ -377,7 +388,8 @@ NtOpenKeyEx(
 	ULONG options 
 )
 {
-    return NtOpenKey( retkey, access, attr);
+	DbgPrint("NtOpenKeyEx:: parameters ignored %i , %p\n", options, retkey);
+    return NtOpenKeyToFixOffice2013Installer( retkey, access, attr);
 }
 
 /**************************************************************************

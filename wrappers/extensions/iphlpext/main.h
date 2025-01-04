@@ -162,6 +162,20 @@ typedef enum _IPHLPAddrType {
     IPAAddr, IPABcast, IPAMask, IFMtu, IFStatus
 } IPHLPAddrType;
 
+typedef struct _MIB_ANYCASTIPADDRESS_ROW
+{
+    SOCKADDR_INET Address;
+    NET_LUID      InterfaceLuid;
+    NET_IFINDEX   InterfaceIndex;
+    SCOPE_ID      ScopeId;
+} MIB_ANYCASTIPADDRESS_ROW, *PMIB_ANYCASTIPADDRESS_ROW;
+
+typedef struct _MIB_ANYCASTIPADDRESS_TABLE
+{
+    ULONG                    NumEntries;
+    MIB_ANYCASTIPADDRESS_ROW Table[ANY_SIZE];
+} MIB_ANYCASTIPADDRESS_TABLE, *PMIB_ANYCASTIPADDRESS_TABLE;
+
 typedef VOID (WINAPI *PIPINTERFACE_CHANGE_CALLBACK)(PVOID, PMIB_IPINTERFACE_ROW,
                                                           MIB_NOTIFICATION_TYPE);
 														  

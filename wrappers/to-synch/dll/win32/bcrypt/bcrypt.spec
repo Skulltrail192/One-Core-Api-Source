@@ -60,3 +60,6 @@
 
 @ stub BCryptDeriveKeyCapi
 @ stub BCryptDeriveKeyPBKDF2
+
+#For Bcrypt Hook
+@ stdcall -stub BCryptCreateHashNative(ptr ptr ptr long ptr long long)

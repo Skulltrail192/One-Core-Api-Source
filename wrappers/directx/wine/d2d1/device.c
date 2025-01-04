@@ -17,6 +17,7 @@
  */
 
 #include "d2d1_private.h"
+#include <d3dcompiler.h>
 
 WINE_DEFAULT_DEBUG_CHANNEL(d2d);
 
@@ -35,12 +36,10 @@ struct d2d_draw_text_layout_ctx
     D2D1_DRAW_TEXT_OPTIONS options;
 };
 
-static inline struct d2d_device *impl_from_ID2D1Device(ID2D1Device *iface)
+static inline struct d2d_device *impl_from_ID2D1Device(ID2D1Device6 *iface)
 {
-    return CONTAINING_RECORD(iface, struct d2d_device, ID2D1Device_iface);
+    return CONTAINING_RECORD(iface, struct d2d_device, ID2D1Device6_iface);
 }
-
-static struct d2d_device *unsafe_impl_from_ID2D1Device(ID2D1Device *iface);
 
 static ID2D1Brush *d2d_draw_get_text_brush(struct d2d_draw_text_layout_ctx *context, IUnknown *effect)
 {
@@ -81,7 +80,7 @@ static void d2d_size_set(D2D1_SIZE_U *dst, float width, float height)
 
 static BOOL d2d_clip_stack_init(struct d2d_clip_stack *stack)
 {
-    if (!(stack->stack = heap_alloc(INITIAL_CLIP_STACK_SIZE * sizeof(*stack->stack))))
+    if (!(stack->stack = malloc(INITIAL_CLIP_STACK_SIZE * sizeof(*stack->stack))))
         return FALSE;
 
     stack->size = INITIAL_CLIP_STACK_SIZE;
@@ -92,7 +91,7 @@ static BOOL d2d_clip_stack_init(struct d2d_clip_stack *stack)
 
 static void d2d_clip_stack_cleanup(struct d2d_clip_stack *stack)
 {
-    heap_free(stack->stack);
+    free(stack->stack);
 }
 
 static BOOL d2d_clip_stack_push(struct d2d_clip_stack *stack, const D2D1_RECT_F *rect)
@@ -118,15 +117,17 @@ static void d2d_clip_stack_pop(struct d2d_clip_stack *stack)
 }
 
 static void d2d_device_context_draw(struct d2d_device_context *render_target, enum d2d_shape_type shape_type,
-        ID3D10Buffer *ib, unsigned int index_count, ID3D10Buffer *vb, unsigned int vb_stride,
+        ID3D11Buffer *ib, unsigned int index_count, ID3D11Buffer *vb, unsigned int vb_stride,
         struct d2d_brush *brush, struct d2d_brush *opacity_brush)
 {
     struct d2d_shape_resources *shape_resources = &render_target->shape_resources[shape_type];
-    ID3D10Device *device = render_target->d3d_device;
-    D3D10_RECT scissor_rect;
+    ID3DDeviceContextState *prev_state;
+    ID3D11Device1 *device = render_target->d3d_device;
+    ID3D11DeviceContext1 *context;
+    ID3D11Buffer *vs_cb = render_target->vs_cb, *ps_cb = render_target->ps_cb;
+    D3D11_RECT scissor_rect;
     unsigned int offset;
-    D3D10_VIEWPORT vp;
-    HRESULT hr;
+    D3D11_VIEWPORT vp;
 
     vp.TopLeftX = 0;
     vp.TopLeftY = 0;
@@ -135,24 +136,22 @@ static void d2d_device_context_draw(struct d2d_device_context *render_target, en
     vp.MinDepth = 0.0f;
     vp.MaxDepth = 1.0f;
 
-    if (FAILED(hr = render_target->stateblock->lpVtbl->Capture(render_target->stateblock)))
-    {
-        WARN("Failed to capture stateblock, hr %#x.\n", hr);
-        return;
-    }
+    if (render_target->cs)
+        EnterCriticalSection(render_target->cs);
 
-    ID3D10Device_ClearState(device);
+    ID3D11Device1_GetImmediateContext1(device, &context);
+    ID3D11DeviceContext1_SwapDeviceContextState(context, render_target->d3d_state, &prev_state);
 
-    ID3D10Device_IASetInputLayout(device, shape_resources->il);
-    ID3D10Device_IASetPrimitiveTopology(device, D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    ID3D10Device_IASetIndexBuffer(device, ib, DXGI_FORMAT_R16_UINT, 0);
+    ID3D11DeviceContext1_IASetInputLayout(context, shape_resources->il);
+    ID3D11DeviceContext1_IASetPrimitiveTopology(context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    ID3D11DeviceContext1_IASetIndexBuffer(context, ib, DXGI_FORMAT_R16_UINT, 0);
     offset = 0;
-    ID3D10Device_IASetVertexBuffers(device, 0, 1, &vb, &vb_stride, &offset);
-    ID3D10Device_VSSetConstantBuffers(device, 0, 1, &render_target->vs_cb);
-    ID3D10Device_VSSetShader(device, shape_resources->vs);
-    ID3D10Device_PSSetConstantBuffers(device, 0, 1, &render_target->ps_cb);
-    ID3D10Device_PSSetShader(device, render_target->ps);
-    ID3D10Device_RSSetViewports(device, 1, &vp);
+    ID3D11DeviceContext1_IASetVertexBuffers(context, 0, 1, &vb, &vb_stride, &offset);
+    ID3D11DeviceContext1_VSSetConstantBuffers(context, 0, 1, &vs_cb);
+    ID3D11DeviceContext1_VSSetShader(context, shape_resources->vs, NULL, 0);
+    ID3D11DeviceContext1_PSSetConstantBuffers(context, 0, 1, &ps_cb);
+    ID3D11DeviceContext1_PSSetShader(context, render_target->ps, NULL, 0);
+    ID3D11DeviceContext1_RSSetViewports(context, 1, &vp);
     if (render_target->clip_stack.count)
     {
         const D2D1_RECT_F *clip_rect;
@@ -170,24 +169,32 @@ static void d2d_device_context_draw(struct d2d_device_context *render_target, en
         scissor_rect.right = render_target->pixel_size.width;
         scissor_rect.bottom = render_target->pixel_size.height;
     }
-    ID3D10Device_RSSetScissorRects(device, 1, &scissor_rect);
-    ID3D10Device_RSSetState(device, render_target->rs);
-    ID3D10Device_OMSetRenderTargets(device, 1, &render_target->target->rtv, NULL);
+    ID3D11DeviceContext1_RSSetScissorRects(context, 1, &scissor_rect);
+    ID3D11DeviceContext1_RSSetState(context, render_target->rs);
+    ID3D11DeviceContext1_OMSetRenderTargets(context, 1, &render_target->target.bitmap->rtv, NULL);
     if (brush)
     {
-        ID3D10Device_OMSetBlendState(device, render_target->bs, NULL, D3D10_DEFAULT_SAMPLE_MASK);
+        ID3D11DeviceContext1_OMSetBlendState(context, render_target->bs, NULL, D3D11_DEFAULT_SAMPLE_MASK);
         d2d_brush_bind_resources(brush, render_target, 0);
+    }
+    else
+    {
+        ID3D11DeviceContext1_OMSetBlendState(context, NULL, NULL, D3D11_DEFAULT_SAMPLE_MASK);
     }
     if (opacity_brush)
         d2d_brush_bind_resources(opacity_brush, render_target, 1);
 
     if (ib)
-        ID3D10Device_DrawIndexed(device, index_count, 0, 0);
+        ID3D11DeviceContext1_DrawIndexed(context, index_count, 0, 0);
     else
-        ID3D10Device_Draw(device, index_count, 0);
+        ID3D11DeviceContext1_Draw(context, index_count, 0);
 
-    if (FAILED(hr = render_target->stateblock->lpVtbl->Apply(render_target->stateblock)))
-        WARN("Failed to apply stateblock, hr %#x.\n", hr);
+    ID3D11DeviceContext1_SwapDeviceContextState(context, prev_state, NULL);
+    ID3D11DeviceContext1_Release(context);
+    ID3DDeviceContextState_Release(prev_state);
+
+    if (render_target->cs)
+        LeaveCriticalSection(render_target->cs);
 }
 
 static void d2d_device_context_set_error(struct d2d_device_context *context, HRESULT code)
@@ -202,9 +209,9 @@ static inline struct d2d_device_context *impl_from_IUnknown(IUnknown *iface)
     return CONTAINING_RECORD(iface, struct d2d_device_context, IUnknown_iface);
 }
 
-static inline struct d2d_device_context *impl_from_ID2D1DeviceContext(ID2D1DeviceContext *iface)
+static inline struct d2d_device_context *impl_from_ID2D1DeviceContext(ID2D1DeviceContext6 *iface)
 {
-    return CONTAINING_RECORD(iface, struct d2d_device_context, ID2D1DeviceContext_iface);
+    return CONTAINING_RECORD(iface, struct d2d_device_context, ID2D1DeviceContext6_iface);
 }
 
 static HRESULT STDMETHODCALLTYPE d2d_device_context_inner_QueryInterface(IUnknown *iface, REFIID iid, void **out)
@@ -213,13 +220,19 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_inner_QueryInterface(IUnknow
 
     TRACE("iface %p, iid %s, out %p.\n", iface, debugstr_guid(iid), out);
 
-    if (IsEqualGUID(iid, &IID_ID2D1DeviceContext)
+    if (IsEqualGUID(iid, &IID_ID2D1DeviceContext6)
+            || IsEqualGUID(iid, &IID_ID2D1DeviceContext5)
+            || IsEqualGUID(iid, &IID_ID2D1DeviceContext4)
+            || IsEqualGUID(iid, &IID_ID2D1DeviceContext3)
+            || IsEqualGUID(iid, &IID_ID2D1DeviceContext2)
+            || IsEqualGUID(iid, &IID_ID2D1DeviceContext1)
+            || IsEqualGUID(iid, &IID_ID2D1DeviceContext)
             || IsEqualGUID(iid, &IID_ID2D1RenderTarget)
             || IsEqualGUID(iid, &IID_ID2D1Resource)
             || IsEqualGUID(iid, &IID_IUnknown))
     {
-        ID2D1DeviceContext_AddRef(&context->ID2D1DeviceContext_iface);
-        *out = &context->ID2D1DeviceContext_iface;
+        ID2D1DeviceContext6_AddRef(&context->ID2D1DeviceContext6_iface);
+        *out = &context->ID2D1DeviceContext6_iface;
         return S_OK;
     }
     else if (IsEqualGUID(iid, &IID_ID2D1GdiInteropRenderTarget))
@@ -240,7 +253,7 @@ static ULONG STDMETHODCALLTYPE d2d_device_context_inner_AddRef(IUnknown *iface)
     struct d2d_device_context *context = impl_from_IUnknown(iface);
     ULONG refcount = InterlockedIncrement(&context->refcount);
 
-    TRACE("%p increasing refcount to %u.\n", iface, refcount);
+    TRACE("%p increasing refcount to %lu.\n", iface, refcount);
 
     return refcount;
 }
@@ -250,7 +263,7 @@ static ULONG STDMETHODCALLTYPE d2d_device_context_inner_Release(IUnknown *iface)
     struct d2d_device_context *context = impl_from_IUnknown(iface);
     ULONG refcount = InterlockedDecrement(&context->refcount);
 
-    TRACE("%p decreasing refcount to %u.\n", iface, refcount);
+    TRACE("%p decreasing refcount to %lu.\n", iface, refcount);
 
     if (!refcount)
     {
@@ -261,17 +274,17 @@ static ULONG STDMETHODCALLTYPE d2d_device_context_inner_Release(IUnknown *iface)
         if (context->text_rendering_params)
             IDWriteRenderingParams_Release(context->text_rendering_params);
         if (context->bs)
-            ID3D10BlendState_Release(context->bs);
-        ID3D10RasterizerState_Release(context->rs);
-        ID3D10Buffer_Release(context->vb);
-        ID3D10Buffer_Release(context->ib);
-        ID3D10Buffer_Release(context->ps_cb);
-        ID3D10PixelShader_Release(context->ps);
-        ID3D10Buffer_Release(context->vs_cb);
+            ID3D11BlendState_Release(context->bs);
+        ID3D11RasterizerState_Release(context->rs);
+        ID3D11Buffer_Release(context->vb);
+        ID3D11Buffer_Release(context->ib);
+        ID3D11Buffer_Release(context->ps_cb);
+        ID3D11PixelShader_Release(context->ps);
+        ID3D11Buffer_Release(context->vs_cb);
         for (i = 0; i < D2D_SHAPE_TYPE_COUNT; ++i)
         {
-            ID3D10VertexShader_Release(context->shape_resources[i].vs);
-            ID3D10InputLayout_Release(context->shape_resources[i].il);
+            ID3D11VertexShader_Release(context->shape_resources[i].vs);
+            ID3D11InputLayout_Release(context->shape_resources[i].il);
         }
         for (i = 0; i < D2D_SAMPLER_INTERPOLATION_MODE_COUNT; ++i)
         {
@@ -280,17 +293,19 @@ static ULONG STDMETHODCALLTYPE d2d_device_context_inner_Release(IUnknown *iface)
                 for (k = 0; k < D2D_SAMPLER_EXTEND_MODE_COUNT; ++k)
                 {
                     if (context->sampler_states[i][j][k])
-                        ID3D10SamplerState_Release(context->sampler_states[i][j][k]);
+                        ID3D11SamplerState_Release(context->sampler_states[i][j][k]);
                 }
             }
         }
-        context->stateblock->lpVtbl->Release(context->stateblock);
-        if (context->target)
-            ID2D1Bitmap1_Release(&context->target->ID2D1Bitmap1_iface);
-        ID3D10Device_Release(context->d3d_device);
+        if (context->d3d_state)
+            ID3DDeviceContextState_Release(context->d3d_state);
+        if (context->target.object)
+            IUnknown_Release(context->target.object);
+        ID3D11Device1_Release(context->d3d_device);
         ID2D1Factory_Release(context->factory);
-        ID2D1Device_Release(context->device);
-        heap_free(context);
+        ID2D1Device6_Release(&context->device->ID2D1Device6_iface);
+        d2d_device_indexed_objects_clear(&context->vertex_buffers);
+        free(context);
     }
 
     return refcount;
@@ -303,7 +318,8 @@ static const struct IUnknownVtbl d2d_device_context_inner_unknown_vtbl =
     d2d_device_context_inner_Release,
 };
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_QueryInterface(ID2D1DeviceContext *iface, REFIID iid, void **out)
+static HRESULT STDMETHODCALLTYPE d2d_device_context_QueryInterface(ID2D1DeviceContext6 *iface,
+        REFIID iid, void **out)
 {
     struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
 
@@ -312,7 +328,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_QueryInterface(ID2D1DeviceCo
     return IUnknown_QueryInterface(context->outer_unknown, iid, out);
 }
 
-static ULONG STDMETHODCALLTYPE d2d_device_context_AddRef(ID2D1DeviceContext *iface)
+static ULONG STDMETHODCALLTYPE d2d_device_context_AddRef(ID2D1DeviceContext6 *iface)
 {
     struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
 
@@ -321,7 +337,7 @@ static ULONG STDMETHODCALLTYPE d2d_device_context_AddRef(ID2D1DeviceContext *ifa
     return IUnknown_AddRef(context->outer_unknown);
 }
 
-static ULONG STDMETHODCALLTYPE d2d_device_context_Release(ID2D1DeviceContext *iface)
+static ULONG STDMETHODCALLTYPE d2d_device_context_Release(ID2D1DeviceContext6 *iface)
 {
     struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
 
@@ -330,7 +346,7 @@ static ULONG STDMETHODCALLTYPE d2d_device_context_Release(ID2D1DeviceContext *if
     return IUnknown_Release(context->outer_unknown);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_GetFactory(ID2D1DeviceContext *iface, ID2D1Factory **factory)
+static void STDMETHODCALLTYPE d2d_device_context_GetFactory(ID2D1DeviceContext6 *iface, ID2D1Factory **factory)
 {
     struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
 
@@ -340,7 +356,7 @@ static void STDMETHODCALLTYPE d2d_device_context_GetFactory(ID2D1DeviceContext *
     ID2D1Factory_AddRef(*factory);
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmap(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmap(ID2D1DeviceContext6 *iface,
         D2D1_SIZE_U size, const void *src_data, UINT32 pitch, const D2D1_BITMAP_PROPERTIES *desc, ID2D1Bitmap **bitmap)
 {
     struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
@@ -364,7 +380,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmap(ID2D1DeviceCont
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmapFromWicBitmap(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmapFromWicBitmap(ID2D1DeviceContext6 *iface,
         IWICBitmapSource *bitmap_source, const D2D1_BITMAP_PROPERTIES *desc, ID2D1Bitmap **bitmap)
 {
     struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
@@ -388,7 +404,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmapFromWicBitmap(ID
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSharedBitmap(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSharedBitmap(ID2D1DeviceContext6 *iface,
         REFIID iid, void *data, const D2D1_BITMAP_PROPERTIES *desc, ID2D1Bitmap **bitmap)
 {
     struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
@@ -402,7 +418,10 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSharedBitmap(ID2D1Devi
     if (desc)
     {
         memcpy(&bitmap_desc, desc, sizeof(*desc));
-        bitmap_desc.bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW;
+        if (IsEqualIID(iid, &IID_IDXGISurface) || IsEqualIID(iid, &IID_IDXGISurface1))
+            bitmap_desc.bitmapOptions = d2d_get_bitmap_options_for_surface(data);
+        else
+            bitmap_desc.bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW;
         bitmap_desc.colorContext = NULL;
     }
 
@@ -412,7 +431,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSharedBitmap(ID2D1Devi
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmapBrush(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmapBrush(ID2D1DeviceContext6 *iface,
         ID2D1Bitmap *bitmap, const D2D1_BITMAP_BRUSH_PROPERTIES *bitmap_brush_desc,
         const D2D1_BRUSH_PROPERTIES *brush_desc, ID2D1BitmapBrush **brush)
 {
@@ -430,7 +449,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmapBrush(ID2D1Devic
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSolidColorBrush(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSolidColorBrush(ID2D1DeviceContext6 *iface,
         const D2D1_COLOR_F *color, const D2D1_BRUSH_PROPERTIES *desc, ID2D1SolidColorBrush **brush)
 {
     struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
@@ -445,7 +464,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSolidColorBrush(ID2D1D
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateGradientStopCollection(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateGradientStopCollection(ID2D1DeviceContext6 *iface,
         const D2D1_GRADIENT_STOP *stops, UINT32 stop_count, D2D1_GAMMA gamma, D2D1_EXTEND_MODE extend_mode,
         ID2D1GradientStopCollection **gradient)
 {
@@ -463,7 +482,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateGradientStopCollection
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateLinearGradientBrush(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateLinearGradientBrush(ID2D1DeviceContext6 *iface,
         const D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES *gradient_brush_desc, const D2D1_BRUSH_PROPERTIES *brush_desc,
         ID2D1GradientStopCollection *gradient, ID2D1LinearGradientBrush **brush)
 {
@@ -481,7 +500,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateLinearGradientBrush(ID
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateRadialGradientBrush(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateRadialGradientBrush(ID2D1DeviceContext6 *iface,
         const D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES *gradient_brush_desc, const D2D1_BRUSH_PROPERTIES *brush_desc,
         ID2D1GradientStopCollection *gradient, ID2D1RadialGradientBrush **brush)
 {
@@ -499,7 +518,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateRadialGradientBrush(ID
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateCompatibleRenderTarget(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateCompatibleRenderTarget(ID2D1DeviceContext6 *iface,
         const D2D1_SIZE_F *size, const D2D1_SIZE_U *pixel_size, const D2D1_PIXEL_FORMAT *format,
         D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS options, ID2D1BitmapRenderTarget **rt)
 {
@@ -510,14 +529,14 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateCompatibleRenderTarget
     TRACE("iface %p, size %p, pixel_size %p, format %p, options %#x, render_target %p.\n",
             iface, size, pixel_size, format, options, rt);
 
-    if (!(object = heap_alloc_zero(sizeof(*object))))
+    if (!(object = calloc(1, sizeof(*object))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = d2d_bitmap_render_target_init(object, render_target, size, pixel_size,
             format, options)))
     {
-        WARN("Failed to initialize render target, hr %#x.\n", hr);
-        heap_free(object);
+        WARN("Failed to initialise render target, hr %#lx.\n", hr);
+        free(object);
         return hr;
     }
 
@@ -527,7 +546,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateCompatibleRenderTarget
     return S_OK;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateLayer(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateLayer(ID2D1DeviceContext6 *iface,
         const D2D1_SIZE_F *size, ID2D1Layer **layer)
 {
     struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
@@ -542,7 +561,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateLayer(ID2D1DeviceConte
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateMesh(ID2D1DeviceContext *iface, ID2D1Mesh **mesh)
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateMesh(ID2D1DeviceContext6 *iface, ID2D1Mesh **mesh)
 {
     struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
     struct d2d_mesh *object;
@@ -556,10 +575,10 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateMesh(ID2D1DeviceContex
     return hr;
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawLine(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_DrawLine(ID2D1DeviceContext6 *iface,
         D2D1_POINT_2F p0, D2D1_POINT_2F p1, ID2D1Brush *brush, float stroke_width, ID2D1StrokeStyle *stroke_style)
 {
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
     ID2D1PathGeometry *geometry;
     ID2D1GeometrySink *sink;
     HRESULT hr;
@@ -567,15 +586,21 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawLine(ID2D1DeviceContext *if
     TRACE("iface %p, p0 %s, p1 %s, brush %p, stroke_width %.8e, stroke_style %p.\n",
             iface, debug_d2d_point_2f(&p0), debug_d2d_point_2f(&p1), brush, stroke_width, stroke_style);
 
-    if (FAILED(hr = ID2D1Factory_CreatePathGeometry(render_target->factory, &geometry)))
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
     {
-        WARN("Failed to create path geometry, %#x.\n", hr);
+        d2d_command_list_draw_line(context->target.command_list, context, p0, p1, brush, stroke_width, stroke_style);
+        return;
+    }
+
+    if (FAILED(hr = ID2D1Factory_CreatePathGeometry(context->factory, &geometry)))
+    {
+        WARN("Failed to create path geometry, hr %#lx.\n", hr);
         return;
     }
 
     if (FAILED(hr = ID2D1PathGeometry_Open(geometry, &sink)))
     {
-        WARN("Open() failed, %#x.\n", hr);
+        WARN("Failed to open geometry sink, hr %#lx.\n", hr);
         ID2D1PathGeometry_Release(geometry);
         return;
     }
@@ -584,53 +609,65 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawLine(ID2D1DeviceContext *if
     ID2D1GeometrySink_AddLine(sink, p1);
     ID2D1GeometrySink_EndFigure(sink, D2D1_FIGURE_END_OPEN);
     if (FAILED(hr = ID2D1GeometrySink_Close(sink)))
-        WARN("Close() failed, %#x.\n", hr);
+        WARN("Failed to close geometry sink, hr %#lx.\n", hr);
     ID2D1GeometrySink_Release(sink);
 
-    ID2D1DeviceContext_DrawGeometry(iface, (ID2D1Geometry *)geometry, brush, stroke_width, stroke_style);
+    ID2D1DeviceContext6_DrawGeometry(iface, (ID2D1Geometry *)geometry, brush, stroke_width, stroke_style);
     ID2D1PathGeometry_Release(geometry);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawRectangle(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_DrawRectangle(ID2D1DeviceContext6 *iface,
         const D2D1_RECT_F *rect, ID2D1Brush *brush, float stroke_width, ID2D1StrokeStyle *stroke_style)
 {
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
     ID2D1RectangleGeometry *geometry;
     HRESULT hr;
 
     TRACE("iface %p, rect %s, brush %p, stroke_width %.8e, stroke_style %p.\n",
             iface, debug_d2d_rect_f(rect), brush, stroke_width, stroke_style);
 
-    if (FAILED(hr = ID2D1Factory_CreateRectangleGeometry(render_target->factory, rect, &geometry)))
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
     {
-        ERR("Failed to create geometry, hr %#x.\n", hr);
+        d2d_command_list_draw_rectangle(context->target.command_list, context, rect, brush, stroke_width, stroke_style);
         return;
     }
 
-    ID2D1DeviceContext_DrawGeometry(iface, (ID2D1Geometry *)geometry, brush, stroke_width, stroke_style);
+    if (FAILED(hr = ID2D1Factory_CreateRectangleGeometry(context->factory, rect, &geometry)))
+    {
+        ERR("Failed to create geometry, hr %#lx.\n", hr);
+        return;
+    }
+
+    ID2D1DeviceContext6_DrawGeometry(iface, (ID2D1Geometry *)geometry, brush, stroke_width, stroke_style);
     ID2D1RectangleGeometry_Release(geometry);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_FillRectangle(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_FillRectangle(ID2D1DeviceContext6 *iface,
         const D2D1_RECT_F *rect, ID2D1Brush *brush)
 {
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
     ID2D1RectangleGeometry *geometry;
     HRESULT hr;
 
     TRACE("iface %p, rect %s, brush %p.\n", iface, debug_d2d_rect_f(rect), brush);
 
-    if (FAILED(hr = ID2D1Factory_CreateRectangleGeometry(render_target->factory, rect, &geometry)))
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
     {
-        ERR("Failed to create geometry, hr %#x.\n", hr);
+        d2d_command_list_fill_rectangle(context->target.command_list, context, rect, brush);
         return;
     }
 
-    ID2D1DeviceContext_FillGeometry(iface, (ID2D1Geometry *)geometry, brush, NULL);
+    if (FAILED(hr = ID2D1Factory_CreateRectangleGeometry(context->factory, rect, &geometry)))
+    {
+        ERR("Failed to create geometry, hr %#lx.\n", hr);
+        return;
+    }
+
+    ID2D1DeviceContext6_FillGeometry(iface, (ID2D1Geometry *)geometry, brush, NULL);
     ID2D1RectangleGeometry_Release(geometry);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawRoundedRectangle(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_DrawRoundedRectangle(ID2D1DeviceContext6 *iface,
         const D2D1_ROUNDED_RECT *rect, ID2D1Brush *brush, float stroke_width, ID2D1StrokeStyle *stroke_style)
 {
     struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
@@ -642,15 +679,15 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawRoundedRectangle(ID2D1Devic
 
     if (FAILED(hr = ID2D1Factory_CreateRoundedRectangleGeometry(render_target->factory, rect, &geometry)))
     {
-        ERR("Failed to create geometry, hr %#x.\n", hr);
+        ERR("Failed to create geometry, hr %#lx.\n", hr);
         return;
     }
 
-    ID2D1DeviceContext_DrawGeometry(iface, (ID2D1Geometry *)geometry, brush, stroke_width, stroke_style);
+    ID2D1DeviceContext6_DrawGeometry(iface, (ID2D1Geometry *)geometry, brush, stroke_width, stroke_style);
     ID2D1RoundedRectangleGeometry_Release(geometry);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_FillRoundedRectangle(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_FillRoundedRectangle(ID2D1DeviceContext6 *iface,
         const D2D1_ROUNDED_RECT *rect, ID2D1Brush *brush)
 {
     struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
@@ -661,15 +698,15 @@ static void STDMETHODCALLTYPE d2d_device_context_FillRoundedRectangle(ID2D1Devic
 
     if (FAILED(hr = ID2D1Factory_CreateRoundedRectangleGeometry(render_target->factory, rect, &geometry)))
     {
-        ERR("Failed to create geometry, hr %#x.\n", hr);
+        ERR("Failed to create geometry, hr %#lx.\n", hr);
         return;
     }
 
-    ID2D1DeviceContext_FillGeometry(iface, (ID2D1Geometry *)geometry, brush, NULL);
+    ID2D1DeviceContext6_FillGeometry(iface, (ID2D1Geometry *)geometry, brush, NULL);
     ID2D1RoundedRectangleGeometry_Release(geometry);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawEllipse(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_DrawEllipse(ID2D1DeviceContext6 *iface,
         const D2D1_ELLIPSE *ellipse, ID2D1Brush *brush, float stroke_width, ID2D1StrokeStyle *stroke_style)
 {
     struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
@@ -681,15 +718,15 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawEllipse(ID2D1DeviceContext 
 
     if (FAILED(hr = ID2D1Factory_CreateEllipseGeometry(render_target->factory, ellipse, &geometry)))
     {
-        ERR("Failed to create geometry, hr %#x.\n", hr);
+        ERR("Failed to create geometry, hr %#lx.\n", hr);
         return;
     }
 
-    ID2D1DeviceContext_DrawGeometry(iface, (ID2D1Geometry *)geometry, brush, stroke_width, stroke_style);
+    ID2D1DeviceContext6_DrawGeometry(iface, (ID2D1Geometry *)geometry, brush, stroke_width, stroke_style);
     ID2D1EllipseGeometry_Release(geometry);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_FillEllipse(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_FillEllipse(ID2D1DeviceContext6 *iface,
         const D2D1_ELLIPSE *ellipse, ID2D1Brush *brush)
 {
     struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
@@ -700,26 +737,33 @@ static void STDMETHODCALLTYPE d2d_device_context_FillEllipse(ID2D1DeviceContext 
 
     if (FAILED(hr = ID2D1Factory_CreateEllipseGeometry(render_target->factory, ellipse, &geometry)))
     {
-        ERR("Failed to create geometry, hr %#x.\n", hr);
+        ERR("Failed to create geometry, hr %#lx.\n", hr);
         return;
     }
 
-    ID2D1DeviceContext_FillGeometry(iface, (ID2D1Geometry *)geometry, brush, NULL);
+    ID2D1DeviceContext6_FillGeometry(iface, (ID2D1Geometry *)geometry, brush, NULL);
     ID2D1EllipseGeometry_Release(geometry);
 }
 
 static HRESULT d2d_device_context_update_ps_cb(struct d2d_device_context *context,
         struct d2d_brush *brush, struct d2d_brush *opacity_brush, BOOL outline, BOOL is_arc)
 {
+    D3D11_MAPPED_SUBRESOURCE map_desc;
+    ID3D11DeviceContext *d3d_context;
     struct d2d_ps_cb *cb_data;
     HRESULT hr;
 
-    if (FAILED(hr = ID3D10Buffer_Map(context->ps_cb, D3D10_MAP_WRITE_DISCARD, 0, (void **)&cb_data)))
+    ID3D11Device1_GetImmediateContext(context->d3d_device, &d3d_context);
+
+    if (FAILED(hr = ID3D11DeviceContext_Map(d3d_context, (ID3D11Resource *)context->ps_cb,
+            0, D3D11_MAP_WRITE_DISCARD, 0, &map_desc)))
     {
-        WARN("Failed to map constant buffer, hr %#x.\n", hr);
+        WARN("Failed to map constant buffer, hr %#lx.\n", hr);
+        ID3D11DeviceContext_Release(d3d_context);
         return hr;
     }
 
+    cb_data = map_desc.pData;
     cb_data->outline = outline;
     cb_data->is_arc = is_arc;
     cb_data->pad[0] = 0;
@@ -729,7 +773,8 @@ static HRESULT d2d_device_context_update_ps_cb(struct d2d_device_context *contex
     if (!d2d_brush_fill_cb(opacity_brush, &cb_data->opacity_brush))
         WARN("Failed to initialize opacity brush buffer.\n");
 
-    ID3D10Buffer_Unmap(context->ps_cb);
+    ID3D11DeviceContext_Unmap(d3d_context, (ID3D11Resource *)context->ps_cb, 0);
+    ID3D11DeviceContext_Release(d3d_context);
 
     return hr;
 }
@@ -737,17 +782,24 @@ static HRESULT d2d_device_context_update_ps_cb(struct d2d_device_context *contex
 static HRESULT d2d_device_context_update_vs_cb(struct d2d_device_context *context,
         const D2D_MATRIX_3X2_F *geometry_transform, float stroke_width)
 {
+    D3D11_MAPPED_SUBRESOURCE map_desc;
+    ID3D11DeviceContext *d3d_context;
     const D2D1_MATRIX_3X2_F *w;
     struct d2d_vs_cb *cb_data;
     float tmp_x, tmp_y;
     HRESULT hr;
 
-    if (FAILED(hr = ID3D10Buffer_Map(context->vs_cb, D3D10_MAP_WRITE_DISCARD, 0, (void **)&cb_data)))
+    ID3D11Device1_GetImmediateContext(context->d3d_device, &d3d_context);
+
+    if (FAILED(hr = ID3D11DeviceContext_Map(d3d_context, (ID3D11Resource *)context->vs_cb,
+            0, D3D11_MAP_WRITE_DISCARD, 0, &map_desc)))
     {
-        WARN("Failed to map constant buffer, hr %#x.\n", hr);
+        WARN("Failed to map constant buffer, hr %#lx.\n", hr);
+        ID3D11DeviceContext_Release(d3d_context);
         return hr;
     }
 
+    cb_data = map_desc.pData;
     cb_data->transform_geometry._11 = geometry_transform->_11;
     cb_data->transform_geometry._21 = geometry_transform->_21;
     cb_data->transform_geometry._31 = geometry_transform->_31;
@@ -771,7 +823,8 @@ static HRESULT d2d_device_context_update_vs_cb(struct d2d_device_context *contex
     cb_data->transform_rty.z = w->_32 * tmp_y;
     cb_data->transform_rty.w = -2.0f / context->pixel_size.height;
 
-    ID3D10Buffer_Unmap(context->vs_cb);
+    ID3D11DeviceContext_Unmap(d3d_context, (ID3D11Resource *)context->vs_cb, 0);
+    ID3D11DeviceContext_Release(d3d_context);
 
     return S_OK;
 }
@@ -779,24 +832,24 @@ static HRESULT d2d_device_context_update_vs_cb(struct d2d_device_context *contex
 static void d2d_device_context_draw_geometry(struct d2d_device_context *render_target,
         const struct d2d_geometry *geometry, struct d2d_brush *brush, float stroke_width)
 {
-    D3D10_SUBRESOURCE_DATA buffer_data;
-    D3D10_BUFFER_DESC buffer_desc;
-    ID3D10Buffer *ib, *vb;
+    D3D11_SUBRESOURCE_DATA buffer_data;
+    D3D11_BUFFER_DESC buffer_desc;
+    ID3D11Buffer *ib, *vb;
     HRESULT hr;
 
     if (FAILED(hr = d2d_device_context_update_vs_cb(render_target, &geometry->transform, stroke_width)))
     {
-        WARN("Failed to update vs constant buffer, hr %#x.\n", hr);
+        WARN("Failed to update vs constant buffer, hr %#lx.\n", hr);
         return;
     }
 
     if (FAILED(hr = d2d_device_context_update_ps_cb(render_target, brush, NULL, TRUE, FALSE)))
     {
-        WARN("Failed to update ps constant buffer, hr %#x.\n", hr);
+        WARN("Failed to update ps constant buffer, hr %#lx.\n", hr);
         return;
     }
 
-    buffer_desc.Usage = D3D10_USAGE_DEFAULT;
+    buffer_desc.Usage = D3D11_USAGE_DEFAULT;
     buffer_desc.CPUAccessFlags = 0;
     buffer_desc.MiscFlags = 0;
 
@@ -806,53 +859,53 @@ static void d2d_device_context_draw_geometry(struct d2d_device_context *render_t
     if (geometry->outline.face_count)
     {
         buffer_desc.ByteWidth = geometry->outline.face_count * sizeof(*geometry->outline.faces);
-        buffer_desc.BindFlags = D3D10_BIND_INDEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         buffer_data.pSysMem = geometry->outline.faces;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &ib)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &ib)))
         {
-            WARN("Failed to create index buffer, hr %#x.\n", hr);
+            WARN("Failed to create index buffer, hr %#lx.\n", hr);
             return;
         }
 
         buffer_desc.ByteWidth = geometry->outline.vertex_count * sizeof(*geometry->outline.vertices);
-        buffer_desc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         buffer_data.pSysMem = geometry->outline.vertices;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
         {
-            ERR("Failed to create vertex buffer, hr %#x.\n", hr);
-            ID3D10Buffer_Release(ib);
+            ERR("Failed to create vertex buffer, hr %#lx.\n", hr);
+            ID3D11Buffer_Release(ib);
             return;
         }
 
         d2d_device_context_draw(render_target, D2D_SHAPE_TYPE_OUTLINE, ib, 3 * geometry->outline.face_count, vb,
                 sizeof(*geometry->outline.vertices), brush, NULL);
 
-        ID3D10Buffer_Release(vb);
-        ID3D10Buffer_Release(ib);
+        ID3D11Buffer_Release(vb);
+        ID3D11Buffer_Release(ib);
     }
 
     if (geometry->outline.bezier_face_count)
     {
         buffer_desc.ByteWidth = geometry->outline.bezier_face_count * sizeof(*geometry->outline.bezier_faces);
-        buffer_desc.BindFlags = D3D10_BIND_INDEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         buffer_data.pSysMem = geometry->outline.bezier_faces;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &ib)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &ib)))
         {
-            WARN("Failed to create beziers index buffer, hr %#x.\n", hr);
+            WARN("Failed to create curves index buffer, hr %#lx.\n", hr);
             return;
         }
 
         buffer_desc.ByteWidth = geometry->outline.bezier_count * sizeof(*geometry->outline.beziers);
-        buffer_desc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         buffer_data.pSysMem = geometry->outline.beziers;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
         {
-            ERR("Failed to create beziers vertex buffer, hr %#x.\n", hr);
-            ID3D10Buffer_Release(ib);
+            ERR("Failed to create curves vertex buffer, hr %#lx.\n", hr);
+            ID3D11Buffer_Release(ib);
             return;
         }
 
@@ -860,30 +913,30 @@ static void d2d_device_context_draw_geometry(struct d2d_device_context *render_t
                 3 * geometry->outline.bezier_face_count, vb,
                 sizeof(*geometry->outline.beziers), brush, NULL);
 
-        ID3D10Buffer_Release(vb);
-        ID3D10Buffer_Release(ib);
+        ID3D11Buffer_Release(vb);
+        ID3D11Buffer_Release(ib);
     }
 
     if (geometry->outline.arc_face_count)
     {
         buffer_desc.ByteWidth = geometry->outline.arc_face_count * sizeof(*geometry->outline.arc_faces);
-        buffer_desc.BindFlags = D3D10_BIND_INDEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         buffer_data.pSysMem = geometry->outline.arc_faces;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &ib)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &ib)))
         {
-            WARN("Failed to create arcs index buffer, hr %#x.\n", hr);
+            WARN("Failed to create arcs index buffer, hr %#lx.\n", hr);
             return;
         }
 
         buffer_desc.ByteWidth = geometry->outline.arc_count * sizeof(*geometry->outline.arcs);
-        buffer_desc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         buffer_data.pSysMem = geometry->outline.arcs;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
         {
-            ERR("Failed to create arcs vertex buffer, hr %#x.\n", hr);
-            ID3D10Buffer_Release(ib);
+            ERR("Failed to create arcs vertex buffer, hr %#lx.\n", hr);
+            ID3D11Buffer_Release(ib);
             return;
         }
 
@@ -892,36 +945,50 @@ static void d2d_device_context_draw_geometry(struct d2d_device_context *render_t
                     3 * geometry->outline.arc_face_count, vb,
                     sizeof(*geometry->outline.arcs), brush, NULL);
 
-        ID3D10Buffer_Release(vb);
-        ID3D10Buffer_Release(ib);
+        ID3D11Buffer_Release(vb);
+        ID3D11Buffer_Release(ib);
     }
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawGeometry(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_DrawGeometry(ID2D1DeviceContext6 *iface,
         ID2D1Geometry *geometry, ID2D1Brush *brush, float stroke_width, ID2D1StrokeStyle *stroke_style)
 {
     const struct d2d_geometry *geometry_impl = unsafe_impl_from_ID2D1Geometry(geometry);
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
     struct d2d_brush *brush_impl = unsafe_impl_from_ID2D1Brush(brush);
+    struct d2d_stroke_style *stroke_style_impl = unsafe_impl_from_ID2D1StrokeStyle(stroke_style);
 
     TRACE("iface %p, geometry %p, brush %p, stroke_width %.8e, stroke_style %p.\n",
             iface, geometry, brush, stroke_width, stroke_style);
 
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+    {
+        d2d_command_list_draw_geometry(context->target.command_list, context, geometry, brush,
+                stroke_width, stroke_style);
+        return;
+    }
+
     if (stroke_style)
         FIXME("Ignoring stroke style %p.\n", stroke_style);
 
-    d2d_device_context_draw_geometry(render_target, geometry_impl, brush_impl, stroke_width);
+    if (stroke_style_impl)
+    {
+        if (stroke_style_impl->desc.transformType == D2D1_STROKE_TRANSFORM_TYPE_FIXED)
+            stroke_width /= context->drawing_state.transform.m11;
+    }
+
+    d2d_device_context_draw_geometry(context, geometry_impl, brush_impl, stroke_width);
 }
 
 static void d2d_device_context_fill_geometry(struct d2d_device_context *render_target,
         const struct d2d_geometry *geometry, struct d2d_brush *brush, struct d2d_brush *opacity_brush)
 {
-    D3D10_SUBRESOURCE_DATA buffer_data;
-    D3D10_BUFFER_DESC buffer_desc;
-    ID3D10Buffer *ib, *vb;
+    D3D11_SUBRESOURCE_DATA buffer_data;
+    D3D11_BUFFER_DESC buffer_desc;
+    ID3D11Buffer *ib, *vb;
     HRESULT hr;
 
-    buffer_desc.Usage = D3D10_USAGE_DEFAULT;
+    buffer_desc.Usage = D3D11_USAGE_DEFAULT;
     buffer_desc.CPUAccessFlags = 0;
     buffer_desc.MiscFlags = 0;
 
@@ -930,73 +997,73 @@ static void d2d_device_context_fill_geometry(struct d2d_device_context *render_t
 
     if (FAILED(hr = d2d_device_context_update_vs_cb(render_target, &geometry->transform, 0.0f)))
     {
-        WARN("Failed to update vs constant buffer, hr %#x.\n", hr);
+        WARN("Failed to update vs constant buffer, hr %#lx.\n", hr);
         return;
     }
 
     if (FAILED(hr = d2d_device_context_update_ps_cb(render_target, brush, opacity_brush, FALSE, FALSE)))
     {
-        WARN("Failed to update ps constant buffer, hr %#x.\n", hr);
+        WARN("Failed to update ps constant buffer, hr %#lx.\n", hr);
         return;
     }
 
     if (geometry->fill.face_count)
     {
         buffer_desc.ByteWidth = geometry->fill.face_count * sizeof(*geometry->fill.faces);
-        buffer_desc.BindFlags = D3D10_BIND_INDEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         buffer_data.pSysMem = geometry->fill.faces;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &ib)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &ib)))
         {
-            WARN("Failed to create index buffer, hr %#x.\n", hr);
+            WARN("Failed to create index buffer, hr %#lx.\n", hr);
             return;
         }
 
         buffer_desc.ByteWidth = geometry->fill.vertex_count * sizeof(*geometry->fill.vertices);
-        buffer_desc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         buffer_data.pSysMem = geometry->fill.vertices;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
         {
-            ERR("Failed to create vertex buffer, hr %#x.\n", hr);
-            ID3D10Buffer_Release(ib);
+            ERR("Failed to create vertex buffer, hr %#lx.\n", hr);
+            ID3D11Buffer_Release(ib);
             return;
         }
 
         d2d_device_context_draw(render_target, D2D_SHAPE_TYPE_TRIANGLE, ib, 3 * geometry->fill.face_count, vb,
                 sizeof(*geometry->fill.vertices), brush, opacity_brush);
 
-        ID3D10Buffer_Release(vb);
-        ID3D10Buffer_Release(ib);
+        ID3D11Buffer_Release(vb);
+        ID3D11Buffer_Release(ib);
     }
 
     if (geometry->fill.bezier_vertex_count)
     {
         buffer_desc.ByteWidth = geometry->fill.bezier_vertex_count * sizeof(*geometry->fill.bezier_vertices);
-        buffer_desc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         buffer_data.pSysMem = geometry->fill.bezier_vertices;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
         {
-            ERR("Failed to create beziers vertex buffer, hr %#x.\n", hr);
+            ERR("Failed to create curves vertex buffer, hr %#lx.\n", hr);
             return;
         }
 
         d2d_device_context_draw(render_target, D2D_SHAPE_TYPE_CURVE, NULL, geometry->fill.bezier_vertex_count, vb,
                 sizeof(*geometry->fill.bezier_vertices), brush, opacity_brush);
 
-        ID3D10Buffer_Release(vb);
+        ID3D11Buffer_Release(vb);
     }
 
     if (geometry->fill.arc_vertex_count)
     {
         buffer_desc.ByteWidth = geometry->fill.arc_vertex_count * sizeof(*geometry->fill.arc_vertices);
-        buffer_desc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+        buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         buffer_data.pSysMem = geometry->fill.arc_vertices;
 
-        if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
+        if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, &buffer_data, &vb)))
         {
-            ERR("Failed to create arc vertex buffer, hr %#x.\n", hr);
+            ERR("Failed to create arc vertex buffer, hr %#lx.\n", hr);
             return;
         }
 
@@ -1004,11 +1071,11 @@ static void d2d_device_context_fill_geometry(struct d2d_device_context *render_t
             d2d_device_context_draw(render_target, D2D_SHAPE_TYPE_CURVE, NULL, geometry->fill.arc_vertex_count, vb,
                     sizeof(*geometry->fill.arc_vertices), brush, opacity_brush);
 
-        ID3D10Buffer_Release(vb);
+        ID3D11Buffer_Release(vb);
     }
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_FillGeometry(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_FillGeometry(ID2D1DeviceContext6 *iface,
         ID2D1Geometry *geometry, ID2D1Brush *brush, ID2D1Brush *opacity_brush)
 {
     const struct d2d_geometry *geometry_impl = unsafe_impl_from_ID2D1Geometry(geometry);
@@ -1027,21 +1094,49 @@ static void STDMETHODCALLTYPE d2d_device_context_FillGeometry(ID2D1DeviceContext
         return;
     }
 
-    d2d_device_context_fill_geometry(context, geometry_impl, brush_impl, opacity_brush_impl);
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_fill_geometry(context->target.command_list, context, geometry, brush, opacity_brush);
+    else
+        d2d_device_context_fill_geometry(context, geometry_impl, brush_impl, opacity_brush_impl);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_FillMesh(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_FillMesh(ID2D1DeviceContext6 *iface,
         ID2D1Mesh *mesh, ID2D1Brush *brush)
 {
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
     FIXME("iface %p, mesh %p, brush %p stub!\n", iface, mesh, brush);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_fill_mesh(context->target.command_list, context, mesh, brush);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_FillOpacityMask(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_FillOpacityMask(ID2D1DeviceContext6 *iface,
         ID2D1Bitmap *mask, ID2D1Brush *brush, D2D1_OPACITY_MASK_CONTENT content,
         const D2D1_RECT_F *dst_rect, const D2D1_RECT_F *src_rect)
 {
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
     FIXME("iface %p, mask %p, brush %p, content %#x, dst_rect %s, src_rect %s stub!\n",
             iface, mask, brush, content, debug_d2d_rect_f(dst_rect), debug_d2d_rect_f(src_rect));
+
+    if (FAILED(context->error.code))
+        return;
+
+    if (context->drawing_state.antialiasMode != D2D1_ANTIALIAS_MODE_ALIASED)
+    {
+        d2d_device_context_set_error(context, D2DERR_WRONG_STATE);
+        return;
+    }
+
+    if ((unsigned int)content > D2D1_OPACITY_MASK_CONTENT_TEXT_GDI_COMPATIBLE)
+    {
+        d2d_device_context_set_error(context, E_INVALIDARG);
+        return;
+    }
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_fill_opacity_mask(context->target.command_list, context, mask, brush, dst_rect, src_rect);
 }
 
 static void d2d_device_context_draw_bitmap(struct d2d_device_context *context, ID2D1Bitmap *bitmap,
@@ -1104,15 +1199,15 @@ static void d2d_device_context_draw_bitmap(struct d2d_device_context *context, I
 
     if (FAILED(hr = d2d_bitmap_brush_create(context->factory, bitmap, &bitmap_brush_desc, &brush_desc, &brush)))
     {
-        ERR("Failed to create bitmap brush, hr %#x.\n", hr);
+        ERR("Failed to create bitmap brush, hr %#lx.\n", hr);
         return;
     }
 
-    d2d_device_context_FillRectangle(&context->ID2D1DeviceContext_iface, &d, &brush->ID2D1Brush_iface);
+    d2d_device_context_FillRectangle(&context->ID2D1DeviceContext6_iface, &d, &brush->ID2D1Brush_iface);
     ID2D1Brush_Release(&brush->ID2D1Brush_iface);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawBitmap(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_DrawBitmap(ID2D1DeviceContext6 *iface,
         ID2D1Bitmap *bitmap, const D2D1_RECT_F *dst_rect, float opacity,
         D2D1_BITMAP_INTERPOLATION_MODE interpolation_mode, const D2D1_RECT_F *src_rect)
 {
@@ -1128,11 +1223,19 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawBitmap(ID2D1DeviceContext *
         return;
     }
 
-    d2d_device_context_draw_bitmap(context, bitmap, dst_rect, opacity, d2d1_1_interp_mode_from_d2d1(interpolation_mode),
-            src_rect, NULL, NULL);
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+    {
+        d2d_command_list_draw_bitmap(context->target.command_list, bitmap, dst_rect, opacity,
+                d2d1_1_interp_mode_from_d2d1(interpolation_mode), src_rect, NULL);
+    }
+    else
+    {
+        d2d_device_context_draw_bitmap(context, bitmap, dst_rect, opacity,
+                d2d1_1_interp_mode_from_d2d1(interpolation_mode), src_rect, NULL, NULL);
+    }
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawText(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_DrawText(ID2D1DeviceContext6 *iface,
         const WCHAR *string, UINT32 string_len, IDWriteTextFormat *text_format, const D2D1_RECT_F *layout_rect,
         ID2D1Brush *brush, D2D1_DRAW_TEXT_OPTIONS options, DWRITE_MEASURING_MODE measuring_mode)
 {
@@ -1151,7 +1254,7 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawText(ID2D1DeviceContext *if
     if (FAILED(hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED,
             &IID_IDWriteFactory, (IUnknown **)&dwrite_factory)))
     {
-        ERR("Failed to create dwrite factory, hr %#x.\n", hr);
+        ERR("Failed to create dwrite factory, hr %#lx.\n", hr);
         return;
     }
 
@@ -1167,16 +1270,16 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawText(ID2D1DeviceContext *if
     IDWriteFactory_Release(dwrite_factory);
     if (FAILED(hr))
     {
-        ERR("Failed to create text layout, hr %#x.\n", hr);
+        ERR("Failed to create text layout, hr %#lx.\n", hr);
         return;
     }
 
     d2d_point_set(&origin, min(layout_rect->left, layout_rect->right), min(layout_rect->top, layout_rect->bottom));
-    ID2D1DeviceContext_DrawTextLayout(iface, origin, text_layout, brush, options);
+    ID2D1DeviceContext1_DrawTextLayout((ID2D1DeviceContext1 *)iface, origin, text_layout, brush, options);
     IDWriteTextLayout_Release(text_layout);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawTextLayout(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_DrawTextLayout(ID2D1DeviceContext6 *iface,
         D2D1_POINT_2F origin, IDWriteTextLayout *layout, ID2D1Brush *brush, D2D1_DRAW_TEXT_OPTIONS options)
 {
     struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
@@ -1191,7 +1294,7 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawTextLayout(ID2D1DeviceConte
 
     if (FAILED(hr = IDWriteTextLayout_Draw(layout,
             &ctx, &render_target->IDWriteTextRenderer_iface, origin.x, origin.y)))
-        FIXME("Failed to draw text layout, hr %#x.\n", hr);
+        FIXME("Failed to draw text layout, hr %#lx.\n", hr);
 }
 
 static D2D1_ANTIALIAS_MODE d2d_device_context_set_aa_mode_from_text_aa_mode(struct d2d_device_context *rt)
@@ -1213,13 +1316,13 @@ static void d2d_device_context_draw_glyph_run_outline(struct d2d_device_context 
 
     if (FAILED(hr = ID2D1Factory_CreatePathGeometry(render_target->factory, &geometry)))
     {
-        ERR("Failed to create geometry, hr %#x.\n", hr);
+        ERR("Failed to create geometry, hr %#lx.\n", hr);
         return;
     }
 
     if (FAILED(hr = ID2D1PathGeometry_Open(geometry, &sink)))
     {
-        ERR("Failed to open geometry sink, hr %#x.\n", hr);
+        ERR("Failed to open geometry sink, hr %#lx.\n", hr);
         ID2D1PathGeometry_Release(geometry);
         return;
     }
@@ -1228,14 +1331,14 @@ static void d2d_device_context_draw_glyph_run_outline(struct d2d_device_context 
             glyph_run->glyphIndices, glyph_run->glyphAdvances, glyph_run->glyphOffsets, glyph_run->glyphCount,
             glyph_run->isSideways, glyph_run->bidiLevel & 1, (IDWriteGeometrySink *)sink)))
     {
-        ERR("Failed to get glyph run outline, hr %#x.\n", hr);
+        ERR("Failed to get glyph run outline, hr %#lx.\n", hr);
         ID2D1GeometrySink_Release(sink);
         ID2D1PathGeometry_Release(geometry);
         return;
     }
 
     if (FAILED(hr = ID2D1GeometrySink_Close(sink)))
-        ERR("Failed to close geometry sink, hr %#x.\n", hr);
+        ERR("Failed to close geometry sink, hr %#lx.\n", hr);
     ID2D1GeometrySink_Release(sink);
 
     transform = &render_target->drawing_state.transform;
@@ -1251,7 +1354,7 @@ static void d2d_device_context_draw_glyph_run_outline(struct d2d_device_context 
     ID2D1PathGeometry_Release(geometry);
 }
 
-static void d2d_device_context_draw_glyph_run_bitmap(struct d2d_device_context *render_target,
+static void d2d_device_context_draw_glyph_run_bitmap(struct d2d_device_context *context,
         D2D1_POINT_2F baseline_origin, const DWRITE_GLYPH_RUN *glyph_run, ID2D1Brush *brush,
         DWRITE_RENDERING_MODE rendering_mode, DWRITE_MEASURING_MODE measuring_mode,
         DWRITE_TEXT_ANTIALIAS_MODE antialias_mode)
@@ -1276,18 +1379,18 @@ static void d2d_device_context_draw_glyph_run_bitmap(struct d2d_device_context *
     if (FAILED(hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED,
             &IID_IDWriteFactory2, (IUnknown **)&dwrite_factory)))
     {
-        ERR("Failed to create dwrite factory, hr %#x.\n", hr);
+        ERR("Failed to create dwrite factory, hr %#lx.\n", hr);
         return;
     }
 
-    transform = &render_target->drawing_state.transform;
+    transform = &context->drawing_state.transform;
 
-    scale_x = render_target->desc.dpiX / 96.0f;
+    scale_x = context->desc.dpiX / 96.0f;
     m._11 = transform->_11 * scale_x;
     m._21 = transform->_21 * scale_x;
     m._31 = transform->_31 * scale_x;
 
-    scale_y = render_target->desc.dpiY / 96.0f;
+    scale_y = context->desc.dpiY / 96.0f;
     m._12 = transform->_12 * scale_y;
     m._22 = transform->_22 * scale_y;
     m._32 = transform->_32 * scale_y;
@@ -1298,7 +1401,7 @@ static void d2d_device_context_draw_glyph_run_bitmap(struct d2d_device_context *
     IDWriteFactory2_Release(dwrite_factory);
     if (FAILED(hr))
     {
-        ERR("Failed to create glyph run analysis, hr %#x.\n", hr);
+        ERR("Failed to create glyph run analysis, hr %#lx.\n", hr);
         return;
     }
 
@@ -1309,7 +1412,7 @@ static void d2d_device_context_draw_glyph_run_bitmap(struct d2d_device_context *
 
     if (FAILED(hr = IDWriteGlyphRunAnalysis_GetAlphaTextureBounds(analysis, texture_type, &bounds)))
     {
-        ERR("Failed to get alpha texture bounds, hr %#x.\n", hr);
+        ERR("Failed to get alpha texture bounds, hr %#lx.\n", hr);
         goto done;
     }
 
@@ -1322,7 +1425,7 @@ static void d2d_device_context_draw_glyph_run_bitmap(struct d2d_device_context *
 
     if (texture_type == DWRITE_TEXTURE_CLEARTYPE_3x1)
         bitmap_size.width *= 3;
-    if (!(opacity_values = heap_calloc(bitmap_size.height, bitmap_size.width)))
+    if (!(opacity_values = calloc(bitmap_size.height, bitmap_size.width)))
     {
         ERR("Failed to allocate opacity values.\n");
         goto done;
@@ -1332,20 +1435,20 @@ static void d2d_device_context_draw_glyph_run_bitmap(struct d2d_device_context *
     if (FAILED(hr = IDWriteGlyphRunAnalysis_CreateAlphaTexture(analysis,
             texture_type, &bounds, opacity_values, opacity_values_size)))
     {
-        ERR("Failed to create alpha texture, hr %#x.\n", hr);
+        ERR("Failed to create alpha texture, hr %#lx.\n", hr);
         goto done;
     }
 
     bitmap_desc.pixelFormat.format = DXGI_FORMAT_A8_UNORM;
     bitmap_desc.pixelFormat.alphaMode = D2D1_ALPHA_MODE_PREMULTIPLIED;
-    bitmap_desc.dpiX = render_target->desc.dpiX;
+    bitmap_desc.dpiX = context->desc.dpiX;
     if (texture_type == DWRITE_TEXTURE_CLEARTYPE_3x1)
         bitmap_desc.dpiX *= 3.0f;
-    bitmap_desc.dpiY = render_target->desc.dpiY;
-    if (FAILED(hr = d2d_device_context_CreateBitmap(&render_target->ID2D1DeviceContext_iface,
+    bitmap_desc.dpiY = context->desc.dpiY;
+    if (FAILED(hr = d2d_device_context_CreateBitmap(&context->ID2D1DeviceContext6_iface,
             bitmap_size, opacity_values, bitmap_size.width, &bitmap_desc, &opacity_bitmap)))
     {
-        ERR("Failed to create opacity bitmap, hr %#x.\n", hr);
+        ERR("Failed to create opacity bitmap, hr %#lx.\n", hr);
         goto done;
     }
 
@@ -1359,22 +1462,22 @@ static void d2d_device_context_draw_glyph_run_bitmap(struct d2d_device_context *
     brush_desc.transform._22 = 1.0f;
     brush_desc.transform._31 = run_rect.left;
     brush_desc.transform._32 = run_rect.top;
-    if (FAILED(hr = d2d_device_context_CreateBitmapBrush(&render_target->ID2D1DeviceContext_iface,
+    if (FAILED(hr = d2d_device_context_CreateBitmapBrush(&context->ID2D1DeviceContext6_iface,
             opacity_bitmap, NULL, &brush_desc, &opacity_brush)))
     {
-        ERR("Failed to create opacity bitmap brush, hr %#x.\n", hr);
+        ERR("Failed to create opacity bitmap brush, hr %#lx.\n", hr);
         goto done;
     }
 
-    if (FAILED(hr = ID2D1Factory_CreateRectangleGeometry(render_target->factory, &run_rect, &geometry)))
+    if (FAILED(hr = ID2D1Factory_CreateRectangleGeometry(context->factory, &run_rect, &geometry)))
     {
-        ERR("Failed to create geometry, hr %#x.\n", hr);
+        ERR("Failed to create geometry, hr %#lx.\n", hr);
         goto done;
     }
 
     m = *transform;
     *transform = identity;
-    d2d_device_context_fill_geometry(render_target, unsafe_impl_from_ID2D1Geometry((ID2D1Geometry *)geometry),
+    d2d_device_context_fill_geometry(context, unsafe_impl_from_ID2D1Geometry((ID2D1Geometry *)geometry),
             unsafe_impl_from_ID2D1Brush(brush), unsafe_impl_from_ID2D1Brush((ID2D1Brush *)opacity_brush));
     *transform = m;
 
@@ -1385,732 +1488,28 @@ done:
         ID2D1BitmapBrush_Release(opacity_brush);
     if (opacity_bitmap)
         ID2D1Bitmap_Release(opacity_bitmap);
-    heap_free(opacity_values);
+    free(opacity_values);
     IDWriteGlyphRunAnalysis_Release(analysis);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawGlyphRun(ID2D1DeviceContext *iface,
-        D2D1_POINT_2F baseline_origin, const DWRITE_GLYPH_RUN *glyph_run, ID2D1Brush *brush,
-        DWRITE_MEASURING_MODE measuring_mode)
-{
-    TRACE("iface %p, baseline_origin %s, glyph_run %p, brush %p, measuring_mode %#x.\n",
-            iface, debug_d2d_point_2f(&baseline_origin), glyph_run, brush, measuring_mode);
-
-    ID2D1DeviceContext_DrawGlyphRun(iface, baseline_origin, glyph_run, NULL, brush, measuring_mode);
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetTransform(ID2D1DeviceContext *iface,
-        const D2D1_MATRIX_3X2_F *transform)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, transform %p.\n", iface, transform);
-
-    render_target->drawing_state.transform = *transform;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_GetTransform(ID2D1DeviceContext *iface,
-        D2D1_MATRIX_3X2_F *transform)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, transform %p.\n", iface, transform);
-
-    *transform = render_target->drawing_state.transform;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetAntialiasMode(ID2D1DeviceContext *iface,
-        D2D1_ANTIALIAS_MODE antialias_mode)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, antialias_mode %#x stub!\n", iface, antialias_mode);
-
-    render_target->drawing_state.antialiasMode = antialias_mode;
-}
-
-static D2D1_ANTIALIAS_MODE STDMETHODCALLTYPE d2d_device_context_GetAntialiasMode(ID2D1DeviceContext *iface)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p.\n", iface);
-
-    return render_target->drawing_state.antialiasMode;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetTextAntialiasMode(ID2D1DeviceContext *iface,
-        D2D1_TEXT_ANTIALIAS_MODE antialias_mode)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, antialias_mode %#x.\n", iface, antialias_mode);
-
-    render_target->drawing_state.textAntialiasMode = antialias_mode;
-}
-
-static D2D1_TEXT_ANTIALIAS_MODE STDMETHODCALLTYPE d2d_device_context_GetTextAntialiasMode(ID2D1DeviceContext *iface)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p.\n", iface);
-
-    return render_target->drawing_state.textAntialiasMode;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetTextRenderingParams(ID2D1DeviceContext *iface,
-        IDWriteRenderingParams *text_rendering_params)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, text_rendering_params %p.\n", iface, text_rendering_params);
-
-    if (text_rendering_params)
-        IDWriteRenderingParams_AddRef(text_rendering_params);
-    if (render_target->text_rendering_params)
-        IDWriteRenderingParams_Release(render_target->text_rendering_params);
-    render_target->text_rendering_params = text_rendering_params;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_GetTextRenderingParams(ID2D1DeviceContext *iface,
-        IDWriteRenderingParams **text_rendering_params)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, text_rendering_params %p.\n", iface, text_rendering_params);
-
-    if ((*text_rendering_params = render_target->text_rendering_params))
-        IDWriteRenderingParams_AddRef(*text_rendering_params);
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetTags(ID2D1DeviceContext *iface, D2D1_TAG tag1, D2D1_TAG tag2)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, tag1 %s, tag2 %s.\n", iface, wine_dbgstr_longlong(tag1), wine_dbgstr_longlong(tag2));
-
-    render_target->drawing_state.tag1 = tag1;
-    render_target->drawing_state.tag2 = tag2;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_GetTags(ID2D1DeviceContext *iface, D2D1_TAG *tag1, D2D1_TAG *tag2)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, tag1 %p, tag2 %p.\n", iface, tag1, tag2);
-
-    *tag1 = render_target->drawing_state.tag1;
-    *tag2 = render_target->drawing_state.tag2;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_PushLayer(ID2D1DeviceContext *iface,
-        const D2D1_LAYER_PARAMETERS *layer_parameters, ID2D1Layer *layer)
-{
-    FIXME("iface %p, layer_parameters %p, layer %p stub!\n", iface, layer_parameters, layer);
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_PopLayer(ID2D1DeviceContext *iface)
-{
-    FIXME("iface %p stub!\n", iface);
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_Flush(ID2D1DeviceContext *iface, D2D1_TAG *tag1, D2D1_TAG *tag2)
-{
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
-
-    FIXME("iface %p, tag1 %p, tag2 %p stub!\n", iface, tag1, tag2);
-
-    if (context->ops && context->ops->device_context_present)
-        context->ops->device_context_present(context->outer_unknown);
-
-    return E_NOTIMPL;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SaveDrawingState(ID2D1DeviceContext *iface,
-        ID2D1DrawingStateBlock *state_block)
-{
-    struct d2d_state_block *state_block_impl = unsafe_impl_from_ID2D1DrawingStateBlock(state_block);
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, state_block %p.\n", iface, state_block);
-
-    state_block_impl->drawing_state = render_target->drawing_state;
-    if (render_target->text_rendering_params)
-        IDWriteRenderingParams_AddRef(render_target->text_rendering_params);
-    if (state_block_impl->text_rendering_params)
-        IDWriteRenderingParams_Release(state_block_impl->text_rendering_params);
-    state_block_impl->text_rendering_params = render_target->text_rendering_params;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_RestoreDrawingState(ID2D1DeviceContext *iface,
-        ID2D1DrawingStateBlock *state_block)
-{
-    struct d2d_state_block *state_block_impl = unsafe_impl_from_ID2D1DrawingStateBlock(state_block);
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, state_block %p.\n", iface, state_block);
-
-    render_target->drawing_state = state_block_impl->drawing_state;
-    if (state_block_impl->text_rendering_params)
-        IDWriteRenderingParams_AddRef(state_block_impl->text_rendering_params);
-    if (render_target->text_rendering_params)
-        IDWriteRenderingParams_Release(render_target->text_rendering_params);
-    render_target->text_rendering_params = state_block_impl->text_rendering_params;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_PushAxisAlignedClip(ID2D1DeviceContext *iface,
-        const D2D1_RECT_F *clip_rect, D2D1_ANTIALIAS_MODE antialias_mode)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-    D2D1_RECT_F transformed_rect;
-    float x_scale, y_scale;
-    D2D1_POINT_2F point;
-
-    TRACE("iface %p, clip_rect %s, antialias_mode %#x.\n", iface, debug_d2d_rect_f(clip_rect), antialias_mode);
-
-    if (antialias_mode != D2D1_ANTIALIAS_MODE_ALIASED)
-        FIXME("Ignoring antialias_mode %#x.\n", antialias_mode);
-
-    x_scale = render_target->desc.dpiX / 96.0f;
-    y_scale = render_target->desc.dpiY / 96.0f;
-    d2d_point_transform(&point, &render_target->drawing_state.transform,
-            clip_rect->left * x_scale, clip_rect->top * y_scale);
-    d2d_rect_set(&transformed_rect, point.x, point.y, point.x, point.y);
-    d2d_point_transform(&point, &render_target->drawing_state.transform,
-            clip_rect->left * x_scale, clip_rect->bottom * y_scale);
-    d2d_rect_expand(&transformed_rect, &point);
-    d2d_point_transform(&point, &render_target->drawing_state.transform,
-            clip_rect->right * x_scale, clip_rect->top * y_scale);
-    d2d_rect_expand(&transformed_rect, &point);
-    d2d_point_transform(&point, &render_target->drawing_state.transform,
-            clip_rect->right * x_scale, clip_rect->bottom * y_scale);
-    d2d_rect_expand(&transformed_rect, &point);
-
-    if (!d2d_clip_stack_push(&render_target->clip_stack, &transformed_rect))
-        WARN("Failed to push clip rect.\n");
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_PopAxisAlignedClip(ID2D1DeviceContext *iface)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p.\n", iface);
-
-    d2d_clip_stack_pop(&render_target->clip_stack);
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_Clear(ID2D1DeviceContext *iface, const D2D1_COLOR_F *colour)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-    struct d2d_ps_cb *ps_cb_data;
-    struct d2d_vs_cb *vs_cb_data;
-    D2D1_COLOR_F *c;
-    HRESULT hr;
-
-    TRACE("iface %p, colour %p.\n", iface, colour);
-
-    if (FAILED(hr = ID3D10Buffer_Map(render_target->vs_cb, D3D10_MAP_WRITE_DISCARD,
-            0, (void **)&vs_cb_data)))
-    {
-        WARN("Failed to map vs constant buffer, hr %#x.\n", hr);
-        return;
-    }
-
-    vs_cb_data->transform_geometry._11 = 1.0f;
-    vs_cb_data->transform_geometry._21 = 0.0f;
-    vs_cb_data->transform_geometry._31 = 0.0f;
-    vs_cb_data->transform_geometry.pad0 = 0.0f;
-    vs_cb_data->transform_geometry._12 = 0.0f;
-    vs_cb_data->transform_geometry._22 = 1.0f;
-    vs_cb_data->transform_geometry._32 = 0.0f;
-    vs_cb_data->transform_geometry.stroke_width = 0.0f;
-    vs_cb_data->transform_rtx.x = 1.0f;
-    vs_cb_data->transform_rtx.y = 0.0f;
-    vs_cb_data->transform_rtx.z = 1.0f;
-    vs_cb_data->transform_rtx.w = 1.0f;
-    vs_cb_data->transform_rty.x = 0.0f;
-    vs_cb_data->transform_rty.y = 1.0f;
-    vs_cb_data->transform_rty.z = 1.0f;
-    vs_cb_data->transform_rty.w = -1.0f;
-
-    ID3D10Buffer_Unmap(render_target->vs_cb);
-
-    if (FAILED(hr = ID3D10Buffer_Map(render_target->ps_cb, D3D10_MAP_WRITE_DISCARD,
-            0, (void **)&ps_cb_data)))
-    {
-        WARN("Failed to map ps constant buffer, hr %#x.\n", hr);
-        return;
-    }
-
-    memset(ps_cb_data, 0, sizeof(*ps_cb_data));
-    ps_cb_data->colour_brush.type = D2D_BRUSH_TYPE_SOLID;
-    ps_cb_data->colour_brush.opacity = 1.0f;
-    ps_cb_data->opacity_brush.type = D2D_BRUSH_TYPE_COUNT;
-    c = &ps_cb_data->colour_brush.u.solid.colour;
-    if (colour)
-        *c = *colour;
-    if (render_target->desc.pixelFormat.alphaMode == D2D1_ALPHA_MODE_IGNORE)
-        c->a = 1.0f;
-    c->r *= c->a;
-    c->g *= c->a;
-    c->b *= c->a;
-
-    ID3D10Buffer_Unmap(render_target->ps_cb);
-
-    d2d_device_context_draw(render_target, D2D_SHAPE_TYPE_TRIANGLE, render_target->ib, 6,
-            render_target->vb, render_target->vb_stride, NULL, NULL);
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_BeginDraw(ID2D1DeviceContext *iface)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p.\n", iface);
-
-    memset(&render_target->error, 0, sizeof(render_target->error));
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_EndDraw(ID2D1DeviceContext *iface,
-        D2D1_TAG *tag1, D2D1_TAG *tag2)
-{
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
-    HRESULT hr;
-
-    TRACE("iface %p, tag1 %p, tag2 %p.\n", iface, tag1, tag2);
-
-    if (tag1)
-        *tag1 = context->error.tag1;
-    if (tag2)
-        *tag2 = context->error.tag2;
-
-    if (context->ops && context->ops->device_context_present)
-    {
-        if (FAILED(hr = context->ops->device_context_present(context->outer_unknown)))
-            context->error.code = hr;
-    }
-
-    return context->error.code;
-}
-
-static D2D1_PIXEL_FORMAT * STDMETHODCALLTYPE d2d_device_context_GetPixelFormat(ID2D1DeviceContext *iface,
-        D2D1_PIXEL_FORMAT *format)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, format %p.\n", iface, format);
-
-    *format = render_target->desc.pixelFormat;
-    return format;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetDpi(ID2D1DeviceContext *iface, float dpi_x, float dpi_y)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, dpi_x %.8e, dpi_y %.8e.\n", iface, dpi_x, dpi_y);
-
-    if (dpi_x == 0.0f && dpi_y == 0.0f)
-    {
-        dpi_x = 96.0f;
-        dpi_y = 96.0f;
-    }
-    else if (dpi_x <= 0.0f || dpi_y <= 0.0f)
-        return;
-
-    render_target->desc.dpiX = dpi_x;
-    render_target->desc.dpiY = dpi_y;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_GetDpi(ID2D1DeviceContext *iface, float *dpi_x, float *dpi_y)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, dpi_x %p, dpi_y %p.\n", iface, dpi_x, dpi_y);
-
-    *dpi_x = render_target->desc.dpiX;
-    *dpi_y = render_target->desc.dpiY;
-}
-
-static D2D1_SIZE_F * STDMETHODCALLTYPE d2d_device_context_GetSize(ID2D1DeviceContext *iface, D2D1_SIZE_F *size)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, size %p.\n", iface, size);
-
-    size->width = render_target->pixel_size.width / (render_target->desc.dpiX / 96.0f);
-    size->height = render_target->pixel_size.height / (render_target->desc.dpiY / 96.0f);
-    return size;
-}
-
-static D2D1_SIZE_U * STDMETHODCALLTYPE d2d_device_context_GetPixelSize(ID2D1DeviceContext *iface,
-        D2D1_SIZE_U *pixel_size)
-{
-    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, pixel_size %p.\n", iface, pixel_size);
-
-    *pixel_size = render_target->pixel_size;
-    return pixel_size;
-}
-
-static UINT32 STDMETHODCALLTYPE d2d_device_context_GetMaximumBitmapSize(ID2D1DeviceContext *iface)
-{
-    TRACE("iface %p.\n", iface);
-
-    return D3D10_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-}
-
-static BOOL STDMETHODCALLTYPE d2d_device_context_IsSupported(ID2D1DeviceContext *iface,
-        const D2D1_RENDER_TARGET_PROPERTIES *desc)
-{
-    FIXME("iface %p, desc %p stub!\n", iface, desc);
-
-    return FALSE;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_CreateBitmap(ID2D1DeviceContext *iface,
-        D2D1_SIZE_U size, const void *src_data, UINT32 pitch,
-        const D2D1_BITMAP_PROPERTIES1 *desc, ID2D1Bitmap1 **bitmap)
-{
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
-    struct d2d_bitmap *object;
-    HRESULT hr;
-
-    TRACE("iface %p, size {%u, %u}, src_data %p, pitch %u, desc %p, bitmap %p.\n",
-            iface, size.width, size.height, src_data, pitch, desc, bitmap);
-
-    if (SUCCEEDED(hr = d2d_bitmap_create(context, size, src_data, pitch, desc, &object)))
-        *bitmap = &object->ID2D1Bitmap1_iface;
-
-    return hr;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_CreateBitmapFromWicBitmap(
-        ID2D1DeviceContext *iface, IWICBitmapSource *bitmap_source,
-        const D2D1_BITMAP_PROPERTIES1 *desc, ID2D1Bitmap1 **bitmap)
-{
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
-    struct d2d_bitmap *object;
-    HRESULT hr;
-
-    TRACE("iface %p, bitmap_source %p, desc %p, bitmap %p.\n", iface, bitmap_source, desc, bitmap);
-
-    if (SUCCEEDED(hr = d2d_bitmap_create_from_wic_bitmap(context, bitmap_source, desc, &object)))
-        *bitmap = &object->ID2D1Bitmap1_iface;
-
-    return hr;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateColorContext(ID2D1DeviceContext *iface,
-        D2D1_COLOR_SPACE space, const BYTE *profile, UINT32 profile_size, ID2D1ColorContext **color_context)
-{
-    FIXME("iface %p, space %#x, profile %p, profile_size %u, color_context %p stub!\n",
-            iface, space, profile, profile_size, color_context);
-
-    return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateColorContextFromFilename(ID2D1DeviceContext *iface,
-        const WCHAR *filename, ID2D1ColorContext **color_context)
-{
-    FIXME("iface %p, filename %s, color_context %p stub!\n", iface, debugstr_w(filename), color_context);
-
-    return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateColorContextFromWicColorContext(ID2D1DeviceContext *iface,
-        IWICColorContext *wic_color_context, ID2D1ColorContext **color_context)
-{
-    FIXME("iface %p, wic_color_context %p, color_context %p stub!\n", iface, wic_color_context, color_context);
-
-    return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmapFromDxgiSurface(ID2D1DeviceContext *iface,
-        IDXGISurface *surface, const D2D1_BITMAP_PROPERTIES1 *desc, ID2D1Bitmap1 **bitmap)
-{
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
-    D2D1_BITMAP_PROPERTIES1 bitmap_desc;
-    struct d2d_bitmap *object;
-    HRESULT hr;
-
-    TRACE("iface %p, surface %p, desc %p, bitmap %p.\n", iface, surface, desc, bitmap);
-
-    if (!desc)
-    {
-        DXGI_SURFACE_DESC surface_desc;
-
-        if (FAILED(hr = IDXGISurface_GetDesc(surface, &surface_desc)))
-        {
-            WARN("Failed to get surface desc, hr %#x.\n", hr);
-            return hr;
-        }
-
-        memset(&bitmap_desc, 0, sizeof(bitmap_desc));
-        bitmap_desc.pixelFormat.format = surface_desc.Format;
-        bitmap_desc.pixelFormat.alphaMode = D2D1_ALPHA_MODE_PREMULTIPLIED;
-        bitmap_desc.bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW;
-        desc = &bitmap_desc;
-    }
-
-    if (SUCCEEDED(hr = d2d_bitmap_create_shared(context, &IID_IDXGISurface, surface, desc, &object)))
-        *bitmap = &object->ID2D1Bitmap1_iface;
-
-    return hr;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateEffect(ID2D1DeviceContext *iface,
-        REFCLSID effect_id, ID2D1Effect **effect)
-{
-    struct d2d_effect *object;
-
-    FIXME("iface %p, effect_id %s, effect %p stub!\n", iface, debugstr_guid(effect_id), effect);
-
-    if (!(object = heap_alloc_zero(sizeof(*object))))
-        return E_OUTOFMEMORY;
-
-    d2d_effect_init(object);
-
-    TRACE("Created effect %p.\n", object);
-    *effect = &object->ID2D1Effect_iface;
-
-    return S_OK;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_CreateGradientStopCollection(
-        ID2D1DeviceContext *iface, const D2D1_GRADIENT_STOP *stops, UINT32 stop_count,
-        D2D1_COLOR_SPACE preinterpolation_space, D2D1_COLOR_SPACE postinterpolation_space,
-        D2D1_BUFFER_PRECISION buffer_precision, D2D1_EXTEND_MODE extend_mode,
-        D2D1_COLOR_INTERPOLATION_MODE color_interpolation_mode, ID2D1GradientStopCollection1 **gradient)
-{
-    FIXME("iface %p, stops %p, stop_count %u, preinterpolation_space %#x, postinterpolation_space %#x, "
-            "buffer_precision %#x, extend_mode %#x, color_interpolation_mode %#x, gradient %p stub!\n",
-            iface, stops, stop_count, preinterpolation_space, postinterpolation_space,
-            buffer_precision, extend_mode, color_interpolation_mode, gradient);
-
-    return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateImageBrush(ID2D1DeviceContext *iface,
-        ID2D1Image *image, const D2D1_IMAGE_BRUSH_PROPERTIES *image_brush_desc,
-        const D2D1_BRUSH_PROPERTIES *brush_desc, ID2D1ImageBrush **brush)
-{
-    FIXME("iface %p, image %p, image_brush_desc %p, brush_desc %p, brush %p stub!\n",
-            iface, image, image_brush_desc, brush_desc, brush);
-
-    return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_CreateBitmapBrush(ID2D1DeviceContext *iface,
-        ID2D1Bitmap *bitmap, const D2D1_BITMAP_BRUSH_PROPERTIES1 *bitmap_brush_desc,
-        const D2D1_BRUSH_PROPERTIES *brush_desc, ID2D1BitmapBrush1 **brush)
-{
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
-    struct d2d_brush *object;
-    HRESULT hr;
-
-    TRACE("iface %p, bitmap %p, bitmap_brush_desc %p, brush_desc %p, brush %p.\n", iface, bitmap, bitmap_brush_desc,
-            brush_desc, brush);
-
-    if (SUCCEEDED(hr = d2d_bitmap_brush_create(context->factory, bitmap, bitmap_brush_desc, brush_desc, &object)))
-        *brush = (ID2D1BitmapBrush1 *)&object->ID2D1Brush_iface;
-
-    return hr;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateCommandList(ID2D1DeviceContext *iface,
-        ID2D1CommandList **command_list)
-{
-    FIXME("iface %p, command_list %p stub!\n", iface, command_list);
-
-    return E_NOTIMPL;
-}
-
-static BOOL STDMETHODCALLTYPE d2d_device_context_IsDxgiFormatSupported(ID2D1DeviceContext *iface, DXGI_FORMAT format)
-{
-    FIXME("iface %p, format %#x stub!\n", iface, format);
-
-    return FALSE;
-}
-
-static BOOL STDMETHODCALLTYPE d2d_device_context_IsBufferPrecisionSupported(ID2D1DeviceContext *iface,
-        D2D1_BUFFER_PRECISION buffer_precision)
-{
-    FIXME("iface %p, buffer_precision %#x stub!\n", iface, buffer_precision);
-
-    return FALSE;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_GetImageLocalBounds(ID2D1DeviceContext *iface,
-        ID2D1Image *image, D2D1_RECT_F *local_bounds)
-{
-    FIXME("iface %p, image %p, local_bounds %p stub!\n", iface, image, local_bounds);
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_GetImageWorldBounds(ID2D1DeviceContext *iface,
-        ID2D1Image *image, D2D1_RECT_F *world_bounds)
-{
-    FIXME("iface %p, image %p, world_bounds %p stub!\n", iface, image, world_bounds);
-
-    return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE d2d_device_context_GetGlyphRunWorldBounds(ID2D1DeviceContext *iface,
-        D2D1_POINT_2F baseline_origin, const DWRITE_GLYPH_RUN *glyph_run,
-        DWRITE_MEASURING_MODE measuring_mode, D2D1_RECT_F *bounds)
-{
-    FIXME("iface %p, baseline_origin %s, glyph_run %p, measuring_mode %#x, bounds %p stub!\n",
-            iface, debug_d2d_point_2f(&baseline_origin), glyph_run, measuring_mode, bounds);
-
-    return E_NOTIMPL;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_GetDevice(ID2D1DeviceContext *iface, ID2D1Device **device)
-{
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, device %p.\n", iface, device);
-
-    *device = context->device;
-    ID2D1Device_AddRef(*device);
-}
-
-static void d2d_device_context_reset_target(struct d2d_device_context *context)
-{
-    if (!context->target)
-        return;
-
-    ID2D1Bitmap1_Release(&context->target->ID2D1Bitmap1_iface);
-    context->target = NULL;
-
-    /* Note that DPI settings are kept. */
-    memset(&context->desc.pixelFormat, 0, sizeof(context->desc.pixelFormat));
-    memset(&context->pixel_size, 0, sizeof(context->pixel_size));
-
-    ID3D10BlendState_Release(context->bs);
-    context->bs = NULL;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetTarget(ID2D1DeviceContext *iface, ID2D1Image *target)
-{
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
-    struct d2d_bitmap *bitmap_impl;
-    D3D10_BLEND_DESC blend_desc;
-    ID2D1Bitmap *bitmap;
-    HRESULT hr;
-
-    TRACE("iface %p, target %p.\n", iface, target);
-
-    if (!target)
-    {
-        d2d_device_context_reset_target(context);
-        return;
-    }
-
-    if (FAILED(ID2D1Image_QueryInterface(target, &IID_ID2D1Bitmap, (void **)&bitmap)))
-    {
-        FIXME("Only bitmap targets are supported.\n");
-        return;
-    }
-
-    bitmap_impl = unsafe_impl_from_ID2D1Bitmap(bitmap);
-
-    if (!(bitmap_impl->options & D2D1_BITMAP_OPTIONS_TARGET))
-    {
-        d2d_device_context_set_error(context, D2DERR_INVALID_TARGET);
-        return;
-    }
-
-    d2d_device_context_reset_target(context);
-
-    /* Set sizes and pixel format. */
-    context->pixel_size = bitmap_impl->pixel_size;
-    context->desc.pixelFormat = bitmap_impl->format;
-    context->target = bitmap_impl;
-
-    memset(&blend_desc, 0, sizeof(blend_desc));
-    blend_desc.BlendEnable[0] = TRUE;
-    blend_desc.SrcBlend = D3D10_BLEND_ONE;
-    blend_desc.DestBlend = D3D10_BLEND_INV_SRC_ALPHA;
-    blend_desc.BlendOp = D3D10_BLEND_OP_ADD;
-    if (context->desc.pixelFormat.alphaMode == D2D1_ALPHA_MODE_IGNORE)
-    {
-        blend_desc.SrcBlendAlpha = D3D10_BLEND_ZERO;
-        blend_desc.DestBlendAlpha = D3D10_BLEND_ONE;
-    }
-    else
-    {
-        blend_desc.SrcBlendAlpha = D3D10_BLEND_ONE;
-        blend_desc.DestBlendAlpha = D3D10_BLEND_INV_SRC_ALPHA;
-    }
-    blend_desc.BlendOpAlpha = D3D10_BLEND_OP_ADD;
-    blend_desc.RenderTargetWriteMask[0] = D3D10_COLOR_WRITE_ENABLE_ALL;
-    if (FAILED(hr = ID3D10Device_CreateBlendState(context->d3d_device, &blend_desc, &context->bs)))
-        WARN("Failed to create blend state, hr %#x.\n", hr);
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_GetTarget(ID2D1DeviceContext *iface, ID2D1Image **target)
-{
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
-
-    TRACE("iface %p, target %p.\n", iface, target);
-
-    *target = context->target ? (ID2D1Image *)&context->target->ID2D1Bitmap1_iface : NULL;
-    if (*target)
-        ID2D1Image_AddRef(*target);
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetRenderingControls(ID2D1DeviceContext *iface,
-        const D2D1_RENDERING_CONTROLS *rendering_controls)
-{
-    FIXME("iface %p, rendering_controls %p stub!\n", iface, rendering_controls);
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_GetRenderingControls(ID2D1DeviceContext *iface,
-        D2D1_RENDERING_CONTROLS *rendering_controls)
-{
-    FIXME("iface %p, rendering_controls %p stub!\n", iface, rendering_controls);
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetPrimitiveBlend(ID2D1DeviceContext *iface,
-        D2D1_PRIMITIVE_BLEND primitive_blend)
-{
-    FIXME("iface %p, primitive_blend %#x stub!\n", iface, primitive_blend);
-}
-
-static D2D1_PRIMITIVE_BLEND STDMETHODCALLTYPE d2d_device_context_GetPrimitiveBlend(ID2D1DeviceContext *iface)
-{
-    FIXME("iface %p stub!\n", iface);
-
-    return D2D1_PRIMITIVE_BLEND_SOURCE_OVER;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_SetUnitMode(ID2D1DeviceContext *iface, D2D1_UNIT_MODE unit_mode)
-{
-    FIXME("iface %p, unit_mode %#x stub!\n", iface, unit_mode);
-}
-
-static D2D1_UNIT_MODE STDMETHODCALLTYPE d2d_device_context_GetUnitMode(ID2D1DeviceContext *iface)
-{
-    FIXME("iface %p stub!\n", iface);
-
-    return D2D1_UNIT_MODE_DIPS;
-}
-
-static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_DrawGlyphRun(ID2D1DeviceContext *iface,
+static void d2d_device_context_draw_glyph_run(struct d2d_device_context *context,
         D2D1_POINT_2F baseline_origin, const DWRITE_GLYPH_RUN *glyph_run,
         const DWRITE_GLYPH_RUN_DESCRIPTION *glyph_run_desc, ID2D1Brush *brush, DWRITE_MEASURING_MODE measuring_mode)
 {
     DWRITE_TEXT_ANTIALIAS_MODE antialias_mode = DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE;
-    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
     IDWriteRenderingParams *rendering_params;
     DWRITE_RENDERING_MODE rendering_mode;
     HRESULT hr;
 
-    TRACE("iface %p, baseline_origin %s, glyph_run %p, glyph_run_desc %p, brush %p, measuring_mode %#x.\n",
-            iface, debug_d2d_point_2f(&baseline_origin), glyph_run, glyph_run_desc, brush, measuring_mode);
-
     if (FAILED(context->error.code))
         return;
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+    {
+        d2d_command_list_draw_glyph_run(context->target.command_list, context, baseline_origin, glyph_run,
+                glyph_run_desc, brush, measuring_mode);
+        return;
+    }
 
     rendering_params = context->text_rendering_params ? context->text_rendering_params
             : context->default_text_rendering_params;
@@ -2171,7 +1570,7 @@ static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_DrawGlyphRun
                 max(context->desc.dpiX, context->desc.dpiY) / 96.0f,
                 measuring_mode, rendering_params, &rendering_mode)))
         {
-            ERR("Failed to get recommended rendering mode, hr %#x.\n", hr);
+            ERR("Failed to get recommended rendering mode, hr %#lx.\n", hr);
             rendering_mode = DWRITE_RENDERING_MODE_OUTLINE;
         }
     }
@@ -2183,7 +1582,964 @@ static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_DrawGlyphRun
                 rendering_mode, measuring_mode, antialias_mode);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawImage(ID2D1DeviceContext *iface, ID2D1Image *image,
+static void STDMETHODCALLTYPE d2d_device_context_DrawGlyphRun(ID2D1DeviceContext6 *iface,
+        D2D1_POINT_2F baseline_origin, const DWRITE_GLYPH_RUN *glyph_run, ID2D1Brush *brush,
+        DWRITE_MEASURING_MODE measuring_mode)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, baseline_origin %s, glyph_run %p, brush %p, measuring_mode %#x.\n",
+            iface, debug_d2d_point_2f(&baseline_origin), glyph_run, brush, measuring_mode);
+
+    d2d_device_context_draw_glyph_run(context, baseline_origin, glyph_run, NULL, brush, measuring_mode);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetTransform(ID2D1DeviceContext6 *iface,
+        const D2D1_MATRIX_3X2_F *transform)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, transform %p.\n", iface, transform);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_set_transform(context->target.command_list, transform);
+
+    context->drawing_state.transform = *transform;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_GetTransform(ID2D1DeviceContext6 *iface,
+        D2D1_MATRIX_3X2_F *transform)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, transform %p.\n", iface, transform);
+
+    *transform = render_target->drawing_state.transform;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetAntialiasMode(ID2D1DeviceContext6 *iface,
+        D2D1_ANTIALIAS_MODE antialias_mode)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, antialias_mode %#x stub!\n", iface, antialias_mode);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_set_antialias_mode(context->target.command_list, antialias_mode);
+
+    context->drawing_state.antialiasMode = antialias_mode;
+}
+
+static D2D1_ANTIALIAS_MODE STDMETHODCALLTYPE d2d_device_context_GetAntialiasMode(ID2D1DeviceContext6 *iface)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p.\n", iface);
+
+    return render_target->drawing_state.antialiasMode;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetTextAntialiasMode(ID2D1DeviceContext6 *iface,
+        D2D1_TEXT_ANTIALIAS_MODE antialias_mode)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, antialias_mode %#x.\n", iface, antialias_mode);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_set_text_antialias_mode(context->target.command_list, antialias_mode);
+
+    context->drawing_state.textAntialiasMode = antialias_mode;
+}
+
+static D2D1_TEXT_ANTIALIAS_MODE STDMETHODCALLTYPE d2d_device_context_GetTextAntialiasMode(ID2D1DeviceContext6 *iface)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p.\n", iface);
+
+    return render_target->drawing_state.textAntialiasMode;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetTextRenderingParams(ID2D1DeviceContext6 *iface,
+        IDWriteRenderingParams *text_rendering_params)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, text_rendering_params %p.\n", iface, text_rendering_params);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_set_text_rendering_params(context->target.command_list, text_rendering_params);
+
+    if (text_rendering_params)
+        IDWriteRenderingParams_AddRef(text_rendering_params);
+    if (context->text_rendering_params)
+        IDWriteRenderingParams_Release(context->text_rendering_params);
+    context->text_rendering_params = text_rendering_params;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_GetTextRenderingParams(ID2D1DeviceContext6 *iface,
+        IDWriteRenderingParams **text_rendering_params)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, text_rendering_params %p.\n", iface, text_rendering_params);
+
+    if ((*text_rendering_params = render_target->text_rendering_params))
+        IDWriteRenderingParams_AddRef(*text_rendering_params);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetTags(ID2D1DeviceContext6 *iface, D2D1_TAG tag1, D2D1_TAG tag2)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, tag1 %s, tag2 %s.\n", iface, wine_dbgstr_longlong(tag1), wine_dbgstr_longlong(tag2));
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_set_tags(context->target.command_list, tag1, tag2);
+
+    context->drawing_state.tag1 = tag1;
+    context->drawing_state.tag2 = tag2;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_GetTags(ID2D1DeviceContext6 *iface, D2D1_TAG *tag1, D2D1_TAG *tag2)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, tag1 %p, tag2 %p.\n", iface, tag1, tag2);
+
+    *tag1 = render_target->drawing_state.tag1;
+    *tag2 = render_target->drawing_state.tag2;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_PushLayer(ID2D1DeviceContext6 *iface,
+        const D2D1_LAYER_PARAMETERS *layer_parameters, ID2D1Layer *layer)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    FIXME("iface %p, layer_parameters %p, layer %p stub!\n", iface, layer_parameters, layer);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+    {
+        D2D1_LAYER_PARAMETERS1 parameters;
+
+        memcpy(&parameters, layer_parameters, sizeof(*layer_parameters));
+        parameters.layerOptions = D2D1_LAYER_OPTIONS1_NONE;
+        d2d_command_list_push_layer(context->target.command_list, context, &parameters, layer);
+    }
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_PopLayer(ID2D1DeviceContext6 *iface)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    FIXME("iface %p stub!\n", iface);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_pop_layer(context->target.command_list);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_Flush(ID2D1DeviceContext6 *iface, D2D1_TAG *tag1, D2D1_TAG *tag2)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    FIXME("iface %p, tag1 %p, tag2 %p stub!\n", iface, tag1, tag2);
+
+    if (context->ops && context->ops->device_context_present)
+        context->ops->device_context_present(context->outer_unknown);
+
+    return E_NOTIMPL;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SaveDrawingState(ID2D1DeviceContext6 *iface,
+        ID2D1DrawingStateBlock *state_block)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_state_block *state_block_impl;
+
+    TRACE("iface %p, state_block %p.\n", iface, state_block);
+
+    if (!(state_block_impl = unsafe_impl_from_ID2D1DrawingStateBlock(state_block))) return;
+    state_block_impl->drawing_state = render_target->drawing_state;
+    if (render_target->text_rendering_params)
+        IDWriteRenderingParams_AddRef(render_target->text_rendering_params);
+    if (state_block_impl->text_rendering_params)
+        IDWriteRenderingParams_Release(state_block_impl->text_rendering_params);
+    state_block_impl->text_rendering_params = render_target->text_rendering_params;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_RestoreDrawingState(ID2D1DeviceContext6 *iface,
+        ID2D1DrawingStateBlock *state_block)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_state_block *state_block_impl;
+
+    TRACE("iface %p, state_block %p.\n", iface, state_block);
+
+    if (!(state_block_impl = unsafe_impl_from_ID2D1DrawingStateBlock(state_block))) return;
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+    {
+        struct d2d_command_list *command_list = context->target.command_list;
+
+        if (context->drawing_state.antialiasMode != state_block_impl->drawing_state.antialiasMode)
+            d2d_command_list_set_antialias_mode(command_list, state_block_impl->drawing_state.antialiasMode);
+        d2d_command_list_set_text_antialias_mode(command_list, state_block_impl->drawing_state.textAntialiasMode);
+        d2d_command_list_set_tags(command_list, state_block_impl->drawing_state.tag1, state_block_impl->drawing_state.tag2);
+        d2d_command_list_set_transform(command_list, &state_block_impl->drawing_state.transform);
+        d2d_command_list_set_primitive_blend(command_list, state_block_impl->drawing_state.primitiveBlend);
+        d2d_command_list_set_unit_mode(command_list, state_block_impl->drawing_state.unitMode);
+        d2d_command_list_set_text_rendering_params(command_list, state_block_impl->text_rendering_params);
+    }
+
+    context->drawing_state = state_block_impl->drawing_state;
+    if (state_block_impl->text_rendering_params)
+        IDWriteRenderingParams_AddRef(state_block_impl->text_rendering_params);
+    if (context->text_rendering_params)
+        IDWriteRenderingParams_Release(context->text_rendering_params);
+    context->text_rendering_params = state_block_impl->text_rendering_params;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_PushAxisAlignedClip(ID2D1DeviceContext6 *iface,
+        const D2D1_RECT_F *clip_rect, D2D1_ANTIALIAS_MODE antialias_mode)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    D2D1_RECT_F transformed_rect;
+    float x_scale, y_scale;
+    D2D1_POINT_2F point;
+
+    TRACE("iface %p, clip_rect %s, antialias_mode %#x.\n", iface, debug_d2d_rect_f(clip_rect), antialias_mode);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_push_clip(context->target.command_list, clip_rect, antialias_mode);
+
+    if (antialias_mode != D2D1_ANTIALIAS_MODE_ALIASED)
+        FIXME("Ignoring antialias_mode %#x.\n", antialias_mode);
+
+    x_scale = context->desc.dpiX / 96.0f;
+    y_scale = context->desc.dpiY / 96.0f;
+    d2d_point_transform(&point, &context->drawing_state.transform,
+            clip_rect->left * x_scale, clip_rect->top * y_scale);
+    d2d_rect_set(&transformed_rect, point.x, point.y, point.x, point.y);
+    d2d_point_transform(&point, &context->drawing_state.transform,
+            clip_rect->left * x_scale, clip_rect->bottom * y_scale);
+    d2d_rect_expand(&transformed_rect, &point);
+    d2d_point_transform(&point, &context->drawing_state.transform,
+            clip_rect->right * x_scale, clip_rect->top * y_scale);
+    d2d_rect_expand(&transformed_rect, &point);
+    d2d_point_transform(&point, &context->drawing_state.transform,
+            clip_rect->right * x_scale, clip_rect->bottom * y_scale);
+    d2d_rect_expand(&transformed_rect, &point);
+
+    if (!d2d_clip_stack_push(&context->clip_stack, &transformed_rect))
+        WARN("Failed to push clip rect.\n");
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_PopAxisAlignedClip(ID2D1DeviceContext6 *iface)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p.\n", iface);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_pop_clip(context->target.command_list);
+
+    d2d_clip_stack_pop(&context->clip_stack);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_Clear(ID2D1DeviceContext6 *iface, const D2D1_COLOR_F *colour)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    D3D11_MAPPED_SUBRESOURCE map_desc;
+    ID3D11DeviceContext *d3d_context;
+    struct d2d_ps_cb *ps_cb_data;
+    struct d2d_vs_cb *vs_cb_data;
+    D2D1_COLOR_F *c;
+    HRESULT hr;
+
+    TRACE("iface %p, colour %p.\n", iface, colour);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+    {
+        d2d_command_list_clear(context->target.command_list, colour);
+        return;
+    }
+
+    ID3D11Device1_GetImmediateContext(context->d3d_device, &d3d_context);
+
+    if (FAILED(hr = ID3D11DeviceContext_Map(d3d_context, (ID3D11Resource *)context->vs_cb,
+            0, D3D11_MAP_WRITE_DISCARD, 0, &map_desc)))
+    {
+        WARN("Failed to map vs constant buffer, hr %#lx.\n", hr);
+        ID3D11DeviceContext_Release(d3d_context);
+        return;
+    }
+
+    vs_cb_data = map_desc.pData;
+    vs_cb_data->transform_geometry._11 = 1.0f;
+    vs_cb_data->transform_geometry._21 = 0.0f;
+    vs_cb_data->transform_geometry._31 = 0.0f;
+    vs_cb_data->transform_geometry.pad0 = 0.0f;
+    vs_cb_data->transform_geometry._12 = 0.0f;
+    vs_cb_data->transform_geometry._22 = 1.0f;
+    vs_cb_data->transform_geometry._32 = 0.0f;
+    vs_cb_data->transform_geometry.stroke_width = 0.0f;
+    vs_cb_data->transform_rtx.x = 1.0f;
+    vs_cb_data->transform_rtx.y = 0.0f;
+    vs_cb_data->transform_rtx.z = 1.0f;
+    vs_cb_data->transform_rtx.w = 1.0f;
+    vs_cb_data->transform_rty.x = 0.0f;
+    vs_cb_data->transform_rty.y = 1.0f;
+    vs_cb_data->transform_rty.z = 1.0f;
+    vs_cb_data->transform_rty.w = -1.0f;
+
+    ID3D11DeviceContext_Unmap(d3d_context, (ID3D11Resource *)context->vs_cb, 0);
+
+    if (FAILED(hr = ID3D11DeviceContext_Map(d3d_context, (ID3D11Resource *)context->ps_cb,
+            0, D3D11_MAP_WRITE_DISCARD, 0, &map_desc)))
+    {
+        WARN("Failed to map ps constant buffer, hr %#lx.\n", hr);
+        ID3D11DeviceContext_Release(d3d_context);
+        return;
+    }
+
+    ps_cb_data = map_desc.pData;
+    memset(ps_cb_data, 0, sizeof(*ps_cb_data));
+    ps_cb_data->colour_brush.type = D2D_BRUSH_TYPE_SOLID;
+    ps_cb_data->colour_brush.opacity = 1.0f;
+    ps_cb_data->opacity_brush.type = D2D_BRUSH_TYPE_COUNT;
+    c = &ps_cb_data->colour_brush.u.solid.colour;
+    if (colour)
+        *c = *colour;
+    if (context->desc.pixelFormat.alphaMode == D2D1_ALPHA_MODE_IGNORE)
+        c->a = 1.0f;
+    c->r *= c->a;
+    c->g *= c->a;
+    c->b *= c->a;
+
+    ID3D11DeviceContext_Unmap(d3d_context, (ID3D11Resource *)context->ps_cb, 0);
+    ID3D11DeviceContext_Release(d3d_context);
+
+    d2d_device_context_draw(context, D2D_SHAPE_TYPE_TRIANGLE, context->ib, 6,
+            context->vb, context->vb_stride, NULL, NULL);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_BeginDraw(ID2D1DeviceContext6 *iface)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p.\n", iface);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_begin_draw(context->target.command_list, context);
+
+    memset(&context->error, 0, sizeof(context->error));
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_EndDraw(ID2D1DeviceContext6 *iface,
+        D2D1_TAG *tag1, D2D1_TAG *tag2)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    HRESULT hr;
+
+    TRACE("iface %p, tag1 %p, tag2 %p.\n", iface, tag1, tag2);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+    {
+        FIXME("Unimplemented for command list target.\n");
+        return E_NOTIMPL;
+    }
+
+    if (tag1)
+        *tag1 = context->error.tag1;
+    if (tag2)
+        *tag2 = context->error.tag2;
+
+    if (context->ops && context->ops->device_context_present)
+    {
+        if (FAILED(hr = context->ops->device_context_present(context->outer_unknown)))
+            context->error.code = hr;
+    }
+
+    return context->error.code;
+}
+
+static D2D1_PIXEL_FORMAT * STDMETHODCALLTYPE d2d_device_context_GetPixelFormat(ID2D1DeviceContext6 *iface,
+        D2D1_PIXEL_FORMAT *format)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, format %p.\n", iface, format);
+
+    *format = render_target->desc.pixelFormat;
+    return format;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetDpi(ID2D1DeviceContext6 *iface, float dpi_x, float dpi_y)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, dpi_x %.8e, dpi_y %.8e.\n", iface, dpi_x, dpi_y);
+
+    if (dpi_x == 0.0f && dpi_y == 0.0f)
+    {
+        dpi_x = 96.0f;
+        dpi_y = 96.0f;
+    }
+    else if (dpi_x <= 0.0f || dpi_y <= 0.0f)
+        return;
+
+    render_target->desc.dpiX = dpi_x;
+    render_target->desc.dpiY = dpi_y;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_GetDpi(ID2D1DeviceContext6 *iface, float *dpi_x, float *dpi_y)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, dpi_x %p, dpi_y %p.\n", iface, dpi_x, dpi_y);
+
+    *dpi_x = render_target->desc.dpiX;
+    *dpi_y = render_target->desc.dpiY;
+}
+
+static D2D1_SIZE_F * STDMETHODCALLTYPE d2d_device_context_GetSize(ID2D1DeviceContext6 *iface, D2D1_SIZE_F *size)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, size %p.\n", iface, size);
+
+    size->width = render_target->pixel_size.width / (render_target->desc.dpiX / 96.0f);
+    size->height = render_target->pixel_size.height / (render_target->desc.dpiY / 96.0f);
+    return size;
+}
+
+static D2D1_SIZE_U * STDMETHODCALLTYPE d2d_device_context_GetPixelSize(ID2D1DeviceContext6 *iface,
+        D2D1_SIZE_U *pixel_size)
+{
+    struct d2d_device_context *render_target = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, pixel_size %p.\n", iface, pixel_size);
+
+    *pixel_size = render_target->pixel_size;
+    return pixel_size;
+}
+
+static UINT32 STDMETHODCALLTYPE d2d_device_context_GetMaximumBitmapSize(ID2D1DeviceContext6 *iface)
+{
+    TRACE("iface %p.\n", iface);
+
+    return D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+}
+
+static BOOL STDMETHODCALLTYPE d2d_device_context_IsSupported(ID2D1DeviceContext6 *iface,
+        const D2D1_RENDER_TARGET_PROPERTIES *desc)
+{
+    FIXME("iface %p, desc %p stub!\n", iface, desc);
+
+    return FALSE;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_CreateBitmap(ID2D1DeviceContext6 *iface,
+        D2D1_SIZE_U size, const void *src_data, UINT32 pitch,
+        const D2D1_BITMAP_PROPERTIES1 *desc, ID2D1Bitmap1 **bitmap)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_bitmap *object;
+    HRESULT hr;
+
+    TRACE("iface %p, size {%u, %u}, src_data %p, pitch %u, desc %p, bitmap %p.\n",
+            iface, size.width, size.height, src_data, pitch, desc, bitmap);
+
+    if (SUCCEEDED(hr = d2d_bitmap_create(context, size, src_data, pitch, desc, &object)))
+        *bitmap = &object->ID2D1Bitmap1_iface;
+
+    return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_CreateBitmapFromWicBitmap(
+        ID2D1DeviceContext6 *iface, IWICBitmapSource *bitmap_source,
+        const D2D1_BITMAP_PROPERTIES1 *desc, ID2D1Bitmap1 **bitmap)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_bitmap *object;
+    HRESULT hr;
+
+    TRACE("iface %p, bitmap_source %p, desc %p, bitmap %p.\n", iface, bitmap_source, desc, bitmap);
+
+    if (SUCCEEDED(hr = d2d_bitmap_create_from_wic_bitmap(context, bitmap_source, desc, &object)))
+        *bitmap = &object->ID2D1Bitmap1_iface;
+
+    return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateColorContext(ID2D1DeviceContext6 *iface,
+        D2D1_COLOR_SPACE space, const BYTE *profile, UINT32 profile_size, ID2D1ColorContext **color_context)
+{
+    FIXME("iface %p, space %#x, profile %p, profile_size %u, color_context %p stub!\n",
+            iface, space, profile, profile_size, color_context);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateColorContextFromFilename(ID2D1DeviceContext6 *iface,
+        const WCHAR *filename, ID2D1ColorContext **color_context)
+{
+    FIXME("iface %p, filename %s, color_context %p stub!\n", iface, debugstr_w(filename), color_context);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateColorContextFromWicColorContext(ID2D1DeviceContext6 *iface,
+        IWICColorContext *wic_color_context, ID2D1ColorContext **color_context)
+{
+    FIXME("iface %p, wic_color_context %p, color_context %p stub!\n", iface, wic_color_context, color_context);
+
+    return E_NOTIMPL;
+}
+
+static BOOL d2d_bitmap_check_options_with_surface(unsigned int options, unsigned int surface_options)
+{
+    switch (options)
+    {
+        case D2D1_BITMAP_OPTIONS_NONE:
+        case D2D1_BITMAP_OPTIONS_TARGET:
+        case D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW:
+        case D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW | D2D1_BITMAP_OPTIONS_GDI_COMPATIBLE:
+        case D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_GDI_COMPATIBLE:
+        case D2D1_BITMAP_OPTIONS_CANNOT_DRAW | D2D1_BITMAP_OPTIONS_CPU_READ:
+        case D2D1_BITMAP_OPTIONS_CANNOT_DRAW:
+            break;
+        default:
+            WARN("Invalid bitmap options %#x.\n", options);
+            return FALSE;
+    }
+
+    if (options && (options & D2D1_BITMAP_OPTIONS_TARGET) != (surface_options & D2D1_BITMAP_OPTIONS_TARGET))
+        return FALSE;
+    if (!(options & D2D1_BITMAP_OPTIONS_CANNOT_DRAW) && (surface_options & D2D1_BITMAP_OPTIONS_CANNOT_DRAW))
+        return FALSE;
+    if (options & D2D1_BITMAP_OPTIONS_TARGET)
+    {
+        if (options & D2D1_BITMAP_OPTIONS_GDI_COMPATIBLE && !(surface_options & D2D1_BITMAP_OPTIONS_GDI_COMPATIBLE))
+            return FALSE;
+        return TRUE;
+    }
+
+    if (options & D2D1_BITMAP_OPTIONS_CANNOT_DRAW)
+    {
+        if (!(surface_options & D2D1_BITMAP_OPTIONS_CANNOT_DRAW))
+            return FALSE;
+
+        if (options & D2D1_BITMAP_OPTIONS_CPU_READ && !(surface_options & D2D1_BITMAP_OPTIONS_CPU_READ))
+            return FALSE;
+    }
+
+    return TRUE;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateBitmapFromDxgiSurface(ID2D1DeviceContext6 *iface,
+        IDXGISurface *surface, const D2D1_BITMAP_PROPERTIES1 *desc, ID2D1Bitmap1 **bitmap)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    D2D1_BITMAP_PROPERTIES1 bitmap_desc;
+    unsigned int surface_options;
+    struct d2d_bitmap *object;
+    HRESULT hr;
+
+    TRACE("iface %p, surface %p, desc %p, bitmap %p.\n", iface, surface, desc, bitmap);
+
+    surface_options = d2d_get_bitmap_options_for_surface(surface);
+
+    if (desc)
+    {
+        if (!d2d_bitmap_check_options_with_surface(desc->bitmapOptions, surface_options))
+        {
+            WARN("Incompatible bitmap options %#x, surface options %#x.\n",
+                    desc->bitmapOptions, surface_options);
+            return E_INVALIDARG;
+        }
+    }
+    else
+    {
+        DXGI_SURFACE_DESC surface_desc;
+
+        if (FAILED(hr = IDXGISurface_GetDesc(surface, &surface_desc)))
+        {
+            WARN("Failed to get surface desc, hr %#lx.\n", hr);
+            return hr;
+        }
+
+        memset(&bitmap_desc, 0, sizeof(bitmap_desc));
+        bitmap_desc.pixelFormat.format = surface_desc.Format;
+        bitmap_desc.pixelFormat.alphaMode = D2D1_ALPHA_MODE_PREMULTIPLIED;
+        bitmap_desc.bitmapOptions = surface_options;
+        desc = &bitmap_desc;
+    }
+
+    if (SUCCEEDED(hr = d2d_bitmap_create_shared(context, &IID_IDXGISurface, surface, desc, &object)))
+        *bitmap = &object->ID2D1Bitmap1_iface;
+
+    return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateEffect(ID2D1DeviceContext6 *iface,
+        REFCLSID effect_id, ID2D1Effect **effect)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, effect_id %s, effect %p.\n", iface, debugstr_guid(effect_id), effect);
+
+    return d2d_effect_create(context, effect_id, effect);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_CreateGradientStopCollection(
+        ID2D1DeviceContext6 *iface, const D2D1_GRADIENT_STOP *stops, UINT32 stop_count,
+        D2D1_COLOR_SPACE preinterpolation_space, D2D1_COLOR_SPACE postinterpolation_space,
+        D2D1_BUFFER_PRECISION buffer_precision, D2D1_EXTEND_MODE extend_mode,
+        D2D1_COLOR_INTERPOLATION_MODE color_interpolation_mode, ID2D1GradientStopCollection1 **gradient)
+{
+    FIXME("iface %p, stops %p, stop_count %u, preinterpolation_space %#x, postinterpolation_space %#x, "
+            "buffer_precision %#x, extend_mode %#x, color_interpolation_mode %#x, gradient %p stub!\n",
+            iface, stops, stop_count, preinterpolation_space, postinterpolation_space,
+            buffer_precision, extend_mode, color_interpolation_mode, gradient);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateImageBrush(ID2D1DeviceContext6 *iface,
+        ID2D1Image *image, const D2D1_IMAGE_BRUSH_PROPERTIES *image_brush_desc,
+        const D2D1_BRUSH_PROPERTIES *brush_desc, ID2D1ImageBrush **brush)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_brush *object;
+    HRESULT hr;
+
+    TRACE("iface %p, image %p, image_brush_desc %p, brush_desc %p, brush %p.\n", iface, image, image_brush_desc,
+            brush_desc, brush);
+
+    if (SUCCEEDED(hr = d2d_image_brush_create(context->factory, image, image_brush_desc,
+            brush_desc, &object)))
+        *brush = (ID2D1ImageBrush *)&object->ID2D1Brush_iface;
+
+    return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_CreateBitmapBrush(ID2D1DeviceContext6 *iface,
+        ID2D1Bitmap *bitmap, const D2D1_BITMAP_BRUSH_PROPERTIES1 *bitmap_brush_desc,
+        const D2D1_BRUSH_PROPERTIES *brush_desc, ID2D1BitmapBrush1 **brush)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_brush *object;
+    HRESULT hr;
+
+    TRACE("iface %p, bitmap %p, bitmap_brush_desc %p, brush_desc %p, brush %p.\n", iface, bitmap, bitmap_brush_desc,
+            brush_desc, brush);
+
+    if (SUCCEEDED(hr = d2d_bitmap_brush_create(context->factory, bitmap, bitmap_brush_desc, brush_desc, &object)))
+        *brush = (ID2D1BitmapBrush1 *)&object->ID2D1Brush_iface;
+
+    return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateCommandList(ID2D1DeviceContext6 *iface,
+        ID2D1CommandList **command_list)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_command_list *object;
+    HRESULT hr;
+
+    TRACE("iface %p, command_list %p.\n", iface, command_list);
+
+    if (SUCCEEDED(hr = d2d_command_list_create(context->factory, &object)))
+        *command_list = &object->ID2D1CommandList_iface;
+
+    return hr;
+}
+
+static BOOL STDMETHODCALLTYPE d2d_device_context_IsDxgiFormatSupported(ID2D1DeviceContext6 *iface, DXGI_FORMAT format)
+{
+    FIXME("iface %p, format %#x stub!\n", iface, format);
+
+    return FALSE;
+}
+
+static BOOL STDMETHODCALLTYPE d2d_device_context_IsBufferPrecisionSupported(ID2D1DeviceContext6 *iface,
+        D2D1_BUFFER_PRECISION buffer_precision)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    DXGI_FORMAT format;
+    UINT support = 0;
+    HRESULT hr;
+
+    TRACE("iface %p, buffer_precision %u.\n", iface, buffer_precision);
+
+    switch (buffer_precision)
+    {
+        case D2D1_BUFFER_PRECISION_8BPC_UNORM: format = DXGI_FORMAT_R8G8B8A8_UNORM; break;
+        case D2D1_BUFFER_PRECISION_8BPC_UNORM_SRGB: format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; break;
+        case D2D1_BUFFER_PRECISION_16BPC_UNORM: format = DXGI_FORMAT_R16G16B16A16_UNORM; break;
+        case D2D1_BUFFER_PRECISION_16BPC_FLOAT: format = DXGI_FORMAT_R16G16B16A16_FLOAT; break;
+        case D2D1_BUFFER_PRECISION_32BPC_FLOAT: format = DXGI_FORMAT_R32G32B32A32_FLOAT; break;
+        default:
+            WARN("Unexpected precision %u.\n", buffer_precision);
+            return FALSE;
+    }
+
+    if (FAILED(hr = ID3D11Device1_CheckFormatSupport(context->d3d_device, format, &support)))
+    {
+        WARN("Format support check failed, hr %#lx.\n", hr);
+    }
+
+    return !!(support & D3D11_FORMAT_SUPPORT_BUFFER);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_GetImageLocalBounds(ID2D1DeviceContext6 *iface,
+        ID2D1Image *image, D2D1_RECT_F *local_bounds)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    D2D_SIZE_U pixel_size;
+    ID2D1Bitmap *bitmap;
+    D2D_SIZE_F size;
+
+    TRACE("iface %p, image %p, local_bounds %p.\n", iface, image, local_bounds);
+
+    if (SUCCEEDED(ID2D1Image_QueryInterface(image, &IID_ID2D1Bitmap, (void **)&bitmap)))
+    {
+        local_bounds->left = 0.0f;
+        local_bounds->top  = 0.0f;
+        switch (context->drawing_state.unitMode)
+        {
+            case D2D1_UNIT_MODE_DIPS:
+                size = ID2D1Bitmap_GetSize(bitmap);
+                local_bounds->right  = size.width;
+                local_bounds->bottom = size.height;
+                break;
+
+            case D2D1_UNIT_MODE_PIXELS:
+                pixel_size = ID2D1Bitmap_GetPixelSize(bitmap);
+                local_bounds->right  = pixel_size.width;
+                local_bounds->bottom = pixel_size.height;
+                break;
+
+            default:
+                WARN("Unknown unit mode %#x.\n", context->drawing_state.unitMode);
+                break;
+        }
+        ID2D1Bitmap_Release(bitmap);
+
+        return S_OK;
+    }
+    else
+    {
+        FIXME("Unable to get local bounds of image %p.\n", image);
+
+        return E_NOTIMPL;
+    }
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_GetImageWorldBounds(ID2D1DeviceContext6 *iface,
+        ID2D1Image *image, D2D1_RECT_F *world_bounds)
+{
+    FIXME("iface %p, image %p, world_bounds %p stub!\n", iface, image, world_bounds);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_GetGlyphRunWorldBounds(ID2D1DeviceContext6 *iface,
+        D2D1_POINT_2F baseline_origin, const DWRITE_GLYPH_RUN *glyph_run,
+        DWRITE_MEASURING_MODE measuring_mode, D2D1_RECT_F *bounds)
+{
+    FIXME("iface %p, baseline_origin %s, glyph_run %p, measuring_mode %#x, bounds %p stub!\n",
+            iface, debug_d2d_point_2f(&baseline_origin), glyph_run, measuring_mode, bounds);
+
+    return E_NOTIMPL;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_GetDevice(ID2D1DeviceContext6 *iface, ID2D1Device **device)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, device %p.\n", iface, device);
+
+    *device = (ID2D1Device *)&context->device->ID2D1Device6_iface;
+    ID2D1Device_AddRef(*device);
+}
+
+static void d2d_device_context_reset_target(struct d2d_device_context *context)
+{
+    if (!context->target.object)
+        return;
+
+    IUnknown_Release(context->target.object);
+    memset(&context->target, 0, sizeof(context->target));
+
+    /* Note that DPI settings are kept. */
+    memset(&context->desc.pixelFormat, 0, sizeof(context->desc.pixelFormat));
+    memset(&context->pixel_size, 0, sizeof(context->pixel_size));
+
+    if (context->bs)
+        ID3D11BlendState_Release(context->bs);
+    context->bs = NULL;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetTarget(ID2D1DeviceContext6 *iface, ID2D1Image *target)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+    struct d2d_command_list *command_list_impl;
+    struct d2d_bitmap *bitmap_impl;
+    ID2D1CommandList *command_list;
+    D3D11_BLEND_DESC blend_desc;
+    ID2D1Bitmap *bitmap;
+    HRESULT hr;
+
+    TRACE("iface %p, target %p.\n", iface, target);
+
+    if (!target)
+    {
+        d2d_device_context_reset_target(context);
+        return;
+    }
+
+    if (SUCCEEDED(ID2D1Image_QueryInterface(target, &IID_ID2D1Bitmap, (void **)&bitmap)))
+    {
+        bitmap_impl = unsafe_impl_from_ID2D1Bitmap(bitmap);
+
+        if (!(bitmap_impl->options & D2D1_BITMAP_OPTIONS_TARGET))
+        {
+            ID2D1Bitmap_Release(bitmap);
+            d2d_device_context_set_error(context, D2DERR_INVALID_TARGET);
+            return;
+        }
+
+        d2d_device_context_reset_target(context);
+
+        /* Set sizes and pixel format. */
+        context->pixel_size = bitmap_impl->pixel_size;
+        context->desc.pixelFormat = bitmap_impl->format;
+        context->target.bitmap = bitmap_impl;
+        context->target.object = target;
+        context->target.type = D2D_TARGET_BITMAP;
+
+        memset(&blend_desc, 0, sizeof(blend_desc));
+        blend_desc.IndependentBlendEnable = FALSE;
+        blend_desc.RenderTarget[0].BlendEnable = TRUE;
+        blend_desc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+        blend_desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+        blend_desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+        blend_desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+        blend_desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+        blend_desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+        blend_desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+        if (FAILED(hr = ID3D11Device1_CreateBlendState(context->d3d_device, &blend_desc, &context->bs)))
+            WARN("Failed to create blend state, hr %#lx.\n", hr);
+    }
+    else if (SUCCEEDED(ID2D1Image_QueryInterface(target, &IID_ID2D1CommandList, (void **)&command_list)))
+    {
+        command_list_impl = unsafe_impl_from_ID2D1CommandList(command_list);
+
+        d2d_device_context_reset_target(context);
+
+        context->target.command_list = command_list_impl;
+        context->target.object = target;
+        context->target.type = D2D_TARGET_COMMAND_LIST;
+    }
+    else
+    {
+        WARN("Unsupported target type.\n");
+    }
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_GetTarget(ID2D1DeviceContext6 *iface, ID2D1Image **target)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, target %p.\n", iface, target);
+
+    *target = context->target.object ? context->target.object : NULL;
+    if (*target)
+        ID2D1Image_AddRef(*target);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetRenderingControls(ID2D1DeviceContext6 *iface,
+        const D2D1_RENDERING_CONTROLS *rendering_controls)
+{
+    FIXME("iface %p, rendering_controls %p stub!\n", iface, rendering_controls);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_GetRenderingControls(ID2D1DeviceContext6 *iface,
+        D2D1_RENDERING_CONTROLS *rendering_controls)
+{
+    FIXME("iface %p, rendering_controls %p stub!\n", iface, rendering_controls);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetPrimitiveBlend(ID2D1DeviceContext6 *iface,
+        D2D1_PRIMITIVE_BLEND primitive_blend)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, primitive_blend %u.\n", iface, primitive_blend);
+
+    if (primitive_blend > D2D1_PRIMITIVE_BLEND_MAX)
+    {
+        WARN("Unknown blend mode %u.\n", primitive_blend);
+        return;
+    }
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_set_primitive_blend(context->target.command_list, primitive_blend);
+
+    context->drawing_state.primitiveBlend = primitive_blend;
+}
+
+static D2D1_PRIMITIVE_BLEND STDMETHODCALLTYPE d2d_device_context_GetPrimitiveBlend(ID2D1DeviceContext6 *iface)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p.\n", iface);
+
+    return context->drawing_state.primitiveBlend;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_SetUnitMode(ID2D1DeviceContext6 *iface, D2D1_UNIT_MODE unit_mode)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, unit_mode %#x.\n", iface, unit_mode);
+
+    if (unit_mode != D2D1_UNIT_MODE_DIPS && unit_mode != D2D1_UNIT_MODE_PIXELS)
+    {
+        WARN("Unknown unit mode %#x.\n", unit_mode);
+        return;
+    }
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_set_unit_mode(context->target.command_list, unit_mode);
+
+    context->drawing_state.unitMode = unit_mode;
+}
+
+static D2D1_UNIT_MODE STDMETHODCALLTYPE d2d_device_context_GetUnitMode(ID2D1DeviceContext6 *iface)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p.\n", iface);
+
+    return context->drawing_state.unitMode;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_DrawGlyphRun(ID2D1DeviceContext6 *iface,
+        D2D1_POINT_2F baseline_origin, const DWRITE_GLYPH_RUN *glyph_run,
+        const DWRITE_GLYPH_RUN_DESCRIPTION *glyph_run_desc, ID2D1Brush *brush, DWRITE_MEASURING_MODE measuring_mode)
+{
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
+    TRACE("iface %p, baseline_origin %s, glyph_run %p, glyph_run_desc %p, brush %p, measuring_mode %#x.\n",
+            iface, debug_d2d_point_2f(&baseline_origin), glyph_run, glyph_run_desc, brush, measuring_mode);
+
+    d2d_device_context_draw_glyph_run(context, baseline_origin, glyph_run, glyph_run_desc, brush, measuring_mode);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_DrawImage(ID2D1DeviceContext6 *iface, ID2D1Image *image,
         const D2D1_POINT_2F *target_offset, const D2D1_RECT_F *image_rect, D2D1_INTERPOLATION_MODE interpolation_mode,
         D2D1_COMPOSITE_MODE composite_mode)
 {
@@ -2194,13 +2550,19 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawImage(ID2D1DeviceContext *i
             iface, image, debug_d2d_point_2f(target_offset), debug_d2d_rect_f(image_rect),
             interpolation_mode, composite_mode);
 
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+    {
+        d2d_command_list_draw_image(context->target.command_list, image, target_offset, image_rect,
+                interpolation_mode, composite_mode);
+        return;
+    }
+
     if (composite_mode != D2D1_COMPOSITE_MODE_SOURCE_OVER)
         FIXME("Unhandled composite mode %#x.\n", composite_mode);
 
     if (SUCCEEDED(ID2D1Image_QueryInterface(image, &IID_ID2D1Bitmap, (void **)&bitmap)))
     {
-        d2d_device_context_draw_bitmap(context, bitmap, NULL, 1.0f, d2d1_1_interp_mode_from_d2d1(interpolation_mode),
-                image_rect, target_offset, NULL);
+        d2d_device_context_draw_bitmap(context, bitmap, NULL, 1.0f, interpolation_mode, image_rect, target_offset, NULL);
 
         ID2D1Bitmap_Release(bitmap);
         return;
@@ -2209,14 +2571,14 @@ static void STDMETHODCALLTYPE d2d_device_context_DrawImage(ID2D1DeviceContext *i
     FIXME("Unhandled image %p.\n", image);
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_DrawGdiMetafile(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_DrawGdiMetafile(ID2D1DeviceContext6 *iface,
         ID2D1GdiMetafile *metafile, const D2D1_POINT_2F *target_offset)
 {
     FIXME("iface %p, metafile %p, target_offset %s stub!\n",
             iface, metafile, debug_d2d_point_2f(target_offset));
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_DrawBitmap(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_DrawBitmap(ID2D1DeviceContext6 *iface,
         ID2D1Bitmap *bitmap, const D2D1_RECT_F *dst_rect, float opacity, D2D1_INTERPOLATION_MODE interpolation_mode,
         const D2D1_RECT_F *src_rect, const D2D1_MATRIX_4X4_F *perspective_transform)
 {
@@ -2227,17 +2589,30 @@ static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_DrawBitmap(I
             iface, bitmap, debug_d2d_rect_f(dst_rect), opacity, interpolation_mode,
             debug_d2d_rect_f(src_rect), perspective_transform);
 
-    d2d_device_context_draw_bitmap(context, bitmap, dst_rect, opacity, interpolation_mode, src_rect,
-            NULL, perspective_transform);
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+    {
+        d2d_command_list_draw_bitmap(context->target.command_list, bitmap, dst_rect, opacity, interpolation_mode,
+                src_rect, perspective_transform);
+    }
+    else
+    {
+        d2d_device_context_draw_bitmap(context, bitmap, dst_rect, opacity, interpolation_mode, src_rect,
+                NULL, perspective_transform);
+    }
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_PushLayer(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_PushLayer(ID2D1DeviceContext6 *iface,
         const D2D1_LAYER_PARAMETERS1 *layer_parameters, ID2D1Layer *layer)
 {
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
     FIXME("iface %p, layer_parameters %p, layer %p stub!\n", iface, layer_parameters, layer);
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_push_layer(context->target.command_list, context, layer_parameters, layer);
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_InvalidateEffectInputRectangle(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_InvalidateEffectInputRectangle(ID2D1DeviceContext6 *iface,
         ID2D1Effect *effect, UINT32 input, const D2D1_RECT_F *input_rect)
 {
     FIXME("iface %p, effect %p, input %u, input_rect %s stub!\n",
@@ -2246,7 +2621,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_InvalidateEffectInputRectang
     return E_NOTIMPL;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_GetEffectInvalidRectangleCount(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_GetEffectInvalidRectangleCount(ID2D1DeviceContext6 *iface,
         ID2D1Effect *effect, UINT32 *rect_count)
 {
     FIXME("iface %p, effect %p, rect_count %p stub!\n", iface, effect, rect_count);
@@ -2254,7 +2629,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_GetEffectInvalidRectangleCou
     return E_NOTIMPL;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_GetEffectInvalidRectangles(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_GetEffectInvalidRectangles(ID2D1DeviceContext6 *iface,
         ID2D1Effect *effect, D2D1_RECT_F *rectangles, UINT32 rect_count)
 {
     FIXME("iface %p, effect %p, rectangles %p, rect_count %u stub!\n", iface, effect, rectangles, rect_count);
@@ -2262,7 +2637,7 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_GetEffectInvalidRectangles(I
     return E_NOTIMPL;
 }
 
-static HRESULT STDMETHODCALLTYPE d2d_device_context_GetEffectRequiredInputRectangles(ID2D1DeviceContext *iface,
+static HRESULT STDMETHODCALLTYPE d2d_device_context_GetEffectRequiredInputRectangles(ID2D1DeviceContext6 *iface,
         ID2D1Effect *effect, const D2D1_RECT_F *image_rect, const D2D1_EFFECT_INPUT_DESCRIPTION *desc,
         D2D1_RECT_F *input_rect, UINT32 input_count)
 {
@@ -2272,14 +2647,276 @@ static HRESULT STDMETHODCALLTYPE d2d_device_context_GetEffectRequiredInputRectan
     return E_NOTIMPL;
 }
 
-static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_FillOpacityMask(ID2D1DeviceContext *iface,
+static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext_FillOpacityMask(ID2D1DeviceContext6 *iface,
         ID2D1Bitmap *mask, ID2D1Brush *brush, const D2D1_RECT_F *dst_rect, const D2D1_RECT_F *src_rect)
 {
+    struct d2d_device_context *context = impl_from_ID2D1DeviceContext(iface);
+
     FIXME("iface %p, mask %p, brush %p, dst_rect %s, src_rect %s stub!\n",
             iface, mask, brush, debug_d2d_rect_f(dst_rect), debug_d2d_rect_f(src_rect));
+
+    if (FAILED(context->error.code))
+        return;
+
+    if (context->drawing_state.antialiasMode != D2D1_ANTIALIAS_MODE_ALIASED)
+    {
+        d2d_device_context_set_error(context, D2DERR_WRONG_STATE);
+        return;
+    }
+
+    if (context->target.type == D2D_TARGET_COMMAND_LIST)
+        d2d_command_list_fill_opacity_mask(context->target.command_list, context, mask, brush, dst_rect, src_rect);
 }
 
-static const struct ID2D1DeviceContextVtbl d2d_device_context_vtbl =
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateFilledGeometryRealization(ID2D1DeviceContext6 *iface,
+        ID2D1Geometry *geometry, float tolerance, ID2D1GeometryRealization **realization)
+{
+    FIXME("iface %p, geometry %p, tolerance %.8e, realization %p stub!\n", iface, geometry, tolerance,
+            realization);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateStrokedGeometryRealization(
+        ID2D1DeviceContext6 *iface, ID2D1Geometry *geometry, float tolerance, float stroke_width,
+        ID2D1StrokeStyle *stroke_style, ID2D1GeometryRealization **realization)
+{
+    FIXME("iface %p, geometry %p, tolerance %.8e, stroke_width %.8e, stroke_style %p, realization %p stub!\n",
+            iface, geometry, tolerance, stroke_width, stroke_style, realization);
+
+    return E_NOTIMPL;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_DrawGeometryRealization(ID2D1DeviceContext6 *iface,
+        ID2D1GeometryRealization *realization, ID2D1Brush *brush)
+{
+    FIXME("iface %p, realization %p, brush %p stub!\n", iface, realization, brush);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateInk(ID2D1DeviceContext6 *iface,
+        const D2D1_INK_POINT *start_point, ID2D1Ink **ink)
+{
+    FIXME("iface %p, start_point %p, ink %p stub!\n", iface, start_point, ink);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateInkStyle(ID2D1DeviceContext6 *iface,
+        const D2D1_INK_STYLE_PROPERTIES *ink_style_properties, ID2D1InkStyle **ink_style)
+{
+    FIXME("iface %p, ink_style_properties %p, ink_style %p stub!\n", iface, ink_style_properties, ink_style);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateGradientMesh(ID2D1DeviceContext6 *iface,
+        const D2D1_GRADIENT_MESH_PATCH *patches, UINT32 patches_count,
+        ID2D1GradientMesh **gradient_mesh)
+{
+    FIXME("iface %p, patches %p, patches_count %u, gradient_mesh %p stub!\n", iface, patches,
+            patches_count, gradient_mesh);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateImageSourceFromWic(ID2D1DeviceContext6 *iface,
+        IWICBitmapSource *wic_bitmap_source, D2D1_IMAGE_SOURCE_LOADING_OPTIONS loading_options,
+        D2D1_ALPHA_MODE alpha_mode, ID2D1ImageSourceFromWic **image_source)
+{
+    FIXME("iface %p, wic_bitmap_source %p, loading_options %#x, alpha_mode %u, image_source %p stub!\n",
+            iface, wic_bitmap_source, loading_options, alpha_mode, image_source);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateLookupTable3D(ID2D1DeviceContext6 *iface,
+        D2D1_BUFFER_PRECISION precision, const UINT32 *extents, const BYTE *data,
+        UINT32 data_count, const UINT32 *strides, ID2D1LookupTable3D **lookup_table)
+{
+    FIXME("iface %p, precision %u, extents %p, data %p, data_count %u, strides %p, lookup_table %p stub!\n",
+            iface, precision, extents, data, data_count, strides, lookup_table);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateImageSourceFromDxgi(ID2D1DeviceContext6 *iface,
+        IDXGISurface **surfaces, UINT32 surface_count, DXGI_COLOR_SPACE_TYPE color_space,
+        D2D1_IMAGE_SOURCE_FROM_DXGI_OPTIONS options, ID2D1ImageSource **image_source)
+{
+    FIXME("iface %p, surfaces %p, surface_count %u, color_space %u, options %#x, image_source %p stub!\n",
+            iface, surfaces, surface_count, color_space, options, image_source);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_GetGradientMeshWorldBounds(ID2D1DeviceContext6 *iface,
+        ID2D1GradientMesh *gradient_mesh, D2D1_RECT_F *bounds)
+{
+    FIXME("iface %p, gradient_mesh %p, bounds %p stub!\n", iface, gradient_mesh, bounds);
+
+    return E_NOTIMPL;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_DrawInk(ID2D1DeviceContext6 *iface, ID2D1Ink *ink,
+        ID2D1Brush *brush, ID2D1InkStyle *ink_style)
+{
+    FIXME("iface %p, ink %p, brush %p, ink_style %p stub!\n", iface, ink, brush, ink_style);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_DrawGradientMesh(ID2D1DeviceContext6 *iface,
+        ID2D1GradientMesh *gradient_mesh)
+{
+    FIXME("iface %p, gradient_mesh %p stub!\n", iface, gradient_mesh);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext2_DrawGdiMetafile(
+        ID2D1DeviceContext6 *iface, ID2D1GdiMetafile *gdi_metafile, const D2D1_RECT_F *dst_rect,
+        const D2D1_RECT_F *src_rect)
+{
+    FIXME("iface %p, gdi_metafile %p, dst_rect %s, src_rect %s stub!\n", iface, gdi_metafile,
+            debug_d2d_rect_f(dst_rect), debug_d2d_rect_f(src_rect));
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateTransformedImageSource(ID2D1DeviceContext6 *iface,
+        ID2D1ImageSource *source, const D2D1_TRANSFORMED_IMAGE_SOURCE_PROPERTIES *props,
+        ID2D1TransformedImageSource **transformed)
+{
+    FIXME("iface %p, source %p, props %p, transformed %p stub!\n", iface, source, props, transformed);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSpriteBatch(ID2D1DeviceContext6 *iface,
+        ID2D1SpriteBatch **sprite_batch)
+{
+    FIXME("iface %p, sprite_batch %p stub!\n", iface, sprite_batch);
+
+    return E_NOTIMPL;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_DrawSpriteBatch(ID2D1DeviceContext6 *iface,
+        ID2D1SpriteBatch *sprite_batch, UINT32 start_index, UINT32 sprite_count, ID2D1Bitmap *bitmap,
+        D2D1_BITMAP_INTERPOLATION_MODE interpolation_mode, D2D1_SPRITE_OPTIONS sprite_options)
+{
+    FIXME("iface %p, sprite_batch %p, start_index %u, sprite_count %u, bitmap %p, interpolation_mode %u,"
+            "sprite_options %u stub!\n", iface, sprite_batch, start_index, sprite_count, bitmap,
+            interpolation_mode, sprite_options);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSvgGlyphStyle(ID2D1DeviceContext6 *iface,
+        ID2D1SvgGlyphStyle **svg_glyph_style)
+{
+    FIXME("iface %p, svg_glyph_style %p stub!\n", iface, svg_glyph_style);
+
+    return E_NOTIMPL;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext4_DrawText(ID2D1DeviceContext6 *iface,
+        const WCHAR *string, UINT32 string_length, IDWriteTextFormat *text_format, const D2D1_RECT_F *layout_rect,
+        ID2D1Brush *default_fill_brush, ID2D1SvgGlyphStyle *svg_glyph_style, UINT32 color_palette_index,
+        D2D1_DRAW_TEXT_OPTIONS options, DWRITE_MEASURING_MODE measuring_mode)
+{
+    FIXME("iface %p, string %s, string_length %u, text_format %p, layout_rect %s, default_fill_brush %p,"
+            "svg_glyph_style %p, color_palette_index %u, options %#x, measuring_mode %u stub!\n",
+            iface, debugstr_wn(string, string_length), string_length, text_format, debug_d2d_rect_f(layout_rect),
+            default_fill_brush, svg_glyph_style, color_palette_index, options, measuring_mode);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_ID2D1DeviceContext4_DrawTextLayout(ID2D1DeviceContext6 *iface,
+        D2D1_POINT_2F origin, IDWriteTextLayout *text_layout, ID2D1Brush *default_fill_brush,
+        ID2D1SvgGlyphStyle *svg_glyph_style, UINT32 color_palette_index, D2D1_DRAW_TEXT_OPTIONS options)
+{
+    FIXME("iface %p, origin %s, text_layout %p, default_fill_brush %p, svg_glyph_style %p, color_palette_index %u,"
+            "options %#x stub!\n", iface, debug_d2d_point_2f(&origin), text_layout, default_fill_brush,
+            svg_glyph_style, color_palette_index, options);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_DrawColorBitmapGlyphRun(ID2D1DeviceContext6 *iface,
+        DWRITE_GLYPH_IMAGE_FORMATS glyph_image_format, D2D1_POINT_2F baseline_origin, const DWRITE_GLYPH_RUN *glyph_run,
+        DWRITE_MEASURING_MODE measuring_mode, D2D1_COLOR_BITMAP_GLYPH_SNAP_OPTION bitmap_snap_option)
+{
+    FIXME("iface %p, glyph_image_format %#x, baseline_origin %s, glyph_run %p, measuring_mode %u, bitmap_snap_option %#x stub!\n",
+            iface, glyph_image_format, debug_d2d_point_2f(&baseline_origin), glyph_run, measuring_mode, bitmap_snap_option);
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_DrawSvgGlyphRun(ID2D1DeviceContext6 *iface,
+        D2D1_POINT_2F baseline_origin, const DWRITE_GLYPH_RUN *glyph_run, ID2D1Brush *default_fill_brush,
+        ID2D1SvgGlyphStyle *svg_glyph_style, UINT32 color_palette_index, DWRITE_MEASURING_MODE measuring_mode)
+{
+    FIXME("iface %p, baseline_origin %s, glyph_run %p, default_fill_brush %p, svg_glyph_style %p,"
+            "color_palette_index %u, measuring_mode %u stub!\n", iface, debug_d2d_point_2f(&baseline_origin),
+            glyph_run, default_fill_brush, svg_glyph_style, color_palette_index, measuring_mode);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_GetColorBitmapGlyphImage(ID2D1DeviceContext6 *iface,
+        DWRITE_GLYPH_IMAGE_FORMATS glyph_image_format, D2D1_POINT_2F glyph_origin, IDWriteFontFace *font_face,
+        FLOAT font_em_size, UINT16 glyph_index, BOOL is_sideways, const D2D1_MATRIX_3X2_F *world_transform,
+        FLOAT dpi_x, FLOAT dpi_y, D2D1_MATRIX_3X2_F *glyph_transform, ID2D1Image **glyph_image)
+{
+    FIXME("iface %p, glyph_image_format %u, glyph_origin %s, font_face %p, font_em_size %f, glyph_index %u,"
+            "is_sideways %d, world_transform %p, dpi_x %f, dpi_y %f, glyph_transform %p, glyph_image %p stub!\n",
+            iface, glyph_image_format, debug_d2d_point_2f(&glyph_origin), font_face, font_em_size, glyph_index,
+            is_sideways, world_transform, dpi_x, dpi_y, glyph_transform, glyph_image);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_GetSvgGlyphImage(ID2D1DeviceContext6 *iface,
+        D2D1_POINT_2F glyph_origin, IDWriteFontFace *font_face, FLOAT font_em_size, UINT16 glyph_index,
+        BOOL is_sideways, const D2D1_MATRIX_3X2_F *world_transform, ID2D1Brush *default_fill_brush,
+        ID2D1SvgGlyphStyle *svg_glyph_style, UINT32 color_palette_index, D2D1_MATRIX_3X2_F *glyph_transform,
+        ID2D1CommandList **glyph_image)
+{
+    FIXME("iface %p, glyph_origin %s, font_face %p, font_em_size %f, glyph_index %u, is_sideways %d,"
+            "world_transform %p, default_fill_brush %p, svg_glyph_style %p, color_palette_index %u,"
+            "glyph_transform %p, glyph_image %p stub!\n", iface, debug_d2d_point_2f(&glyph_origin),
+            font_face, font_em_size, glyph_index, is_sideways, world_transform, default_fill_brush,
+            svg_glyph_style, color_palette_index, glyph_transform, glyph_image);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateSvgDocument(ID2D1DeviceContext6 *iface,
+        IStream *input_xml_stream, D2D1_SIZE_F viewport_size, ID2D1SvgDocument **svg_document)
+{
+    FIXME("iface %p, input_xml_stream %p, svg_document %p stub!\n", iface, input_xml_stream,
+            svg_document);
+
+    return E_NOTIMPL;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_DrawSvgDocument(ID2D1DeviceContext6 *iface,
+        ID2D1SvgDocument *svg_document)
+{
+    FIXME("iface %p, svg_document %p stub!\n", iface, svg_document);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateColorContextFromDxgiColorSpace(
+        ID2D1DeviceContext6 *iface, DXGI_COLOR_SPACE_TYPE color_space, ID2D1ColorContext1 **color_context)
+{
+    FIXME("iface %p, color_space %u, color_context %p stub!\n", iface, color_space, color_context);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_context_CreateColorContextFromSimpleColorProfile(
+        ID2D1DeviceContext6 *iface, const D2D1_SIMPLE_COLOR_PROFILE *simple_profile, ID2D1ColorContext1 **color_context)
+{
+    FIXME("iface %p, simple_profile %p, color_context %p stub!\n", iface, simple_profile, color_context);
+
+    return E_NOTIMPL;
+}
+
+static void STDMETHODCALLTYPE d2d_device_context_BlendImage(ID2D1DeviceContext6 *iface, ID2D1Image *image,
+        D2D1_BLEND_MODE blend_mode, const D2D1_POINT_2F *target_offset, const D2D1_RECT_F *image_rect,
+        D2D1_INTERPOLATION_MODE interpolation_mode)
+{
+    FIXME("iface %p, image %p, blend_mode %u, target_offset %s, image_rect %s, interpolation_mode %u stub!\n",
+            iface, image, blend_mode, debug_d2d_point_2f(target_offset), debug_d2d_rect_f(image_rect),
+            interpolation_mode);
+}
+
+static const struct ID2D1DeviceContext6Vtbl d2d_device_context_vtbl =
 {
     d2d_device_context_QueryInterface,
     d2d_device_context_AddRef,
@@ -2373,6 +3010,34 @@ static const struct ID2D1DeviceContextVtbl d2d_device_context_vtbl =
     d2d_device_context_GetEffectInvalidRectangles,
     d2d_device_context_GetEffectRequiredInputRectangles,
     d2d_device_context_ID2D1DeviceContext_FillOpacityMask,
+    d2d_device_context_CreateFilledGeometryRealization,
+    d2d_device_context_CreateStrokedGeometryRealization,
+    d2d_device_context_DrawGeometryRealization,
+    d2d_device_context_CreateInk,
+    d2d_device_context_CreateInkStyle,
+    d2d_device_context_CreateGradientMesh,
+    d2d_device_context_CreateImageSourceFromWic,
+    d2d_device_context_CreateLookupTable3D,
+    d2d_device_context_CreateImageSourceFromDxgi,
+    d2d_device_context_GetGradientMeshWorldBounds,
+    d2d_device_context_DrawInk,
+    d2d_device_context_DrawGradientMesh,
+    d2d_device_context_ID2D1DeviceContext2_DrawGdiMetafile,
+    d2d_device_context_CreateTransformedImageSource,
+    d2d_device_context_CreateSpriteBatch,
+    d2d_device_context_DrawSpriteBatch,
+    d2d_device_context_CreateSvgGlyphStyle,
+    d2d_device_context_ID2D1DeviceContext4_DrawText,
+    d2d_device_context_ID2D1DeviceContext4_DrawTextLayout,
+    d2d_device_context_DrawColorBitmapGlyphRun,
+    d2d_device_context_DrawSvgGlyphRun,
+    d2d_device_context_GetColorBitmapGlyphImage,
+    d2d_device_context_GetSvgGlyphImage,
+    d2d_device_context_CreateSvgDocument,
+    d2d_device_context_DrawSvgDocument,
+    d2d_device_context_CreateColorContextFromDxgiColorSpace,
+    d2d_device_context_CreateColorContextFromSimpleColorProfile,
+    d2d_device_context_BlendImage,
 };
 
 static inline struct d2d_device_context *impl_from_IDWriteTextRenderer(IDWriteTextRenderer *iface)
@@ -2401,20 +3066,20 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_QueryInterface(IDWriteTextRen
 
 static ULONG STDMETHODCALLTYPE d2d_text_renderer_AddRef(IDWriteTextRenderer *iface)
 {
-    struct d2d_device_context *render_target = impl_from_IDWriteTextRenderer(iface);
+    struct d2d_device_context *context = impl_from_IDWriteTextRenderer(iface);
 
     TRACE("iface %p.\n", iface);
 
-    return d2d_device_context_AddRef(&render_target->ID2D1DeviceContext_iface);
+    return d2d_device_context_AddRef(&context->ID2D1DeviceContext6_iface);
 }
 
 static ULONG STDMETHODCALLTYPE d2d_text_renderer_Release(IDWriteTextRenderer *iface)
 {
-    struct d2d_device_context *render_target = impl_from_IDWriteTextRenderer(iface);
+    struct d2d_device_context *context = impl_from_IDWriteTextRenderer(iface);
 
     TRACE("iface %p.\n", iface);
 
-    return d2d_device_context_Release(&render_target->ID2D1DeviceContext_iface);
+    return d2d_device_context_Release(&context->ID2D1DeviceContext6_iface);
 }
 
 static HRESULT STDMETHODCALLTYPE d2d_text_renderer_IsPixelSnappingDisabled(IDWriteTextRenderer *iface,
@@ -2432,11 +3097,11 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_IsPixelSnappingDisabled(IDWri
 static HRESULT STDMETHODCALLTYPE d2d_text_renderer_GetCurrentTransform(IDWriteTextRenderer *iface,
         void *ctx, DWRITE_MATRIX *transform)
 {
-    struct d2d_device_context *render_target = impl_from_IDWriteTextRenderer(iface);
+    struct d2d_device_context *context = impl_from_IDWriteTextRenderer(iface);
 
     TRACE("iface %p, ctx %p, transform %p.\n", iface, ctx, transform);
 
-    d2d_device_context_GetTransform(&render_target->ID2D1DeviceContext_iface, (D2D1_MATRIX_3X2_F *)transform);
+    d2d_device_context_GetTransform(&context->ID2D1DeviceContext6_iface, (D2D1_MATRIX_3X2_F *)transform);
 
     return S_OK;
 }
@@ -2454,7 +3119,7 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_GetPixelsPerDip(IDWriteTextRe
 
 static HRESULT STDMETHODCALLTYPE d2d_text_renderer_DrawGlyphRun(IDWriteTextRenderer *iface, void *ctx,
         float baseline_origin_x, float baseline_origin_y, DWRITE_MEASURING_MODE measuring_mode,
-        const DWRITE_GLYPH_RUN *glyph_run, const DWRITE_GLYPH_RUN_DESCRIPTION *desc, IUnknown *effect)
+        const DWRITE_GLYPH_RUN *glyph_run, const DWRITE_GLYPH_RUN_DESCRIPTION *glyph_run_desc, IUnknown *effect)
 {
     struct d2d_device_context *render_target = impl_from_IDWriteTextRenderer(iface);
     D2D1_POINT_2F baseline_origin = {baseline_origin_x, baseline_origin_y};
@@ -2463,18 +3128,16 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_DrawGlyphRun(IDWriteTextRende
     ID2D1Brush *brush;
 
     TRACE("iface %p, ctx %p, baseline_origin_x %.8e, baseline_origin_y %.8e, "
-            "measuring_mode %#x, glyph_run %p, desc %p, effect %p.\n",
+            "measuring_mode %#x, glyph_run %p, glyph_run_desc %p, effect %p.\n",
             iface, ctx, baseline_origin_x, baseline_origin_y,
-            measuring_mode, glyph_run, desc, effect);
+            measuring_mode, glyph_run, glyph_run_desc, effect);
 
-    if (desc)
-        WARN("Ignoring glyph run description %p.\n", desc);
     if (context->options & ~(D2D1_DRAW_TEXT_OPTIONS_NO_SNAP | D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT))
         FIXME("Ignoring options %#x.\n", context->options);
 
     brush = d2d_draw_get_text_brush(context, effect);
 
-    TRACE("%s\n", debugstr_wn(desc->string, desc->stringLength));
+    TRACE("%s\n", debugstr_wn(glyph_run_desc->string, glyph_run_desc->stringLength));
 
     if (context->options & D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT)
     {
@@ -2497,17 +3160,17 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_DrawGlyphRun(IDWriteTextRende
         if (FAILED(hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, &IID_IDWriteFactory2,
                 (IUnknown **)&dwrite_factory)))
         {
-            ERR("Failed to create dwrite factory, hr %#x.\n", hr);
+            ERR("Failed to create dwrite factory, hr %#lx.\n", hr);
             ID2D1Brush_Release(brush);
             return hr;
         }
 
         hr = IDWriteFactory2_TranslateColorGlyphRun(dwrite_factory, baseline_origin_x, baseline_origin_y,
-                glyph_run, desc, measuring_mode, (DWRITE_MATRIX *)&render_target->drawing_state.transform, 0, &layers);
+                glyph_run, glyph_run_desc, measuring_mode, (DWRITE_MATRIX *)&render_target->drawing_state.transform, 0, &layers);
         IDWriteFactory2_Release(dwrite_factory);
         if (FAILED(hr))
         {
-            ERR("Failed to create color glyph run enumerator, hr %#x.\n", hr);
+            ERR("Failed to create colour glyph run enumerator, hr %#lx.\n", hr);
             ID2D1Brush_Release(brush);
             return hr;
         }
@@ -2521,7 +3184,7 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_DrawGlyphRun(IDWriteTextRende
 
             if (FAILED(hr = IDWriteColorGlyphRunEnumerator_MoveNext(layers, &has_run)))
             {
-                ERR("Failed to switch color glyph layer, hr %#x.\n", hr);
+                ERR("Failed to switch colour glyph layer, hr %#lx.\n", hr);
                 break;
             }
 
@@ -2530,7 +3193,7 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_DrawGlyphRun(IDWriteTextRende
 
             if (FAILED(hr = IDWriteColorGlyphRunEnumerator_GetCurrentRun(layers, &color_run)))
             {
-                ERR("Failed to get current color run, hr %#x.\n", hr);
+                ERR("Failed to get current colour run, hr %#lx.\n", hr);
                 break;
             }
 
@@ -2538,18 +3201,18 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_DrawGlyphRun(IDWriteTextRende
                 color_brush = brush;
             else
             {
-                if (FAILED(hr = d2d_device_context_CreateSolidColorBrush(&render_target->ID2D1DeviceContext_iface,
+                if (FAILED(hr = d2d_device_context_CreateSolidColorBrush(&render_target->ID2D1DeviceContext6_iface,
                         &color_run->runColor, NULL, (ID2D1SolidColorBrush **)&color_brush)))
                 {
-                    ERR("Failed to create solid color brush, hr %#x.\n", hr);
+                    ERR("Failed to create solid colour brush, hr %#lx.\n", hr);
                     break;
                 }
             }
 
             origin.x = color_run->baselineOriginX;
             origin.y = color_run->baselineOriginY;
-            d2d_device_context_DrawGlyphRun(&render_target->ID2D1DeviceContext_iface,
-                    origin, &color_run->glyphRun, color_brush, measuring_mode);
+            d2d_device_context_draw_glyph_run(render_target, origin, &color_run->glyphRun,
+                    color_run->glyphRunDescription, color_brush, measuring_mode);
 
             if (color_brush != brush)
                 ID2D1Brush_Release(color_brush);
@@ -2558,8 +3221,8 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_DrawGlyphRun(IDWriteTextRende
         IDWriteColorGlyphRunEnumerator_Release(layers);
     }
     else
-        d2d_device_context_DrawGlyphRun(&render_target->ID2D1DeviceContext_iface,
-                baseline_origin, glyph_run, brush, measuring_mode);
+        d2d_device_context_draw_glyph_run(render_target, baseline_origin, glyph_run, glyph_run_desc,
+                brush, measuring_mode);
 
     ID2D1Brush_Release(brush);
 
@@ -2591,7 +3254,7 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_DrawUnderline(IDWriteTextRend
     end.x = start.x + underline->width;
     end.y = start.y;
     prev_antialias_mode = d2d_device_context_set_aa_mode_from_text_aa_mode(render_target);
-    d2d_device_context_DrawLine(&render_target->ID2D1DeviceContext_iface, start, end, brush, thickness, NULL);
+    d2d_device_context_DrawLine(&render_target->ID2D1DeviceContext6_iface, start, end, brush, thickness, NULL);
     render_target->drawing_state.antialiasMode = prev_antialias_mode;
 
     ID2D1Brush_Release(brush);
@@ -2624,7 +3287,7 @@ static HRESULT STDMETHODCALLTYPE d2d_text_renderer_DrawStrikethrough(IDWriteText
     end.x = start.x + strikethrough->width;
     end.y = start.y;
     prev_antialias_mode = d2d_device_context_set_aa_mode_from_text_aa_mode(render_target);
-    d2d_device_context_DrawLine(&render_target->ID2D1DeviceContext_iface, start, end, brush, thickness, NULL);
+    d2d_device_context_DrawLine(&render_target->ID2D1DeviceContext6_iface, start, end, brush, thickness, NULL);
     render_target->drawing_state.antialiasMode = prev_antialias_mode;
 
     ID2D1Brush_Release(brush);
@@ -2704,18 +3367,27 @@ static ULONG STDMETHODCALLTYPE d2d_gdi_interop_render_target_Release(ID2D1GdiInt
     return IUnknown_Release(render_target->outer_unknown);
 }
 
-static HRESULT d2d_device_context_get_surface(struct d2d_device_context *render_target, IDXGISurface1 **surface)
+static HRESULT d2d_gdi_interop_get_surface(struct d2d_device_context *context, IDXGISurface1 **surface)
 {
-    ID3D10Resource *resource;
+    ID3D11Resource *resource;
     HRESULT hr;
 
-    ID3D10RenderTargetView_GetResource(render_target->target->rtv, &resource);
-    hr = ID3D10Resource_QueryInterface(resource, &IID_IDXGISurface1, (void **)surface);
-    ID3D10Resource_Release(resource);
+    if (context->target.type != D2D_TARGET_BITMAP)
+    {
+        FIXME("Unimplemented for target type %u.\n", context->target.type);
+        return E_NOTIMPL;
+    }
+
+    if (!(context->target.bitmap->options & D2D1_BITMAP_OPTIONS_GDI_COMPATIBLE))
+        return D2DERR_TARGET_NOT_GDI_COMPATIBLE;
+
+    ID3D11RenderTargetView_GetResource(context->target.bitmap->rtv, &resource);
+    hr = ID3D11Resource_QueryInterface(resource, &IID_IDXGISurface1, (void **)surface);
+    ID3D11Resource_Release(resource);
     if (FAILED(hr))
     {
         *surface = NULL;
-        WARN("Failed to get DXGI surface, %#x.\n", hr);
+        WARN("Failed to get DXGI surface, %#lx.\n", hr);
         return hr;
     }
 
@@ -2731,11 +3403,19 @@ static HRESULT STDMETHODCALLTYPE d2d_gdi_interop_render_target_GetDC(ID2D1GdiInt
 
     TRACE("iface %p, mode %d, dc %p.\n", iface, mode, dc);
 
-    if (FAILED(hr = d2d_device_context_get_surface(render_target, &surface)))
+    *dc = NULL;
+
+    if (render_target->target.hdc)
+        return D2DERR_WRONG_STATE;
+
+    if (FAILED(hr = d2d_gdi_interop_get_surface(render_target, &surface)))
         return hr;
 
-    hr = IDXGISurface1_GetDC(surface, mode != D2D1_DC_INITIALIZE_MODE_COPY, dc);
+    hr = IDXGISurface1_GetDC(surface, mode != D2D1_DC_INITIALIZE_MODE_COPY, &render_target->target.hdc);
     IDXGISurface1_Release(surface);
+
+    if (SUCCEEDED(hr))
+        *dc = render_target->target.hdc;
 
     return hr;
 }
@@ -2750,9 +3430,13 @@ static HRESULT STDMETHODCALLTYPE d2d_gdi_interop_render_target_ReleaseDC(ID2D1Gd
 
     TRACE("iface %p, update rect %s.\n", iface, wine_dbgstr_rect(update));
 
-    if (FAILED(hr = d2d_device_context_get_surface(render_target, &surface)))
+    if (!render_target->target.hdc)
+        return D2DERR_WRONG_STATE;
+
+    if (FAILED(hr = d2d_gdi_interop_get_surface(render_target, &surface)))
         return hr;
 
+    render_target->target.hdc = NULL;
     if (update)
         update_rect = *update;
     hr = IDXGISurface1_ReleaseDC(surface, update ? &update_rect : NULL);
@@ -2770,143 +3454,91 @@ static const struct ID2D1GdiInteropRenderTargetVtbl d2d_gdi_interop_render_targe
     d2d_gdi_interop_render_target_ReleaseDC,
 };
 
-static HRESULT d2d_device_context_init(struct d2d_device_context *render_target, ID2D1Device *device,
-        IUnknown *outer_unknown, const struct d2d_device_context_ops *ops)
+static HRESULT d2d_device_context_init(struct d2d_device_context *render_target,
+        struct d2d_device *device, IUnknown *outer_unknown, const struct d2d_device_context_ops *ops)
 {
-    D3D10_SUBRESOURCE_DATA buffer_data;
-    D3D10_STATE_BLOCK_MASK state_mask;
+    D3D11_SUBRESOURCE_DATA buffer_data;
     struct d2d_device *device_impl;
     IDWriteFactory *dwrite_factory;
-    D3D10_RASTERIZER_DESC rs_desc;
-    D3D10_BUFFER_DESC buffer_desc;
+    D3D11_RASTERIZER_DESC rs_desc;
+    D3D11_BUFFER_DESC buffer_desc;
+    struct d2d_factory *factory;
+    ID3D10Blob *compiled;
     unsigned int i;
     HRESULT hr;
 
-    static const D3D10_INPUT_ELEMENT_DESC il_desc_outline[] =
+    static const D3D11_INPUT_ELEMENT_DESC il_desc_outline[] =
     {
-        {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0},
-        {"PREV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D10_INPUT_PER_VERTEX_DATA, 0},
-        {"NEXT", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D10_INPUT_PER_VERTEX_DATA, 0},
+        {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"PREV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"NEXT", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
     };
-    static const D3D10_INPUT_ELEMENT_DESC il_desc_curve_outline[] =
+    static const D3D11_INPUT_ELEMENT_DESC il_desc_curve_outline[] =
     {
-        {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0},
-        {"P", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D10_INPUT_PER_VERTEX_DATA, 0},
-        {"P", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D10_INPUT_PER_VERTEX_DATA, 0},
-        {"P", 2, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D10_INPUT_PER_VERTEX_DATA, 0},
-        {"PREV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 32, D3D10_INPUT_PER_VERTEX_DATA, 0},
-        {"NEXT", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 40, D3D10_INPUT_PER_VERTEX_DATA, 0},
+        {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"P", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"P", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"P", 2, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"PREV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"NEXT", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 40, D3D11_INPUT_PER_VERTEX_DATA, 0},
     };
-    static const D3D10_INPUT_ELEMENT_DESC il_desc_triangle[] =
+    static const D3D11_INPUT_ELEMENT_DESC il_desc_triangle[] =
     {
-        {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0},
+        {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
     };
-    static const D3D10_INPUT_ELEMENT_DESC il_desc_curve[] =
+    static const D3D11_INPUT_ELEMENT_DESC il_desc_curve[] =
     {
-        {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0},
-        {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 8, D3D10_INPUT_PER_VERTEX_DATA, 0},
+        {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0},
     };
-    static const DWORD vs_code_outline[] =
-    {
-#if 0
-        float3x2 transform_geometry;
-        float stroke_width;
-        float4 transform_rtx;
-        float4 transform_rty;
-
-        struct output
-        {
-            float2 p : WORLD_POSITION;
-            float4 b : BEZIER;
-            nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;
-            float4 position : SV_POSITION;
-        };
-
-        /* The lines PₚᵣₑᵥP₀ and P₀Pₙₑₓₜ, both offset by ±½w, intersect each other at:
-         *
-         *   Pᵢ = P₀ ± w · ½q⃑ᵢ.
-         *
-         * Where:
-         *
-         *   q⃑ᵢ = q̂ₚᵣₑᵥ⊥ + tan(½θ) · -q̂ₚᵣₑᵥ
-         *   θ  = ∠PₚᵣₑᵥP₀Pₙₑₓₜ
-         *   q⃑ₚᵣₑᵥ = P₀ - Pₚᵣₑᵥ */
-        void main(float2 position : POSITION, float2 prev : PREV, float2 next : NEXT, out struct output o)
-        {
-            float2 q_prev, q_next, v_p, q_i;
-            float2x2 geom;
-            float l;
-
-            o.stroke_transform = float2x2(transform_rtx.xy, transform_rty.xy) * stroke_width * 0.5f;
-
-            geom = float2x2(transform_geometry._11_21, transform_geometry._12_22);
-            q_prev = normalize(mul(geom, prev));
-            q_next = normalize(mul(geom, next));
-
-            /* tan(½θ) = sin(θ) / (1 + cos(θ))
-             *         = (q̂ₚᵣₑᵥ⊥ · q̂ₙₑₓₜ) / (1 + (q̂ₚᵣₑᵥ · q̂ₙₑₓₜ)) */
-            v_p = float2(-q_prev.y, q_prev.x);
-            l = -dot(v_p, q_next) / (1.0f + dot(q_prev, q_next));
-            q_i = l * q_prev + v_p;
-
-            o.b = float4(0.0, 0.0, 0.0, 0.0);
-
-            o.p = mul(float3(position, 1.0f), transform_geometry) + stroke_width * 0.5f * q_i;
-            position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))
-                    * float2(transform_rtx.w, transform_rty.w);
-            o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);
-        }
-#endif
-        0x43425844, 0xfb16cd75, 0xf5ec3e80, 0xceacf250, 0x91d29d18, 0x00000001, 0x00000608, 0x00000003,
-        0x0000002c, 0x00000098, 0x00000154, 0x4e475349, 0x00000064, 0x00000003, 0x00000008, 0x00000050,
-        0x00000000, 0x00000000, 0x00000003, 0x00000000, 0x00000303, 0x00000059, 0x00000000, 0x00000000,
-        0x00000003, 0x00000001, 0x00000303, 0x0000005e, 0x00000000, 0x00000000, 0x00000003, 0x00000002,
-        0x00000303, 0x49534f50, 0x4e4f4954, 0x45525000, 0x454e0056, 0xab005458, 0x4e47534f, 0x000000b4,
-        0x00000005, 0x00000008, 0x00000080, 0x00000000, 0x00000000, 0x00000003, 0x00000000, 0x00000c03,
-        0x0000008f, 0x00000000, 0x00000000, 0x00000003, 0x00000001, 0x0000000f, 0x00000096, 0x00000000,
-        0x00000000, 0x00000003, 0x00000002, 0x00000c03, 0x00000096, 0x00000001, 0x00000000, 0x00000003,
-        0x00000003, 0x00000c03, 0x000000a7, 0x00000000, 0x00000001, 0x00000003, 0x00000004, 0x0000000f,
-        0x4c524f57, 0x4f505f44, 0x49544953, 0x42004e4f, 0x45495a45, 0x54530052, 0x454b4f52, 0x4152545f,
-        0x4f46534e, 0x53004d52, 0x4f505f56, 0x49544953, 0xab004e4f, 0x52444853, 0x000004ac, 0x00010040,
-        0x0000012b, 0x04000059, 0x00208e46, 0x00000000, 0x00000004, 0x0300005f, 0x00101032, 0x00000000,
-        0x0300005f, 0x00101032, 0x00000001, 0x0300005f, 0x00101032, 0x00000002, 0x03000065, 0x00102032,
-        0x00000000, 0x03000065, 0x001020f2, 0x00000001, 0x03000065, 0x00102032, 0x00000002, 0x03000065,
-        0x00102032, 0x00000003, 0x04000067, 0x001020f2, 0x00000004, 0x00000001, 0x02000068, 0x00000003,
-        0x0800000f, 0x00100012, 0x00000000, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000002,
-        0x0800000f, 0x00100022, 0x00000000, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000002,
-        0x0700000f, 0x00100042, 0x00000000, 0x00100046, 0x00000000, 0x00100046, 0x00000000, 0x05000044,
-        0x00100042, 0x00000000, 0x0010002a, 0x00000000, 0x07000038, 0x00100032, 0x00000000, 0x00100aa6,
-        0x00000000, 0x00100046, 0x00000000, 0x0800000f, 0x00100012, 0x00000001, 0x00208046, 0x00000000,
-        0x00000000, 0x00101046, 0x00000001, 0x0800000f, 0x00100022, 0x00000001, 0x00208046, 0x00000000,
-        0x00000001, 0x00101046, 0x00000001, 0x0700000f, 0x00100042, 0x00000000, 0x00100046, 0x00000001,
-        0x00100046, 0x00000001, 0x05000044, 0x00100042, 0x00000000, 0x0010002a, 0x00000000, 0x07000038,
-        0x00100032, 0x00000001, 0x00100aa6, 0x00000000, 0x00100046, 0x00000001, 0x06000036, 0x001000c2,
-        0x00000001, 0x80100556, 0x00000041, 0x00000001, 0x0700000f, 0x00100042, 0x00000000, 0x00100a26,
-        0x00000001, 0x00100046, 0x00000000, 0x0700000f, 0x00100012, 0x00000000, 0x00100046, 0x00000001,
-        0x00100046, 0x00000000, 0x07000000, 0x00100012, 0x00000000, 0x0010000a, 0x00000000, 0x00004001,
-        0x3f800000, 0x0800000e, 0x00100012, 0x00000000, 0x8010002a, 0x00000041, 0x00000000, 0x0010000a,
-        0x00000000, 0x09000032, 0x00100032, 0x00000000, 0x00100006, 0x00000000, 0x00100046, 0x00000001,
-        0x00100f36, 0x00000001, 0x08000038, 0x00100042, 0x00000000, 0x0020803a, 0x00000000, 0x00000001,
-        0x00004001, 0x3f000000, 0x05000036, 0x00100032, 0x00000001, 0x00101046, 0x00000000, 0x05000036,
-        0x00100042, 0x00000001, 0x00004001, 0x3f800000, 0x08000010, 0x00100012, 0x00000002, 0x00100246,
-        0x00000001, 0x00208246, 0x00000000, 0x00000000, 0x08000010, 0x00100022, 0x00000002, 0x00100246,
-        0x00000001, 0x00208246, 0x00000000, 0x00000001, 0x09000032, 0x00100032, 0x00000000, 0x00100aa6,
-        0x00000000, 0x00100046, 0x00000000, 0x00100046, 0x00000002, 0x05000036, 0x00102032, 0x00000000,
-        0x00100046, 0x00000000, 0x08000036, 0x001020f2, 0x00000001, 0x00004002, 0x00000000, 0x00000000,
-        0x00000000, 0x00000000, 0x06000036, 0x00100032, 0x00000001, 0x00208046, 0x00000000, 0x00000002,
-        0x06000036, 0x001000c2, 0x00000001, 0x00208406, 0x00000000, 0x00000003, 0x08000038, 0x001000f2,
-        0x00000001, 0x00100e46, 0x00000001, 0x00208ff6, 0x00000000, 0x00000001, 0x0a000038, 0x001000f2,
-        0x00000001, 0x00100e46, 0x00000001, 0x00004002, 0x3f000000, 0x3f000000, 0x3f000000, 0x3f000000,
-        0x05000036, 0x00102032, 0x00000002, 0x00100086, 0x00000001, 0x05000036, 0x00102032, 0x00000003,
-        0x001005d6, 0x00000001, 0x05000036, 0x00100042, 0x00000000, 0x00004001, 0x3f800000, 0x08000010,
-        0x00100082, 0x00000000, 0x00208246, 0x00000000, 0x00000002, 0x00100246, 0x00000000, 0x08000010,
-        0x00100012, 0x00000000, 0x00208246, 0x00000000, 0x00000003, 0x00100246, 0x00000000, 0x08000038,
-        0x00100022, 0x00000000, 0x0010000a, 0x00000000, 0x0020803a, 0x00000000, 0x00000003, 0x08000038,
-        0x00100012, 0x00000000, 0x0010003a, 0x00000000, 0x0020803a, 0x00000000, 0x00000002, 0x0a000000,
-        0x00102032, 0x00000004, 0x00100046, 0x00000000, 0x00004002, 0xbf800000, 0x3f800000, 0x00000000,
-        0x00000000, 0x08000036, 0x001020c2, 0x00000004, 0x00004002, 0x00000000, 0x00000000, 0x00000000,
-        0x3f800000, 0x0100003e,
-    };
+    static const char vs_code_outline[] =
+        "float3x2 transform_geometry;\n"
+        "float stroke_width;\n"
+        "float4 transform_rtx;\n"
+        "float4 transform_rty;\n"
+        "\n"
+        "struct output\n"
+        "{\n"
+        "    float2 p : WORLD_POSITION;\n"
+        "    float4 b : BEZIER;\n"
+        "    nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;\n"
+        "    float4 position : SV_POSITION;\n"
+        "};\n"
+        "\n"
+        "/* The lines PₚᵣₑᵥP₀ and P₀Pₙₑₓₜ, both offset by ±½w, intersect each other at:\n"
+        " *\n"
+        " *   Pᵢ = P₀ ± w · ½q⃑ᵢ.\n"
+        " *\n"
+        " * Where:\n"
+        " *\n"
+        " *   q⃑ᵢ = q̂ₚᵣₑᵥ⊥ + tan(½θ) · -q̂ₚᵣₑᵥ\n"
+        " *   θ  = ∠PₚᵣₑᵥP₀Pₙₑₓₜ\n"
+        " *   q⃑ₚᵣₑᵥ = P₀ - Pₚᵣₑᵥ */\n"
+        "void main(float2 position : POSITION, float2 prev : PREV, float2 next : NEXT, out struct output o)\n"
+        "{\n"
+        "    float2 q_prev, q_next, v_p, q_i;\n"
+        "    float2x2 geom;\n"
+        "    float l;\n"
+        "\n"
+        "    o.stroke_transform = float2x2(transform_rtx.xy, transform_rty.xy) * stroke_width * 0.5f;\n"
+        "\n"
+        "    geom = float2x2(transform_geometry._11_21, transform_geometry._12_22);\n"
+        "    q_prev = normalize(mul(geom, prev));\n"
+        "    q_next = normalize(mul(geom, next));\n"
+        "\n"
+        "    /* tan(½θ) = sin(θ) / (1 + cos(θ))\n"
+        "     *         = (q̂ₚᵣₑᵥ⊥ · q̂ₙₑₓₜ) / (1 + (q̂ₚᵣₑᵥ · q̂ₙₑₓₜ)) */\n"
+        "    v_p = float2(-q_prev.y, q_prev.x);\n"
+        "    l = -dot(v_p, q_next) / (1.0f + dot(q_prev, q_next));\n"
+        "    q_i = l * q_prev + v_p;\n"
+        "\n"
+        "    o.b = float4(0.0, 0.0, 0.0, 0.0);\n"
+        "\n"
+        "    o.p = mul(float3(position, 1.0f), transform_geometry) + stroke_width * 0.5f * q_i;\n"
+        "    position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))\n"
+        "            * float2(transform_rtx.w, transform_rty.w);\n"
+        "    o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);\n"
+        "}\n";
     /*     ⎡p0.x p0.y 1⎤
      * A = ⎢p1.x p1.y 1⎥
      *     ⎣p2.x p2.y 1⎦
@@ -2924,160 +3556,68 @@ static HRESULT d2d_device_context_init(struct d2d_device_context *render_target,
      * A'T = B'
      * T = A'⁻¹B'
      */
-    static const DWORD vs_code_bezier_outline[] =
-    {
-#if 0
-        float3x2 transform_geometry;
-        float stroke_width;
-        float4 transform_rtx;
-        float4 transform_rty;
-
-        struct output
-        {
-            float2 p : WORLD_POSITION;
-            float4 b : BEZIER;
-            nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;
-            float4 position : SV_POSITION;
-        };
-
-        void main(float2 position : POSITION, float2 p0 : P0, float2 p1 : P1, float2 p2 : P2,
-                float2 prev : PREV, float2 next : NEXT, out struct output o)
-        {
-            float2 q_prev, q_next, v_p, q_i, p;
-            float2x2 geom, rt;
-            float l;
-
-            geom = float2x2(transform_geometry._11_21, transform_geometry._12_22);
-            rt = float2x2(transform_rtx.xy, transform_rty.xy);
-            o.stroke_transform = rt * stroke_width * 0.5f;
-
-            p = mul(geom, position);
-            p0 = mul(geom, p0);
-            p1 = mul(geom, p1);
-            p2 = mul(geom, p2);
-
-            p -= p0;
-            p1 -= p0;
-            p2 -= p0;
-
-            q_prev = normalize(mul(geom, prev));
-            q_next = normalize(mul(geom, next));
-
-            v_p = float2(-q_prev.y, q_prev.x);
-            l = -dot(v_p, q_next) / (1.0f + dot(q_prev, q_next));
-            q_i = l * q_prev + v_p;
-            p += 0.5f * stroke_width * q_i;
-
-            v_p = mul(rt, p2);
-            v_p = normalize(float2(-v_p.y, v_p.x));
-            if (abs(dot(mul(rt, p1), v_p)) < 1.0f)
-            {
-                o.b.xzw = float3(0.0f, 0.0f, 0.0f);
-                o.b.y = dot(mul(rt, p), v_p);
-            }
-            else
-            {
-                o.b.zw = sign(dot(mul(rt, p1), v_p)) * v_p;
-                v_p = -float2(-p.y, p.x) / dot(float2(-p1.y, p1.x), p2);
-                o.b.x = dot(v_p, p1 - 0.5f * p2);
-                o.b.y = dot(v_p, p1);
-            }
-
-            o.p = mul(float3(position, 1.0f), transform_geometry) + 0.5f * stroke_width * q_i;
-            position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))
-                    * float2(transform_rtx.w, transform_rty.w);
-            o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);
-        }
-#endif
-        0x43425844, 0x356a0c5f, 0x8e4ba153, 0xe52cf793, 0xa6b774ea, 0x00000001, 0x00000afc, 0x00000003,
-        0x0000002c, 0x000000e4, 0x000001a0, 0x4e475349, 0x000000b0, 0x00000006, 0x00000008, 0x00000098,
-        0x00000000, 0x00000000, 0x00000003, 0x00000000, 0x00000303, 0x000000a1, 0x00000000, 0x00000000,
-        0x00000003, 0x00000001, 0x00000303, 0x000000a1, 0x00000001, 0x00000000, 0x00000003, 0x00000002,
-        0x00000303, 0x000000a1, 0x00000002, 0x00000000, 0x00000003, 0x00000003, 0x00000303, 0x000000a3,
-        0x00000000, 0x00000000, 0x00000003, 0x00000004, 0x00000303, 0x000000a8, 0x00000000, 0x00000000,
-        0x00000003, 0x00000005, 0x00000303, 0x49534f50, 0x4e4f4954, 0x50005000, 0x00564552, 0x5458454e,
-        0xababab00, 0x4e47534f, 0x000000b4, 0x00000005, 0x00000008, 0x00000080, 0x00000000, 0x00000000,
-        0x00000003, 0x00000000, 0x00000c03, 0x0000008f, 0x00000000, 0x00000000, 0x00000003, 0x00000001,
-        0x0000000f, 0x00000096, 0x00000000, 0x00000000, 0x00000003, 0x00000002, 0x00000c03, 0x00000096,
-        0x00000001, 0x00000000, 0x00000003, 0x00000003, 0x00000c03, 0x000000a7, 0x00000000, 0x00000001,
-        0x00000003, 0x00000004, 0x0000000f, 0x4c524f57, 0x4f505f44, 0x49544953, 0x42004e4f, 0x45495a45,
-        0x54530052, 0x454b4f52, 0x4152545f, 0x4f46534e, 0x53004d52, 0x4f505f56, 0x49544953, 0xab004e4f,
-        0x52444853, 0x00000954, 0x00010040, 0x00000255, 0x04000059, 0x00208e46, 0x00000000, 0x00000004,
-        0x0300005f, 0x00101032, 0x00000000, 0x0300005f, 0x00101032, 0x00000001, 0x0300005f, 0x00101032,
-        0x00000002, 0x0300005f, 0x00101032, 0x00000003, 0x0300005f, 0x00101032, 0x00000004, 0x0300005f,
-        0x00101032, 0x00000005, 0x03000065, 0x00102032, 0x00000000, 0x03000065, 0x001020f2, 0x00000001,
-        0x03000065, 0x00102032, 0x00000002, 0x03000065, 0x00102032, 0x00000003, 0x04000067, 0x001020f2,
-        0x00000004, 0x00000001, 0x02000068, 0x00000006, 0x0800000f, 0x00100012, 0x00000000, 0x00208046,
-        0x00000000, 0x00000000, 0x00101046, 0x00000005, 0x0800000f, 0x00100022, 0x00000000, 0x00208046,
-        0x00000000, 0x00000001, 0x00101046, 0x00000005, 0x0700000f, 0x00100042, 0x00000000, 0x00100046,
-        0x00000000, 0x00100046, 0x00000000, 0x05000044, 0x00100042, 0x00000000, 0x0010002a, 0x00000000,
-        0x07000038, 0x00100032, 0x00000000, 0x00100aa6, 0x00000000, 0x00100046, 0x00000000, 0x0800000f,
-        0x00100012, 0x00000001, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000004, 0x0800000f,
-        0x00100022, 0x00000001, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000004, 0x0700000f,
-        0x00100042, 0x00000000, 0x00100046, 0x00000001, 0x00100046, 0x00000001, 0x05000044, 0x00100042,
-        0x00000000, 0x0010002a, 0x00000000, 0x07000038, 0x00100032, 0x00000001, 0x00100aa6, 0x00000000,
-        0x00100046, 0x00000001, 0x06000036, 0x001000c2, 0x00000001, 0x80100556, 0x00000041, 0x00000001,
-        0x0700000f, 0x00100042, 0x00000000, 0x00100a26, 0x00000001, 0x00100046, 0x00000000, 0x0700000f,
-        0x00100012, 0x00000000, 0x00100046, 0x00000001, 0x00100046, 0x00000000, 0x07000000, 0x00100012,
-        0x00000000, 0x0010000a, 0x00000000, 0x00004001, 0x3f800000, 0x0800000e, 0x00100012, 0x00000000,
-        0x8010002a, 0x00000041, 0x00000000, 0x0010000a, 0x00000000, 0x09000032, 0x00100032, 0x00000000,
-        0x00100006, 0x00000000, 0x00100046, 0x00000001, 0x00100f36, 0x00000001, 0x05000036, 0x00100032,
-        0x00000001, 0x00101046, 0x00000000, 0x05000036, 0x00100042, 0x00000001, 0x00004001, 0x3f800000,
-        0x08000010, 0x00100012, 0x00000002, 0x00100246, 0x00000001, 0x00208246, 0x00000000, 0x00000000,
-        0x08000010, 0x00100022, 0x00000002, 0x00100246, 0x00000001, 0x00208246, 0x00000000, 0x00000001,
-        0x08000038, 0x00100042, 0x00000000, 0x0020803a, 0x00000000, 0x00000001, 0x00004001, 0x3f000000,
-        0x09000032, 0x00100032, 0x00000001, 0x00100aa6, 0x00000000, 0x00100046, 0x00000000, 0x00100046,
-        0x00000002, 0x05000036, 0x00102032, 0x00000000, 0x00100046, 0x00000001, 0x0800000f, 0x00100012,
-        0x00000002, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000000, 0x0800000f, 0x00100022,
-        0x00000002, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000000, 0x0800000f, 0x00100012,
-        0x00000003, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000001, 0x0800000f, 0x00100022,
-        0x00000003, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000001, 0x08000000, 0x00100032,
-        0x00000002, 0x00100046, 0x00000002, 0x80100046, 0x00000041, 0x00000003, 0x09000032, 0x00100032,
-        0x00000000, 0x00100aa6, 0x00000000, 0x00100046, 0x00000000, 0x00100046, 0x00000002, 0x0800000f,
-        0x00100012, 0x00000002, 0x00208046, 0x00000000, 0x00000002, 0x00100046, 0x00000000, 0x0800000f,
-        0x00100022, 0x00000002, 0x00208046, 0x00000000, 0x00000003, 0x00100046, 0x00000000, 0x0800000f,
-        0x00100012, 0x00000004, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000003, 0x0800000f,
-        0x00100022, 0x00000004, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000003, 0x08000000,
-        0x001000c2, 0x00000002, 0x80100406, 0x00000041, 0x00000003, 0x00100406, 0x00000004, 0x0800000f,
-        0x00100082, 0x00000000, 0x00208046, 0x00000000, 0x00000003, 0x00100ae6, 0x00000002, 0x06000036,
-        0x00100042, 0x00000003, 0x8010003a, 0x00000041, 0x00000000, 0x0800000f, 0x00100082, 0x00000003,
-        0x00208046, 0x00000000, 0x00000002, 0x00100ae6, 0x00000002, 0x0700000f, 0x00100082, 0x00000000,
-        0x00100ae6, 0x00000003, 0x00100ae6, 0x00000003, 0x05000044, 0x00100082, 0x00000000, 0x0010003a,
-        0x00000000, 0x07000038, 0x001000c2, 0x00000003, 0x00100ff6, 0x00000000, 0x00100ea6, 0x00000003,
-        0x0700000f, 0x00100022, 0x00000004, 0x00100046, 0x00000002, 0x00100ae6, 0x00000003, 0x06000036,
-        0x00100042, 0x00000000, 0x8010001a, 0x00000041, 0x00000000, 0x0800000f, 0x00100012, 0x00000002,
-        0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000002, 0x0800000f, 0x00100022, 0x00000002,
-        0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000002, 0x08000000, 0x00100032, 0x00000005,
-        0x80100046, 0x00000041, 0x00000003, 0x00100046, 0x00000002, 0x06000036, 0x00100042, 0x00000005,
-        0x8010001a, 0x00000041, 0x00000005, 0x0700000f, 0x00100022, 0x00000000, 0x00100a26, 0x00000005,
-        0x00100ae6, 0x00000002, 0x0d000032, 0x00100032, 0x00000002, 0x80100ae6, 0x00000041, 0x00000002,
-        0x00004002, 0x3f000000, 0x3f000000, 0x00000000, 0x00000000, 0x00100046, 0x00000005, 0x0800000e,
-        0x00100032, 0x00000000, 0x80100a26, 0x00000041, 0x00000000, 0x00100556, 0x00000000, 0x0700000f,
-        0x00100012, 0x00000002, 0x00100046, 0x00000000, 0x00100046, 0x00000002, 0x0700000f, 0x00100022,
-        0x00000002, 0x00100046, 0x00000000, 0x00100046, 0x00000005, 0x0800000f, 0x00100012, 0x00000000,
-        0x00208046, 0x00000000, 0x00000002, 0x00100046, 0x00000005, 0x0800000f, 0x00100022, 0x00000000,
-        0x00208046, 0x00000000, 0x00000003, 0x00100046, 0x00000005, 0x0700000f, 0x00100012, 0x00000000,
-        0x00100046, 0x00000000, 0x00100ae6, 0x00000003, 0x07000031, 0x00100022, 0x00000000, 0x00004001,
-        0x00000000, 0x0010000a, 0x00000000, 0x07000031, 0x00100042, 0x00000000, 0x0010000a, 0x00000000,
-        0x00004001, 0x00000000, 0x08000031, 0x00100012, 0x00000000, 0x8010000a, 0x00000081, 0x00000000,
-        0x00004001, 0x3f800000, 0x0800001e, 0x00100022, 0x00000000, 0x8010001a, 0x00000041, 0x00000000,
-        0x0010002a, 0x00000000, 0x0500002b, 0x00100022, 0x00000000, 0x0010001a, 0x00000000, 0x07000038,
-        0x001000c2, 0x00000002, 0x00100ea6, 0x00000003, 0x00100556, 0x00000000, 0x08000036, 0x001000d2,
-        0x00000004, 0x00004002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x09000037, 0x001020f2,
-        0x00000001, 0x00100006, 0x00000000, 0x00100e46, 0x00000004, 0x00100e46, 0x00000002, 0x06000036,
-        0x00100032, 0x00000000, 0x00208046, 0x00000000, 0x00000002, 0x06000036, 0x001000c2, 0x00000000,
-        0x00208406, 0x00000000, 0x00000003, 0x08000038, 0x001000f2, 0x00000000, 0x00100e46, 0x00000000,
-        0x00208ff6, 0x00000000, 0x00000001, 0x0a000038, 0x001000f2, 0x00000000, 0x00100e46, 0x00000000,
-        0x00004002, 0x3f000000, 0x3f000000, 0x3f000000, 0x3f000000, 0x05000036, 0x00102032, 0x00000002,
-        0x00100086, 0x00000000, 0x05000036, 0x00102032, 0x00000003, 0x001005d6, 0x00000000, 0x05000036,
-        0x00100042, 0x00000001, 0x00004001, 0x3f800000, 0x08000010, 0x00100012, 0x00000000, 0x00208246,
-        0x00000000, 0x00000002, 0x00100246, 0x00000001, 0x08000010, 0x00100022, 0x00000000, 0x00208246,
-        0x00000000, 0x00000003, 0x00100246, 0x00000001, 0x08000038, 0x00100022, 0x00000001, 0x0010001a,
-        0x00000000, 0x0020803a, 0x00000000, 0x00000003, 0x08000038, 0x00100012, 0x00000001, 0x0010000a,
-        0x00000000, 0x0020803a, 0x00000000, 0x00000002, 0x0a000000, 0x00102032, 0x00000004, 0x00100046,
-        0x00000001, 0x00004002, 0xbf800000, 0x3f800000, 0x00000000, 0x00000000, 0x08000036, 0x001020c2,
-        0x00000004, 0x00004002, 0x00000000, 0x00000000, 0x00000000, 0x3f800000, 0x0100003e,
-    };
+    static const char vs_code_bezier_outline[] =
+        "float3x2 transform_geometry;\n"
+        "float stroke_width;\n"
+        "float4 transform_rtx;\n"
+        "float4 transform_rty;\n"
+        "\n"
+        "struct output\n"
+        "{\n"
+        "    float2 p : WORLD_POSITION;\n"
+        "    float4 b : BEZIER;\n"
+        "    nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;\n"
+        "    float4 position : SV_POSITION;\n"
+        "};\n"
+        "\n"
+        "void main(float2 position : POSITION, float2 p0 : P0, float2 p1 : P1, float2 p2 : P2,\n"
+        "        float2 prev : PREV, float2 next : NEXT, out struct output o)\n"
+        "{\n"
+        "    float2 q_prev, q_next, v_p, q_i, p;\n"
+        "    float2x2 geom, rt;\n"
+        "    float l;\n"
+        "\n"
+        "    geom = float2x2(transform_geometry._11_21, transform_geometry._12_22);\n"
+        "    rt = float2x2(transform_rtx.xy, transform_rty.xy);\n"
+        "    o.stroke_transform = rt * stroke_width * 0.5f;\n"
+        "\n"
+        "    p = mul(geom, position);\n"
+        "    p0 = mul(geom, p0);\n"
+        "    p1 = mul(geom, p1);\n"
+        "    p2 = mul(geom, p2);\n"
+        "\n"
+        "    p -= p0;\n"
+        "    p1 -= p0;\n"
+        "    p2 -= p0;\n"
+        "\n"
+        "    q_prev = normalize(mul(geom, prev));\n"
+        "    q_next = normalize(mul(geom, next));\n"
+        "\n"
+        "    v_p = float2(-q_prev.y, q_prev.x);\n"
+        "    l = -dot(v_p, q_next) / (1.0f + dot(q_prev, q_next));\n"
+        "    q_i = l * q_prev + v_p;\n"
+        "    p += 0.5f * stroke_width * q_i;\n"
+        "\n"
+        "    v_p = mul(rt, p2);\n"
+        "    v_p = normalize(float2(-v_p.y, v_p.x));\n"
+        "    if (abs(dot(mul(rt, p1), v_p)) < 1.0f)\n"
+        "    {\n"
+        "        o.b.xzw = float3(0.0f, 0.0f, 0.0f);\n"
+        "        o.b.y = dot(mul(rt, p), v_p);\n"
+        "    }\n"
+        "    else\n"
+        "    {\n"
+        "        o.b.zw = sign(dot(mul(rt, p1), v_p)) * v_p;\n"
+        "        v_p = -float2(-p.y, p.x) / dot(float2(-p1.y, p1.x), p2);\n"
+        "        o.b.x = dot(v_p, p1 - 0.5f * p2);\n"
+        "        o.b.y = dot(v_p, p1);\n"
+        "    }\n"
+        "\n"
+        "    o.p = mul(float3(position, 1.0f), transform_geometry) + 0.5f * stroke_width * q_i;\n"
+        "    position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))\n"
+        "            * float2(transform_rtx.w, transform_rty.w);\n"
+        "    o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);\n"
+        "}\n";
     /*     ⎡p0.x p0.y 1⎤
      * A = ⎢p1.x p1.y 1⎥
      *     ⎣p2.x p2.y 1⎦
@@ -3095,726 +3635,326 @@ static HRESULT d2d_device_context_init(struct d2d_device_context *render_target,
      * A'T = B'
      * T = A'⁻¹B' = (B'⁻¹A')⁻¹
      */
-    static const DWORD vs_code_arc_outline[] =
-    {
-#if 0
-        float3x2 transform_geometry;
-        float stroke_width;
-        float4 transform_rtx;
-        float4 transform_rty;
-
-        struct output
-        {
-            float2 p : WORLD_POSITION;
-            float4 b : BEZIER;
-            nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;
-            float4 position : SV_POSITION;
-        };
-
-        void main(float2 position : POSITION, float2 p0 : P0, float2 p1 : P1, float2 p2 : P2,
-                float2 prev : PREV, float2 next : NEXT, out struct output o)
-        {
-            float2 q_prev, q_next, v_p, q_i, p;
-            float2x2 geom, rt, p_inv;
-            float l;
-            float a;
-            float2 bc;
-
-            geom = float2x2(transform_geometry._11_21, transform_geometry._12_22);
-            rt = float2x2(transform_rtx.xy, transform_rty.xy);
-            o.stroke_transform = rt * stroke_width * 0.5f;
-
-            p = mul(geom, position);
-            p0 = mul(geom, p0);
-            p1 = mul(geom, p1);
-            p2 = mul(geom, p2);
-
-            p -= p0;
-            p1 -= p0;
-            p2 -= p0;
-
-            q_prev = normalize(mul(geom, prev));
-            q_next = normalize(mul(geom, next));
-
-            v_p = float2(-q_prev.y, q_prev.x);
-            l = -dot(v_p, q_next) / (1.0f + dot(q_prev, q_next));
-            q_i = l * q_prev + v_p;
-            p += 0.5f * stroke_width * q_i;
-
-            p_inv = float2x2(p1.y, -p1.x, p2.y - p1.y, p1.x - p2.x) / (p1.x * p2.y - p2.x * p1.y);
-            o.b.xy = mul(p_inv, p) + float2(1.0f, 0.0f);
-            o.b.zw = 0.0f;
-
-            o.p = mul(float3(position, 1.0f), transform_geometry) + 0.5f * stroke_width * q_i;
-            position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))
-                    * float2(transform_rtx.w, transform_rty.w);
-            o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);
-        }
-#endif
-        0x43425844, 0xde1911bf, 0xfff8c893, 0xb0bfc24d, 0x78c9bbc4, 0x00000001, 0x00000924, 0x00000003,
-        0x0000002c, 0x000000e4, 0x000001a0, 0x4e475349, 0x000000b0, 0x00000006, 0x00000008, 0x00000098,
-        0x00000000, 0x00000000, 0x00000003, 0x00000000, 0x00000303, 0x000000a1, 0x00000000, 0x00000000,
-        0x00000003, 0x00000001, 0x00000303, 0x000000a1, 0x00000001, 0x00000000, 0x00000003, 0x00000002,
-        0x00000303, 0x000000a1, 0x00000002, 0x00000000, 0x00000003, 0x00000003, 0x00000303, 0x000000a3,
-        0x00000000, 0x00000000, 0x00000003, 0x00000004, 0x00000303, 0x000000a8, 0x00000000, 0x00000000,
-        0x00000003, 0x00000005, 0x00000303, 0x49534f50, 0x4e4f4954, 0x50005000, 0x00564552, 0x5458454e,
-        0xababab00, 0x4e47534f, 0x000000b4, 0x00000005, 0x00000008, 0x00000080, 0x00000000, 0x00000000,
-        0x00000003, 0x00000000, 0x00000c03, 0x0000008f, 0x00000000, 0x00000000, 0x00000003, 0x00000001,
-        0x0000000f, 0x00000096, 0x00000000, 0x00000000, 0x00000003, 0x00000002, 0x00000c03, 0x00000096,
-        0x00000001, 0x00000000, 0x00000003, 0x00000003, 0x00000c03, 0x000000a7, 0x00000000, 0x00000001,
-        0x00000003, 0x00000004, 0x0000000f, 0x4c524f57, 0x4f505f44, 0x49544953, 0x42004e4f, 0x45495a45,
-        0x54530052, 0x454b4f52, 0x4152545f, 0x4f46534e, 0x53004d52, 0x4f505f56, 0x49544953, 0xab004e4f,
-        0x52444853, 0x0000077c, 0x00010040, 0x000001df, 0x04000059, 0x00208e46, 0x00000000, 0x00000004,
-        0x0300005f, 0x00101032, 0x00000000, 0x0300005f, 0x00101032, 0x00000001, 0x0300005f, 0x00101032,
-        0x00000002, 0x0300005f, 0x00101032, 0x00000003, 0x0300005f, 0x00101032, 0x00000004, 0x0300005f,
-        0x00101032, 0x00000005, 0x03000065, 0x00102032, 0x00000000, 0x03000065, 0x001020f2, 0x00000001,
-        0x03000065, 0x00102032, 0x00000002, 0x03000065, 0x00102032, 0x00000003, 0x04000067, 0x001020f2,
-        0x00000004, 0x00000001, 0x02000068, 0x00000004, 0x0800000f, 0x00100012, 0x00000000, 0x00208046,
-        0x00000000, 0x00000000, 0x00101046, 0x00000005, 0x0800000f, 0x00100022, 0x00000000, 0x00208046,
-        0x00000000, 0x00000001, 0x00101046, 0x00000005, 0x0700000f, 0x00100042, 0x00000000, 0x00100046,
-        0x00000000, 0x00100046, 0x00000000, 0x05000044, 0x00100042, 0x00000000, 0x0010002a, 0x00000000,
-        0x07000038, 0x00100032, 0x00000000, 0x00100aa6, 0x00000000, 0x00100046, 0x00000000, 0x0800000f,
-        0x00100012, 0x00000001, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000004, 0x0800000f,
-        0x00100022, 0x00000001, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000004, 0x0700000f,
-        0x00100042, 0x00000000, 0x00100046, 0x00000001, 0x00100046, 0x00000001, 0x05000044, 0x00100042,
-        0x00000000, 0x0010002a, 0x00000000, 0x07000038, 0x00100032, 0x00000001, 0x00100aa6, 0x00000000,
-        0x00100046, 0x00000001, 0x06000036, 0x001000c2, 0x00000001, 0x80100556, 0x00000041, 0x00000001,
-        0x0700000f, 0x00100042, 0x00000000, 0x00100a26, 0x00000001, 0x00100046, 0x00000000, 0x0700000f,
-        0x00100012, 0x00000000, 0x00100046, 0x00000001, 0x00100046, 0x00000000, 0x07000000, 0x00100012,
-        0x00000000, 0x0010000a, 0x00000000, 0x00004001, 0x3f800000, 0x0800000e, 0x00100012, 0x00000000,
-        0x8010002a, 0x00000041, 0x00000000, 0x0010000a, 0x00000000, 0x09000032, 0x00100032, 0x00000000,
-        0x00100006, 0x00000000, 0x00100046, 0x00000001, 0x00100f36, 0x00000001, 0x05000036, 0x00100032,
-        0x00000001, 0x00101046, 0x00000000, 0x05000036, 0x00100042, 0x00000001, 0x00004001, 0x3f800000,
-        0x08000010, 0x00100012, 0x00000002, 0x00100246, 0x00000001, 0x00208246, 0x00000000, 0x00000000,
-        0x08000010, 0x00100022, 0x00000002, 0x00100246, 0x00000001, 0x00208246, 0x00000000, 0x00000001,
-        0x08000038, 0x00100042, 0x00000000, 0x0020803a, 0x00000000, 0x00000001, 0x00004001, 0x3f000000,
-        0x09000032, 0x00100032, 0x00000001, 0x00100aa6, 0x00000000, 0x00100046, 0x00000000, 0x00100046,
-        0x00000002, 0x05000036, 0x00102032, 0x00000000, 0x00100046, 0x00000001, 0x0800000f, 0x00100012,
-        0x00000002, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000000, 0x0800000f, 0x00100022,
-        0x00000002, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000000, 0x0800000f, 0x00100022,
-        0x00000003, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000001, 0x0800000f, 0x00100012,
-        0x00000003, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000001, 0x08000000, 0x00100032,
-        0x00000002, 0x00100046, 0x00000002, 0x80100516, 0x00000041, 0x00000003, 0x09000032, 0x00100032,
-        0x00000000, 0x00100aa6, 0x00000000, 0x00100046, 0x00000000, 0x00100046, 0x00000002, 0x0800000f,
-        0x00100022, 0x00000002, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000003, 0x0800000f,
-        0x00100012, 0x00000002, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000003, 0x08000000,
-        0x001000c2, 0x00000000, 0x80100406, 0x00000041, 0x00000003, 0x00100406, 0x00000002, 0x0800000f,
-        0x00100022, 0x00000002, 0x00208046, 0x00000000, 0x00000000, 0x00101046, 0x00000002, 0x0800000f,
-        0x00100012, 0x00000002, 0x00208046, 0x00000000, 0x00000001, 0x00101046, 0x00000002, 0x08000000,
-        0x00100032, 0x00000002, 0x80100046, 0x00000041, 0x00000003, 0x00100046, 0x00000002, 0x07000038,
-        0x00100082, 0x00000001, 0x0010003a, 0x00000000, 0x0010000a, 0x00000002, 0x0a000032, 0x00100082,
-        0x00000001, 0x0010001a, 0x00000002, 0x0010002a, 0x00000000, 0x8010003a, 0x00000041, 0x00000001,
-        0x08000000, 0x00100042, 0x00000003, 0x0010002a, 0x00000000, 0x8010000a, 0x00000041, 0x00000002,
-        0x08000000, 0x00100082, 0x00000003, 0x8010003a, 0x00000041, 0x00000000, 0x0010001a, 0x00000002,
-        0x0a000038, 0x00100032, 0x00000003, 0x00100046, 0x00000002, 0x00004002, 0x3f800000, 0xbf800000,
-        0x00000000, 0x00000000, 0x0700000e, 0x001000f2, 0x00000002, 0x00100e46, 0x00000003, 0x00100ff6,
-        0x00000001, 0x0700000f, 0x00100012, 0x00000002, 0x00100046, 0x00000002, 0x00100046, 0x00000000,
-        0x0700000f, 0x00100022, 0x00000002, 0x00100ae6, 0x00000002, 0x00100046, 0x00000000, 0x0a000000,
-        0x00102032, 0x00000001, 0x00100046, 0x00000002, 0x00004002, 0x3f800000, 0x00000000, 0x00000000,
-        0x00000000, 0x08000036, 0x001020c2, 0x00000001, 0x00004002, 0x00000000, 0x00000000, 0x00000000,
-        0x00000000, 0x06000036, 0x00100032, 0x00000000, 0x00208046, 0x00000000, 0x00000002, 0x06000036,
-        0x001000c2, 0x00000000, 0x00208406, 0x00000000, 0x00000003, 0x08000038, 0x001000f2, 0x00000000,
-        0x00100e46, 0x00000000, 0x00208ff6, 0x00000000, 0x00000001, 0x0a000038, 0x001000f2, 0x00000000,
-        0x00100e46, 0x00000000, 0x00004002, 0x3f000000, 0x3f000000, 0x3f000000, 0x3f000000, 0x05000036,
-        0x00102032, 0x00000002, 0x00100086, 0x00000000, 0x05000036, 0x00102032, 0x00000003, 0x001005d6,
-        0x00000000, 0x05000036, 0x00100042, 0x00000001, 0x00004001, 0x3f800000, 0x08000010, 0x00100012,
-        0x00000000, 0x00208246, 0x00000000, 0x00000002, 0x00100246, 0x00000001, 0x08000010, 0x00100022,
-        0x00000000, 0x00208246, 0x00000000, 0x00000003, 0x00100246, 0x00000001, 0x08000038, 0x00100022,
-        0x00000001, 0x0010001a, 0x00000000, 0x0020803a, 0x00000000, 0x00000003, 0x08000038, 0x00100012,
-        0x00000001, 0x0010000a, 0x00000000, 0x0020803a, 0x00000000, 0x00000002, 0x0a000000, 0x00102032,
-        0x00000004, 0x00100046, 0x00000001, 0x00004002, 0xbf800000, 0x3f800000, 0x00000000, 0x00000000,
-        0x08000036, 0x001020c2, 0x00000004, 0x00004002, 0x00000000, 0x00000000, 0x00000000, 0x3f800000,
-        0x0100003e,
-    };
-    static const DWORD vs_code_triangle[] =
-    {
-#if 0
-        float3x2 transform_geometry;
-        float4 transform_rtx;
-        float4 transform_rty;
-
-        struct output
-        {
-            float2 p : WORLD_POSITION;
-            float4 b : BEZIER;
-            nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;
-            float4 position : SV_POSITION;
-        };
-
-        void main(float2 position : POSITION, out struct output o)
-        {
-            o.p = mul(float3(position, 1.0f), transform_geometry);
-            o.b = float4(1.0, 0.0, 1.0, 1.0);
-            o.stroke_transform = float2x2(1.0, 0.0, 0.0, 1.0);
-            position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))
-                    * float2(transform_rtx.w, transform_rty.w);
-            o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);
-        }
-#endif
-        0x43425844, 0xda43bf17, 0x06e6d155, 0xdbce2ae5, 0x8aed6fd8, 0x00000001, 0x0000034c, 0x00000003,
-        0x0000002c, 0x00000060, 0x0000011c, 0x4e475349, 0x0000002c, 0x00000001, 0x00000008, 0x00000020,
-        0x00000000, 0x00000000, 0x00000003, 0x00000000, 0x00000303, 0x49534f50, 0x4e4f4954, 0xababab00,
-        0x4e47534f, 0x000000b4, 0x00000005, 0x00000008, 0x00000080, 0x00000000, 0x00000000, 0x00000003,
-        0x00000000, 0x00000c03, 0x0000008f, 0x00000000, 0x00000000, 0x00000003, 0x00000001, 0x0000000f,
-        0x00000096, 0x00000000, 0x00000000, 0x00000003, 0x00000002, 0x00000c03, 0x00000096, 0x00000001,
-        0x00000000, 0x00000003, 0x00000003, 0x00000c03, 0x000000a7, 0x00000000, 0x00000001, 0x00000003,
-        0x00000004, 0x0000000f, 0x4c524f57, 0x4f505f44, 0x49544953, 0x42004e4f, 0x45495a45, 0x54530052,
-        0x454b4f52, 0x4152545f, 0x4f46534e, 0x53004d52, 0x4f505f56, 0x49544953, 0xab004e4f, 0x52444853,
-        0x00000228, 0x00010040, 0x0000008a, 0x04000059, 0x00208e46, 0x00000000, 0x00000004, 0x0300005f,
-        0x00101032, 0x00000000, 0x03000065, 0x00102032, 0x00000000, 0x03000065, 0x001020f2, 0x00000001,
-        0x03000065, 0x00102032, 0x00000002, 0x03000065, 0x00102032, 0x00000003, 0x04000067, 0x001020f2,
-        0x00000004, 0x00000001, 0x02000068, 0x00000002, 0x05000036, 0x00100032, 0x00000000, 0x00101046,
-        0x00000000, 0x05000036, 0x00100042, 0x00000000, 0x00004001, 0x3f800000, 0x08000010, 0x00100012,
-        0x00000001, 0x00100246, 0x00000000, 0x00208246, 0x00000000, 0x00000000, 0x08000010, 0x00100022,
-        0x00000001, 0x00100246, 0x00000000, 0x00208246, 0x00000000, 0x00000001, 0x05000036, 0x00102032,
-        0x00000000, 0x00100046, 0x00000001, 0x08000036, 0x001020f2, 0x00000001, 0x00004002, 0x3f800000,
-        0x00000000, 0x3f800000, 0x3f800000, 0x08000036, 0x00102032, 0x00000002, 0x00004002, 0x3f800000,
-        0x00000000, 0x00000000, 0x00000000, 0x08000036, 0x00102032, 0x00000003, 0x00004002, 0x00000000,
-        0x3f800000, 0x00000000, 0x00000000, 0x05000036, 0x00100042, 0x00000001, 0x00004001, 0x3f800000,
-        0x08000010, 0x00100012, 0x00000000, 0x00208246, 0x00000000, 0x00000002, 0x00100246, 0x00000001,
-        0x08000010, 0x00100022, 0x00000000, 0x00208246, 0x00000000, 0x00000003, 0x00100246, 0x00000001,
-        0x08000038, 0x00100022, 0x00000001, 0x0010001a, 0x00000000, 0x0020803a, 0x00000000, 0x00000003,
-        0x08000038, 0x00100012, 0x00000001, 0x0010000a, 0x00000000, 0x0020803a, 0x00000000, 0x00000002,
-        0x0a000000, 0x00102032, 0x00000004, 0x00100046, 0x00000001, 0x00004002, 0xbf800000, 0x3f800000,
-        0x00000000, 0x00000000, 0x08000036, 0x001020c2, 0x00000004, 0x00004002, 0x00000000, 0x00000000,
-        0x00000000, 0x3f800000, 0x0100003e,
-    };
-    static const DWORD vs_code_curve[] =
-    {
-#if 0
-        float3x2 transform_geometry;
-        float4 transform_rtx;
-        float4 transform_rty;
-
-        struct output
-        {
-            float2 p : WORLD_POSITION;
-            float4 b : BEZIER;
-            nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;
-            float4 position : SV_POSITION;
-        };
-
-        void main(float2 position : POSITION, float3 texcoord : TEXCOORD0, out struct output o)
-        {
-            o.p = mul(float3(position, 1.0f), transform_geometry);
-            o.b = float4(texcoord, 1.0);
-            o.stroke_transform = float2x2(1.0, 0.0, 0.0, 1.0);
-            position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))
-                    * float2(transform_rtx.w, transform_rty.w);
-            o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);
-        }
-#endif
-        0x43425844, 0xedb7472a, 0x2c2ea147, 0x36710079, 0xffc2e907, 0x00000001, 0x00000380, 0x00000003,
-        0x0000002c, 0x00000080, 0x0000013c, 0x4e475349, 0x0000004c, 0x00000002, 0x00000008, 0x00000038,
-        0x00000000, 0x00000000, 0x00000003, 0x00000000, 0x00000303, 0x00000041, 0x00000000, 0x00000000,
-        0x00000003, 0x00000001, 0x00000707, 0x49534f50, 0x4e4f4954, 0x58455400, 0x524f4f43, 0xabab0044,
-        0x4e47534f, 0x000000b4, 0x00000005, 0x00000008, 0x00000080, 0x00000000, 0x00000000, 0x00000003,
-        0x00000000, 0x00000c03, 0x0000008f, 0x00000000, 0x00000000, 0x00000003, 0x00000001, 0x0000000f,
-        0x00000096, 0x00000000, 0x00000000, 0x00000003, 0x00000002, 0x00000c03, 0x00000096, 0x00000001,
-        0x00000000, 0x00000003, 0x00000003, 0x00000c03, 0x000000a7, 0x00000000, 0x00000001, 0x00000003,
-        0x00000004, 0x0000000f, 0x4c524f57, 0x4f505f44, 0x49544953, 0x42004e4f, 0x45495a45, 0x54530052,
-        0x454b4f52, 0x4152545f, 0x4f46534e, 0x53004d52, 0x4f505f56, 0x49544953, 0xab004e4f, 0x52444853,
-        0x0000023c, 0x00010040, 0x0000008f, 0x04000059, 0x00208e46, 0x00000000, 0x00000004, 0x0300005f,
-        0x00101032, 0x00000000, 0x0300005f, 0x00101072, 0x00000001, 0x03000065, 0x00102032, 0x00000000,
-        0x03000065, 0x001020f2, 0x00000001, 0x03000065, 0x00102032, 0x00000002, 0x03000065, 0x00102032,
-        0x00000003, 0x04000067, 0x001020f2, 0x00000004, 0x00000001, 0x02000068, 0x00000002, 0x05000036,
-        0x00100032, 0x00000000, 0x00101046, 0x00000000, 0x05000036, 0x00100042, 0x00000000, 0x00004001,
-        0x3f800000, 0x08000010, 0x00100012, 0x00000001, 0x00100246, 0x00000000, 0x00208246, 0x00000000,
-        0x00000000, 0x08000010, 0x00100022, 0x00000001, 0x00100246, 0x00000000, 0x00208246, 0x00000000,
-        0x00000001, 0x05000036, 0x00102032, 0x00000000, 0x00100046, 0x00000001, 0x05000036, 0x00102072,
-        0x00000001, 0x00101246, 0x00000001, 0x05000036, 0x00102082, 0x00000001, 0x00004001, 0x3f800000,
-        0x08000036, 0x00102032, 0x00000002, 0x00004002, 0x3f800000, 0x00000000, 0x00000000, 0x00000000,
-        0x08000036, 0x00102032, 0x00000003, 0x00004002, 0x00000000, 0x3f800000, 0x00000000, 0x00000000,
-        0x05000036, 0x00100042, 0x00000001, 0x00004001, 0x3f800000, 0x08000010, 0x00100012, 0x00000000,
-        0x00208246, 0x00000000, 0x00000002, 0x00100246, 0x00000001, 0x08000010, 0x00100022, 0x00000000,
-        0x00208246, 0x00000000, 0x00000003, 0x00100246, 0x00000001, 0x08000038, 0x00100022, 0x00000001,
-        0x0010001a, 0x00000000, 0x0020803a, 0x00000000, 0x00000003, 0x08000038, 0x00100012, 0x00000001,
-        0x0010000a, 0x00000000, 0x0020803a, 0x00000000, 0x00000002, 0x0a000000, 0x00102032, 0x00000004,
-        0x00100046, 0x00000001, 0x00004002, 0xbf800000, 0x3f800000, 0x00000000, 0x00000000, 0x08000036,
-        0x001020c2, 0x00000004, 0x00004002, 0x00000000, 0x00000000, 0x00000000, 0x3f800000, 0x0100003e,
-    };
-    static const DWORD ps_code[] =
-    {
-#if 0
-#define BRUSH_TYPE_SOLID    0
-#define BRUSH_TYPE_LINEAR   1
-#define BRUSH_TYPE_RADIAL   2
-#define BRUSH_TYPE_BITMAP   3
-#define BRUSH_TYPE_COUNT    4
-
-        bool outline;
-        bool is_arc;
-        struct brush
-        {
-            uint type;
-            float opacity;
-            float4 data[3];
-        } colour_brush, opacity_brush;
-
-        SamplerState s0, s1;
-        Texture2D t0, t1;
-        Buffer<float4> b0, b1;
-
-        struct input
-        {
-            float2 p : WORLD_POSITION;
-            float4 b : BEZIER;
-            nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;
-        };
-
-        float4 sample_gradient(Buffer<float4> gradient, uint stop_count, float position)
-        {
-            float4 c_low, c_high;
-            float p_low, p_high;
-            uint i;
-
-            p_low = gradient.Load(0).x;
-            c_low = gradient.Load(1);
-            c_high = c_low;
-
-            if (position < p_low)
-                return c_low;
-
-            for (i = 1; i < stop_count; ++i)
-            {
-                p_high = gradient.Load(i * 2).x;
-                c_high = gradient.Load(i * 2 + 1);
-
-                if (position >= p_low && position <= p_high)
-                    return lerp(c_low, c_high, (position - p_low) / (p_high - p_low));
-
-                p_low = p_high;
-                c_low = c_high;
-            }
-
-            return c_high;
-        }
-
-        float4 brush_linear(struct brush brush, Buffer<float4> gradient, float2 position)
-        {
-            float2 start, end, v_p, v_q;
-            uint stop_count;
-            float p;
-
-            start = brush.data[0].xy;
-            end = brush.data[0].zw;
-            stop_count = asuint(brush.data[1].x);
-
-            v_p = position - start;
-            v_q = end - start;
-            p = dot(v_q, v_p) / dot(v_q, v_q);
-
-            return sample_gradient(gradient, stop_count, p);
-        }
-
-        float4 brush_radial(struct brush brush, Buffer<float4> gradient, float2 position)
-        {
-            float2 centre, offset, ra, rb, v_p, v_q, r;
-            float b, c, l, t;
-            uint stop_count;
-
-            centre = brush.data[0].xy;
-            offset = brush.data[0].zw;
-            ra = brush.data[1].xy;
-            rb = brush.data[1].zw;
-            stop_count = asuint(brush.data[2].x);
-
-            /* Project onto ra, rb. */
-            r = float2(dot(ra, ra), dot(rb, rb));
-            v_p = position - (centre + offset);
-            v_p = float2(dot(v_p, ra), dot(v_p, rb)) / r;
-            v_q = float2(dot(offset, ra), dot(offset, rb)) / r;
-
-            /* ‖t·p̂ + q⃑‖ = 1
-             * (t·p̂ + q⃑) · (t·p̂ + q⃑) = 1
-             * t² + 2·(p̂·q⃑)·t + (q⃑·q⃑) = 1
-             *
-             * b = p̂·q⃑
-             * c = q⃑·q⃑ - 1
-             * t = -b + √(b² - c) */
-            l = length(v_p);
-            b = dot(v_p, v_q) / l;
-            c = dot(v_q, v_q) - 1.0;
-            t = -b + sqrt(b * b - c);
-
-            return sample_gradient(gradient, stop_count, l / t);
-        }
-
-        float4 brush_bitmap(struct brush brush, Texture2D t, SamplerState s, float2 position)
-        {
-            float3 transform[2];
-            bool ignore_alpha;
-            float2 texcoord;
-            float4 colour;
-
-            transform[0] = brush.data[0].xyz;
-            transform[1] = brush.data[1].xyz;
-            ignore_alpha = asuint(brush.data[1].w);
-
-            texcoord.x = dot(position.xy, transform[0].xy) + transform[0].z;
-            texcoord.y = dot(position.xy, transform[1].xy) + transform[1].z;
-            colour = t.Sample(s, texcoord);
-            if (ignore_alpha)
-                colour.a = 1.0;
-            return colour;
-        }
-
-        float4 sample_brush(struct brush brush, Texture2D t, SamplerState s, Buffer<float4> b, float2 position)
-        {
-            if (brush.type == BRUSH_TYPE_SOLID)
-                return brush.data[0] * brush.opacity;
-            if (brush.type == BRUSH_TYPE_LINEAR)
-                return brush_linear(brush, b, position) * brush.opacity;
-            if (brush.type == BRUSH_TYPE_RADIAL)
-                return brush_radial(brush, b, position) * brush.opacity;
-            if (brush.type == BRUSH_TYPE_BITMAP)
-                return brush_bitmap(brush, t, s, position) * brush.opacity;
-            return float4(0.0, 0.0, 0.0, brush.opacity);
-        }
-
-        float4 main(struct input i) : SV_Target
-        {
-            float4 colour;
-
-            colour = sample_brush(colour_brush, t0, s0, b0, i.p);
-            if (opacity_brush.type < BRUSH_TYPE_COUNT)
-                colour *= sample_brush(opacity_brush, t1, s1, b1, i.p).a;
-
-            if (outline)
-            {
-                float2 du, dv, df;
-                float4 uv;
-
-                /* Evaluate the implicit form of the curve (u² - v = 0
-                 * for Béziers, u² + v² - 1 = 0 for arcs) in texture
-                 * space, using the screen-space partial derivatives
-                 * to convert the calculated distance to object space.
-                 *
-                 * d(x, y) = |f(x, y)| / ‖∇f(x, y)‖
-                 *         = |f(x, y)| / √((∂f/∂x)² + (∂f/∂y)²)
-                 *
-                 * For Béziers:
-                 * f(x, y) = u(x, y)² - v(x, y)
-                 * ∂f/∂x = 2u · ∂u/∂x - ∂v/∂x
-                 * ∂f/∂y = 2u · ∂u/∂y - ∂v/∂y
-                 *
-                 * For arcs:
-                 * f(x, y) = u(x, y)² + v(x, y)² - 1
-                 * ∂f/∂x = 2u · ∂u/∂x + 2v · ∂v/∂x
-                 * ∂f/∂y = 2u · ∂u/∂y + 2v · ∂v/∂y */
-                uv = i.b;
-                du = float2(ddx(uv.x), ddy(uv.x));
-                dv = float2(ddx(uv.y), ddy(uv.y));
-
-                if (!is_arc)
-                {
-                    df = 2.0f * uv.x * du - dv;
-
-                    clip(dot(df, uv.zw));
-                    clip(length(mul(i.stroke_transform, df)) - abs(uv.x * uv.x - uv.y));
-                }
-                else
-                {
-                    df = 2.0f * uv.x * du + 2.0f * uv.y * dv;
-
-                    clip(dot(df, uv.zw));
-                    clip(length(mul(i.stroke_transform, df)) - abs(uv.x * uv.x + uv.y * uv.y - 1.0f));
-                }
-            }
-            else
-            {
-                /* Evaluate the implicit form of the curve in texture space.
-                 * "i.b.z" determines which side of the curve is shaded. */
-                if (!is_arc)
-                {
-                    clip((i.b.x * i.b.x - i.b.y) * i.b.z);
-                }
-                else
-                {
-                    clip((i.b.x * i.b.x + i.b.y * i.b.y - 1.0) * i.b.z);
-                }
-            }
-
-            return colour;
-        }
-#endif
-        0x43425844, 0xa8fee730, 0x92fa2196, 0xaf9f3eff, 0x888d4048, 0x00000001, 0x00002000, 0x00000003,
-        0x0000002c, 0x000000c4, 0x000000f8, 0x4e475349, 0x00000090, 0x00000004, 0x00000008, 0x00000068,
-        0x00000000, 0x00000000, 0x00000003, 0x00000000, 0x00000303, 0x00000077, 0x00000000, 0x00000000,
-        0x00000003, 0x00000001, 0x00000f0f, 0x0000007e, 0x00000000, 0x00000000, 0x00000003, 0x00000002,
-        0x00000303, 0x0000007e, 0x00000001, 0x00000000, 0x00000003, 0x00000003, 0x00000303, 0x4c524f57,
-        0x4f505f44, 0x49544953, 0x42004e4f, 0x45495a45, 0x54530052, 0x454b4f52, 0x4152545f, 0x4f46534e,
-        0xab004d52, 0x4e47534f, 0x0000002c, 0x00000001, 0x00000008, 0x00000020, 0x00000000, 0x00000000,
-        0x00000003, 0x00000000, 0x0000000f, 0x545f5653, 0x65677261, 0xabab0074, 0x52444853, 0x00001f00,
-        0x00000040, 0x000007c0, 0x04000059, 0x00208e46, 0x00000000, 0x00000009, 0x0300005a, 0x00106000,
-        0x00000000, 0x0300005a, 0x00106000, 0x00000001, 0x04001858, 0x00107000, 0x00000000, 0x00005555,
-        0x04001858, 0x00107000, 0x00000001, 0x00005555, 0x04000858, 0x00107000, 0x00000002, 0x00005555,
-        0x04000858, 0x00107000, 0x00000003, 0x00005555, 0x03001062, 0x00101032, 0x00000000, 0x03001062,
-        0x001010f2, 0x00000001, 0x03000862, 0x00101032, 0x00000002, 0x03000862, 0x00101032, 0x00000003,
-        0x03000065, 0x001020f2, 0x00000000, 0x02000068, 0x0000000a, 0x09000038, 0x001000f2, 0x00000000,
-        0x00208556, 0x00000000, 0x00000001, 0x00208e46, 0x00000000, 0x00000002, 0x0404001f, 0x0020800a,
-        0x00000000, 0x00000001, 0x08000020, 0x00100012, 0x00000001, 0x0020800a, 0x00000000, 0x00000001,
-        0x00004001, 0x00000001, 0x0304001f, 0x0010000a, 0x00000001, 0x09000000, 0x00100062, 0x00000001,
-        0x00101106, 0x00000000, 0x80208106, 0x00000041, 0x00000000, 0x00000002, 0x0a000000, 0x00100032,
-        0x00000002, 0x80208046, 0x00000041, 0x00000000, 0x00000002, 0x00208ae6, 0x00000000, 0x00000002,
-        0x0700000f, 0x00100022, 0x00000001, 0x00100046, 0x00000002, 0x00100596, 0x00000001, 0x0700000f,
-        0x00100042, 0x00000001, 0x00100046, 0x00000002, 0x00100046, 0x00000002, 0x0700000e, 0x00100022,
-        0x00000001, 0x0010001a, 0x00000001, 0x0010002a, 0x00000001, 0x0a00002d, 0x001000f2, 0x00000002,
-        0x00004002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00107e46, 0x00000002, 0x0a00002d,
-        0x001000f2, 0x00000003, 0x00004002, 0x00000001, 0x00000001, 0x00000001, 0x00000001, 0x00107e46,
-        0x00000002, 0x0700001d, 0x00100042, 0x00000001, 0x0010001a, 0x00000001, 0x0010000a, 0x00000002,
-        0x0304001f, 0x0010002a, 0x00000001, 0x05000036, 0x001000f2, 0x00000004, 0x00100e46, 0x00000003,
-        0x05000036, 0x001000f2, 0x00000005, 0x00100e46, 0x00000003, 0x05000036, 0x001000f2, 0x00000006,
-        0x00100e46, 0x00000003, 0x05000036, 0x00100042, 0x00000001, 0x0010000a, 0x00000002, 0x05000036,
-        0x00100082, 0x00000001, 0x00004001, 0x00000001, 0x05000036, 0x00100022, 0x00000002, 0x00004001,
-        0x00000000, 0x01000030, 0x08000050, 0x00100042, 0x00000002, 0x0010003a, 0x00000001, 0x0020800a,
-        0x00000000, 0x00000003, 0x05000036, 0x00100022, 0x00000002, 0x00004001, 0x00000000, 0x03040003,
-        0x0010002a, 0x00000002, 0x07000029, 0x00100042, 0x00000002, 0x0010003a, 0x00000001, 0x00004001,
-        0x00000001, 0x0700002d, 0x001000f2, 0x00000007, 0x00100aa6, 0x00000002, 0x00107e46, 0x00000002,
-        0x0700001e, 0x00100042, 0x00000002, 0x0010002a, 0x00000002, 0x00004001, 0x00000001, 0x0700002d,
-        0x001000f2, 0x00000008, 0x00100aa6, 0x00000002, 0x00107e46, 0x00000002, 0x0700001d, 0x00100042,
-        0x00000002, 0x0010001a, 0x00000001, 0x0010002a, 0x00000001, 0x0700001d, 0x00100082, 0x00000002,
-        0x0010000a, 0x00000007, 0x0010001a, 0x00000001, 0x07000001, 0x00100042, 0x00000002, 0x0010003a,
-        0x00000002, 0x0010002a, 0x00000002, 0x0304001f, 0x0010002a, 0x00000002, 0x08000000, 0x00100082,
-        0x00000002, 0x8010002a, 0x00000041, 0x00000001, 0x0010001a, 0x00000001, 0x08000000, 0x00100022,
-        0x00000007, 0x8010002a, 0x00000041, 0x00000001, 0x0010000a, 0x00000007, 0x0700000e, 0x00100082,
-        0x00000002, 0x0010003a, 0x00000002, 0x0010001a, 0x00000007, 0x08000000, 0x001000f2, 0x00000009,
-        0x80100e46, 0x00000041, 0x00000005, 0x00100e46, 0x00000008, 0x09000032, 0x001000f2, 0x00000009,
-        0x00100ff6, 0x00000002, 0x00100e46, 0x00000009, 0x00100e46, 0x00000005, 0x05000036, 0x001000f2,
-        0x00000006, 0x00100e46, 0x00000008, 0x05000036, 0x00100022, 0x00000002, 0x00004001, 0xffffffff,
-        0x05000036, 0x001000f2, 0x00000004, 0x00100e46, 0x00000009, 0x01000002, 0x01000015, 0x05000036,
-        0x001000f2, 0x00000005, 0x00100e46, 0x00000008, 0x05000036, 0x00100042, 0x00000001, 0x0010000a,
-        0x00000007, 0x0700001e, 0x00100082, 0x00000001, 0x0010003a, 0x00000001, 0x00004001, 0x00000001,
-        0x05000036, 0x001000f2, 0x00000006, 0x00100e46, 0x00000008, 0x05000036, 0x00100022, 0x00000002,
-        0x0010002a, 0x00000002, 0x01000016, 0x09000037, 0x001000f2, 0x00000003, 0x00100556, 0x00000002,
-        0x00100e46, 0x00000004, 0x00100e46, 0x00000006, 0x01000015, 0x08000038, 0x001000f2, 0x00000000,
-        0x00100e46, 0x00000003, 0x00208556, 0x00000000, 0x00000001, 0x01000015, 0x0300001f, 0x0010000a,
-        0x00000001, 0x08000020, 0x00100012, 0x00000001, 0x0020800a, 0x00000000, 0x00000001, 0x00004001,
-        0x00000002, 0x0304001f, 0x0010000a, 0x00000001, 0x0900000f, 0x00100012, 0x00000002, 0x00208046,
-        0x00000000, 0x00000003, 0x00208046, 0x00000000, 0x00000003, 0x0900000f, 0x00100022, 0x00000002,
-        0x00208ae6, 0x00000000, 0x00000003, 0x00208ae6, 0x00000000, 0x00000003, 0x09000000, 0x00100062,
-        0x00000001, 0x00208ba6, 0x00000000, 0x00000002, 0x00208106, 0x00000000, 0x00000002, 0x08000000,
-        0x00100062, 0x00000001, 0x80100656, 0x00000041, 0x00000001, 0x00101106, 0x00000000, 0x0800000f,
-        0x00100012, 0x00000003, 0x00100596, 0x00000001, 0x00208046, 0x00000000, 0x00000003, 0x0800000f,
-        0x00100022, 0x00000003, 0x00100596, 0x00000001, 0x00208ae6, 0x00000000, 0x00000003, 0x0700000e,
-        0x00100062, 0x00000001, 0x00100106, 0x00000003, 0x00100106, 0x00000002, 0x0900000f, 0x00100012,
-        0x00000003, 0x00208ae6, 0x00000000, 0x00000002, 0x00208046, 0x00000000, 0x00000003, 0x0900000f,
-        0x00100022, 0x00000003, 0x00208ae6, 0x00000000, 0x00000002, 0x00208ae6, 0x00000000, 0x00000003,
-        0x0700000e, 0x00100032, 0x00000002, 0x00100046, 0x00000003, 0x00100046, 0x00000002, 0x0700000f,
-        0x00100082, 0x00000001, 0x00100596, 0x00000001, 0x00100596, 0x00000001, 0x0500004b, 0x00100082,
-        0x00000001, 0x0010003a, 0x00000001, 0x0700000f, 0x00100022, 0x00000001, 0x00100596, 0x00000001,
-        0x00100046, 0x00000002, 0x0700000e, 0x00100022, 0x00000001, 0x0010001a, 0x00000001, 0x0010003a,
-        0x00000001, 0x0700000f, 0x00100042, 0x00000001, 0x00100046, 0x00000002, 0x00100046, 0x00000002,
-        0x07000000, 0x00100042, 0x00000001, 0x0010002a, 0x00000001, 0x00004001, 0xbf800000, 0x0a000032,
-        0x00100042, 0x00000001, 0x0010001a, 0x00000001, 0x0010001a, 0x00000001, 0x8010002a, 0x00000041,
-        0x00000001, 0x0500004b, 0x00100042, 0x00000001, 0x0010002a, 0x00000001, 0x08000000, 0x00100022,
-        0x00000001, 0x0010002a, 0x00000001, 0x8010001a, 0x00000041, 0x00000001, 0x0700000e, 0x00100022,
-        0x00000001, 0x0010003a, 0x00000001, 0x0010001a, 0x00000001, 0x0a00002d, 0x001000f2, 0x00000002,
-        0x00004002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00107e46, 0x00000002, 0x0a00002d,
-        0x001000f2, 0x00000003, 0x00004002, 0x00000001, 0x00000001, 0x00000001, 0x00000001, 0x00107e46,
-        0x00000002, 0x0700001d, 0x00100042, 0x00000001, 0x0010001a, 0x00000001, 0x0010000a, 0x00000002,
-        0x0304001f, 0x0010002a, 0x00000001, 0x05000036, 0x001000f2, 0x00000004, 0x00100e46, 0x00000003,
-        0x05000036, 0x001000f2, 0x00000005, 0x00100e46, 0x00000003, 0x05000036, 0x001000f2, 0x00000006,
-        0x00100e46, 0x00000003, 0x05000036, 0x00100042, 0x00000001, 0x0010000a, 0x00000002, 0x05000036,
-        0x00100082, 0x00000001, 0x00004001, 0x00000001, 0x05000036, 0x00100022, 0x00000002, 0x00004001,
-        0x00000000, 0x01000030, 0x08000050, 0x00100042, 0x00000002, 0x0010003a, 0x00000001, 0x0020800a,
-        0x00000000, 0x00000004, 0x05000036, 0x00100022, 0x00000002, 0x00004001, 0x00000000, 0x03040003,
-        0x0010002a, 0x00000002, 0x07000029, 0x00100042, 0x00000002, 0x0010003a, 0x00000001, 0x00004001,
-        0x00000001, 0x0700002d, 0x001000f2, 0x00000007, 0x00100aa6, 0x00000002, 0x00107e46, 0x00000002,
-        0x0700001e, 0x00100042, 0x00000002, 0x0010002a, 0x00000002, 0x00004001, 0x00000001, 0x0700002d,
-        0x001000f2, 0x00000008, 0x00100aa6, 0x00000002, 0x00107e46, 0x00000002, 0x0700001d, 0x00100042,
-        0x00000002, 0x0010001a, 0x00000001, 0x0010002a, 0x00000001, 0x0700001d, 0x00100082, 0x00000002,
-        0x0010000a, 0x00000007, 0x0010001a, 0x00000001, 0x07000001, 0x00100042, 0x00000002, 0x0010003a,
-        0x00000002, 0x0010002a, 0x00000002, 0x0304001f, 0x0010002a, 0x00000002, 0x08000000, 0x00100082,
-        0x00000002, 0x8010002a, 0x00000041, 0x00000001, 0x0010001a, 0x00000001, 0x08000000, 0x00100022,
-        0x00000007, 0x8010002a, 0x00000041, 0x00000001, 0x0010000a, 0x00000007, 0x0700000e, 0x00100082,
-        0x00000002, 0x0010003a, 0x00000002, 0x0010001a, 0x00000007, 0x08000000, 0x001000f2, 0x00000009,
-        0x80100e46, 0x00000041, 0x00000005, 0x00100e46, 0x00000008, 0x09000032, 0x001000f2, 0x00000009,
-        0x00100ff6, 0x00000002, 0x00100e46, 0x00000009, 0x00100e46, 0x00000005, 0x05000036, 0x001000f2,
-        0x00000006, 0x00100e46, 0x00000008, 0x05000036, 0x00100022, 0x00000002, 0x00004001, 0xffffffff,
-        0x05000036, 0x001000f2, 0x00000004, 0x00100e46, 0x00000009, 0x01000002, 0x01000015, 0x05000036,
-        0x001000f2, 0x00000005, 0x00100e46, 0x00000008, 0x05000036, 0x00100042, 0x00000001, 0x0010000a,
-        0x00000007, 0x0700001e, 0x00100082, 0x00000001, 0x0010003a, 0x00000001, 0x00004001, 0x00000001,
-        0x05000036, 0x001000f2, 0x00000006, 0x00100e46, 0x00000008, 0x05000036, 0x00100022, 0x00000002,
-        0x0010002a, 0x00000002, 0x01000016, 0x09000037, 0x001000f2, 0x00000003, 0x00100556, 0x00000002,
-        0x00100e46, 0x00000004, 0x00100e46, 0x00000006, 0x01000015, 0x08000038, 0x001000f2, 0x00000000,
-        0x00100e46, 0x00000003, 0x00208556, 0x00000000, 0x00000001, 0x01000015, 0x0300001f, 0x0010000a,
-        0x00000001, 0x08000020, 0x00100012, 0x00000001, 0x0020800a, 0x00000000, 0x00000001, 0x00004001,
-        0x00000003, 0x0304001f, 0x0010000a, 0x00000001, 0x0800000f, 0x00100022, 0x00000001, 0x00101046,
-        0x00000000, 0x00208046, 0x00000000, 0x00000002, 0x08000000, 0x00100012, 0x00000002, 0x0010001a,
-        0x00000001, 0x0020802a, 0x00000000, 0x00000002, 0x0800000f, 0x00100022, 0x00000001, 0x00101046,
-        0x00000000, 0x00208046, 0x00000000, 0x00000003, 0x08000000, 0x00100022, 0x00000002, 0x0010001a,
-        0x00000001, 0x0020802a, 0x00000000, 0x00000003, 0x09000045, 0x001000f2, 0x00000002, 0x00100046,
-        0x00000002, 0x00107e46, 0x00000000, 0x00106000, 0x00000000, 0x0a000037, 0x00100082, 0x00000002,
-        0x0020803a, 0x00000000, 0x00000003, 0x00004001, 0x3f800000, 0x0010003a, 0x00000002, 0x08000038,
-        0x001000f2, 0x00000000, 0x00100e46, 0x00000002, 0x00208556, 0x00000000, 0x00000001, 0x01000015,
-        0x05000036, 0x00100012, 0x00000002, 0x00004001, 0x00000000, 0x06000036, 0x00100082, 0x00000002,
-        0x0020801a, 0x00000000, 0x00000001, 0x09000037, 0x001000f2, 0x00000000, 0x00100006, 0x00000001,
-        0x00100e46, 0x00000000, 0x00100c06, 0x00000002, 0x01000015, 0x01000015, 0x01000015, 0x0800004f,
-        0x00100012, 0x00000001, 0x0020800a, 0x00000000, 0x00000005, 0x00004001, 0x00000004, 0x0304001f,
-        0x0010000a, 0x00000001, 0x09000038, 0x00100012, 0x00000001, 0x0020801a, 0x00000000, 0x00000005,
-        0x0020803a, 0x00000000, 0x00000006, 0x0404001f, 0x0020800a, 0x00000000, 0x00000005, 0x08000020,
-        0x00100022, 0x00000001, 0x0020800a, 0x00000000, 0x00000005, 0x00004001, 0x00000001, 0x0304001f,
-        0x0010001a, 0x00000001, 0x09000000, 0x001000c2, 0x00000001, 0x00101406, 0x00000000, 0x80208406,
-        0x00000041, 0x00000000, 0x00000006, 0x0a000000, 0x00100032, 0x00000002, 0x80208046, 0x00000041,
-        0x00000000, 0x00000006, 0x00208ae6, 0x00000000, 0x00000006, 0x0700000f, 0x00100042, 0x00000001,
-        0x00100046, 0x00000002, 0x00100ae6, 0x00000001, 0x0700000f, 0x00100082, 0x00000001, 0x00100046,
-        0x00000002, 0x00100046, 0x00000002, 0x0700000e, 0x00100042, 0x00000001, 0x0010002a, 0x00000001,
-        0x0010003a, 0x00000001, 0x0a00002d, 0x001000f2, 0x00000002, 0x00004002, 0x00000000, 0x00000000,
-        0x00000000, 0x00000000, 0x00107e46, 0x00000003, 0x0a00002d, 0x001000f2, 0x00000003, 0x00004002,
-        0x00000001, 0x00000001, 0x00000001, 0x00000001, 0x00107e46, 0x00000003, 0x0700001d, 0x00100082,
-        0x00000001, 0x0010002a, 0x00000001, 0x0010000a, 0x00000002, 0x0304001f, 0x0010003a, 0x00000001,
-        0x05000036, 0x00100082, 0x00000001, 0x0010003a, 0x00000003, 0x05000036, 0x00100062, 0x00000002,
-        0x00100ff6, 0x00000003, 0x05000036, 0x00100082, 0x00000002, 0x0010000a, 0x00000002, 0x08000036,
-        0x00100032, 0x00000003, 0x00004002, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x01000030,
-        0x08000050, 0x00100042, 0x00000003, 0x0010000a, 0x00000003, 0x0020800a, 0x00000000, 0x00000007,
-        0x05000036, 0x00100022, 0x00000003, 0x00004001, 0x00000000, 0x03040003, 0x0010002a, 0x00000003,
-        0x07000029, 0x00100042, 0x00000003, 0x0010000a, 0x00000003, 0x00004001, 0x00000001, 0x0700002d,
-        0x001000f2, 0x00000004, 0x00100aa6, 0x00000003, 0x00107e46, 0x00000003, 0x0700001e, 0x00100042,
-        0x00000003, 0x0010002a, 0x00000003, 0x00004001, 0x00000001, 0x0700002d, 0x001000f2, 0x00000005,
-        0x00100aa6, 0x00000003, 0x00107e46, 0x00000003, 0x0700001d, 0x00100042, 0x00000003, 0x0010002a,
-        0x00000001, 0x0010003a, 0x00000002, 0x0700001d, 0x00100022, 0x00000004, 0x0010000a, 0x00000004,
-        0x0010002a, 0x00000001, 0x07000001, 0x00100042, 0x00000003, 0x0010002a, 0x00000003, 0x0010001a,
-        0x00000004, 0x0304001f, 0x0010002a, 0x00000003, 0x08000000, 0x00100022, 0x00000004, 0x0010002a,
-        0x00000001, 0x8010003a, 0x00000041, 0x00000002, 0x08000000, 0x00100042, 0x00000004, 0x8010003a,
-        0x00000041, 0x00000002, 0x0010000a, 0x00000004, 0x0700000e, 0x00100022, 0x00000004, 0x0010001a,
-        0x00000004, 0x0010002a, 0x00000004, 0x08000000, 0x00100042, 0x00000004, 0x8010001a, 0x00000041,
-        0x00000002, 0x0010003a, 0x00000005, 0x09000032, 0x00100022, 0x00000004, 0x0010001a, 0x00000004,
-        0x0010002a, 0x00000004, 0x0010001a, 0x00000002, 0x05000036, 0x00100042, 0x00000002, 0x0010003a,
-        0x00000005, 0x05000036, 0x00100022, 0x00000003, 0x00004001, 0xffffffff, 0x05000036, 0x00100082,
-        0x00000001, 0x0010001a, 0x00000004, 0x01000002, 0x01000015, 0x05000036, 0x00100022, 0x00000002,
-        0x0010003a, 0x00000005, 0x05000036, 0x00100082, 0x00000002, 0x0010000a, 0x00000004, 0x0700001e,
-        0x00100012, 0x00000003, 0x0010000a, 0x00000003, 0x00004001, 0x00000001, 0x05000036, 0x00100042,
-        0x00000002, 0x0010003a, 0x00000005, 0x05000036, 0x00100032, 0x00000003, 0x00100086, 0x00000003,
-        0x01000016, 0x09000037, 0x00100042, 0x00000001, 0x0010001a, 0x00000003, 0x0010003a, 0x00000001,
-        0x0010002a, 0x00000002, 0x01000012, 0x05000036, 0x00100042, 0x00000001, 0x0010003a, 0x00000003,
-        0x01000015, 0x08000038, 0x00100012, 0x00000001, 0x0010002a, 0x00000001, 0x0020801a, 0x00000000,
-        0x00000005, 0x01000015, 0x0300001f, 0x0010001a, 0x00000001, 0x08000020, 0x00100022, 0x00000001,
-        0x0020800a, 0x00000000, 0x00000005, 0x00004001, 0x00000002, 0x0304001f, 0x0010001a, 0x00000001,
-        0x0900000f, 0x00100012, 0x00000002, 0x00208046, 0x00000000, 0x00000007, 0x00208046, 0x00000000,
-        0x00000007, 0x0900000f, 0x00100022, 0x00000002, 0x00208ae6, 0x00000000, 0x00000007, 0x00208ae6,
-        0x00000000, 0x00000007, 0x09000000, 0x001000c2, 0x00000001, 0x00208ea6, 0x00000000, 0x00000006,
-        0x00208406, 0x00000000, 0x00000006, 0x08000000, 0x001000c2, 0x00000001, 0x80100ea6, 0x00000041,
-        0x00000001, 0x00101406, 0x00000000, 0x0800000f, 0x00100012, 0x00000003, 0x00100ae6, 0x00000001,
-        0x00208046, 0x00000000, 0x00000007, 0x0800000f, 0x00100022, 0x00000003, 0x00100ae6, 0x00000001,
-        0x00208ae6, 0x00000000, 0x00000007, 0x0700000e, 0x001000c2, 0x00000001, 0x00100406, 0x00000003,
-        0x00100406, 0x00000002, 0x0900000f, 0x00100012, 0x00000003, 0x00208ae6, 0x00000000, 0x00000006,
-        0x00208046, 0x00000000, 0x00000007, 0x0900000f, 0x00100022, 0x00000003, 0x00208ae6, 0x00000000,
-        0x00000006, 0x00208ae6, 0x00000000, 0x00000007, 0x0700000e, 0x00100032, 0x00000002, 0x00100046,
-        0x00000003, 0x00100046, 0x00000002, 0x0700000f, 0x00100042, 0x00000002, 0x00100ae6, 0x00000001,
-        0x00100ae6, 0x00000001, 0x0500004b, 0x00100042, 0x00000002, 0x0010002a, 0x00000002, 0x0700000f,
-        0x00100042, 0x00000001, 0x00100ae6, 0x00000001, 0x00100046, 0x00000002, 0x0700000e, 0x00100042,
-        0x00000001, 0x0010002a, 0x00000001, 0x0010002a, 0x00000002, 0x0700000f, 0x00100082, 0x00000001,
-        0x00100046, 0x00000002, 0x00100046, 0x00000002, 0x07000000, 0x00100082, 0x00000001, 0x0010003a,
-        0x00000001, 0x00004001, 0xbf800000, 0x0a000032, 0x00100082, 0x00000001, 0x0010002a, 0x00000001,
-        0x0010002a, 0x00000001, 0x8010003a, 0x00000041, 0x00000001, 0x0500004b, 0x00100082, 0x00000001,
-        0x0010003a, 0x00000001, 0x08000000, 0x00100042, 0x00000001, 0x0010003a, 0x00000001, 0x8010002a,
-        0x00000041, 0x00000001, 0x0700000e, 0x00100042, 0x00000001, 0x0010002a, 0x00000002, 0x0010002a,
-        0x00000001, 0x0a00002d, 0x001000f2, 0x00000002, 0x00004002, 0x00000000, 0x00000000, 0x00000000,
-        0x00000000, 0x00107e46, 0x00000003, 0x0a00002d, 0x001000f2, 0x00000003, 0x00004002, 0x00000001,
-        0x00000001, 0x00000001, 0x00000001, 0x00107e46, 0x00000003, 0x0700001d, 0x00100082, 0x00000001,
-        0x0010002a, 0x00000001, 0x0010000a, 0x00000002, 0x0304001f, 0x0010003a, 0x00000001, 0x05000036,
-        0x00100082, 0x00000001, 0x0010003a, 0x00000003, 0x05000036, 0x00100062, 0x00000002, 0x00100ff6,
-        0x00000003, 0x05000036, 0x00100082, 0x00000002, 0x0010000a, 0x00000002, 0x08000036, 0x00100032,
-        0x00000003, 0x00004002, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x01000030, 0x08000050,
-        0x00100042, 0x00000003, 0x0010000a, 0x00000003, 0x0020800a, 0x00000000, 0x00000008, 0x05000036,
-        0x00100022, 0x00000003, 0x00004001, 0x00000000, 0x03040003, 0x0010002a, 0x00000003, 0x07000029,
-        0x00100042, 0x00000003, 0x0010000a, 0x00000003, 0x00004001, 0x00000001, 0x0700002d, 0x001000f2,
-        0x00000004, 0x00100aa6, 0x00000003, 0x00107e46, 0x00000003, 0x0700001e, 0x00100042, 0x00000003,
-        0x0010002a, 0x00000003, 0x00004001, 0x00000001, 0x0700002d, 0x001000f2, 0x00000005, 0x00100aa6,
-        0x00000003, 0x00107e46, 0x00000003, 0x0700001d, 0x00100042, 0x00000003, 0x0010002a, 0x00000001,
-        0x0010003a, 0x00000002, 0x0700001d, 0x00100022, 0x00000004, 0x0010000a, 0x00000004, 0x0010002a,
-        0x00000001, 0x07000001, 0x00100042, 0x00000003, 0x0010002a, 0x00000003, 0x0010001a, 0x00000004,
-        0x0304001f, 0x0010002a, 0x00000003, 0x08000000, 0x00100022, 0x00000004, 0x0010002a, 0x00000001,
-        0x8010003a, 0x00000041, 0x00000002, 0x08000000, 0x00100042, 0x00000004, 0x8010003a, 0x00000041,
-        0x00000002, 0x0010000a, 0x00000004, 0x0700000e, 0x00100022, 0x00000004, 0x0010001a, 0x00000004,
-        0x0010002a, 0x00000004, 0x08000000, 0x00100042, 0x00000004, 0x8010001a, 0x00000041, 0x00000002,
-        0x0010003a, 0x00000005, 0x09000032, 0x00100022, 0x00000004, 0x0010001a, 0x00000004, 0x0010002a,
-        0x00000004, 0x0010001a, 0x00000002, 0x05000036, 0x00100042, 0x00000002, 0x0010003a, 0x00000005,
-        0x05000036, 0x00100022, 0x00000003, 0x00004001, 0xffffffff, 0x05000036, 0x00100082, 0x00000001,
-        0x0010001a, 0x00000004, 0x01000002, 0x01000015, 0x05000036, 0x00100022, 0x00000002, 0x0010003a,
-        0x00000005, 0x05000036, 0x00100082, 0x00000002, 0x0010000a, 0x00000004, 0x0700001e, 0x00100012,
-        0x00000003, 0x0010000a, 0x00000003, 0x00004001, 0x00000001, 0x05000036, 0x00100042, 0x00000002,
-        0x0010003a, 0x00000005, 0x05000036, 0x00100032, 0x00000003, 0x00100086, 0x00000003, 0x01000016,
-        0x09000037, 0x00100042, 0x00000001, 0x0010001a, 0x00000003, 0x0010003a, 0x00000001, 0x0010002a,
-        0x00000002, 0x01000012, 0x05000036, 0x00100042, 0x00000001, 0x0010003a, 0x00000003, 0x01000015,
-        0x08000038, 0x00100012, 0x00000001, 0x0010002a, 0x00000001, 0x0020801a, 0x00000000, 0x00000005,
-        0x01000015, 0x0300001f, 0x0010001a, 0x00000001, 0x08000020, 0x00100022, 0x00000001, 0x0020800a,
-        0x00000000, 0x00000005, 0x00004001, 0x00000003, 0x0304001f, 0x0010001a, 0x00000001, 0x0800000f,
-        0x00100042, 0x00000001, 0x00101046, 0x00000000, 0x00208046, 0x00000000, 0x00000006, 0x08000000,
-        0x00100012, 0x00000002, 0x0010002a, 0x00000001, 0x0020802a, 0x00000000, 0x00000006, 0x0800000f,
-        0x00100042, 0x00000001, 0x00101046, 0x00000000, 0x00208046, 0x00000000, 0x00000007, 0x08000000,
-        0x00100022, 0x00000002, 0x0010002a, 0x00000001, 0x0020802a, 0x00000000, 0x00000007, 0x09000045,
-        0x001000f2, 0x00000002, 0x00100046, 0x00000002, 0x00107e46, 0x00000001, 0x00106000, 0x00000001,
-        0x0a000037, 0x00100042, 0x00000001, 0x0020803a, 0x00000000, 0x00000007, 0x00004001, 0x3f800000,
-        0x0010003a, 0x00000002, 0x08000038, 0x00100012, 0x00000001, 0x0010002a, 0x00000001, 0x0020801a,
-        0x00000000, 0x00000005, 0x01000015, 0x0a000037, 0x00100012, 0x00000001, 0x0010001a, 0x00000001,
-        0x0010000a, 0x00000001, 0x0020801a, 0x00000000, 0x00000005, 0x01000015, 0x01000015, 0x01000015,
-        0x07000038, 0x001020f2, 0x00000000, 0x00100e46, 0x00000000, 0x00100006, 0x00000001, 0x01000012,
-        0x05000036, 0x001020f2, 0x00000000, 0x00100e46, 0x00000000, 0x01000015, 0x0404001f, 0x0020800a,
-        0x00000000, 0x00000000, 0x0500000b, 0x00100032, 0x00000000, 0x00101046, 0x00000001, 0x0500000c,
-        0x001000c2, 0x00000000, 0x00101406, 0x00000001, 0x08000027, 0x00100012, 0x00000001, 0x0020801a,
-        0x00000000, 0x00000000, 0x00004001, 0x00000000, 0x0500003b, 0x00100022, 0x00000001, 0x0010000a,
-        0x00000001, 0x07000000, 0x001000c2, 0x00000001, 0x00101406, 0x00000001, 0x00101406, 0x00000001,
-        0x07000038, 0x001000f2, 0x00000002, 0x00100d86, 0x00000000, 0x00100fa6, 0x00000001, 0x0a000032,
-        0x00100032, 0x00000000, 0x00100aa6, 0x00000001, 0x00100086, 0x00000000, 0x801005d6, 0x00000041,
-        0x00000000, 0x0700000f, 0x00100042, 0x00000000, 0x00100046, 0x00000000, 0x00101ae6, 0x00000001,
-        0x07000031, 0x00100042, 0x00000000, 0x0010002a, 0x00000000, 0x00004001, 0x00000000, 0x07000001,
-        0x00100042, 0x00000000, 0x0010001a, 0x00000001, 0x0010002a, 0x00000000, 0x0304000d, 0x0010002a,
-        0x00000000, 0x07000038, 0x00100062, 0x00000000, 0x00100556, 0x00000000, 0x00101106, 0x00000003,
-        0x09000032, 0x00100032, 0x00000000, 0x00101046, 0x00000002, 0x00100006, 0x00000000, 0x00100596,
-        0x00000000, 0x0700000f, 0x00100012, 0x00000000, 0x00100046, 0x00000000, 0x00100046, 0x00000000,
-        0x0500004b, 0x00100012, 0x00000000, 0x0010000a, 0x00000000, 0x07000038, 0x00100062, 0x00000000,
-        0x00101106, 0x00000001, 0x00101106, 0x00000001, 0x0a000032, 0x00100082, 0x00000000, 0x0010100a,
-        0x00000001, 0x0010100a, 0x00000001, 0x8010101a, 0x00000041, 0x00000001, 0x08000000, 0x00100012,
-        0x00000000, 0x8010003a, 0x000000c1, 0x00000000, 0x0010000a, 0x00000000, 0x07000031, 0x00100012,
-        0x00000000, 0x0010000a, 0x00000000, 0x00004001, 0x00000000, 0x07000001, 0x00100012, 0x00000000,
-        0x0010001a, 0x00000001, 0x0010000a, 0x00000000, 0x0304000d, 0x0010000a, 0x00000000, 0x07000000,
-        0x00100092, 0x00000000, 0x00100ea6, 0x00000002, 0x00100406, 0x00000002, 0x0700000f, 0x00100022,
-        0x00000001, 0x001000c6, 0x00000000, 0x00101ae6, 0x00000001, 0x07000031, 0x00100022, 0x00000001,
-        0x0010001a, 0x00000001, 0x00004001, 0x00000000, 0x07000001, 0x00100022, 0x00000001, 0x0010000a,
-        0x00000001, 0x0010001a, 0x00000001, 0x0304000d, 0x0010001a, 0x00000001, 0x07000038, 0x00100062,
-        0x00000001, 0x00100ff6, 0x00000000, 0x00101106, 0x00000003, 0x09000032, 0x00100092, 0x00000000,
-        0x00101406, 0x00000002, 0x00100006, 0x00000000, 0x00100956, 0x00000001, 0x0700000f, 0x00100012,
-        0x00000000, 0x001000c6, 0x00000000, 0x001000c6, 0x00000000, 0x0500004b, 0x00100012, 0x00000000,
-        0x0010000a, 0x00000000, 0x07000000, 0x00100022, 0x00000000, 0x0010002a, 0x00000000, 0x0010001a,
-        0x00000000, 0x07000000, 0x00100022, 0x00000000, 0x0010001a, 0x00000000, 0x00004001, 0xbf800000,
-        0x08000000, 0x00100012, 0x00000000, 0x8010001a, 0x000000c1, 0x00000000, 0x0010000a, 0x00000000,
-        0x07000031, 0x00100012, 0x00000000, 0x0010000a, 0x00000000, 0x00004001, 0x00000000, 0x07000001,
-        0x00100012, 0x00000000, 0x0010000a, 0x00000001, 0x0010000a, 0x00000000, 0x0304000d, 0x0010000a,
-        0x00000000, 0x01000012, 0x08000027, 0x00100012, 0x00000000, 0x0020801a, 0x00000000, 0x00000000,
-        0x00004001, 0x00000000, 0x0500003b, 0x00100022, 0x00000000, 0x0010000a, 0x00000000, 0x07000038,
-        0x001000c2, 0x00000000, 0x00101406, 0x00000001, 0x00101406, 0x00000001, 0x0a000032, 0x00100012,
-        0x00000001, 0x0010100a, 0x00000001, 0x0010100a, 0x00000001, 0x8010101a, 0x00000041, 0x00000001,
-        0x07000038, 0x00100012, 0x00000001, 0x0010000a, 0x00000001, 0x0010102a, 0x00000001, 0x07000031,
-        0x00100012, 0x00000001, 0x0010000a, 0x00000001, 0x00004001, 0x00000000, 0x07000001, 0x00100022,
-        0x00000000, 0x0010001a, 0x00000000, 0x0010000a, 0x00000001, 0x0304000d, 0x0010001a, 0x00000000,
-        0x07000000, 0x00100022, 0x00000000, 0x0010003a, 0x00000000, 0x0010002a, 0x00000000, 0x07000000,
-        0x00100022, 0x00000000, 0x0010001a, 0x00000000, 0x00004001, 0xbf800000, 0x07000038, 0x00100022,
-        0x00000000, 0x0010001a, 0x00000000, 0x0010102a, 0x00000001, 0x07000031, 0x00100022, 0x00000000,
-        0x0010001a, 0x00000000, 0x00004001, 0x00000000, 0x07000001, 0x00100012, 0x00000000, 0x0010000a,
-        0x00000000, 0x0010001a, 0x00000000, 0x0304000d, 0x0010000a, 0x00000000, 0x01000015, 0x0100003e,
-    };
+    static const char vs_code_arc_outline[] =
+        "float3x2 transform_geometry;\n"
+        "float stroke_width;\n"
+        "float4 transform_rtx;\n"
+        "float4 transform_rty;\n"
+        "\n"
+        "struct output\n"
+        "{\n"
+        "    float2 p : WORLD_POSITION;\n"
+        "    float4 b : BEZIER;\n"
+        "    nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;\n"
+        "    float4 position : SV_POSITION;\n"
+        "};\n"
+        "\n"
+        "void main(float2 position : POSITION, float2 p0 : P0, float2 p1 : P1, float2 p2 : P2,\n"
+        "        float2 prev : PREV, float2 next : NEXT, out struct output o)\n"
+        "{\n"
+        "    float2 q_prev, q_next, v_p, q_i, p;\n"
+        "    float2x2 geom, rt, p_inv;\n"
+        "    float l;\n"
+        "    float a;\n"
+        "    float2 bc;\n"
+        "\n"
+        "    geom = float2x2(transform_geometry._11_21, transform_geometry._12_22);\n"
+        "    rt = float2x2(transform_rtx.xy, transform_rty.xy);\n"
+        "    o.stroke_transform = rt * stroke_width * 0.5f;\n"
+        "\n"
+        "    p = mul(geom, position);\n"
+        "    p0 = mul(geom, p0);\n"
+        "    p1 = mul(geom, p1);\n"
+        "    p2 = mul(geom, p2);\n"
+        "\n"
+        "    p -= p0;\n"
+        "    p1 -= p0;\n"
+        "    p2 -= p0;\n"
+        "\n"
+        "    q_prev = normalize(mul(geom, prev));\n"
+        "    q_next = normalize(mul(geom, next));\n"
+        "\n"
+        "    v_p = float2(-q_prev.y, q_prev.x);\n"
+        "    l = -dot(v_p, q_next) / (1.0f + dot(q_prev, q_next));\n"
+        "    q_i = l * q_prev + v_p;\n"
+        "    p += 0.5f * stroke_width * q_i;\n"
+        "\n"
+        "    p_inv = float2x2(p1.y, -p1.x, p2.y - p1.y, p1.x - p2.x) / (p1.x * p2.y - p2.x * p1.y);\n"
+        "    o.b.xy = mul(p_inv, p) + float2(1.0f, 0.0f);\n"
+        "    o.b.zw = 0.0f;\n"
+        "\n"
+        "    o.p = mul(float3(position, 1.0f), transform_geometry) + 0.5f * stroke_width * q_i;\n"
+        "    position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))\n"
+        "            * float2(transform_rtx.w, transform_rty.w);\n"
+        "    o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);\n"
+        "}\n";
+    static const char vs_code_triangle[] =
+        "float3x2 transform_geometry;\n"
+        "float4 transform_rtx;\n"
+        "float4 transform_rty;\n"
+        "\n"
+        "struct output\n"
+        "{\n"
+        "    float2 p : WORLD_POSITION;\n"
+        "    float4 b : BEZIER;\n"
+        "    nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;\n"
+        "    float4 position : SV_POSITION;\n"
+        "};\n"
+        "\n"
+        "void main(float2 position : POSITION, out struct output o)\n"
+        "{\n"
+        "    o.p = mul(float3(position, 1.0f), transform_geometry);\n"
+        "    o.b = float4(1.0, 0.0, 1.0, 1.0);\n"
+        "    o.stroke_transform = float2x2(1.0, 0.0, 0.0, 1.0);\n"
+        "    position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))\n"
+        "            * float2(transform_rtx.w, transform_rty.w);\n"
+        "    o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);\n"
+        "}\n";
+    static const char vs_code_curve[] =
+        "float3x2 transform_geometry;\n"
+        "float4 transform_rtx;\n"
+        "float4 transform_rty;\n"
+        "\n"
+        "struct output\n"
+        "{\n"
+        "    float2 p : WORLD_POSITION;\n"
+        "    float4 b : BEZIER;\n"
+        "    nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;\n"
+        "    float4 position : SV_POSITION;\n"
+        "};\n"
+        "\n"
+        "void main(float2 position : POSITION, float3 texcoord : TEXCOORD0, out struct output o)\n"
+        "{\n"
+        "    o.p = mul(float3(position, 1.0f), transform_geometry);\n"
+        "    o.b = float4(texcoord, 1.0);\n"
+        "    o.stroke_transform = float2x2(1.0, 0.0, 0.0, 1.0);\n"
+        "    position = mul(float2x3(transform_rtx.xyz, transform_rty.xyz), float3(o.p, 1.0f))\n"
+        "            * float2(transform_rtx.w, transform_rty.w);\n"
+        "    o.position = float4(position + float2(-1.0f, 1.0f), 0.0f, 1.0f);\n"
+        "}\n";
+    static const char ps_code[] =
+        "#define BRUSH_TYPE_SOLID    0\n"
+        "#define BRUSH_TYPE_LINEAR   1\n"
+        "#define BRUSH_TYPE_RADIAL   2\n"
+        "#define BRUSH_TYPE_BITMAP   3\n"
+        "#define BRUSH_TYPE_COUNT    4\n"
+        "\n"
+        "bool outline;\n"
+        "bool is_arc;\n"
+        "struct brush\n"
+        "{\n"
+        "    uint type;\n"
+        "    float opacity;\n"
+        "    float4 data[3];\n"
+        "} colour_brush, opacity_brush;\n"
+        "\n"
+        "SamplerState s0, s1;\n"
+        "Texture2D t0, t1;\n"
+        "Buffer<float4> b0, b1;\n"
+        "\n"
+        "struct input\n"
+        "{\n"
+        "    float2 p : WORLD_POSITION;\n"
+        "    float4 b : BEZIER;\n"
+        "    nointerpolation float2x2 stroke_transform : STROKE_TRANSFORM;\n"
+        "};\n"
+        "\n"
+        "float4 sample_gradient(Buffer<float4> gradient, uint stop_count, float position)\n"
+        "{\n"
+        "    float4 c_low, c_high;\n"
+        "    float p_low, p_high;\n"
+        "    uint i;\n"
+        "\n"
+        "    p_low = gradient.Load(0).x;\n"
+        "    c_low = gradient.Load(1);\n"
+        "    c_high = c_low;\n"
+        "\n"
+        "    if (position < p_low)\n"
+        "        return c_low;\n"
+        "\n"
+        "    for (i = 1; i < stop_count; ++i)\n"
+        "    {\n"
+        "        p_high = gradient.Load(i * 2).x;\n"
+        "        c_high = gradient.Load(i * 2 + 1);\n"
+        "\n"
+        "        if (position >= p_low && position <= p_high)\n"
+        "            return lerp(c_low, c_high, (position - p_low) / (p_high - p_low));\n"
+        "\n"
+        "        p_low = p_high;\n"
+        "        c_low = c_high;\n"
+        "    }\n"
+        "\n"
+        "    return c_high;\n"
+        "}\n"
+        "\n"
+        "float4 brush_linear(struct brush brush, Buffer<float4> gradient, float2 position)\n"
+        "{\n"
+        "    float2 start, end, v_p, v_q;\n"
+        "    uint stop_count;\n"
+        "    float p;\n"
+        "\n"
+        "    start = brush.data[0].xy;\n"
+        "    end = brush.data[0].zw;\n"
+        "    stop_count = asuint(brush.data[1].x);\n"
+        "\n"
+        "    v_p = position - start;\n"
+        "    v_q = end - start;\n"
+        "    p = dot(v_q, v_p) / dot(v_q, v_q);\n"
+        "\n"
+        "    return sample_gradient(gradient, stop_count, p);\n"
+        "}\n"
+        "\n"
+        "float4 brush_radial(struct brush brush, Buffer<float4> gradient, float2 position)\n"
+        "{\n"
+        "    float2 centre, offset, ra, rb, v_p, v_q, r;\n"
+        "    float b, c, l, t;\n"
+        "    uint stop_count;\n"
+        "\n"
+        "    centre = brush.data[0].xy;\n"
+        "    offset = brush.data[0].zw;\n"
+        "    ra = brush.data[1].xy;\n"
+        "    rb = brush.data[1].zw;\n"
+        "    stop_count = asuint(brush.data[2].x);\n"
+        "\n"
+        "    /* Project onto ra, rb. */\n"
+        "    r = float2(dot(ra, ra), dot(rb, rb));\n"
+        "    v_p = position - (centre + offset);\n"
+        "    v_p = float2(dot(v_p, ra), dot(v_p, rb)) / r;\n"
+        "    v_q = float2(dot(offset, ra), dot(offset, rb)) / r;\n"
+        "\n"
+        "    /* ‖t·p̂ + q⃑‖ = 1\n"
+        "     * (t·p̂ + q⃑) · (t·p̂ + q⃑) = 1\n"
+        "     * t² + 2·(p̂·q⃑)·t + (q⃑·q⃑) = 1\n"
+        "     *\n"
+        "     * b = p̂·q⃑\n"
+        "     * c = q⃑·q⃑ - 1\n"
+        "     * t = -b + √(b² - c) */\n"
+        "    l = length(v_p);\n"
+        "    b = dot(v_p, v_q) / l;\n"
+        "    c = dot(v_q, v_q) - 1.0;\n"
+        "    t = -b + sqrt(b * b - c);\n"
+        "\n"
+        "    return sample_gradient(gradient, stop_count, l / t);\n"
+        "}\n"
+        "\n"
+        "float4 brush_bitmap(struct brush brush, Texture2D t, SamplerState s, float2 position)\n"
+        "{\n"
+        "    float3 transform[2];\n"
+        "    bool ignore_alpha;\n"
+        "    float2 texcoord;\n"
+        "    float4 colour;\n"
+        "\n"
+        "    transform[0] = brush.data[0].xyz;\n"
+        "    transform[1] = brush.data[1].xyz;\n"
+        "    ignore_alpha = asuint(brush.data[1].w);\n"
+        "\n"
+        "    texcoord.x = dot(position.xy, transform[0].xy) + transform[0].z;\n"
+        "    texcoord.y = dot(position.xy, transform[1].xy) + transform[1].z;\n"
+        "    colour = t.Sample(s, texcoord);\n"
+        "    if (ignore_alpha)\n"
+        "        colour.a = 1.0;\n"
+        "    return colour;\n"
+        "}\n"
+        "\n"
+        "float4 sample_brush(struct brush brush, Texture2D t, SamplerState s, Buffer<float4> b, float2 position)\n"
+        "{\n"
+        "    if (brush.type == BRUSH_TYPE_SOLID)\n"
+        "        return brush.data[0] * brush.opacity;\n"
+        "    if (brush.type == BRUSH_TYPE_LINEAR)\n"
+        "        return brush_linear(brush, b, position) * brush.opacity;\n"
+        "    if (brush.type == BRUSH_TYPE_RADIAL)\n"
+        "        return brush_radial(brush, b, position) * brush.opacity;\n"
+        "    if (brush.type == BRUSH_TYPE_BITMAP)\n"
+        "        return brush_bitmap(brush, t, s, position) * brush.opacity;\n"
+        "    return float4(0.0, 0.0, 0.0, brush.opacity);\n"
+        "}\n"
+        "\n"
+        "float4 main(struct input i) : SV_Target\n"
+        "{\n"
+        "    float4 colour;\n"
+        "\n"
+        "    colour = sample_brush(colour_brush, t0, s0, b0, i.p);\n"
+        "    if (opacity_brush.type < BRUSH_TYPE_COUNT)\n"
+        "        colour *= sample_brush(opacity_brush, t1, s1, b1, i.p).a;\n"
+        "\n"
+        "    if (outline)\n"
+        "    {\n"
+        "        float2 du, dv, df;\n"
+        "        float4 uv;\n"
+        "\n"
+        "        /* Evaluate the implicit form of the curve (u² - v = 0\n"
+        "         * for Béziers, u² + v² - 1 = 0 for arcs) in texture\n"
+        "         * space, using the screen-space partial derivatives\n"
+        "         * to convert the calculated distance to object space.\n"
+        "         *\n"
+        "         * d(x, y) = |f(x, y)| / ‖∇f(x, y)‖\n"
+        "         *         = |f(x, y)| / √((∂f/∂x)² + (∂f/∂y)²)\n"
+        "         *\n"
+        "         * For Béziers:\n"
+        "         * f(x, y) = u(x, y)² - v(x, y)\n"
+        "         * ∂f/∂x = 2u · ∂u/∂x - ∂v/∂x\n"
+        "         * ∂f/∂y = 2u · ∂u/∂y - ∂v/∂y\n"
+        "         *\n"
+        "         * For arcs:\n"
+        "         * f(x, y) = u(x, y)² + v(x, y)² - 1\n"
+        "         * ∂f/∂x = 2u · ∂u/∂x + 2v · ∂v/∂x\n"
+        "         * ∂f/∂y = 2u · ∂u/∂y + 2v · ∂v/∂y */\n"
+        "        uv = i.b;\n"
+        "        du = float2(ddx(uv.x), ddy(uv.x));\n"
+        "        dv = float2(ddx(uv.y), ddy(uv.y));\n"
+        "\n"
+        "        if (!is_arc)\n"
+        "        {\n"
+        "            df = 2.0f * uv.x * du - dv;\n"
+        "\n"
+        "            clip(dot(df, uv.zw));\n"
+        "            clip(length(mul(i.stroke_transform, df)) - abs(uv.x * uv.x - uv.y));\n"
+        "        }\n"
+        "        else\n"
+        "        {\n"
+        "            df = 2.0f * uv.x * du + 2.0f * uv.y * dv;\n"
+        "\n"
+        "            clip(dot(df, uv.zw));\n"
+        "            clip(length(mul(i.stroke_transform, df)) - abs(uv.x * uv.x + uv.y * uv.y - 1.0f));\n"
+        "        }\n"
+        "    }\n"
+        "    else\n"
+        "    {\n"
+        "        /* Evaluate the implicit form of the curve in texture space.\n"
+        "         * \"i.b.z\" determines which side of the curve is shaded. */\n"
+        "        if (!is_arc)\n"
+        "        {\n"
+        "            clip((i.b.x * i.b.x - i.b.y) * i.b.z);\n"
+        "        }\n"
+        "        else\n"
+        "        {\n"
+        "            clip((i.b.x * i.b.x + i.b.y * i.b.y - 1.0) * i.b.z);\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    return colour;\n"
+        "}\n";
     static const struct shape_info
     {
         enum d2d_shape_type shape_type;
-        const D3D10_INPUT_ELEMENT_DESC *il_desc;
+        const D3D11_INPUT_ELEMENT_DESC *il_desc;
         unsigned int il_element_count;
-        const void *vs_code;
+        const char *name;
+        const char *vs_code;
         size_t vs_code_size;
     }
     shape_info[] =
     {
         {D2D_SHAPE_TYPE_OUTLINE,        il_desc_outline,        ARRAY_SIZE(il_desc_outline),
-                                        vs_code_outline,        sizeof(vs_code_outline)},
+         "outline",                     vs_code_outline,        sizeof(vs_code_outline) - 1},
         {D2D_SHAPE_TYPE_BEZIER_OUTLINE, il_desc_curve_outline,  ARRAY_SIZE(il_desc_curve_outline),
-                                        vs_code_bezier_outline, sizeof(vs_code_bezier_outline)},
+         "bezier_outline",              vs_code_bezier_outline, sizeof(vs_code_bezier_outline) - 1},
         {D2D_SHAPE_TYPE_ARC_OUTLINE,    il_desc_curve_outline,  ARRAY_SIZE(il_desc_curve_outline),
-                                        vs_code_arc_outline,    sizeof(vs_code_arc_outline)},
+         "arc_outline",                 vs_code_arc_outline,    sizeof(vs_code_arc_outline) - 1},
         {D2D_SHAPE_TYPE_TRIANGLE,       il_desc_triangle,       ARRAY_SIZE(il_desc_triangle),
-                                        vs_code_triangle,       sizeof(vs_code_triangle)},
+         "triangle",                    vs_code_triangle,       sizeof(vs_code_triangle) - 1},
         {D2D_SHAPE_TYPE_CURVE,          il_desc_curve,          ARRAY_SIZE(il_desc_curve),
-                                        vs_code_curve,          sizeof(vs_code_curve)},
+         "curve",                       vs_code_curve,          sizeof(vs_code_curve) - 1},
     };
     static const struct
     {
@@ -3828,37 +3968,37 @@ static HRESULT d2d_device_context_init(struct d2d_device_context *render_target,
         { 1.0f, -1.0f},
     };
     static const UINT16 indices[] = {0, 1, 2, 2, 1, 3};
+    static const D3D_FEATURE_LEVEL feature_levels = D3D_FEATURE_LEVEL_10_0;
 
-    render_target->ID2D1DeviceContext_iface.lpVtbl = &d2d_device_context_vtbl;
+    render_target->ID2D1DeviceContext6_iface.lpVtbl = &d2d_device_context_vtbl;
     render_target->ID2D1GdiInteropRenderTarget_iface.lpVtbl = &d2d_gdi_interop_render_target_vtbl;
     render_target->IDWriteTextRenderer_iface.lpVtbl = &d2d_text_renderer_vtbl;
     render_target->IUnknown_iface.lpVtbl = &d2d_device_context_inner_unknown_vtbl;
     render_target->refcount = 1;
-    ID2D1Device_GetFactory(device, &render_target->factory);
+    ID2D1Device1_GetFactory((ID2D1Device1 *)&device->ID2D1Device6_iface, &render_target->factory);
     render_target->device = device;
-    ID2D1Device_AddRef(render_target->device);
+    ID2D1Device6_AddRef(&render_target->device->ID2D1Device6_iface);
+
+    factory = unsafe_impl_from_ID2D1Factory(render_target->factory);
+    if (factory->factory_type == D2D1_FACTORY_TYPE_MULTI_THREADED)
+        render_target->cs = &factory->cs;
 
     render_target->outer_unknown = outer_unknown ? outer_unknown : &render_target->IUnknown_iface;
     render_target->ops = ops;
 
-    device_impl = unsafe_impl_from_ID2D1Device(device);
+    device_impl = unsafe_impl_from_ID2D1Device((ID2D1Device1 *)device);
     if (FAILED(hr = IDXGIDevice_QueryInterface(device_impl->dxgi_device,
-            &IID_ID3D10Device, (void **)&render_target->d3d_device)))
+            &IID_ID3D11Device1, (void **)&render_target->d3d_device)))
     {
-        WARN("Failed to get device interface, hr %#x.\n", hr);
-        ID2D1Factory_Release(render_target->factory);
-        return hr;
-    }
-
-    if (FAILED(hr = D3D10StateBlockMaskEnableAll(&state_mask)))
-    {
-        WARN("Failed to create stateblock mask, hr %#x.\n", hr);
+        WARN("Failed to query ID3D11Device1 interface, hr %#lx.\n", hr);
         goto err;
     }
 
-    if (FAILED(hr = D3D10CreateStateBlock(render_target->d3d_device, &state_mask, &render_target->stateblock)))
+    if (FAILED(hr = ID3D11Device1_CreateDeviceContextState(render_target->d3d_device,
+            0, &feature_levels, 1, D3D11_SDK_VERSION, &IID_ID3D11Device1, NULL,
+            &render_target->d3d_state)))
     {
-        WARN("Failed to create stateblock, hr %#x.\n", hr);
+        WARN("Failed to create device context state, hr %#lx.\n", hr);
         goto err;
     }
 
@@ -3866,58 +4006,80 @@ static HRESULT d2d_device_context_init(struct d2d_device_context *render_target,
     {
         const struct shape_info *si = &shape_info[i];
 
-        if (FAILED(hr = ID3D10Device_CreateInputLayout(render_target->d3d_device, si->il_desc, si->il_element_count,
-                si->vs_code, si->vs_code_size, &render_target->shape_resources[si->shape_type].il)))
+        if (FAILED(hr = D3DCompile(si->vs_code, si->vs_code_size, si->name, NULL, NULL,
+                "main", "vs_4_0", 0, 0, &compiled, NULL)))
         {
-            WARN("Failed to create input layout for shape type %#x, hr %#x.\n", si->shape_type, hr);
+            WARN("Failed to compile shader for shape type %#x, hr %#lx.\n", si->shape_type, hr);
             goto err;
         }
 
-        if (FAILED(hr = ID3D10Device_CreateVertexShader(render_target->d3d_device, si->vs_code,
-                si->vs_code_size, &render_target->shape_resources[si->shape_type].vs)))
+        if (FAILED(hr = ID3D11Device1_CreateInputLayout(render_target->d3d_device, si->il_desc, si->il_element_count,
+                ID3D10Blob_GetBufferPointer(compiled), ID3D10Blob_GetBufferSize(compiled),
+                &render_target->shape_resources[si->shape_type].il)))
         {
-            WARN("Failed to create vertex shader for shape type %#x, hr %#x.\n", si->shape_type, hr);
+            WARN("Failed to create input layout for shape type %#x, hr %#lx.\n", si->shape_type, hr);
+            ID3D10Blob_Release(compiled);
             goto err;
         }
 
+        if (FAILED(hr = ID3D11Device1_CreateVertexShader(render_target->d3d_device,
+                ID3D10Blob_GetBufferPointer(compiled), ID3D10Blob_GetBufferSize(compiled),
+                NULL, &render_target->shape_resources[si->shape_type].vs)))
+        {
+            WARN("Failed to create vertex shader for shape type %#x, hr %#lx.\n", si->shape_type, hr);
+            ID3D10Blob_Release(compiled);
+            goto err;
+        }
+
+        ID3D10Blob_Release(compiled);
     }
 
     buffer_desc.ByteWidth = sizeof(struct d2d_vs_cb);
-    buffer_desc.Usage = D3D10_USAGE_DYNAMIC;
-    buffer_desc.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
-    buffer_desc.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
+    buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
+    buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     buffer_desc.MiscFlags = 0;
 
-    if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, NULL,
+    if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, NULL,
             &render_target->vs_cb)))
     {
-        WARN("Failed to create constant buffer, hr %#x.\n", hr);
+        WARN("Failed to create constant buffer, hr %#lx.\n", hr);
         goto err;
     }
 
-    if (FAILED(hr = ID3D10Device_CreatePixelShader(render_target->d3d_device,
-            ps_code, sizeof(ps_code), &render_target->ps)))
+    if (FAILED(hr = D3DCompile(ps_code, sizeof(ps_code) - 1, "ps", NULL, NULL, "main", "ps_4_0", 0, 0, &compiled, NULL)))
     {
-        WARN("Failed to create pixel shader, hr %#x.\n", hr);
+        WARN("Failed to compile the pixel shader, hr %#lx.\n", hr);
         goto err;
     }
+
+    if (FAILED(hr = ID3D11Device1_CreatePixelShader(render_target->d3d_device,
+            ID3D10Blob_GetBufferPointer(compiled), ID3D10Blob_GetBufferSize(compiled),
+            NULL, &render_target->ps)))
+    {
+        WARN("Failed to create pixel shader, hr %#lx.\n", hr);
+        ID3D10Blob_Release(compiled);
+        goto err;
+    }
+
+    ID3D10Blob_Release(compiled);
 
     buffer_desc.ByteWidth = sizeof(struct d2d_ps_cb);
-    buffer_desc.Usage = D3D10_USAGE_DYNAMIC;
-    buffer_desc.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
-    buffer_desc.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
+    buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
+    buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     buffer_desc.MiscFlags = 0;
 
-    if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device, &buffer_desc, NULL,
+    if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device, &buffer_desc, NULL,
             &render_target->ps_cb)))
     {
-        WARN("Failed to create constant buffer, hr %#x.\n", hr);
+        WARN("Failed to create constant buffer, hr %#lx.\n", hr);
         goto err;
     }
 
     buffer_desc.ByteWidth = sizeof(indices);
-    buffer_desc.Usage = D3D10_USAGE_DEFAULT;
-    buffer_desc.BindFlags = D3D10_BIND_INDEX_BUFFER;
+    buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+    buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
     buffer_desc.CPUAccessFlags = 0;
     buffer_desc.MiscFlags = 0;
 
@@ -3925,27 +4087,27 @@ static HRESULT d2d_device_context_init(struct d2d_device_context *render_target,
     buffer_data.SysMemPitch = 0;
     buffer_data.SysMemSlicePitch = 0;
 
-    if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device,
+    if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device,
             &buffer_desc, &buffer_data, &render_target->ib)))
     {
-        WARN("Failed to create clear index buffer, hr %#x.\n", hr);
+        WARN("Failed to create clear index buffer, hr %#lx.\n", hr);
         goto err;
     }
 
     buffer_desc.ByteWidth = sizeof(quad);
-    buffer_desc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+    buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     buffer_data.pSysMem = quad;
 
     render_target->vb_stride = sizeof(*quad);
-    if (FAILED(hr = ID3D10Device_CreateBuffer(render_target->d3d_device,
+    if (FAILED(hr = ID3D11Device1_CreateBuffer(render_target->d3d_device,
             &buffer_desc, &buffer_data, &render_target->vb)))
     {
-        WARN("Failed to create clear vertex buffer, hr %#x.\n", hr);
+        WARN("Failed to create clear vertex buffer, hr %#lx.\n", hr);
         goto err;
     }
 
-    rs_desc.FillMode = D3D10_FILL_SOLID;
-    rs_desc.CullMode = D3D10_CULL_NONE;
+    rs_desc.FillMode = D3D11_FILL_SOLID;
+    rs_desc.CullMode = D3D11_CULL_NONE;
     rs_desc.FrontCounterClockwise = FALSE;
     rs_desc.DepthBias = 0;
     rs_desc.DepthBiasClamp = 0.0f;
@@ -3954,16 +4116,16 @@ static HRESULT d2d_device_context_init(struct d2d_device_context *render_target,
     rs_desc.ScissorEnable = TRUE;
     rs_desc.MultisampleEnable = FALSE;
     rs_desc.AntialiasedLineEnable = FALSE;
-    if (FAILED(hr = ID3D10Device_CreateRasterizerState(render_target->d3d_device, &rs_desc, &render_target->rs)))
+    if (FAILED(hr = ID3D11Device1_CreateRasterizerState(render_target->d3d_device, &rs_desc, &render_target->rs)))
     {
-        WARN("Failed to create clear rasterizer state, hr %#x.\n", hr);
+        WARN("Failed to create clear rasteriser state, hr %#lx.\n", hr);
         goto err;
     }
 
     if (FAILED(hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED,
             &IID_IDWriteFactory, (IUnknown **)&dwrite_factory)))
     {
-        ERR("Failed to create dwrite factory, hr %#x.\n", hr);
+        ERR("Failed to create dwrite factory, hr %#lx.\n", hr);
         goto err;
     }
 
@@ -3971,7 +4133,7 @@ static HRESULT d2d_device_context_init(struct d2d_device_context *render_target,
     IDWriteFactory_Release(dwrite_factory);
     if (FAILED(hr))
     {
-        ERR("Failed to create default text rendering parameters, hr %#x.\n", hr);
+        ERR("Failed to create default text rendering parameters, hr %#lx.\n", hr);
         goto err;
     }
 
@@ -3993,34 +4155,34 @@ err:
     if (render_target->default_text_rendering_params)
         IDWriteRenderingParams_Release(render_target->default_text_rendering_params);
     if (render_target->rs)
-        ID3D10RasterizerState_Release(render_target->rs);
+        ID3D11RasterizerState_Release(render_target->rs);
     if (render_target->vb)
-        ID3D10Buffer_Release(render_target->vb);
+        ID3D11Buffer_Release(render_target->vb);
     if (render_target->ib)
-        ID3D10Buffer_Release(render_target->ib);
+        ID3D11Buffer_Release(render_target->ib);
     if (render_target->ps_cb)
-        ID3D10Buffer_Release(render_target->ps_cb);
+        ID3D11Buffer_Release(render_target->ps_cb);
     if (render_target->ps)
-        ID3D10PixelShader_Release(render_target->ps);
+        ID3D11PixelShader_Release(render_target->ps);
     if (render_target->vs_cb)
-        ID3D10Buffer_Release(render_target->vs_cb);
+        ID3D11Buffer_Release(render_target->vs_cb);
     for (i = 0; i < D2D_SHAPE_TYPE_COUNT; ++i)
     {
         if (render_target->shape_resources[i].vs)
-            ID3D10VertexShader_Release(render_target->shape_resources[i].vs);
+            ID3D11VertexShader_Release(render_target->shape_resources[i].vs);
         if (render_target->shape_resources[i].il)
-            ID3D10InputLayout_Release(render_target->shape_resources[i].il);
+            ID3D11InputLayout_Release(render_target->shape_resources[i].il);
     }
-    if (render_target->stateblock)
-        render_target->stateblock->lpVtbl->Release(render_target->stateblock);
+    if (render_target->d3d_state)
+        ID3DDeviceContextState_Release(render_target->d3d_state);
     if (render_target->d3d_device)
-        ID3D10Device_Release(render_target->d3d_device);
-    ID2D1Device_Release(render_target->device);
+        ID3D11Device1_Release(render_target->d3d_device);
+    ID2D1Device6_Release(&render_target->device->ID2D1Device6_iface);
     ID2D1Factory_Release(render_target->factory);
     return hr;
 }
 
-HRESULT d2d_d3d_create_render_target(ID2D1Device *device, IDXGISurface *surface, IUnknown *outer_unknown,
+HRESULT d2d_d3d_create_render_target(struct d2d_device *device, IDXGISurface *surface, IUnknown *outer_unknown,
         const struct d2d_device_context_ops *ops, const D2D1_RENDER_TARGET_PROPERTIES *desc, void **render_target)
 {
     D2D1_BITMAP_PROPERTIES1 bitmap_desc;
@@ -4046,54 +4208,61 @@ HRESULT d2d_d3d_create_render_target(ID2D1Device *device, IDXGISurface *surface,
     else if (bitmap_desc.dpiX <= 0.0f || bitmap_desc.dpiY <= 0.0f)
         return E_INVALIDARG;
 
-    if (!(object = heap_alloc_zero(sizeof(*object))))
+    if (!(object = calloc(1, sizeof(*object))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = d2d_device_context_init(object, device, outer_unknown, ops)))
     {
-        WARN("Failed to initialize render target, hr %#x.\n", hr);
-        heap_free(object);
+        WARN("Failed to initialise render target, hr %#lx.\n", hr);
+        free(object);
         return hr;
     }
 
-    ID2D1DeviceContext_SetDpi(&object->ID2D1DeviceContext_iface, bitmap_desc.dpiX, bitmap_desc.dpiY);
+    ID2D1DeviceContext6_SetDpi(&object->ID2D1DeviceContext6_iface, bitmap_desc.dpiX, bitmap_desc.dpiY);
 
     if (surface)
     {
         bitmap_desc.pixelFormat = desc->pixelFormat;
         bitmap_desc.bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW;
+        if (desc->usage & D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE)
+            bitmap_desc.bitmapOptions |= D2D1_BITMAP_OPTIONS_GDI_COMPATIBLE;
         bitmap_desc.colorContext = NULL;
 
-        if (FAILED(hr = ID2D1DeviceContext_CreateBitmapFromDxgiSurface(&object->ID2D1DeviceContext_iface,
+        if (FAILED(hr = ID2D1DeviceContext6_CreateBitmapFromDxgiSurface(&object->ID2D1DeviceContext6_iface,
                 surface, &bitmap_desc, &bitmap)))
         {
-            WARN("Failed to create target bitmap, hr %#x.\n", hr);
+            WARN("Failed to create target bitmap, hr %#lx.\n", hr);
             IUnknown_Release(&object->IUnknown_iface);
-            heap_free(object);
             return hr;
         }
 
-        ID2D1DeviceContext_SetTarget(&object->ID2D1DeviceContext_iface, (ID2D1Image *)bitmap);
+        ID2D1DeviceContext6_SetTarget(&object->ID2D1DeviceContext6_iface, (ID2D1Image *)bitmap);
         ID2D1Bitmap1_Release(bitmap);
     }
     else
         object->desc.pixelFormat = desc->pixelFormat;
 
     TRACE("Created render target %p.\n", object);
-    *render_target = outer_unknown ? &object->IUnknown_iface : (IUnknown *)&object->ID2D1DeviceContext_iface;
+    *render_target = outer_unknown ? &object->IUnknown_iface : (IUnknown *)&object->ID2D1DeviceContext6_iface;
 
     return S_OK;
 }
 
-static HRESULT WINAPI d2d_device_QueryInterface(ID2D1Device *iface, REFIID iid, void **out)
+static HRESULT WINAPI d2d_device_QueryInterface(ID2D1Device6 *iface, REFIID iid, void **out)
 {
     TRACE("iface %p, iid %s, out %p.\n", iface, debugstr_guid(iid), out);
 
-    if (IsEqualGUID(iid, &IID_ID2D1Device)
+    if (IsEqualGUID(iid, &IID_ID2D1Device6)
+            || IsEqualGUID(iid, &IID_ID2D1Device5)
+            || IsEqualGUID(iid, &IID_ID2D1Device4)
+            || IsEqualGUID(iid, &IID_ID2D1Device3)
+            || IsEqualGUID(iid, &IID_ID2D1Device2)
+            || IsEqualGUID(iid, &IID_ID2D1Device1)
+            || IsEqualGUID(iid, &IID_ID2D1Device)
             || IsEqualGUID(iid, &IID_ID2D1Resource)
             || IsEqualGUID(iid, &IID_IUnknown))
     {
-        ID2D1Device_AddRef(iface);
+        ID2D1Device6_AddRef(iface);
         *out = iface;
         return S_OK;
     }
@@ -4104,34 +4273,45 @@ static HRESULT WINAPI d2d_device_QueryInterface(ID2D1Device *iface, REFIID iid, 
     return E_NOINTERFACE;
 }
 
-static ULONG WINAPI d2d_device_AddRef(ID2D1Device *iface)
+static ULONG WINAPI d2d_device_AddRef(ID2D1Device6 *iface)
 {
     struct d2d_device *device = impl_from_ID2D1Device(iface);
     ULONG refcount = InterlockedIncrement(&device->refcount);
 
-    TRACE("%p increasing refcount to %u.\n", iface, refcount);
+    TRACE("%p increasing refcount to %lu.\n", iface, refcount);
 
     return refcount;
 }
 
-static ULONG WINAPI d2d_device_Release(ID2D1Device *iface)
+void d2d_device_indexed_objects_clear(struct d2d_indexed_objects *objects)
+{
+    size_t i;
+
+    for (i = 0; i < objects->count; ++i)
+        IUnknown_Release(objects->elements[i].object);
+    free(objects->elements);
+    objects->elements = NULL;
+}
+
+static ULONG WINAPI d2d_device_Release(ID2D1Device6 *iface)
 {
     struct d2d_device *device = impl_from_ID2D1Device(iface);
     ULONG refcount = InterlockedDecrement(&device->refcount);
 
-    TRACE("%p decreasing refcount to %u.\n", iface, refcount);
+    TRACE("%p decreasing refcount to %lu.\n", iface, refcount);
 
     if (!refcount)
     {
         IDXGIDevice_Release(device->dxgi_device);
         ID2D1Factory1_Release(device->factory);
-        heap_free(device);
+        d2d_device_indexed_objects_clear(&device->shaders);
+        free(device);
     }
 
     return refcount;
 }
 
-static void WINAPI d2d_device_GetFactory(ID2D1Device *iface, ID2D1Factory **factory)
+static void WINAPI d2d_device_GetFactory(ID2D1Device6 *iface, ID2D1Factory **factory)
 {
     struct d2d_device *device = impl_from_ID2D1Device(iface);
 
@@ -4141,34 +4321,44 @@ static void WINAPI d2d_device_GetFactory(ID2D1Device *iface, ID2D1Factory **fact
     ID2D1Factory1_AddRef(device->factory);
 }
 
-static HRESULT WINAPI d2d_device_CreateDeviceContext(ID2D1Device *iface, D2D1_DEVICE_CONTEXT_OPTIONS options,
-        ID2D1DeviceContext **context)
+static HRESULT d2d_device_create_device_context(struct d2d_device *device,
+        D2D1_DEVICE_CONTEXT_OPTIONS options, REFIID iid, void **context)
 {
     struct d2d_device_context *object;
     HRESULT hr;
 
-    TRACE("iface %p, options %#x, context %p.\n", iface, options, context);
-
     if (options)
         FIXME("Options are ignored %#x.\n", options);
 
-    if (!(object = heap_alloc_zero(sizeof(*object))))
+    if (!(object = calloc(1, sizeof(*object))))
         return E_OUTOFMEMORY;
 
-    if (FAILED(hr = d2d_device_context_init(object, iface, NULL, NULL)))
+    if (FAILED(hr = d2d_device_context_init(object, device, NULL, NULL)))
     {
-        WARN("Failed to initialize device context, hr %#x.\n", hr);
-        heap_free(object);
+        WARN("Failed to initialise device context, hr %#lx.\n", hr);
+        free(object);
         return hr;
     }
 
     TRACE("Created device context %p.\n", object);
-    *context = &object->ID2D1DeviceContext_iface;
 
-    return S_OK;
+    hr = ID2D1DeviceContext6_QueryInterface(&object->ID2D1DeviceContext6_iface, iid, context);
+    ID2D1DeviceContext6_Release(&object->ID2D1DeviceContext6_iface);
+
+    return hr;
 }
 
-static HRESULT WINAPI d2d_device_CreatePrintControl(ID2D1Device *iface, IWICImagingFactory *wic_factory,
+static HRESULT WINAPI d2d_device_CreateDeviceContext(ID2D1Device6 *iface, D2D1_DEVICE_CONTEXT_OPTIONS options,
+        ID2D1DeviceContext **context)
+{
+    struct d2d_device *device = impl_from_ID2D1Device(iface);
+
+    TRACE("iface %p, options %#x, context %p.\n", iface, options, context);
+
+    return d2d_device_create_device_context(device, options, &IID_ID2D1DeviceContext, (void **)context);
+}
+
+static HRESULT WINAPI d2d_device_CreatePrintControl(ID2D1Device6 *iface, IWICImagingFactory *wic_factory,
         IPrintDocumentPackageTarget *document_target, const D2D1_PRINT_CONTROL_PROPERTIES *desc,
         ID2D1PrintControl **print_control)
 {
@@ -4178,26 +4368,125 @@ static HRESULT WINAPI d2d_device_CreatePrintControl(ID2D1Device *iface, IWICImag
     return E_NOTIMPL;
 }
 
-static void WINAPI d2d_device_SetMaximumTextureMemory(ID2D1Device *iface, UINT64 max_texture_memory)
+static void WINAPI d2d_device_SetMaximumTextureMemory(ID2D1Device6 *iface, UINT64 max_texture_memory)
 {
     FIXME("iface %p, max_texture_memory %s stub!\n", iface, wine_dbgstr_longlong(max_texture_memory));
 }
 
-static UINT64 WINAPI d2d_device_GetMaximumTextureMemory(ID2D1Device *iface)
+static UINT64 WINAPI d2d_device_GetMaximumTextureMemory(ID2D1Device6 *iface)
 {
     FIXME("iface %p stub!\n", iface);
 
     return 0;
 }
 
-static HRESULT WINAPI d2d_device_ClearResources(ID2D1Device *iface, UINT msec_since_use)
+static HRESULT WINAPI d2d_device_ClearResources(ID2D1Device6 *iface, UINT msec_since_use)
 {
     FIXME("iface %p, msec_since_use %u stub!\n", iface, msec_since_use);
 
     return E_NOTIMPL;
 }
 
-static const struct ID2D1DeviceVtbl d2d_device_vtbl =
+static D2D1_RENDERING_PRIORITY WINAPI d2d_device_GetRenderingPriority(ID2D1Device6 *iface)
+{
+    FIXME("iface %p stub!\n", iface);
+
+    return D2D1_RENDERING_PRIORITY_NORMAL;
+}
+
+static void WINAPI d2d_device_SetRenderingPriority(ID2D1Device6 *iface, D2D1_RENDERING_PRIORITY priority)
+{
+    FIXME("iface %p, priority %#x stub!\n", iface, priority);
+}
+
+static HRESULT WINAPI d2d_device_CreateDeviceContext1(ID2D1Device6 *iface, D2D1_DEVICE_CONTEXT_OPTIONS options,
+        ID2D1DeviceContext1 **context)
+{
+    struct d2d_device *device = impl_from_ID2D1Device(iface);
+
+    TRACE("iface %p, options %#x, context %p.\n", iface, options, context);
+
+    return d2d_device_create_device_context(device, options, &IID_ID2D1DeviceContext1, (void **)context);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_ID2D1Device2_CreateDeviceContext(ID2D1Device6 *iface,
+        D2D1_DEVICE_CONTEXT_OPTIONS options, ID2D1DeviceContext2 **context)
+{
+    struct d2d_device *device = impl_from_ID2D1Device(iface);
+
+    TRACE("iface %p, options %#x, context %p.\n", iface, options, context);
+
+    return d2d_device_create_device_context(device, options, &IID_ID2D1DeviceContext2, (void **)context);
+}
+
+static void STDMETHODCALLTYPE d2d_device_FlushDeviceContexts(ID2D1Device6 *iface,
+        ID2D1Bitmap *bitmap)
+{
+    FIXME("iface %p, bitmap %p stub!\n", iface, bitmap);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_GetDxgiDevice(ID2D1Device6 *iface,
+        IDXGIDevice **dxgi_device)
+{
+    FIXME("iface %p, dxgi_device %p stub!\n", iface, dxgi_device);
+
+    return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_ID2D1Device3_CreateDeviceContext(ID2D1Device6 *iface,
+        D2D1_DEVICE_CONTEXT_OPTIONS options, ID2D1DeviceContext3 **context)
+{
+    struct d2d_device *device = impl_from_ID2D1Device(iface);
+
+    TRACE("iface %p, options %#x, context %p.\n", iface, options, context);
+
+    return d2d_device_create_device_context(device, options, &IID_ID2D1DeviceContext3, (void **)context);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_ID2D1Device4_CreateDeviceContext(ID2D1Device6 *iface,
+        D2D1_DEVICE_CONTEXT_OPTIONS options, ID2D1DeviceContext4 **context)
+{
+    struct d2d_device *device = impl_from_ID2D1Device(iface);
+
+    TRACE("iface %p, options %#x, context %p.\n", iface, options, context);
+
+    return d2d_device_create_device_context(device, options, &IID_ID2D1DeviceContext4, (void **)context);
+}
+
+static void STDMETHODCALLTYPE d2d_device_SetMaximumColorGlyphCacheMemory(ID2D1Device6 *iface,
+        UINT64 size)
+{
+    FIXME("iface %p, size %s stub!\n", iface, wine_dbgstr_longlong(size));
+}
+
+static UINT64 STDMETHODCALLTYPE d2d_device_GetMaximumColorGlyphCacheMemory(ID2D1Device6 *iface)
+{
+    FIXME("iface %p stub!\n", iface);
+
+    return 0;
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_ID2D1Device5_CreateDeviceContext(ID2D1Device6 *iface,
+        D2D1_DEVICE_CONTEXT_OPTIONS options, ID2D1DeviceContext5 **context)
+{
+    struct d2d_device *device = impl_from_ID2D1Device(iface);
+
+    TRACE("iface %p, options %#x, context %p.\n", iface, options, context);
+
+    return d2d_device_create_device_context(device, options, &IID_ID2D1DeviceContext5, (void **)context);
+}
+
+static HRESULT STDMETHODCALLTYPE d2d_device_ID2D1Device6_CreateDeviceContext(ID2D1Device6 *iface,
+        D2D1_DEVICE_CONTEXT_OPTIONS options, ID2D1DeviceContext6 **context)
+{
+    struct d2d_device *device = impl_from_ID2D1Device(iface);
+
+    TRACE("iface %p, options %#x, context %p.\n", iface, options, context);
+
+    return d2d_device_create_device_context(device, options, &IID_ID2D1DeviceContext6, (void **)context);
+}
+
+static const struct ID2D1Device6Vtbl d2d_device_vtbl =
 {
     d2d_device_QueryInterface,
     d2d_device_AddRef,
@@ -4208,22 +4497,74 @@ static const struct ID2D1DeviceVtbl d2d_device_vtbl =
     d2d_device_SetMaximumTextureMemory,
     d2d_device_GetMaximumTextureMemory,
     d2d_device_ClearResources,
+    d2d_device_GetRenderingPriority,
+    d2d_device_SetRenderingPriority,
+    d2d_device_CreateDeviceContext1,
+    d2d_device_ID2D1Device2_CreateDeviceContext,
+    d2d_device_FlushDeviceContexts,
+    d2d_device_GetDxgiDevice,
+    d2d_device_ID2D1Device3_CreateDeviceContext,
+    d2d_device_ID2D1Device4_CreateDeviceContext,
+    d2d_device_SetMaximumColorGlyphCacheMemory,
+    d2d_device_GetMaximumColorGlyphCacheMemory,
+    d2d_device_ID2D1Device5_CreateDeviceContext,
+    d2d_device_ID2D1Device6_CreateDeviceContext,
 };
 
-static struct d2d_device *unsafe_impl_from_ID2D1Device(ID2D1Device *iface)
+struct d2d_device *unsafe_impl_from_ID2D1Device(ID2D1Device1 *iface)
 {
     if (!iface)
         return NULL;
-    assert(iface->lpVtbl == &d2d_device_vtbl);
-    return CONTAINING_RECORD(iface, struct d2d_device, ID2D1Device_iface);
+    assert(iface->lpVtbl == (ID2D1Device1Vtbl *)&d2d_device_vtbl);
+    return CONTAINING_RECORD(iface, struct d2d_device, ID2D1Device6_iface);
 }
 
-void d2d_device_init(struct d2d_device *device, ID2D1Factory1 *iface, IDXGIDevice *dxgi_device)
+void d2d_device_init(struct d2d_device *device, struct d2d_factory *factory, IDXGIDevice *dxgi_device)
 {
-    device->ID2D1Device_iface.lpVtbl = &d2d_device_vtbl;
+    device->ID2D1Device6_iface.lpVtbl = &d2d_device_vtbl;
     device->refcount = 1;
-    device->factory = iface;
+    device->factory = (ID2D1Factory1 *)&factory->ID2D1Factory7_iface;
     ID2D1Factory1_AddRef(device->factory);
     device->dxgi_device = dxgi_device;
     IDXGIDevice_AddRef(device->dxgi_device);
+}
+
+HRESULT d2d_device_add_indexed_object(struct d2d_indexed_objects *objects,
+        const GUID *id, IUnknown *object)
+{
+    if (!d2d_array_reserve((void **)&objects->elements, &objects->size, objects->count + 1,
+            sizeof(*objects->elements)))
+    {
+        WARN("Failed to resize elements array.\n");
+        return E_OUTOFMEMORY;
+    }
+
+    objects->elements[objects->count].id = *id;
+    objects->elements[objects->count].object = object;
+    IUnknown_AddRef(object);
+    objects->count++;
+
+    return S_OK;
+}
+
+BOOL d2d_device_get_indexed_object(struct d2d_indexed_objects *objects, const GUID *id,
+        IUnknown **object)
+{
+    size_t i;
+
+    for (i = 0; i < objects->count; ++i)
+    {
+        if (IsEqualGUID(id, &objects->elements[i].id))
+        {
+            if (object)
+            {
+                *object = objects->elements[i].object;
+                IUnknown_AddRef(*object);
+            }
+            return TRUE;
+        }
+    }
+
+    if (object) *object = NULL;
+    return FALSE;
 }

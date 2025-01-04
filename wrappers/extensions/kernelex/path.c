@@ -4918,7 +4918,7 @@ HRESULT WINAPI HashData(const unsigned char *src, DWORD src_len, unsigned char *
     return S_OK;
 }
 
-DWORD GetTempPath2A(
+DWORD WINAPI GetTempPath2A(
   DWORD BufferLength,
   LPSTR Buffer
 )
@@ -4926,7 +4926,7 @@ DWORD GetTempPath2A(
 	return GetTempPathA(BufferLength, Buffer);
 }
 
-DWORD GetTempPath2W(
+DWORD WINAPI GetTempPath2W(
   DWORD BufferLength,
   LPWSTR Buffer
 )

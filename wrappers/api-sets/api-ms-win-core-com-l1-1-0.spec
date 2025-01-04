@@ -2,25 +2,25 @@
 @ stdcall CLSIDFromString(wstr ptr) ole32.CLSIDFromString
 @ stdcall CoAddRefServerProcess() ole32.CoAddRefServerProcess
 @ stub CoAllowUnmarshalerCLSID ;(long) ole.CoAllowUnmarshalerCLSID
-@ stdcall CoCancelCall(long long)
+@ stdcall CoCancelCall(long long) ole32.CoCancelCall
 @ stdcall CoCopyProxy(ptr ptr) ole32.CoCopyProxy
 @ stdcall CoCreateFreeThreadedMarshaler(ptr ptr) ole32.CoCreateFreeThreadedMarshaler
 @ stdcall CoCreateGuid(ptr) ole32.CoCreateGuid
 @ stdcall CoCreateInstance(ptr ptr long ptr ptr) ole32.CoCreateInstance
 @ stdcall CoCreateInstanceEx(ptr ptr long ptr long ptr) ole32.CoCreateInstanceEx
-@ stub CoCreateInstanceFromApp
-@ stub CoDecodeProxy
-@ stub CoDecrementMTAUsage
-@ stub CoDisableCallCancellation
-@ stub CoDisconnectContext
+@ stdcall CoCreateInstanceFromApp(ptr ptr long ptr long ptr) combase.CoCreateInstanceFromApp
+@ stdcall CoDecodeProxy(long int64 ptr) combase.CoDecodeProxy
+@ stdcall CoDecrementMTAUsage(ptr) combase.CoDecrementMTAUsage
+@ stdcall CoDisableCallCancellation(ptr) ole32.CoDisableCallCancellation
+@ stdcall CoDisconnectContext(long) ole32.CoDisconnectContext
 @ stdcall CoDisconnectObject(ptr long) ole32.CoDisconnectObject
-@ stub CoEnableCallCancellation
+@ stdcall CoEnableCallCancellation(ptr) ole32.CoEnableCallCancellation
 @ stdcall CoFreeUnusedLibraries() ole32.CoFreeUnusedLibraries
 @ stdcall CoFreeUnusedLibrariesEx(long long) ole32.CoFreeUnusedLibrariesEx
-@ stub CoGetApartmentType
+@ stdcall CoGetApartmentType(ptr ptr) combase.CoGetApartmentType
 @ stdcall CoGetCallContext(ptr ptr) ole32.CoGetCallContext
 @ stdcall CoGetCallerTID(ptr) ole32.CoGetCallerTID
-@ stub CoGetCancelObject
+@ stdcall CoGetCancelObject(long ptr ptr) ole32.CoGetCancelObject
 @ stdcall CoGetClassObject(ptr long ptr ptr ptr) ole32.CoGetClassObject
 @ stdcall CoGetContextToken(ptr) ole32.CoGetContextToken
 @ stdcall CoGetCurrentLogicalThreadId(ptr) ole32.CoGetCurrentLogicalThreadId
@@ -32,10 +32,10 @@
 @ stdcall CoGetObjectContext(ptr ptr) ole32.CoGetObjectContext
 @ stdcall CoGetPSClsid(ptr ptr) ole32.CoGetPSClsid
 @ stdcall CoGetStandardMarshal(ptr ptr long ptr long ptr) ole32.CoGetStandardMarshal
-@ stub CoGetStdMarshalEx
+@ stdcall CoGetStdMarshalEx(ptr long ptr) ole32.CoGetStdMarshalEx
 @ stdcall CoGetTreatAsClass(ptr ptr) ole32.CoGetTreatAsClass
 @ stdcall CoImpersonateClient() ole32.CoImpersonateClient
-@ stub CoIncrementMTAUsage
+@ stdcall CoIncrementMTAUsage(ptr) combase.CoIncrementMTAUsage
 @ stdcall CoInitializeEx(ptr long) ole32.CoInitializeEx
 @ stdcall CoInitializeSecurity(ptr long ptr ptr long long ptr long ptr) ole32.CoInitializeSecurity
 @ stdcall CoInvalidateRemoteMachineBindings(str) ole32.CoInvalidateRemoteMachineBindings
@@ -62,7 +62,7 @@
 @ stdcall CoTaskMemAlloc(long) ole32.CoTaskMemAlloc
 @ stdcall CoTaskMemFree(ptr) ole32.CoTaskMemFree
 @ stdcall CoTaskMemRealloc(ptr long) ole32.CoTaskMemRealloc
-@ stdcall CoTestCancel() ole.CoTestCancel
+@ stdcall CoTestCancel() ole32.CoTestCancel
 @ stdcall CoUninitialize() ole32.CoUninitialize
 @ stdcall CoUnmarshalHresult(ptr ptr) ole32.CoUnmarshalHresult
 @ stdcall CoUnmarshalInterface(ptr ptr ptr) ole32.CoUnmarshalInterface

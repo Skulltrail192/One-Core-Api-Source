@@ -331,6 +331,7 @@
 @ stdcall RealShellExecuteA(ptr str str str str str str str long ptr)
 @ stdcall RealShellExecuteExA(ptr str str str str str str str long ptr long)
 @ stdcall RealShellExecuteExW(ptr str str str str str str str long ptr long)
+@ stdcall RealShellExecuteW(ptr wstr wstr wstr wstr wstr wstr wstr long ptr)
 @ stdcall RegenerateUserEnvironment(ptr long)
 @ stdcall SHAddToRecentDocs(long ptr)
 @ stdcall SHAppBarMessage(long ptr)
@@ -426,6 +427,7 @@
 @ stdcall ShellExecuteEx(long) 
 @ stdcall ShellExecuteExA(long)
 @ stdcall ShellExecuteExW(long)
+@ stdcall ShellExecuteW(long wstr wstr wstr wstr long)
 @ stdcall ShellHookProc(long ptr ptr)
 @ stdcall StrChrA(str long) 
 @ stdcall StrChrIA(str long) 
@@ -528,8 +530,6 @@
 #Hooks
 @ stdcall CommandLineToArgvW(wstr ptr) CommandLineToArgvWInternal
 @ stdcall DllGetClassObject(ptr ptr ptr) DllGetClassObjectInternal
-@ stdcall RealShellExecuteW(ptr wstr wstr wstr wstr wstr wstr wstr long ptr) ;ShellExecuteWInternal
-@ stdcall ShellExecuteW(long wstr wstr wstr wstr long) ShellExecuteWInternal
 ;@ stdcall Shell_NotifyIcon(long ptr) Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 ;@ stdcall Shell_NotifyIconA(long ptr) Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 @ stdcall Shell_NotifyIconW(long ptr) Shell_NotifyIconWInternal ;Redirected to Longhorn shell

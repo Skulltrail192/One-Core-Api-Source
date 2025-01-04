@@ -1,4 +1,4 @@
-@ stub GetApplicationUserModelId
+@ stdcall GetApplicationUserModelId(long ptr wstr) kernelex.GetApplicationUserModelId
 @ stdcall GetCurrentPackageFullName(ptr ptr) kernel32.GetCurrentPackageFullName
 @ stdcall GetPackageFullName(long ptr ptr) kernel32.GetPackageFullName
-@ stub PackageFamilyNameFromFullName
+@ stdcall -stub PackageFamilyNameFromFullName(wstr ptr wstr)

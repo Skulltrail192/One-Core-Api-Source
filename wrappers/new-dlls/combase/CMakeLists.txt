@@ -26,12 +26,13 @@ add_rpcproxy_files(
 
 list(APPEND SOURCE
 	apartment.c
+	combase.c
     main.c
 	mta.c
 	roapi.c
 	string.c
     #marshal.c
-    #rpc.c
+    rpc.c
 	version.rc
 	# ${CMAKE_CURRENT_BINARY_DIR}/dcom_i.c
     ${CMAKE_CURRENT_BINARY_DIR}/combase_stubs.c

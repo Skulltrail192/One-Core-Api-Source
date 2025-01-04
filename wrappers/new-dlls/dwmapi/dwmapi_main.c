@@ -38,6 +38,16 @@ WINE_DEFAULT_DEBUG_CHANNEL(dwmapi);
 
 DPI_AWARENESS_CONTEXT WINAPI SetThreadDpiAwarenessContext( DPI_AWARENESS_CONTEXT context );
 
+typedef struct DWM_COLORIZATION_PARAMS {
+      DWORD clrColor;
+      DWORD clrAfterGlow;
+      DWORD nIntensity;
+      DWORD clrAfterGlowBalance;
+      DWORD clrBlurBalance;
+      DWORD clrGlassReflectionIntensity;
+      BOOLEAN fOpaque;
+}DWM_COLORIZATION_PARAMS;
+
 /**********************************************************************
  *           DwmIsCompositionEnabled         (DWMAPI.@)
  */
@@ -95,15 +105,27 @@ HRESULT WINAPI DwmExtendFrameIntoClientArea(HWND hwnd, const MARGINS* margins)
  */
 HRESULT WINAPI DwmGetColorizationColor(DWORD *colorization, BOOL opaque_blend)
 {
-    //FIXME("(%p, %d) stub\n", colorization, opaque_blend);
+    *colorization = 0x6874B8FC; // Default Windows Vista theme color. TODO: infer from XP theme color
+    return S_OK;
+}
 
-	BOOL isCompositionEnabled;
-	DwmIsCompositionEnabled(&isCompositionEnabled);
-	
-	if (isCompositionEnabled) 
-		return S_OK;
-	else 
-		return DWM_E_COMPOSITIONDISABLED;
+static int get_display_frequency(void)
+{
+    DEVMODEW mode;
+    BOOL ret;
+
+    memset(&mode, 0, sizeof(mode));
+    mode.dmSize = sizeof(mode);
+    ret = EnumDisplaySettingsExW(NULL, ENUM_CURRENT_SETTINGS, &mode, 0);
+    if (ret && mode.dmFields & DM_DISPLAYFREQUENCY && mode.dmDisplayFrequency)
+    {
+        return mode.dmDisplayFrequency;
+    }
+    else
+    {
+        WARN("Failed to query display frequency, returning a fallback value.\n");
+        return 60;
+    }
 }
 
 /**********************************************************************
@@ -340,25 +362,6 @@ HRESULT WINAPI DwmRegisterThumbnail(HWND dest, HWND src, PHTHUMBNAIL thumbnail_i
 		return DWM_E_COMPOSITIONDISABLED;
 }
 
-static int get_display_frequency(void)
-{
-    DEVMODEW mode;
-    BOOL ret;
-
-    memset(&mode, 0, sizeof(mode));
-    mode.dmSize = sizeof(mode);
-    ret = EnumDisplaySettingsExW(NULL, ENUM_CURRENT_SETTINGS, &mode, 0);
-    if (ret && mode.dmFields & DM_DISPLAYFREQUENCY && mode.dmDisplayFrequency)
-    {
-        return mode.dmDisplayFrequency;
-    }
-    else
-    {
-        WARN("Failed to query display frequency, returning a fallback value.\n");
-        return 60;
-    }
-}
-
 /**********************************************************************
  *           DwmGetCompositionTimingInfo         (DWMAPI.@)
  */
@@ -399,13 +402,12 @@ HRESULT WINAPI DwmGetCompositionTimingInfo(HWND hwnd, DWM_TIMING_INFO *info)
 HRESULT WINAPI DwmAttachMilContent(HWND hwnd)
 {
     //FIXME("(%p) stub\n", hwnd);
-	BOOL isCompositionEnabled;
-	DwmIsCompositionEnabled(&isCompositionEnabled);
+    return S_OK;
 	
-	if (isCompositionEnabled) 
-		return S_OK;
-	else 
-		return DWM_E_COMPOSITIONDISABLED;
+	// if (isCompositionEnabled) 
+		// return S_OK;
+	// else 
+		// return DWM_E_COMPOSITIONDISABLED;
 }
 
 /**********************************************************************
@@ -486,14 +488,9 @@ HRESULT WINAPI DwmSetIconicThumbnail(HWND hwnd, HBITMAP hbmp, DWORD flags)
 /**********************************************************************
  *           DwmpGetColorizationParameters         (DWMAPI.@)
  */
-HRESULT WINAPI DwmpGetColorizationParameters(void *params)
-{
-    //FIXME("(%p) stub\n", params);
-	BOOL isCompositionEnabled;
-	DwmIsCompositionEnabled(&isCompositionEnabled);
-	
-	if (isCompositionEnabled) 
-		return S_OK;
-	else 
-		return DWM_E_COMPOSITIONDISABLED;
-}
+HRESULT WINAPI DwmpGetColorizationParameters(DWM_COLORIZATION_PARAMS *parameters) {
+    memset(parameters, 0, sizeof(DWM_COLORIZATION_PARAMS));
+    parameters->clrColor = 0x6874B8FC;
+    parameters->fOpaque = TRUE;
+    return S_OK;
+} 

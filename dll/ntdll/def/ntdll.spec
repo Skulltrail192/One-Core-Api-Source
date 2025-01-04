@@ -124,9 +124,9 @@
 @ stdcall LdrUnloadDll(ptr)
 @ stdcall LdrUnlockLoaderLock(long long)
 @ stdcall LdrVerifyImageMatchesChecksum(ptr long long long)
-@ extern NlsAnsiCodePage
-@ extern NlsMbCodePageTag
-@ extern NlsMbOemCodePageTag
+@ stdcall NlsAnsiCodePage() NlsAnsiCodePage
+@ stdcall NlsMbCodePageTag() NlsMbCodePageTag
+@ stdcall NlsMbOemCodePageTag() NlsMbOemCodePageTag
 @ stdcall NtAcceptConnectPort(ptr long ptr long long ptr)
 @ stdcall NtAccessCheck(ptr long long ptr ptr ptr ptr ptr)
 @ stdcall NtAccessCheckAndAuditAlarm(ptr long ptr ptr ptr long ptr long ptr ptr ptr)

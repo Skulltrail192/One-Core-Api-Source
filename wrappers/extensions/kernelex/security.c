@@ -34,7 +34,7 @@ VOID BaseRestoreImpersonation(HANDLE ThreadInformation)
   }
 }
 
-NTSTATUS __stdcall BaseRevertToSelf(void **a1)
+NTSTATUS WINAPI BaseRevertToSelf(void **a1)
 {
   struct _TEB *Teb; // eax
   NTSTATUS Status; // ebx
@@ -186,6 +186,7 @@ CreateBoundaryDescriptorA(
 }
 
 HANDLE 
+WINAPI
 CreatePrivateNamespaceW(
   LPSECURITY_ATTRIBUTES lpPrivateNamespaceAttributes,
   LPVOID                lpBoundaryDescriptor,
@@ -195,7 +196,8 @@ CreatePrivateNamespaceW(
 	return NULL;
 }
 
-HANDLE 
+HANDLE
+WINAPI
 OpenPrivateNamespaceW(
   LPVOID  lpBoundaryDescriptor,
   LPCWSTR lpAliasPrefix
@@ -205,6 +207,7 @@ OpenPrivateNamespaceW(
 }
 
 BOOLEAN 
+WINAPI
 ClosePrivateNamespace(
   HANDLE Handle,
   ULONG  Flags

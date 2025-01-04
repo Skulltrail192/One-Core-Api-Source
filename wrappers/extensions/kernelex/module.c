@@ -22,6 +22,7 @@ Revision History:
 #include "wine/list.h"
 #include <ldrfuncs.h>
 #include <umfuncs.h>
+#include <stdint.h>
 
 WINE_DEFAULT_DEBUG_CHANNEL(kernel32file);
 
@@ -487,6 +488,7 @@ end:
 }
 
 VOID
+WINAPI
 LoadAppInitDlls()
 {
     szAppInit[0] = UNICODE_NULL;
@@ -751,32 +753,129 @@ BOOL WINAPI K32EnumProcessModulesEx( HANDLE process, HMODULE *module, DWORD coun
 BOOL
 WINAPI
 GetWsChangesEx(
-    HANDLE process,
-    PPSAPI_WS_WATCH_INFORMATION_EX info,
-    PDWORD size
+     _In_ HANDLE hProcess,
+    _Out_writes_bytes_to_(*cb, *cb) PPSAPI_WS_WATCH_INFORMATION_EX lpWatchInfoEx,
+    _Inout_ PDWORD cb
     )
 {
-    FIXME( "(%p, %p, %p)\n", process, info, size );
-    SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
-    return FALSE;	
-    // NTSTATUS Status;
+    // // FIXME( "(%p, %p, %p)\n", process, info, size );
+    // // SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
+    // // return FALSE;
 
-    // Status = NtQueryInformationProcess(
-                // hProcess,
-                // ProcessWorkingSetWatchEx,
-                // (PVOID *)lpWatchInfo,
-                // cb,
-                // NULL
-                // );
-    // if ( NT_SUCCESS(Status) ) {
-        // return TRUE;
+        // PPSAPI_WS_WATCH_INFORMATION pWatchInfo = NULL;
+        // PPSAPI_WS_WATCH_INFORMATION pWatchInfoTerminated;
+		// PPSAPI_WS_WATCH_INFORMATION pWatchInfoMax;
+        // PPSAPI_WS_WATCH_INFORMATION pNewWatchInfo;
+        // DWORD cbWatchInfo = 1024 * sizeof(pWatchInfo[0]);
+        // HANDLE ProcessHeap = ((TEB*)NtCurrentTeb())->ProcessEnvironmentBlock->ProcessHeap;
+        // LSTATUS lStatus = ERROR_SUCCESS;
+		// int i ;
+		// DWORD ccWatchInfo;
+		// DWORD cbWatchInfoExRequest;
+		// DWORD cbBuffer;
+
+        // for (;;)
+        // {
+            // if (pWatchInfo)
+            // {
+                // cbWatchInfo *= 2;
+            
+                // pNewWatchInfo = (PPSAPI_WS_WATCH_INFORMATION)HeapReAlloc(ProcessHeap, 0, pWatchInfo, cbWatchInfo);
+
+                // if (!pNewWatchInfo)
+                // {
+                    // lStatus = ERROR_OUTOFMEMORY;
+                    // break;
+                // }
+
+                // pWatchInfo = pNewWatchInfo;
+            // }
+            // else
+            // {
+                // pWatchInfo = (PPSAPI_WS_WATCH_INFORMATION)HeapAlloc(ProcessHeap, 0, cbWatchInfo);
+                // if (!pWatchInfo)
+                // {
+                    // lStatus = ERROR_OUTOFMEMORY;
+                    // break;
+                // }
+            // }
+
+            // if (!GetWsChanges(hProcess, pWatchInfo, cbWatchInfo))
+            // {
+                // lStatus = GetLastError();
+
+                // if (lStatus == ERROR_INSUFFICIENT_BUFFER)
+                // {
+                    // continue;
+
+                // }
+                // else
+                // {
+                    // break;
+                // }
+            // }
+
+            // //确定实际个数
+            // pWatchInfoMax = (PPSAPI_WS_WATCH_INFORMATION)((byte*)pWatchInfo + cbWatchInfo);
+            // pWatchInfoTerminated = pWatchInfo;
+            // for (; pWatchInfoTerminated < pWatchInfoMax && pWatchInfoTerminated->FaultingPc != NULL; ++pWatchInfoTerminated);
+
+            // ccWatchInfo = pWatchInfoTerminated - pWatchInfo;
+
+            // cbWatchInfoExRequest = (ccWatchInfo + 1) * sizeof(lpWatchInfoEx[0]);
+            // if (cbWatchInfoExRequest > UINT32_MAX)
+            // {
+                // lStatus = ERROR_FUNCTION_FAILED;
+                // break;
+            // }
+
+            // cbBuffer = *cb;
+            // *cb = (cbWatchInfoExRequest);
+
+            // if (cbBuffer < cbWatchInfoExRequest)
+            // {
+                // lStatus = ERROR_INSUFFICIENT_BUFFER;
+                // break;
+            // }
+
+
+            // //复制到新缓冲区
+            // for (i = 0; i != ccWatchInfo; ++i)
+            // {
+                // lpWatchInfoEx[i].BasicInfo = pWatchInfo[i];
+                // lpWatchInfoEx[i].FaultingThreadId = 0;
+                // lpWatchInfoEx[i].Flags = 0;
+            // }
+        
+            // //插入终止标记
+            // memset(&lpWatchInfoEx[ccWatchInfo], 0, sizeof(PSAPI_WS_WATCH_INFORMATION_EX));//lpWatchInfoEx[ccWatchInfo] = {0};
+
+            // lStatus = ERROR_SUCCESS;
+            // break;
         // }
-    // else {
-        // SetLastError( RtlNtStatusToDosError( Status ) );
-        // return FALSE;
+
+        // if (pWatchInfo)
+        // {
+            // HeapFree(ProcessHeap, 0, pWatchInfo);
         // }
+    
+        // if (lStatus == ERROR_SUCCESS)
+        // {
+            // return TRUE;
+        // }
+        // else
+        // {
+            // SetLastError(lStatus);
+            // return FALSE;
+        // }	
+	  NTSTATUS Status;
+
+	  Status = NtQueryInformationProcess(hProcess, ProcessWorkingSetWatchEx, lpWatchInfoEx, *cb, cb); //class is number 0x2A
+	  if ( Status >= 0 )                                                                              //Also new to XP/2003.
+		return TRUE;
+	  RtlSetLastWin32Error(RtlNtStatusToDosError(Status));
+	  return FALSE;		
 }
-
 
 int WINAPI LoadStringBaseExW( HINSTANCE hInstance, UINT uID, LPWSTR lpBuffer, 
   int nBufferMax, INT unknown ) {

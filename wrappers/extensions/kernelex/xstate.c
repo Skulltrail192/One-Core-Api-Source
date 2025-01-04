@@ -32,11 +32,11 @@ Revision History:
 
 DWORD64 WINAPI GetEnabledXStateFeatures()
 {
-	DWORD64 XState = 0;
-	
-	XState = 3; // bits 0 and 1 represent X87 and SSE respectively, which all AMD64 CPUs support.
-	       
-	return XState;
+    DWORD64 XState = 1; // Always enabled, no matter what
+    if (IsProcessorFeaturePresent(PF_XMMI_INSTRUCTIONS_AVAILABLE)) // Check for SSE
+        XState |= 2;
+        
+    return XState;
 }
 
 // BOOL WINAPI SetXStateFeaturesMask(PCONTEXT Context, DWORD64 FeatureMask)

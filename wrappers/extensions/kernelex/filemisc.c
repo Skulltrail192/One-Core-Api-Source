@@ -150,7 +150,7 @@ GetFileAttributesTransactedA(
     return GetFileAttributesExA(lpFileName, fInfoLevelId, lpFileInformation);
 }
 
-HANDLE FindFirstFileNameW(
+HANDLE WINAPI FindFirstFileNameW(
   LPCWSTR lpFileName,
   DWORD   dwFlags,
   LPDWORD StringLength,
@@ -160,7 +160,7 @@ HANDLE FindFirstFileNameW(
 	return (HANDLE)-1;
 }
 
-BOOL FindNextFileNameW(
+BOOL WINAPI FindNextFileNameW(
   HANDLE  hFindStream,
   LPDWORD StringLength,
   PWSTR   LinkName
@@ -200,4 +200,17 @@ GetFileBandwidthReservation(IN HANDLE hFile,
 {
     UNIMPLEMENTED;
     return FALSE;
+}
+
+HANDLE 
+WINAPI 
+FindFirstFileNameTransactedW(
+  LPCWSTR lpFileName,
+  DWORD   dwFlags,
+  LPDWORD StringLength,
+  PWSTR   LinkName,
+  HANDLE  hTransaction
+)
+{
+	return (HANDLE)-1;
 }

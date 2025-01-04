@@ -558,7 +558,7 @@ FlsFree(DWORD dwFlsIndex)
  */
 PVOID
 WINAPI
-FlsGetValue(DWORD dwFlsIndex)
+FlsGetValueInternal(DWORD dwFlsIndex)
 {
     PRTL_FLS_DATA pFlsData;
 
@@ -787,28 +787,30 @@ GetThreadInformation(
 	DWORD ThreadInformationSize
 )
 {
-  BOOL result = FALSE; // esi@2
-  NTSTATUS status; // eax@3
+   // BOOL result = FALSE; // esi@2
+   // NTSTATUS status; // eax@3
 
-  if ( ThreadInformationClass )
-  {
-    BaseSetLastNTError(STATUS_INVALID_PARAMETER);
-	return FALSE;
-  }
-  else
-  {
-    status = NtQueryInformationProcess(
-               ProcessHandle,
-               ProcessDebugPort|0x20,
-               ThreadInformation,
-               ThreadInformationSize,
-               0);
-    if ( NT_SUCCESS(status) )
-      result = TRUE;
-    else
-      BaseSetLastNTError(status);
-  }
-  return result;
+   // if ( ThreadInformationClass )
+   // {
+    // BaseSetLastNTError(STATUS_INVALID_PARAMETER);
+	// return FALSE;
+   // }
+   // else
+   // {
+    // status = NtQueryInformationProcess(
+               // ProcessHandle,
+               // ProcessDebugPort|0x20,
+               // ThreadInformation,
+               // ThreadInformationSize,
+               // 0);
+    // if ( NT_SUCCESS(status) )
+      // result = TRUE;
+    // else
+      // BaseSetLastNTError(status);
+   // }
+   // return result;
+   SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+   return FALSE;
 }
 
 /***********************************************************************
@@ -1295,6 +1297,7 @@ SetThreadPriorityInternal(
 }
 
 LONG
+WINAPI
 BasepCheckForReadOnlyResource(
     PVOID Va
     )
@@ -1581,4 +1584,18 @@ BOOL WINAPI SetThreadSelectedCpuSets(HANDLE thread, const ULONG *cpu_set_ids, UL
     FIXME( "thread %p, cpu_set_ids %p, count %lu stub.\n", thread, cpu_set_ids, count );
 
     return TRUE;
+}
+
+// For performance reasons... modern jemalloc will use these APIs if avaliable.
+LPVOID WINAPI TlsGetValue2(DWORD dwTlsIndex) {
+    DWORD LastError = RtlGetLastWin32Error();
+    LPVOID Result = TlsGetValue(dwTlsIndex);
+    RtlSetLastWin32Error(LastError);
+    return Result;
+}
+LPVOID WINAPI FlsGetValue2(DWORD dwFlsIndex) {
+    DWORD LastError = RtlGetLastWin32Error();
+    LPVOID Result = FlsGetValue(dwFlsIndex);
+    RtlSetLastWin32Error(LastError);
+    return Result;
 }

@@ -1,1 +1,1 @@
-@ stub ApiSetQueryApiSetPresence
+@ stdcall -stub ApiSetQueryApiSetPresence(ptr ptr)

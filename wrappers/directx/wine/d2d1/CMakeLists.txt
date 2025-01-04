@@ -11,6 +11,7 @@ list(APPEND SOURCE
     bitmap.c
 	bitmap_render_target.c
 	brush.c
+	command_list.c
 	dc_render_target.c
 	device.c
 	effect.c

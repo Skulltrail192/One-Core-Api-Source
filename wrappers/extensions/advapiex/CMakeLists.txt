@@ -14,6 +14,7 @@ spec2def(advapiex.dll advapiex.spec ADD_IMPORTLIB)
 set(baseaddress_advapiex     0x6c520000)
 
 list(APPEND SOURCE
+    cred.c
     efs.c
     eventlog.c
 	hooks.c

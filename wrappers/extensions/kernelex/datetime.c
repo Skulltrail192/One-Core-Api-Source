@@ -1445,22 +1445,7 @@ GetTimeZoneInformationForYear(
 	LPTIME_ZONE_INFORMATION ptzi
 )
 {
-    DYNAMIC_TIME_ZONE_INFORMATION local_dtzi, result;
-
-    if (!pdtzi)
-    {
-        if (GetDynamicTimeZoneInformation(&local_dtzi) == TIME_ZONE_ID_INVALID)
-            return FALSE;
-        pdtzi = &local_dtzi;
-    }
-
-    if (!TIME_GetSpecificTimeZoneInfo(pdtzi->TimeZoneKeyName, wYear,
-            !pdtzi->DynamicDaylightTimeDisabled, &result))
-        return FALSE;
-
-    memcpy(ptzi, &result, sizeof(*ptzi));
-
-    return TRUE;
+    return GetTimeZoneInformation(ptzi) != TIME_ZONE_ID_INVALID;
 }
 
 BOOL 

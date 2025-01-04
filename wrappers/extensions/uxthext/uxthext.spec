@@ -100,7 +100,7 @@
 #Hooks
 92 stdcall OpenThemeData(ptr wstr) OpenThemeDataInternal
 
-#From Vista
+#Vista Functions
 @ stdcall BeginBufferedAnimation(ptr ptr ptr long ptr ptr ptr ptr)
 @ stdcall BeginBufferedPaint(ptr ptr long ptr ptr)
 @ stdcall BufferedPaintUnInit()
@@ -124,7 +124,10 @@
 @ stdcall IsCompositionActive()
 @ stdcall SetWindowThemeAttribute(long long ptr long)
 
-#From Win7
+#Win7 Functions
 @ stdcall BeginPanningFeedback(ptr)
 @ stdcall EndPanningFeedback(ptr long)
 @ stdcall UpdatePanningFeedback(ptr long long long)
+
+#Win10 Functions
+@ stdcall OpenThemeDataForDpi(ptr wstr long)

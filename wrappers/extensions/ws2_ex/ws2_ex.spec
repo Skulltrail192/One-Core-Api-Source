@@ -76,7 +76,6 @@
 @ stdcall WSAHtons(long long ptr)
 @ stdcall WSAInstallServiceClassA(ptr)
 @ stdcall WSAInstallServiceClassW(ptr)
-@ stdcall WSAIoctl(long long ptr long ptr long ptr ptr ptr)
 @ stdcall WSAJoinLeaf(long ptr long ptr ptr ptr ptr long)
 @ stdcall WSALookupServiceBeginA(ptr long ptr)
 @ stdcall WSALookupServiceBeginW(ptr long ptr)
@@ -134,6 +133,7 @@
 @ stdcall setsockopt(long long long ptr long) setsockoptInternal
 @ stdcall WSASocketA(long long long ptr long long) WSASocketAInternal
 @ stdcall WSASocketW(long long long ptr long long) WSASocketWInternal
+@ stdcall WSAIoctl(long long ptr long ptr long ptr ptr ptr) ;WSAIoctlInternal
 
 #Vista functions
 @ stdcall FreeAddrInfoEx(ptr)

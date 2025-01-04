@@ -125,11 +125,11 @@ BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) 
             // lpXPData.uVersion = 3;
         // return Shell_NotifyIconANative(dwMessage, &lpXPData);
     // }
-    return Shell_NotifyIconANative(dwMessage, lpData);
+    return Shell_NotifyIconA(dwMessage, lpData);
 }
 
 BOOLEAN 
-CheckIfIsExplorerOrMsiExec(){
+CheckIfIsOSExec(){
     // Get the current Process ID
     DWORD currentProcessId = GetCurrentProcessId();
 
@@ -145,17 +145,8 @@ CheckIfIsExplorerOrMsiExec(){
         return FALSE;
     }
 
-    // // Obter o nome do executável do processo atual
-    // if (GetModuleFileName(NULL, processName, sizeof(processName)) == 0) {
-        // DbgPrint("Falha ao obter o nome do processo.\n");
-    // } else {
-        // DbgPrint("Processo atual: %s\n", processName);
-        // DbgPrint("ID do processo atual: %lu\n", processId);
-		// DbgPrint("O nome somente do executável e: %s\n", PathFindFileName(processName));
-    // }
-
     // Compare executable name with "explorer.exe"
-    if ((wcsicmp(PathFindFileNameW(exePath), L"EXPLORER.EXE") == 0) || wcsicmp(PathFindFileNameW(exePath), L"MSIEXEC.EXE") == 0) {
+    if ((wcsicmp(PathFindFileNameW(exePath), L"EXPLORER.EXE") == 0) || wcsicmp(PathFindFileNameW(exePath), L"MSIEXEC.EXE") == 0  || wcsicmp(PathFindFileNameW(exePath), L"Rundll32.EXE") == 0 || wcsicmp(PathFindFileNameW(exePath), L"SYSOCMGR.EXE") == 0) {
         return TRUE;
     } else {
 		return FALSE;
@@ -183,7 +174,7 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 	        //TRACE("index[%u]\n", i);
 			if(IsEqualIID(&CLSID_ShellLink, rclsid))
 			{
-				if(!CheckIfIsExplorerOrMsiExec()){
+				if(!CheckIfIsOSExec()){
 					pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
 					break;
 				}else{
@@ -206,20 +197,6 @@ HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *pp
 
 	//TRACE("-- pointer to class factory: %p\n",*ppv);
 	return hres;
-}
-
-/*************************************************************************
- * ShellExecuteW			[SHELL32.294]
- * from shellapi.h
- * WINSHELLAPI HINSTANCE APIENTRY ShellExecuteW(HWND hwnd, LPCWSTR lpVerb,
- * LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd);
- */
-HINSTANCE WINAPI ShellExecuteWInternal(HWND hwnd, LPCWSTR lpVerb, LPCWSTR lpFile,
-                               LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd)
-{
-	//PathCchCanonicalize(lpFile, MAX_PATH, lpFile);
-	return ShellExecuteWNative(hwnd, lpVerb, lpFile, lpParameters, lpDirectory, nShowCmd);
-
 }
 
 /**************************************************************************

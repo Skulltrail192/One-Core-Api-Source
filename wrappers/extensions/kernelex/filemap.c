@@ -55,7 +55,7 @@ typedef BOOLEAN (WINAPI *pRtlGenRandomPtr)(PVOID RandomBuffer, ULONG RandomBuffe
  * @implemented
  */
 HANDLE
-NTAPI
+WINAPI
 CreateFileMappingA(IN HANDLE hFile,
                    IN LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
                    IN DWORD flProtect,
@@ -100,7 +100,7 @@ LPWSTR CreateNewFallbackMappingName() {
  * @implemented
  */
 HANDLE
-NTAPI
+WINAPI
 CreateFileMappingW(HANDLE hFile,
                    LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
                    DWORD flProtect,
@@ -230,7 +230,7 @@ CreateFileMappingW(HANDLE hFile,
  * @implemented
  */
 HANDLE
-NTAPI
+WINAPI
 CreateFileMappingNumaW(
 	HANDLE hFile,
     LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
@@ -353,7 +353,7 @@ CreateFileMappingNumaW(
  * @implemented
  */
 HANDLE
-NTAPI
+WINAPI
 CreateFileMappingNumaA(
 	IN HANDLE hFile,
     IN LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
@@ -400,7 +400,7 @@ CreateFileMappingNumaA(
  * @implemented
  */
 LPVOID
-NTAPI
+WINAPI
 MapViewOfFileExNuma(
 	HANDLE hFileMappingObject,
 	DWORD dwDesiredAccess,
@@ -512,4 +512,35 @@ OpenFileMappingFromApp(
 )
 {
 	return OpenFileMappingW(DesiredAccess, InheritHandle, Name);
+}
+
+BOOL
+WINAPI
+UnmapViewOfFileEx(
+   _In_ PVOID BaseAddress,
+   _In_ ULONG UnmapFlags
+)
+{
+    // if (const auto pUnmapViewOfFileEx = try_get_UnmapViewOfFileEx())
+    // {
+        // return pUnmapViewOfFileEx(BaseAddress, UnmapFlags);
+    // }
+
+    return UnmapViewOfFile(BaseAddress);
+}
+
+BOOL
+WINAPI
+UnmapViewOfFile2(
+   _In_ HANDLE process,
+   _In_ PVOID BaseAddress,
+   _In_ ULONG UnmapFlags
+)
+{
+    // if (const auto pUnmapViewOfFileEx = try_get_UnmapViewOfFileEx())
+    // {
+        // return pUnmapViewOfFileEx(BaseAddress, UnmapFlags);
+    // }
+
+    return UnmapViewOfFile(BaseAddress);
 }

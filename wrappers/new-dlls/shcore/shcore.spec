@@ -1,15 +1,15 @@
 1 stub -noname SHCreateReadOnlySharedMemoryStream
 @ stdcall CommandLineToArgvW(wstr ptr)
 @ stub CreateRandomAccessStreamOnFile
-@ stub CreateRandomAccessStreamOverStream
+@ stdcall CreateRandomAccessStreamOverStream(ptr long ptr ptr)
 @ stub CreateStreamOverRandomAccessStream
 @ stdcall -private DllCanUnloadNow()
 @ stub DllGetActivationFactory
-@ stdcall DllGetClassObject(ptr ptr ptr)
+@ stub DllGetClassObject
 @ stdcall GetCurrentProcessExplicitAppUserModelID(ptr)
 @ stdcall GetDpiForMonitor(long long ptr ptr)
 @ stub GetDpiForShellUIComponent
-# @ stub GetFeatureEnabledState
+@ stdcall GetFeatureEnabledState(long long)
 # @ stub GetFeatureVariant
 @ stdcall GetProcessDpiAwareness(long ptr)
 @ stdcall GetProcessReference(ptr)
@@ -32,8 +32,8 @@
 # @ stub IsProcessInWDAGContainer
 # @ stub RecordFeatureError
 # @ stub RecordFeatureUsage
-@ stub RegisterScaleChangeEvent
-@ stub RegisterScaleChangeNotifications
+@ stdcall RegisterScaleChangeEvent(ptr ptr)
+@ stdcall RegisterScaleChangeNotifications(long ptr long ptr)
 @ stub RevokeScaleChangeNotifications
 @ stdcall SHAnsiToAnsi(str ptr long)
 @ stdcall SHAnsiToUnicode(str ptr long)
@@ -92,9 +92,9 @@
 @ stdcall SetCurrentProcessExplicitAppUserModelID(wstr)
 @ stdcall SetProcessDpiAwareness(long)
 @ stdcall SetProcessReference(ptr)
-# @ stub SubscribeFeatureStateChangeNotification
+@ stdcall SubscribeFeatureStateChangeNotification(ptr ptr ptr)
 @ stub UnregisterScaleChangeEvent
-# @ stub UnsubscribeFeatureStateChangeNotification
+@ stdcall UnsubscribeFeatureStateChangeNotification(ptr)
 
 100 stub -noname SHManagedCreateStreamOnFile
 101 stub -noname SHManagedCreateFile
@@ -140,22 +140,22 @@
 171 stub -noname PathIsNetworkPathA
 172 stub -noname PathBuildRootW
 173 stub -noname PathBuildRootA
-174 stdcall -noname DriveType(long)
-175 stdcall -noname IsNetDrive(long)
+174 stub -noname DriveType
+175 stub -noname IsNetDrive
 181 stub -noname SHMapHandle
-182 stdcall -noname SHAllocShared(ptr long long)
+182 stub -noname SHAllocShared
 183 stub -noname SHLockSharedEx
-184 stdcall -noname SHLockShared(long long)
+184 stub -noname SHLockShared
 185 stub -noname SHGetSizeShared
-186 stdcall -noname SHUnlockShared(ptr)
-187 stdcall -noname SHFreeShared(long long)
+186 stub -noname SHUnlockShared
+187 stub -noname SHFreeShared
 188 stub -noname SHCreateWorkerWindowW
 189 stub -noname SHCreateOplockProvider
 190 stub -noname SHWindowsPolicy
 191 stub -noname SHWindowsPolicyGetValue
 192 stub -noname IsAppCompatModeEnabled
 193 stub -noname SHGetObjectCompatFlags
-200 stdcall -noname GUIDFromStringW(wstr ptr)
+200 stub -noname GUIDFromStringW
 220 stub -noname GetPhysicalDpiForDevice
 222 stub -noname ScaleRelativePixelsForDevice
 223 stub -noname PhysicalRectFromScaledRect
@@ -189,10 +189,10 @@
 261 stub -noname RelativeRectFromPhysicalRectWithScales
 270 stub -noname SHCreateMemoryStreamOnSharedBuffer
 280 stub -noname _CreateDirectoryHelper
-281 stdcall -noname Win32CreateDirectory(wstr ptr)
+281 stub -noname Win32CreateDirectory
 282 stub -noname SuspendSHNotify
 283 stub -noname ResumeSHNotify
 284 stub -noname IsNotifySuspended
-290 stdcall -noname SHCreateDirectoryExW(long wstr ptr)
-291 stdcall -noname SHCreateDirectoryExA(long str ptr)
+290 stub -noname SHCreateDirectoryExW
+291 stub -noname SHCreateDirectoryExA
 292 stub -noname SHCreateDirectory

@@ -124,9 +124,9 @@
 @ stdcall LdrUnloadDll(ptr)
 @ stdcall LdrUnlockLoaderLock(long long)
 @ stdcall LdrVerifyImageMatchesChecksum(ptr long long long)
-@ extern NlsAnsiCodePage
-@ extern NlsMbCodePageTag
-@ extern NlsMbOemCodePageTag
+@ stdcall NlsAnsiCodePage() NlsAnsiCodePage
+@ stdcall NlsMbCodePageTag() NlsMbCodePageTag
+@ stdcall NlsMbOemCodePageTag() NlsMbOemCodePageTag
 @ stdcall NtAcceptConnectPort(ptr long ptr long long ptr)
 @ stdcall NtAccessCheck(ptr long long ptr ptr ptr ptr ptr)
 @ stdcall NtAccessCheckAndAuditAlarm(ptr long ptr ptr ptr long ptr long ptr ptr ptr)
@@ -1295,7 +1295,7 @@
 @ cdecl -arch=i386 _aulldvrm()
 @ cdecl -arch=i386 -ret64 _aullrem(double double)
 @ cdecl -arch=i386 _aullshr()
-@ extern -arch=i386 _chkstk
+@ cdecl -arch=i386 _chkstk()
 @ cdecl -arch=i386,x86_64,arm _fltused()
 @ cdecl -arch=i386 -ret64 _ftol()
 @ cdecl _i64toa(double ptr long)

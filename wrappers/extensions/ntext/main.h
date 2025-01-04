@@ -1050,6 +1050,9 @@ typedef struct _SYNCITEM
 	DWORD count;		//共享计数
 	DWORD attr;			//节点属性
 	RTL_SRWLOCK* lock;
+	
+    // 唤醒此任务的线程Id
+    volatile size_t uWakeupThreadId;	
 } SYNCITEM;
 
 typedef size_t SYNCSTATUS;
@@ -1151,6 +1154,11 @@ typedef struct __declspec(align(16)) _YY_CV_WAIT_BLOCK
 	volatile size_t    shareCount;
 	volatile size_t    flag;
 	volatile PRTL_SRWLOCK  SRWLock;
+	
+    // 以下成员YY-Thunks特有
+
+    // 唤醒此任务的线程Id
+    volatile size_t uWakeupThreadId;	
 } YY_CV_WAIT_BLOCK;
 
 #if defined(_M_AMD64)

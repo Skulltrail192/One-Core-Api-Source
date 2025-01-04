@@ -68,11 +68,7 @@
 @ stdcall LdrLoadAlternateResourceModule(ptr wstr)
 @ stdcall LdrLoadDll(wstr long ptr ptr)
 @ stdcall LdrLockLoaderLock(long ptr ptr)
-@ stdcall LdrOpenImageFileOptionsKey(ptr long ptr) ; 5.2 SP1 and higher
 @ stdcall LdrProcessRelocationBlock(ptr long ptr long)
-@ stdcall LdrQueryImageFileExecutionOptions(ptr str long ptr long ptr)
-@ stdcall LdrQueryImageFileExecutionOptionsEx(ptr ptr long ptr long ptr long)
-@ stdcall LdrQueryImageFileKeyOption(ptr ptr long ptr long ptr) ;implemented here
 @ stdcall LdrQueryProcessModuleInformation(ptr long ptr)
 @ stdcall LdrSetAppCompatDllRedirectionCallback(long long long) ntdll.LdrSetAppCompatDllRedirectionCallback
 @ stdcall LdrSetDllManifestProber(ptr)
@@ -82,9 +78,9 @@
 @ stdcall LdrUnloadDll(ptr)
 @ stdcall LdrUnlockLoaderLock(long long)
 @ stdcall LdrVerifyImageMatchesChecksum(ptr long long long)
-@ extern NlsAnsiCodePage
-@ extern NlsMbCodePageTag
-@ extern NlsMbOemCodePageTag
+@ stdcall NlsAnsiCodePage() ntdll.NlsAnsiCodePage
+@ stdcall NlsMbCodePageTag() ntdll.NlsMbCodePageTag
+@ stdcall NlsMbOemCodePageTag() ntdll.NlsMbOemCodePageTag
 @ stdcall NtAcceptConnectPort(ptr long ptr long long ptr)
 @ stdcall NtAccessCheck(ptr long long ptr ptr ptr ptr ptr)
 @ stdcall NtAccessCheckAndAuditAlarm(ptr long ptr ptr ptr long ptr long ptr ptr ptr)
@@ -106,7 +102,6 @@
 @ stdcall NtAreMappedFilesTheSame(ptr ptr)
 @ stdcall NtAssignProcessToJobObject(long long)
 @ stdcall NtCallbackReturn(ptr long long)
-@ stdcall NtCancelDeviceWakeupRequest(ptr)
 @ stdcall NtCancelIoFile(long ptr)
 @ stdcall NtCancelTimer(long ptr)
 @ stdcall NtClearEvent(long)
@@ -134,7 +129,6 @@
 @ stdcall NtCreatePagingFile(long long long long)
 @ stdcall NtCreatePort(ptr ptr long long ptr)
 @ stdcall NtCreateProcess(ptr long ptr ptr long ptr ptr ptr)
-@ stdcall NtCreateProcessEx(ptr long ptr ptr long ptr ptr ptr long)
 @ stdcall NtCreateProfile(ptr ptr ptr long long ptr long long long) ; CHECKME
 @ stdcall NtCreateSection(ptr long ptr ptr long long long)
 @ stdcall NtCreateSemaphore(ptr long ptr long long)
@@ -143,7 +137,7 @@
 @ stdcall NtCreateTimer(ptr long ptr long)
 @ stdcall NtCreateToken(ptr long ptr long ptr ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall NtCreateWaitablePort(ptr ptr long long long)
-@ stdcall -arch=win32 NtCurrentTeb()  _NtCurrentTeb
+@ stdcall -arch=win32 NtCurrentTeb()
 @ stdcall NtDebugActiveProcess(ptr ptr)
 @ stdcall NtDebugContinue(ptr ptr long)
 @ stdcall NtDelayExecution(long ptr)
@@ -285,10 +279,8 @@
 @ stdcall NtReplyWaitReceivePort(ptr ptr ptr ptr)
 @ stdcall NtReplyWaitReceivePortEx(ptr ptr ptr ptr ptr)
 @ stdcall NtReplyWaitReplyPort(ptr ptr)
-@ stdcall NtRequestDeviceWakeup(ptr)
 @ stdcall NtRequestPort(ptr ptr)
 @ stdcall NtRequestWaitReplyPort(ptr ptr ptr)
-@ stdcall NtRequestWakeupLatency(long)
 @ stdcall NtResetEvent(long ptr)
 @ stdcall NtResetWriteWatch(long ptr long)
 @ stdcall NtRestoreKey(long long long)
@@ -585,7 +577,6 @@
 @ stdcall RtlGetElementGenericTableAvl(ptr long)
 @ stdcall RtlGetFrame()
 @ stdcall RtlGetFullPathName_U(wstr long ptr ptr)
-@ stdcall RtlGetFullPathName_UstrEx(ptr ptr ptr ptr ptr ptr ptr ptr)
 @ stdcall RtlGetGroupSecurityDescriptor(ptr ptr ptr)
 @ stdcall RtlGetLastNtStatus()
 @ stdcall RtlGetLastWin32Error()
@@ -602,10 +593,8 @@
 @ stdcall RtlGetSaclSecurityDescriptor(ptr ptr ptr ptr)
 @ stdcall RtlGetSecurityDescriptorRMControl(ptr ptr)
 @ stdcall RtlGetSetBootStatusData(ptr long long ptr long long)
-@ stdcall RtlGetThreadErrorMode()
 @ stdcall RtlGetUnloadEventTrace() ntdll.RtlGetUnloadEventTrace
 @ stdcall RtlGetUserInfoHeap(ptr long ptr ptr ptr)
-@ stdcall RtlGetVersion(ptr)
 @ stdcall RtlHashUnicodeString(ptr long long ptr)
 @ stdcall RtlIdentifierAuthoritySid(ptr)
 @ stdcall RtlImageDirectoryEntryToData(long long long ptr)
@@ -614,7 +603,6 @@
 @ stdcall RtlImageRvaToVa(ptr long long ptr)
 @ stdcall RtlImpersonateSelf(long)
 @ stdcall RtlInitAnsiString(ptr str)
-@ stdcall RtlInitAnsiStringEx(ptr str)
 @ stdcall RtlInitCodePageTable(ptr ptr)
 @ stdcall RtlInitNlsTables(ptr ptr ptr ptr)
 @ stdcall RtlInitString(ptr str)
@@ -890,7 +878,6 @@
 @ stdcall ZwAreMappedFilesTheSame(ptr ptr) NtAreMappedFilesTheSame
 @ stdcall ZwAssignProcessToJobObject(long long) NtAssignProcessToJobObject
 @ stdcall ZwCallbackReturn(ptr long long)
-@ stdcall ZwCancelDeviceWakeupRequest(ptr)
 @ stdcall ZwCancelIoFile(long ptr) NtCancelIoFile
 @ stdcall ZwCancelTimer(long ptr) NtCancelTimer
 @ stdcall ZwClearEvent(long) NtClearEvent
@@ -1071,10 +1058,8 @@
 @ stdcall ZwReplyWaitReceivePort(ptr ptr ptr ptr) NtReplyWaitReceivePort
 @ stdcall ZwReplyWaitReceivePortEx(ptr ptr ptr ptr ptr)
 @ stdcall ZwReplyWaitReplyPort(ptr ptr)
-@ stdcall ZwRequestDeviceWakeup(ptr)
 @ stdcall ZwRequestPort(ptr ptr)
 @ stdcall ZwRequestWaitReplyPort(ptr ptr ptr)
-@ stdcall ZwRequestWakeupLatency(long)
 @ stdcall ZwResetEvent(long ptr)
 @ stdcall ZwResetWriteWatch(long ptr long)
 @ stdcall ZwRestoreKey(long long long)
@@ -1186,38 +1171,38 @@
 @ cdecl _ltoa(long ptr long)
 @ cdecl _ltow(long ptr long)
 @ cdecl _memccpy(ptr ptr long long)
-@ cdecl _memicmp(str str long)
+@ cdecl _memicmp(str str long) ntdll._memicmp
 @ cdecl -arch=x86_64 _setjmp(ptr ptr)
 @ cdecl -arch=x86_64 _setjmpex(ptr ptr)
 @ varargs _snprintf(ptr long str)
 @ varargs _snwprintf(ptr long wstr)
 @ cdecl _splitpath(str ptr ptr ptr ptr)
-@ cdecl _strcmpi(str str) _stricmp
+@ cdecl _strcmpi(str str) ntdll._strcmpi
 @ cdecl _stricmp(str str)
-@ cdecl _strlwr(str)
+@ cdecl _strlwr(str) ntdll._strlwr
 @ cdecl _strnicmp(str str long)
 @ cdecl _strupr(str)
-@ cdecl _tolower(long)
-@ cdecl _toupper(long)
+@ cdecl _tolower(long) ntdll._tolower
+@ cdecl _toupper(long) ntdll._toupper
 @ cdecl _ui64toa(double ptr long)
 @ cdecl _ui64tow(double ptr long)
 @ cdecl _ultoa(long ptr long)
 @ cdecl _ultow(long ptr long)
-@ cdecl _vscwprintf(wstr ptr)
+@ cdecl _vscwprintf(wstr ptr) ntdll._vscwprintf
 @ cdecl _vsnprintf(ptr long str ptr)
 @ cdecl _vsnwprintf(ptr long wstr ptr)
-@ cdecl _wcsicmp(wstr wstr)
-@ cdecl _wcslwr(wstr)
-@ cdecl _wcsnicmp(wstr wstr long)
-@ cdecl _wcstoui64(ptr ptr long)
+@ cdecl _wcsicmp(wstr wstr) ntdll._wcsicmp
+@ cdecl _wcslwr(wstr) ntdll._wcslwr
+@ cdecl _wcsnicmp(wstr wstr long) ntdll._wcsnicmp
+@ cdecl _wcstoui64(ptr ptr long) ntdll._wcstoui64
 @ cdecl _wcsupr(wstr)
 @ cdecl _wtoi(wstr)
 @ cdecl _wtoi64(wstr)
-@ cdecl _wtol(wstr)
+@ cdecl _wtol(wstr) ntdll._wtol
 @ cdecl abs(long)
 @ cdecl -arch=i386,x86_64 atan(double)
 @ cdecl atoi(str)
-@ cdecl atol(str)
+@ cdecl atol(str) ntdll.atol
 @ cdecl bsearch(ptr ptr long long ptr)
 @ cdecl -arch=i386,x86_64 ceil(double)
 @ cdecl -arch=i386,x86_64 cos(double)
@@ -1226,7 +1211,7 @@
 @ cdecl isalnum(long)
 @ cdecl isalpha(long)
 @ cdecl iscntrl(long)
-@ cdecl isdigit(long)
+@ cdecl isdigit(long) ntdll.isdigit
 @ cdecl isgraph(long)
 @ cdecl islower(long)
 @ cdecl isprint(long)
@@ -1255,53 +1240,55 @@
 @ varargs sprintf(ptr str)
 @ cdecl -arch=i386,x86_64 sqrt(double)
 @ varargs sscanf(str str)
-@ cdecl strcat(str str)
-@ cdecl strchr(str long)
-@ cdecl strcmp(str str)
-@ cdecl strcpy(ptr str)
+@ cdecl strcat(str str) ntdll.strcat
+@ cdecl strchr(str long) ntdll.strchr
+@ cdecl strcmp(str str) ntdll.strcmp
+@ cdecl strcpy(ptr str) ntdll.strcpy
 @ cdecl strcspn(str str)
-@ cdecl strlen(str)
+@ cdecl strlen(str) ntdll.strlen
 @ cdecl strncat(str str long)
-@ cdecl strncmp(str str long)
-@ cdecl strncpy(ptr str long)
-@ cdecl strpbrk(str str)
-@ cdecl strrchr(str long)
+@ cdecl strncmp(str str long) ntdll.strncmp
+@ cdecl strncpy(ptr str long) ntdll.strncpy
+@ cdecl strpbrk(str str) ntdll.strpbrk
+@ cdecl strrchr(str long) ntdll.strrchr
 @ cdecl strspn(str str)
-@ cdecl strstr(str str)
+@ cdecl strstr(str str) ntdll.strstr
 @ cdecl strtol(str ptr long)
 @ cdecl strtoul(str ptr long)
 @ varargs swprintf(ptr wstr)
 @ cdecl -arch=i386,x86_64 tan(double)
 @ cdecl tolower(long)
 @ cdecl toupper(long)
-@ cdecl towlower(long)
+@ cdecl towlower(long) ntdll.towlower
 @ cdecl towupper(long)
 @ stdcall vDbgPrintEx(long long str ptr)
 @ stdcall vDbgPrintExWithPrefix(str long long str ptr)
 @ cdecl vsprintf(ptr str ptr)
-@ cdecl wcscat(wstr wstr)
-@ cdecl wcschr(wstr long)
-@ cdecl wcscmp(wstr wstr)
-@ cdecl wcscpy(ptr wstr)
-@ cdecl wcscspn(wstr wstr)
-@ cdecl wcslen(wstr)
+@ cdecl wcscat(wstr wstr) ntdll.wcscat
+@ cdecl wcschr(wstr long) ntdll.wcschr
+@ cdecl wcscmp(wstr wstr) ntdll.wcscmp
+@ cdecl wcscpy(ptr wstr) ntdll.wcscpy
+@ cdecl wcscspn(wstr wstr) ntdll.wcscspn
+@ cdecl wcslen(wstr) ntdll.wcslen
 @ cdecl wcsncat(wstr wstr long)
-@ cdecl wcsncmp(wstr wstr long)
-@ cdecl wcsncpy(ptr wstr long)
-@ cdecl wcspbrk(wstr wstr)
-@ cdecl wcsrchr(wstr long)
+@ cdecl wcsncmp(wstr wstr long) ntdll.wcsncmp
+@ cdecl wcsncpy(ptr wstr long) ntdll.wcsncpy
+@ cdecl wcspbrk(wstr wstr) ntdll.wcspbrk
+@ cdecl wcsrchr(wstr long) ntdll.wcsrchr
 @ cdecl wcsspn(wstr wstr)
-@ cdecl wcsstr(wstr wstr)
+@ cdecl wcsstr(wstr wstr) ntdll.wcsstr
 @ cdecl wcstol(wstr ptr long)
 @ cdecl wcstombs(ptr ptr long)
 @ cdecl wcstoul(wstr ptr long)
 
 #Hooks
+@ stdcall NtCreateProcessEx(ptr long ptr ptr long ptr ptr ptr long) ;NtCreateProcessExInternal
 @ stdcall NtQueryInformationThread(long long ptr long ptr) NtQueryInformationThreadInternal
 @ stdcall NtQueryInformationToken(long long ptr long ptr) NtQueryInformationTokenInternal #Wrapper needed for Integrity Level Introduced on Vista
 @ stdcall NtQuerySection(long long long long long) NtQuerySectionInternal
 @ stdcall NtSetInformationProcess(long long long long) NtSetInformationProcessInternal
 @ stdcall NtSetInformationToken(long long ptr long) NtSetInformationTokenInternal
+@ stdcall RtlGetVersion(ptr) RtlGetVersionInternal
 
 #Missing on XP and Server 2003 RTM
 @ stdcall -arch=i386 KiFastSystemCall() ntdll.KiFastSystemCall
@@ -1346,7 +1333,7 @@
 @ stdcall ZwApphelpCacheControl(long ptr) ntdll.ZwApphelpCacheControl
 @ stdcall ZwDeleteDriverEntry(long) ntdll.ZwDeleteDriverEntry
 @ stdcall ZwEnumerateDriverEntries(ptr ptr) ntdll.ZwEnumerateDriverEntries
-@ stdcall ZwGetCurrentProcessorNumber() ntdll.ZwGetCurrentProcessorNumber
+@ stdcall ZwGetCurrentProcessorNumber() NtGetCurrentProcessorNumber
 @ stdcall ZwLoadKeyEx(ptr ptr long ptr) ntdll.ZwLoadKeyEx
 @ stdcall ZwModifyDriverEntry(ptr) ntdll.ZwModifyDriverEntry
 @ stdcall ZwQueryDriverEntryOrder(ptr ptr) ntdll.ZwQueryDriverEntryOrder
@@ -1356,7 +1343,14 @@
 @ stdcall ZwWaitForMultipleObjects32(long ptr long long ptr) ntdll.ZwWaitForMultipleObjects32
 
 #Missing XP
+@ stdcall LdrOpenImageFileOptionsKey(ptr long ptr) ; 5.2 SP1 and higher
+@ stdcall LdrQueryImageFileExecutionOptions(ptr str long ptr long ptr) ntdll.LdrQueryImageFileExecutionOptions
+@ stdcall LdrQueryImageFileExecutionOptionsEx(ptr ptr long ptr long ptr long)
+@ stdcall LdrQueryImageFileKeyOption(ptr ptr long ptr long ptr) ;implemented here
 @ stdcall RtlDosPathNameToRelativeNtPathName_U(ptr ptr ptr ptr)
+@ stdcall RtlGetFullPathName_UstrEx(ptr ptr ptr ptr ptr ptr ptr ptr)
+@ stdcall RtlGetThreadErrorMode()
+@ stdcall RtlInitAnsiStringEx(ptr str)
 @ stdcall RtlReleaseRelativeName(ptr)
 
 #Missing function on Server 2003 RTM
@@ -1783,6 +1777,14 @@
 @ stdcall WerCheckEventEscalation() ntdll.WerCheckEventEscalation
 @ stdcall WerReportSQMEvent() ntdll.WerReportSQMEvent
 @ stdcall WerReportWatsonEvent() ntdll.WerReportWatsonEvent
+
+#Missing on Vista+
+@ stdcall NtCancelDeviceWakeupRequest(ptr) ntdll.NtCancelDeviceWakeupRequest
+@ stdcall NtRequestDeviceWakeup(ptr) ntdll.NtRequestDeviceWakeup
+@ stdcall NtRequestWakeupLatency(long) ntdll.NtRequestWakeupLatency
+@ stdcall ZwCancelDeviceWakeupRequest(ptr) ntdll.ZwCancelDeviceWakeupRequest
+@ stdcall ZwRequestDeviceWakeup(ptr) ntdll.ZwRequestDeviceWakeup
+@ stdcall ZwRequestWakeupLatency(long) ntdll.ZwRequestWakeupLatency
 
 #Vista Beta support Functions
 @ stdcall RtlpCreateProcessOSCultures(ptr) ntdll.RtlpCreateProcessOSCultures

@@ -623,3 +623,11 @@
 619 stdcall D3DKMTOpenAdapterFromGdiDisplayName(ptr)
 620 stdcall D3DKMTSetVidPnSourceOwner(ptr)
 621 stdcall D3DKMTCheckVidPnExclusiveOwnership(ptr)
+
+@ stdcall -stub D3DKMTCheckMonitorPowerState(ptr)
+@ stdcall -stub D3DKMTCheckSharedResourceAccess(ptr)
+@ stdcall -stub D3DKMTOpenAdapterFromLuid(ptr)
+@ stdcall -stub D3DKMTQueryStatistics(ptr)
+@ stdcall -stub D3DKMTQueryVideoMemoryInfo(ptr)
+@ stdcall -stub D3DKMTSetQueuedLimit(ptr)
+@ stdcall -stub D3DKMTSetProcessSchedulingPriorityClass(long long)

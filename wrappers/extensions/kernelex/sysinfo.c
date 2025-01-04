@@ -100,3 +100,31 @@ SetSystemFileCacheSize(
 	}
 	return result;	
 }
+
+// Required for Firefox 133.
+BOOL WINAPI GetSystemCpuSetInformation(
+    PSYSTEM_CPU_SET_INFORMATION  Information,
+    ULONG                        BufferLength,
+    PULONG                       ReturnedLength,
+    HANDLE                       Process,
+    ULONG                        Flags
+) {
+    
+    if (ReturnedLength)
+        *ReturnedLength = sizeof(SYSTEM_CPU_SET_INFORMATION);
+    
+    if (BufferLength < sizeof(SYSTEM_CPU_SET_INFORMATION)) {
+        SetLastError(ERROR_INSUFFICIENT_BUFFER);
+        return FALSE;
+    }
+    
+    if (!Information) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    
+    // CPU Sets are not a thing prior to Windows 10. Pretend that there is only a single "CPU Set".
+    memset(Information, 0, sizeof(SYSTEM_CPU_SET_INFORMATION)); // already fills out all the fields we need anyway
+    Information->Size = sizeof(SYSTEM_CPU_SET_INFORMATION);
+    return TRUE;
+}

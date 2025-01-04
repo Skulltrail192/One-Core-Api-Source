@@ -43,8 +43,6 @@
 #include <wine/debug.h>
 #include <wine/unicode.h>
 
-WINE_DEFAULT_DEBUG_CHANNEL(mmdevapi);
-
 extern HRESULT MMDevEnum_Create(REFIID riid, void **ppv) DECLSPEC_HIDDEN;
 extern void MMDevEnum_Free(void) DECLSPEC_HIDDEN;
 
