@@ -18,9 +18,9 @@
 @ stdcall CsrFreeCaptureBuffer(ptr)
 @ stdcall CsrGetProcessId()
 @ stdcall CsrIdentifyAlertableThread()
-@ stdcall CsrNewThread() ntdll.CsrNewThread
-@ stdcall CsrProbeForRead(ptr long long) ntdll.CsrProbeForRead
-@ stdcall CsrProbeForWrite(ptr long long) ntdll.CsrProbeForWrite
+@ stdcall CsrNewThread()
+@ stdcall CsrProbeForRead(ptr long long)
+@ stdcall CsrProbeForWrite(ptr long long)
 @ stdcall CsrSetPriorityClass(ptr ptr)
 @ stdcall DbgBreakPoint()
 @ varargs DbgPrint(str)

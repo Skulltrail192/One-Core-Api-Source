@@ -17,6 +17,8 @@ list(APPEND SOURCE
     main.c
 	sqm.c
 	misc.c
+	csr/api.c
+	csr/capture.c	
 	etw/etw.c	
     etw/trace.c	####### this is a only test ########
 	ntapi/alpc.c	
