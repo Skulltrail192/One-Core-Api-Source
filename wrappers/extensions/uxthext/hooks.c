@@ -48,9 +48,9 @@ OpenThemeDataInternal(
   LPCWSTR pszClassList
 )
 {
-	if(wcscmp(pszClassList, L"TASKDIALOG") == 0){
-		return OpenThemeDataNative(hwnd, L"HEADER");
-	}
+    if(pszClassList != NULL && wcscmp(pszClassList, L"TASKDIALOG") == 0){
+        return OpenThemeDataNative(hwnd, L"HEADER");
+    }
 	
 	return OpenThemeDataNative(hwnd, pszClassList);
 }

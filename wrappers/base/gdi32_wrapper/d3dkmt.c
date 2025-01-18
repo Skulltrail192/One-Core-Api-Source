@@ -622,34 +622,66 @@ NTSTATUS WINAPI D3DKMTCheckVidPnExclusiveOwnership( const D3DKMT_CHECKVIDPNEXCLU
  */
 NTSTATUS WINAPI D3DKMTOpenAdapterFromLuid( D3DKMT_OPENADAPTERFROMLUID *desc )
 {
-    WCHAR gdiDisplayName[D3DKMT_MAX_ADAPTER_NAME_LENGTH];
-    D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME usGdiDisplayName;
-    LUID luid = desc->AdapterLuid;
-    NTSTATUS status;
+	DEVMODEW devMode;
+	WCHAR gdiDisplayName[D3DKMT_MAX_ADAPTER_NAME_LENGTH] = {0};
+	LUID luid = desc->AdapterLuid;
+	HRESULT hr;
 	
+	if (!desc) {
+	return STATUS_INVALID_PARAMETER;
+	}
 
-    // Convert the LUID to a GDI display name
-    status = RtlStringCchPrintfW(gdiDisplayName, D3DKMT_MAX_ADAPTER_NAME_LENGTH,
-                                 L"\\\\.\\DISPLAYV%d_%08X_%08X",
-                                 luid.HighPart, luid.LowPart);
-    if (!NT_SUCCESS(status))
-    {
-        return status;
-    }
-	
-	wcscpy(usGdiDisplayName.DeviceName,gdiDisplayName);
+	hr = StringCchPrintfW(
+				gdiDisplayName,
+				D3DKMT_MAX_ADAPTER_NAME_LENGTH,
+				L"\\\\.\\DISPLAY%08X%08X",
+				luid.HighPart,
+				luid.LowPart
+				);
 
-    //RtlInitUnicodeString(&usGdiDisplayName, gdiDisplayName);
-
-    // Open the adapter from the GDI display name
-    status = D3DKMTOpenAdapterFromGdiDisplayName(&usGdiDisplayName);
-	
-	if(NT_SUCCESS(status)){
-		desc->hAdapter = usGdiDisplayName.hAdapter;
-		return STATUS_SUCCESS;
+	if (FAILED(hr)) {
+		return STATUS_INVALID_PARAMETER;
 	}
 	
-	return STATUS_NOT_IMPLEMENTED;
+	ZeroMemory(&devMode, sizeof(DEVMODEW));
+	devMode.dmSize = sizeof(DEVMODEW);
+
+	if (!EnumDisplaySettingsW(gdiDisplayName, ENUM_CURRENT_SETTINGS, &devMode)) {
+		return STATUS_NOT_FOUND;
+	}
+
+
+	desc->hAdapter = (D3DKMT_HANDLE)1;
+
+	return STATUS_SUCCESS;	
+    // WCHAR gdiDisplayName[D3DKMT_MAX_ADAPTER_NAME_LENGTH];
+    // D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME usGdiDisplayName;
+    // LUID luid = desc->AdapterLuid;
+    // NTSTATUS status;
+	
+
+    // // Convert the LUID to a GDI display name
+    // status = RtlStringCchPrintfW(gdiDisplayName, D3DKMT_MAX_ADAPTER_NAME_LENGTH,
+                                 // L"\\\\.\\DISPLAYV%d_%08X_%08X",
+                                 // luid.HighPart, luid.LowPart);
+    // if (!NT_SUCCESS(status))
+    // {
+        // return status;
+    // }
+	
+	// wcscpy(usGdiDisplayName.DeviceName,gdiDisplayName);
+
+    // //RtlInitUnicodeString(&usGdiDisplayName, gdiDisplayName);
+
+    // // Open the adapter from the GDI display name
+    // status = D3DKMTOpenAdapterFromGdiDisplayName(&usGdiDisplayName);
+	
+	// if(NT_SUCCESS(status)){
+		// desc->hAdapter = usGdiDisplayName.hAdapter;
+		// return STATUS_SUCCESS;
+	// }
+	
+	// return STATUS_NOT_IMPLEMENTED;
 }
 
 NTSTATUS

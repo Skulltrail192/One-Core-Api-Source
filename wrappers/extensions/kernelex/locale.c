@@ -1636,43 +1636,48 @@ static LPCWSTR __fastcall DownlevelNeutralToSpecificLocaleName(LPCWSTR szLocaleN
 INT 
 WINAPI 
 LCIDToLocaleName( 
-	LCID Locale, 
-	LPWSTR lpName, 
-	INT cchName, 
-	DWORD dwFlags 
+    LCID Locale, 
+    LPWSTR lpName, 
+    INT cchName, 
+    DWORD dwFlags 
 )
 {
-	int i;
-	int count = 0;
-	LPCWSTR szLocaleName;
-	
-	szLocaleName = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
-	
-	if (Locale == 0 || (lpName == NULL && cchName > 0) || cchName < 0)
-	{
-		SetLastError(ERROR_INVALID_PARAMETER);
-		return 0;
-	}	
-	for(i=0;i<LOCALE_TABLE_SIZE;i++){
-		if(Locale == LocaleTable[i].lcid){
-			count = (wcslen(LocaleTable[i].localeName)+1);
-			if(lpName){
-				memcpy(lpName, LocaleTable[i].localeName, sizeof(WCHAR)*(count));
-				lpName[count-1] = 0;
-			}			
-			return count;
-		}
-	}
-	if(lpName){
-		if ((LOCALE_ALLOW_NEUTRAL_NAMES & dwFlags) == 0)
-		{
-			szLocaleName = DownlevelNeutralToSpecificLocaleName(szLocaleName);
-			count = wcslen(szLocaleName) + 1;
-			memcpy(lpName, szLocaleName, count * sizeof(szLocaleName[0]));
-			HeapFree(GetProcessHeap(), 0, szLocaleName);
-		}		
-	}
-	return count;
+    int i;
+    int count = 0;
+    LPCWSTR szLocaleName;
+    
+    szLocaleName = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
+    
+    if (Locale == 0 || (lpName == NULL && cchName > 0) || cchName < 0)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return 0;
+    }
+        if (Locale == LOCALE_USER_DEFAULT)
+            Locale = GetUserDefaultLCID();
+        if (Locale == LOCALE_SYSTEM_DEFAULT)
+            Locale = GetSystemDefaultLCID();
+            
+    for(i=0;i<LOCALE_TABLE_SIZE;i++){
+        if(Locale == LocaleTable[i].lcid){
+            count = (wcslen(LocaleTable[i].localeName)+1);
+            if(lpName){
+                memcpy(lpName, LocaleTable[i].localeName, sizeof(WCHAR)*(count));
+                lpName[count-1] = 0;
+            }            
+            return count;
+        }
+    }
+    // if(lpName){
+        // if ((LOCALE_ALLOW_NEUTRAL_NAMES & dwFlags) == 0)
+        // {
+            // szLocaleName = DownlevelNeutralToSpecificLocaleName(szLocaleName);
+            // count = wcslen(szLocaleName) + 1;
+            // memcpy(lpName, szLocaleName, count * sizeof(szLocaleName[0]));
+            // HeapFree(GetProcessHeap(), 0, szLocaleName);
+        // }        
+    // }
+    return count;
 }
 
 //TODO MUI_LANGUAGE_ID

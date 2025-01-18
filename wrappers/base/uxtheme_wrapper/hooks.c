@@ -39,9 +39,9 @@ HTHEME WINAPI OpenThemeDataInternal(
   LPCWSTR pszClassList
 )
 {
-	if(wcscmp(pszClassList, L"TASKDIALOG") == 0){
-		return OpenThemeData(hwnd, L"HEADER");
-	}
+    if(pszClassList != NULL && wcscmp(pszClassList, L"TASKDIALOG") == 0){
+        return OpenThemeData(hwnd, L"HEADER");
+    }
 	
 	return OpenThemeData(hwnd, pszClassList);
 }

@@ -91,10 +91,10 @@ BOOL WINAPI DwmSetRedirSurfacePresentFlags(HANDLE a1, BOOL a2)
 	// return TRUE;
 // }
 
-// int WINAPI DCEQueryMode()
-// {
-	// return 0;
-// }
+int WINAPI DCEQueryMode()
+{
+	return 0;
+}
 
 // int WINAPI StartDCE()
 // {

@@ -1144,9 +1144,9 @@ BOOL WINAPI IsThreadAFiber(void)
 }
 
 /***********************************************************************
- *              SetThreadpoolTimer (KERNEL32.@)
+ *              SetThreadpoolTimerEx (KERNEL32.@)
  */
-VOID WINAPI SetThreadpoolTimer( TP_TIMER *timer, FILETIME *due_time,
+BOOL WINAPI SetThreadpoolTimerEx( TP_TIMER *timer, FILETIME *due_time,
                                 DWORD period, DWORD window_length )
 {
     LARGE_INTEGER timeout;
@@ -1159,14 +1159,22 @@ VOID WINAPI SetThreadpoolTimer( TP_TIMER *timer, FILETIME *due_time,
         timeout.u.HighPart = due_time->dwHighDateTime;
     }
 
-    TpSetTimer( timer, due_time ? &timeout : NULL, period, window_length );
+    return TpSetTimerEx( timer, due_time ? &timeout : NULL, period, window_length );
 }
 
+/***********************************************************************
+ *              SetThreadpoolTimer (KERNEL32.@)
+ */
+VOID WINAPI SetThreadpoolTimer( TP_TIMER *timer, FILETIME *due_time,
+                                DWORD period, DWORD window_length )
+{
+    SetThreadpoolTimerEx(timer, due_time, period, window_length);
+}
 
 /***********************************************************************
- *              SetThreadpoolWait (KERNEL32.@)
+ *              SetThreadpoolWaitEx (KERNEL32.@)
  */
-VOID WINAPI SetThreadpoolWait( TP_WAIT *wait, HANDLE handle, FILETIME *due_time )
+BOOL WINAPI SetThreadpoolWaitEx( TP_WAIT *wait, HANDLE handle, FILETIME *due_time, PVOID reserved )
 {
     LARGE_INTEGER timeout;
 
@@ -1182,7 +1190,16 @@ VOID WINAPI SetThreadpoolWait( TP_WAIT *wait, HANDLE handle, FILETIME *due_time 
         timeout.u.HighPart = due_time->dwHighDateTime;
     }
 
-    TpSetWait( wait, handle, due_time ? &timeout : NULL );
+    return TpSetWaitEx( wait, handle, due_time ? &timeout : NULL, reserved );
+}
+
+
+/***********************************************************************
+ *              SetThreadpoolWait (KERNEL32.@)
+ */
+VOID WINAPI SetThreadpoolWait( TP_WAIT *wait, HANDLE handle, FILETIME *due_time )
+{
+    SetThreadpoolWaitEx(wait, handle, due_time, NULL);
 }
 
 /***********************************************************************

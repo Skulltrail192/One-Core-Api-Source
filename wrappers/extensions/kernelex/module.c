@@ -247,6 +247,451 @@ LoadLibraryExInternalW(
 	return res;
 }
 
+       // HMODULE __fastcall ForwardDll(_In_z_ const Char* _szLibFileName)
+        // {
+// #if defined(__ENABLE_WORKAROUND_1_GetProcAddress_ProcessPrng) && (YY_Thunks_Target < __WindowsNT6_1)
+            // if (_szLibFileName == nullptr || *_szLibFileName == L'\0')
+                // return nullptr;
+
+            // auto _szFileName = _szLibFileName;
+            // for (; *_szLibFileName; )
+            // {
+                // if (*_szLibFileName == Char('\\') || *_szLibFileName == Char('/'))
+                // {
+                    // ++_szLibFileName;
+                    // _szFileName = _szLibFileName;
+                // }
+                // else
+                // {
+                    // ++_szLibFileName;
+                // }
+            // }
+
+// #if defined(__ENABLE_WORKAROUND_1_GetProcAddress_ProcessPrng) && (YY_Thunks_Target < __WindowsNT6_1)
+            // if (internal::GetSystemVersion() < internal::MakeVersion(6, 1)
+                // && StringCompareIgnoreCaseByAscii(_szFileName, L"bcryptprimitives", 16) == 0)
+            // {
+                // _szFileName += 16;
+                // if (*_szFileName == L'\0' || StringCompareIgnoreCaseByAscii(_szFileName, ".dll", -1) == 0)
+                // {
+                    // // Windows 7以下平台没有这个DLL，用进程模块句柄伪装一下。
+                    // return __FORWARD_DLL_MODULE;
+                // }
+            // }
+// #endif
+// #endif 
+            // return nullptr;
+        // }
+
+// HMODULE
+// WINAPI
+// LoadLibraryExW
+   // _In_ LPCWSTR lpLibFileName,
+   // _Reserved_ HANDLE hFile,
+   // _In_ DWORD dwFlags
+   // )
+// {
+	// wchar_t szFilePathBuffer[1024];
+	// PPEB pPeb;
+	// DWORD dwLoadLibrarySearchFlags;
+	// ULONG PathType;
+	// DWORD nSize;
+	// LPCWSTR Str;
+	// DWORD nBufferMax;
+	// ULONG nBuffer;
+	// UNICODE_STRING ModuleFileName;
+        // // const auto pLoadLibraryExW = try_get_LoadLibraryExW();
+
+        // // if (!pLoadLibraryExW)
+        // // {
+            // // SetLastError(ERROR_FUNCTION_FAILED);
+            // // return NULL;
+        // // }
+
+
+        // // if (dwFlags == 0 || try_get_AddDllDirectory() != NULL)
+        // // {
+            // // //存在AddDllDirectory说明支持 LOAD_LIBRARY_SEARCH_SYSTEM32 等功能，直接调用pLoadLibraryExW即可。
+
+            // // auto _hModule = pLoadLibraryExW(lpLibFileName, hFile, dwFlags);
+            // // if (_hModule)
+                // // return _hModule;
+
+            // // return Fallback::ForwardDll(lpLibFileName);
+        // // }
+
+// //#if (YY_Thunks_Target < __WindowsNT6)
+        // //Windows Vista开始才支持 LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE | LOAD_LIBRARY_AS_IMAGE_RESOURCE，对于不支持的系统我们只能Fallblack到 LOAD_LIBRARY_AS_DATAFILE
+        // if (dwFlags & (LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE | LOAD_LIBRARY_AS_IMAGE_RESOURCE))
+        // {
+            // pPeb = ((TEB*)NtCurrentTeb())->ProcessEnvironmentBlock;
+
+            // if (pPeb->OSMajorVersion < 6)
+            // {
+                // dwFlags &= ~(LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE | LOAD_LIBRARY_AS_IMAGE_RESOURCE);
+                // dwFlags |= LOAD_LIBRARY_AS_DATAFILE;
+            // }
+        // }
+// //#endif
+        
+
+        // do
+        // {
+            // dwLoadLibrarySearchFlags = dwFlags & 0xFFFFFF00;
+
+            // if (dwLoadLibrarySearchFlags == 0)
+            // {
+                // break;
+            // }
+
+            // if (((LOAD_WITH_ALTERED_SEARCH_PATH | 0xFFFFE000 | 0x00000004) & dwFlags) || lpLibFileName == NULL || hFile)
+            // {
+                // //LOAD_WITH_ALTERED_SEARCH_PATH 标记不允许跟其他标记组合使用
+                // //0xFFFFE000 为 其他不支持的数值
+                // //LOAD_PACKAGED_LIBRARY: 0x00000004 Windows 8以上平台才支持
+                // SetLastError(ERROR_INVALID_PARAMETER);
+                // return NULL;
+            // }
+
+            // dwFlags &= 0xFF;
+
+            // //LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_USER_DIRS | LOAD_LIBRARY_SEARCH_SYSTEM32 等价于 LOAD_LIBRARY_SEARCH_DEFAULT_DIRS标记
+            // if (dwLoadLibrarySearchFlags & LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)
+                // dwLoadLibrarySearchFlags = (dwLoadLibrarySearchFlags & ~LOAD_LIBRARY_SEARCH_DEFAULT_DIRS) | (LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_USER_DIRS | LOAD_LIBRARY_SEARCH_SYSTEM32);
+
+
+
+            // if (dwLoadLibrarySearchFlags == (LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_USER_DIRS | LOAD_LIBRARY_SEARCH_SYSTEM32))
+            // {
+                // //如果确定是调用默认体系，则直接调用原始 LoadLibraryExW
+
+                // break;
+            // }
+			
+			// PathType = RtlDetermineDosPathNameType_U(lpLibFileName);
+
+            // if (dwLoadLibrarySearchFlags & LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)
+            // {
+                // //必须是一个完整路径！
+                // if (PathType == RtlPathTypeUnknown || PathType == RtlPathTypeDriveRelative || PathType == RtlPathTypeRelative)
+                // {
+                    // SetLastError(ERROR_INVALID_PARAMETER);
+                    // return NULL;
+                // }
+
+                // if (dwLoadLibrarySearchFlags == (LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_USER_DIRS | LOAD_LIBRARY_SEARCH_SYSTEM32))
+                // {
+                    // //LOAD_WITH_ALTERED_SEARCH_PATH参数能模拟 LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_USER_DIRS | LOAD_LIBRARY_SEARCH_SYSTEM32 组合效果。
+                    // dwFlags |= LOAD_WITH_ALTERED_SEARCH_PATH;
+                    // break;
+                // }
+            // }		
+
+
+            // if (LOAD_LIBRARY_SEARCH_USER_DIRS & dwLoadLibrarySearchFlags)
+            // {
+                // //LOAD_LIBRARY_SEARCH_USER_DIRS 无法顺利实现，索性无效参数处理
+                // SetLastError(ERROR_INVALID_PARAMETER);
+                // return NULL;
+            // }
+
+
+
+
+            // if (dwFlags & (LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE | LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE))
+            // {
+                // //以资源方式加载
+
+                // //判断路径是一个绝对路径还是一个相对路径，如果是绝对路径，那么可以直接无视 LOAD_LIBRARY_SEARCH_ 系列参数。
+                // if ((PathType == RtlPathTypeUnknown || PathType == RtlPathTypeDriveRelative || PathType == RtlPathTypeRelative) == FALSE)
+                // {
+                    // //是一个绝对路径，我们直接传递给 pLoadLibraryExW 即可
+
+                    // break;
+                // }
+
+                // if (dwLoadLibrarySearchFlags & LOAD_LIBRARY_SEARCH_APPLICATION_DIR)
+                // {
+                    // nSize = GetModuleFileNameW(NULL, szFilePathBuffer, _countof(szFilePathBuffer));
+
+                    // if (nSize == 0 || nSize >= _countof(szFilePathBuffer))
+                    // {
+                        // SetLastError(ERROR_FUNCTION_FAILED);
+                        // return NULL;
+                    // }
+
+                    // for (;;)
+                    // {
+                        // if (szFilePathBuffer[nSize] == L'\\' || szFilePathBuffer[nSize] == L'/')
+                        // {
+                            // ++nSize;
+                            // break;
+                        // }
+
+                        // if (nSize == 0)
+                        // {
+                            // SetLastError(ERROR_FUNCTION_FAILED);
+                            // return NULL;
+                        // }
+
+                        // --nSize;
+                    // }
+
+
+                    // for (Str = lpLibFileName; *Str; ++Str, ++nSize)
+                    // {
+                        // if (nSize >= _countof(szFilePathBuffer))
+                        // {
+                            // SetLastError(ERROR_FUNCTION_FAILED);
+                            // return NULL;
+                        // }
+
+                        // szFilePathBuffer[nSize] = *Str;
+                    // }
+
+                    // szFilePathBuffer[nSize] = L'\0';
+
+
+                    // if (GetFileAttributesW(szFilePathBuffer) != -1)
+                    // {
+                        // lpLibFileName = szFilePathBuffer;
+                        // break;
+                    // }
+                // }
+
+                // if (dwLoadLibrarySearchFlags & LOAD_LIBRARY_SEARCH_SYSTEM32)
+                // {
+                    // nSize = GetSystemDirectoryW(szFilePathBuffer, _countof(szFilePathBuffer));
+
+                    // if (nSize == 0 || nSize >= _countof(szFilePathBuffer))
+                    // {
+                        // SetLastError(ERROR_FUNCTION_FAILED);
+                        // return NULL;
+                    // }
+
+                    // if (szFilePathBuffer[nSize] != L'\\')
+                    // {
+                        // if (nSize >= _countof(szFilePathBuffer))
+                        // {
+                            // SetLastError(ERROR_FUNCTION_FAILED);
+                            // return NULL;
+                        // }
+
+                        // szFilePathBuffer[++nSize] = L'\\';
+                    // }
+
+                    // for (Str = lpLibFileName; *Str; ++Str, ++nSize)
+                    // {
+                        // if (nSize >= _countof(szFilePathBuffer))
+                        // {
+                            // SetLastError(ERROR_FUNCTION_FAILED);
+                            // return NULL;
+                        // }
+
+                        // szFilePathBuffer[nSize] = *Str;
+                    // }
+
+                    // szFilePathBuffer[nSize] = L'\0';
+
+                    // if (GetFileAttributesW(szFilePathBuffer) != -1)
+                    // {
+                        // lpLibFileName = szFilePathBuffer;
+                        // break;
+                    // }
+                // }
+
+                // SetLastError(ERROR_MOD_NOT_FOUND);
+                // return NULL;
+            // }
+
+
+            // // //以模块方式加载
+// // #if !defined(__USING_NTDLL_LIB)
+            // // const auto LdrLoadDll = try_get_LdrLoadDll();
+            // // if (!LdrLoadDll)
+            // // {
+                // // SetLastError(ERROR_FUNCTION_FAILED);
+                // // return NULL;
+            // // }
+// // #endif
+
+            // nSize = 0;
+
+            // if (dwLoadLibrarySearchFlags & LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)
+            // {
+                // for (Str = lpLibFileName; *Str; ++Str, ++nSize)
+                // {
+                    // if (nSize >= _countof(szFilePathBuffer))
+                    // {
+                        // SetLastError(ERROR_FUNCTION_FAILED);
+                        // return NULL;
+                    // }
+
+                    // szFilePathBuffer[nSize] = *Str;
+                // }
+
+                // if (nSize == 0)
+                // {
+                    // SetLastError(ERROR_FUNCTION_FAILED);
+                    // return NULL;
+                // }
+
+                // --nSize;
+                // //反向剔除文件名
+                // for (;;)
+                // {
+                    // if (szFilePathBuffer[nSize] == L'\\' || szFilePathBuffer[nSize] == L'/')
+                    // {
+                        // break;
+                    // }
+
+                    // if (nSize == 0)
+                    // {
+                        // SetLastError(ERROR_FUNCTION_FAILED);
+                        // return NULL;
+                    // }
+
+                    // --nSize;
+                // }
+
+                // ++nSize;
+                // szFilePathBuffer[nSize] = L';';
+                // ++nSize;
+            // }
+
+            // if (dwLoadLibrarySearchFlags & LOAD_LIBRARY_SEARCH_APPLICATION_DIR)
+            // {
+                // nBufferMax = _countof(szFilePathBuffer) - nSize;
+
+                // nBuffer = GetModuleFileNameW(NULL, szFilePathBuffer + nSize, nBufferMax);
+
+                // if (nBuffer == 0 || nBuffer >= nBufferMax)
+                // {
+                    // SetLastError(ERROR_FUNCTION_FAILED);
+                    // return NULL;
+                // }
+
+                // nSize += nBuffer - 1;
+
+                // for (;;)
+                // {
+                    // if (szFilePathBuffer[nSize] == L'\\' || szFilePathBuffer[nSize] == L'/')
+                    // {
+                        // break;
+                    // }
+
+                    // if (nSize == 0)
+                    // {
+                        // SetLastError(ERROR_FUNCTION_FAILED);
+                        // return NULL;
+                    // }
+
+                    // --nSize;
+                // }
+
+                // ++nSize;
+                // szFilePathBuffer[nSize] = L';';
+                // ++nSize;
+            // }
+
+            // if (dwLoadLibrarySearchFlags & LOAD_LIBRARY_SEARCH_SYSTEM32)
+            // {
+                // nBufferMax = _countof(szFilePathBuffer) - nSize;
+
+                // nBuffer = GetSystemDirectoryW(szFilePathBuffer + nSize, nBufferMax);
+
+                // if (nBuffer == 0 || nBuffer >= nBufferMax)
+                // {
+                    // SetLastError(ERROR_FUNCTION_FAILED);
+                    // return NULL;
+                // }
+
+                // nSize += nBuffer;
+            // }
+
+            // szFilePathBuffer[nSize] = L'\0';
+            
+            // ModuleFileName.Buffer = (PWSTR)lpLibFileName;
+
+            // for (; *lpLibFileName; ++lpLibFileName);
+            // const auto _uNewLength = (lpLibFileName - ModuleFileName.Buffer) * sizeof(lpLibFileName[0]);
+            // if (_uNewLength + sizeof(lpLibFileName[0]) > MAXUINT16)
+            // {
+                // SetLastError(ERROR_INVALID_PARAMETER);
+                // return NULL;
+            // }
+
+            // ModuleFileName.Length = static_cast<USHORT>(_uNewLength);
+            // ModuleFileName.MaximumLength = ModuleFileName.Length + sizeof(lpLibFileName[0]);
+
+            // HMODULE hModule = NULL;
+
+            // ULONG dwLdrLoadDllFlags = 0;
+
+            // if (dwFlags & DONT_RESOLVE_DLL_REFERENCES)
+            // {
+                // dwLdrLoadDllFlags |= 0x2;
+            // }
+
+            // if (dwFlags & LOAD_IGNORE_CODE_AUTHZ_LEVEL)
+            // {
+                // dwLdrLoadDllFlags |= 0x1000;
+            // }
+
+            // if (dwFlags & LOAD_LIBRARY_REQUIRE_SIGNED_TARGET)
+            // {
+                // dwLdrLoadDllFlags |= 0x800000;
+            // }
+
+// #if defined(_M_IX86) && YY_Thunks_Target < __WindowsNT6_1_SP1
+            // //我们先关闭重定向，再加载DLL，Windows 7 SP1以前的系统不会关闭重定向，而导致某些线程关闭重定向后DLL加载问题。
+            // PVOID OldFsRedirectionLevel;
+
+            // auto pRtlWow64EnableFsRedirectionEx = try_get_RtlWow64EnableFsRedirectionEx();
+            // auto StatusFsRedir = pRtlWow64EnableFsRedirectionEx ? pRtlWow64EnableFsRedirectionEx(NULL, &OldFsRedirectionLevel) : 0;
+// #endif
+
+            // LONG Status = LdrLoadDll(szFilePathBuffer, &dwLdrLoadDllFlags, &ModuleFileName, &hModule);
+
+// #if defined(_M_IX86) && YY_Thunks_Target < __WindowsNT6_1_SP1
+            // if (StatusFsRedir >= 0 && pRtlWow64EnableFsRedirectionEx)
+                // pRtlWow64EnableFsRedirectionEx(OldFsRedirectionLevel, &OldFsRedirectionLevel);
+// #endif
+            // if (Status < 0)
+            // {
+                // BaseSetLastNTError(Status);
+            // }
+
+            // if (hModule)
+                // return hModule;
+
+            // return Fallback::ForwardDll(lpLibFileName);
+        // } while (FALSE);
+
+// // #if defined(_M_IX86) && YY_Thunks_Target < __WindowsNT6_1_SP1
+        // // //我们先关闭重定向，再加载DLL，Windows 7 SP1以前的系统不会关闭重定向，而导致某些线程关闭重定向后DLL加载问题。
+        // // PVOID OldFsRedirectionLevel;
+
+        // // auto pRtlWow64EnableFsRedirectionEx = try_get_RtlWow64EnableFsRedirectionEx();
+        // // auto StatusFsRedir = pRtlWow64EnableFsRedirectionEx ? pRtlWow64EnableFsRedirectionEx(NULL, &OldFsRedirectionLevel) : 0;
+// // #endif
+
+        // // auto hModule = pLoadLibraryExW(lpLibFileName, hFile, dwFlags);
+
+// // #if defined(_M_IX86) && YY_Thunks_Target < __WindowsNT6_1_SP1
+        // // if (StatusFsRedir >= 0 && pRtlWow64EnableFsRedirectionEx)
+        // // {
+            // // LSTATUS lStatus = GetLastError();
+            // // pRtlWow64EnableFsRedirectionEx(OldFsRedirectionLevel, &OldFsRedirectionLevel);
+            // // SetLastError(lStatus);
+        // // }
+// // #endif
+        // if(hModule)
+            // return hModule;
+
+        // return Fallback::ForwardDll(lpLibFileName);
+    // }
+
 /***********************************************************************
  *           FILE_name_AtoW
  *

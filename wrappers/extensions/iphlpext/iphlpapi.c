@@ -533,11 +533,11 @@ DWORD WINAPI ConvertInterfaceLuidToIndex(const NET_LUID *luid, NET_IFINDEX *inde
  */
 DWORD 
 WINAPI 
-CancelMibChangeNotify2(HANDLE handle)
+CancelMibChangeNotify2(HANDLE _hNotificationHandle)
 {
-    FIXME("(handle %p): stub\n", handle);	
+    FIXME("(handle %p): stub\n", _hNotificationHandle);	
         // NotifyIpInterfaceChange返回的句柄始终等于 2
-    if (_hNotificationHandle != (HANDLE)2))
+    if (_hNotificationHandle != (HANDLE)2)
     {
             return ERROR_INVALID_PARAMETER;
     }	
@@ -1280,11 +1280,22 @@ DWORD WINAPI ConvertInterfaceNameToLuidW(const WCHAR *name, NET_LUID *luid)
 /******************************************************************
  *    if_indextoname (IPHLPAPI.@)
  */
-PCHAR WINAPI IPHLP_if_indextoname(NET_IFINDEX index, PCHAR name)
+/******************************************************************
+ *    if_indextoname (IPHLPAPI.@)
+ */
+char *WINAPI IPHLP_if_indextoname( NET_IFINDEX index, char *name )
 {
-    TRACE("(%u, %p)\n", index, name);
+    NET_LUID luid;
+    DWORD err;
 
-    return getInterfaceNameByIndex(index, name);
+    TRACE( "(%lu, %p)\n", index, name );
+
+    err = ConvertInterfaceIndexToLuid( index, &luid );
+    if (err) return NULL;
+
+    err = ConvertInterfaceLuidToNameA( &luid, name, IF_MAX_STRING_SIZE );
+    if (err) return NULL;
+    return name;
 }
 
 /* The comments say MAX_ADAPTER_NAME is required, but really only IF_NAMESIZE
@@ -1300,13 +1311,18 @@ char *getInterfaceNameByIndex(IF_INDEX index, char *name)
  */
 IF_INDEX WINAPI IPHLP_if_nametoindex(const char *name)
 {
-    IF_INDEX idx;
+    IF_INDEX index;
+    NET_LUID luid;
+    DWORD err;
 
-    TRACE("(%s)\n", name);
-    if (getInterfaceIndexByName(name, &idx) == NO_ERROR)
-        return idx;
+    TRACE( "(%s)\n", name );
 
-    return 0;
+    err = ConvertInterfaceNameToLuidA( name, &luid );
+    if (err) return 0;
+
+    err = ConvertInterfaceLuidToIndex( &luid, &index );
+    if (err) index = 0;
+    return index;
 }
 
 /******************************************************************
@@ -1812,4 +1828,22 @@ DWORD WINAPI GetAnycastIpAddressTable(ADDRESS_FAMILY family, MIB_ANYCASTIPADDRES
     if (!*table) return ERROR_NOT_ENOUGH_MEMORY;
     (*table)->NumEntries = 0;
     return NO_ERROR;
+}
+
+/***********************************************************************
+ *    GetCurrentThreadCompartmentId (IPHLPAPI.@)
+ */
+NET_IF_COMPARTMENT_ID WINAPI GetCurrentThreadCompartmentId( void )
+{
+    FIXME( "stub\n" );
+    return NET_IF_COMPARTMENT_ID_PRIMARY;
+}
+
+/***********************************************************************
+ *    SetCurrentThreadCompartmentId (IPHLPAPI.@)
+ */
+DWORD WINAPI SetCurrentThreadCompartmentId( NET_IF_COMPARTMENT_ID id )
+{
+    FIXME( "(%x): stub\n", id );
+    return ERROR_SUCCESS;
 }

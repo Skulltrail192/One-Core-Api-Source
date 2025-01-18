@@ -757,3 +757,4 @@
 @ stdcall DwmGetSurfaceData(ptr long)
 @ stdcall DwmStartup(ptr)
 @ stdcall DwmShutdown()
+@ stdcall -stub DCEQueryMode()

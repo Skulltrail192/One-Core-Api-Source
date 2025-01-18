@@ -2548,15 +2548,16 @@ BOOL WINAPI TpSetPoolMinThreads( TP_POOL *pool, DWORD minimum )
 }
 
 /***********************************************************************
- *           TpSetTimer    (NTDLL.@)
+ *           TpSetTimerEx    (NTDLL.@)
  */
-VOID WINAPI TpSetTimer( TP_TIMER *timer, LARGE_INTEGER *timeout, LONG period, LONG window_length )
+BOOL WINAPI TpSetTimerEx( TP_TIMER *timer, LARGE_INTEGER *timeout, LONG period, LONG window_length )
 {
     struct threadpool_object *this = impl_from_TP_TIMER( timer );
     struct threadpool_object *other_timer;
     BOOL submit_timer = FALSE;
     ULONGLONG timestamp;
-
+	BOOL cancelled_timer = FALSE;
+	
     DbgPrint( "%p %p %u %u\n", timer, timeout, period, window_length );
 
     RtlEnterCriticalSection( &timerqueue.cs );
@@ -2592,6 +2593,7 @@ VOID WINAPI TpSetTimer( TP_TIMER *timer, LARGE_INTEGER *timeout, LONG period, LO
     /* First remove existing timeout. */
     if (this->u.timer.timer_pending)
     {
+		cancelled_timer = TRUE;
         list_remove( &this->u.timer.timer_entry );
         this->u.timer.timer_pending = FALSE;
     }
@@ -2623,17 +2625,27 @@ VOID WINAPI TpSetTimer( TP_TIMER *timer, LARGE_INTEGER *timeout, LONG period, LO
 
     if (submit_timer)
        tp_object_submit( this, FALSE );
+	return cancelled_timer;
 }
 
 /***********************************************************************
- *           TpSetWait    (NTDLL.@)
+ *           TpSetTimer    (NTDLL.@)
  */
-VOID WINAPI TpSetWait( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout )
+VOID WINAPI TpSetTimer( TP_TIMER *timer, LARGE_INTEGER *timeout, LONG period, LONG window_length )
+{
+    TpSetTimerEx(timer, timeout, period, window_length);
+}
+
+/***********************************************************************
+ *           TpSetWaitEx    (NTDLL.@)
+ */
+BOOL WINAPI TpSetWaitEx( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout, PVOID Reserved )
 {
     struct threadpool_object *this = impl_from_TP_WAIT( wait );
     ULONGLONG timestamp = TIMEOUT_INFINITE;
     BOOL submit_wait = FALSE;
-
+	BOOL replaced_wait = FALSE;
+	
     DbgPrint( "%p %p %p\n", wait, handle, timeout );
 
     RtlEnterCriticalSection( &waitqueue.cs );
@@ -2645,7 +2657,8 @@ VOID WINAPI TpSetWait( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout )
     {
         struct waitqueue_bucket *bucket = this->u.wait.bucket;
         list_remove( &this->u.wait.wait_entry );
-
+		replaced_wait = this->u.wait.wait_pending;
+		
         /* Convert relative timeout to absolute timestamp. */
         if (handle && timeout)
         {
@@ -2684,6 +2697,15 @@ VOID WINAPI TpSetWait( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout )
 
     if (submit_wait)
         tp_object_submit( this, FALSE );
+	return replaced_wait;
+}
+
+/***********************************************************************
+ *           TpSetWaitEx    (NTDLL.@)
+ */
+VOID WINAPI TpSetWait( TP_WAIT *wait, HANDLE handle, LARGE_INTEGER *timeout )
+{
+    TpSetWaitEx(wait, handle, timeout, NULL);
 }
 
 /***********************************************************************
@@ -2824,35 +2846,4 @@ NTSTATUS WINAPI TpQueryPoolStackInformation( TP_POOL *pool, TP_POOL_STACK_INFORM
     RtlLeaveCriticalSection( &this->cs );
 
     return STATUS_SUCCESS;
-}
-
-VOID 
-NTAPI 
-TpSetWaitEx(
-	PTP_WAIT pwa, 
-	HANDLE handle, 
-	PFILETIME fileTime, 
-	PVOID Reserved 
-) 	
-{
-	LARGE_INTEGER ularge;
-	ularge.LowPart=fileTime->dwLowDateTime;
-	ularge.HighPart=fileTime->dwHighDateTime;
-	TpSetWait(pwa, handle, &ularge);
-}
-
-BOOL 
-WINAPI 
-TpSetTimerEx(
-	PTP_TIMER pti, 
-	PFILETIME pftDueTime, 
-	DWORD msPeriod, 
-	DWORD msWindowLength
-)
-{
-	LARGE_INTEGER ularge;
-	ularge.LowPart=pftDueTime->dwLowDateTime;
-	ularge.HighPart=pftDueTime->dwHighDateTime;
-	TpSetTimer(pti, &ularge, msPeriod, msWindowLength);
-	return TRUE;
 }

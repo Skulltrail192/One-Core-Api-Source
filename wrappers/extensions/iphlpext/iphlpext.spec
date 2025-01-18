@@ -176,6 +176,7 @@
 @ stdcall FreeMibTable(ptr)
 @ stdcall GetAnycastIpAddressTable( long ptr )
 @ stdcall GetBestRoute2(ptr long ptr ptr long ptr ptr)
+@ stdcall GetCurrentThreadCompartmentId()
 @ stdcall GetIfEntry2(ptr)
 @ stdcall GetIfTable2Ex(long ptr)
 @ stdcall GetIfTable2(long ptr)
@@ -201,4 +202,5 @@
 @ stdcall ParseNetworkString(ptr long ptr ptr ptr)
 @ stdcall ResolveNeighbor(ptr ptr ptr)
 @ stdcall ResolveIpNetEntry2(ptr ptr)
+@ stdcall SetCurrentThreadCompartmentId( long )
 @ stdcall SetPerTcpConnectionEStats( ptr long ptr long long long )

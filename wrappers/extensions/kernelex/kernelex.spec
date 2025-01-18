@@ -1437,6 +1437,8 @@
 @ stdcall RemoveDllDirectory(ptr)
 @ stdcall SetDefaultDllDirectories(long)
 @ stdcall SetProcessMitigationPolicy(long ptr long)
+@ stdcall SetThreadpoolTimerEx(ptr ptr long long ptr)
+@ stdcall SetThreadpoolWaitEx(ptr ptr ptr ptr)
 @ stdcall WaitOnAddress(ptr ptr long long)
 @ stdcall WakeByAddressAll(ptr) ntext.RtlWakeAddressAll
 @ stdcall WakeByAddressSingle(ptr) ntext.RtlWakeAddressSingle

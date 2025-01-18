@@ -605,7 +605,7 @@
 @ stdcall SetKeyboardState(ptr) ;NtUserSetKeyboardState
 @ stdcall SetLastErrorEx(long long)
 @ stdcall SetLayeredWindowAttributes(ptr long long long) ;NtUserSetLayeredWindowAttributes
-@ stdcall SetLogonNotifyWindow(long long) ;Server 2003 RTM don't has this function
+@ stdcall SetLogonNotifyWindow(long long)  userbase.SetLogonNotifyWindow ;Server 2003 RTM don't has this function
 @ stdcall SetMenu(long long)
 @ stdcall SetMenuContextHelpId(long long) ;NtUserSetMenuContextHelpId
 @ stdcall SetMenuDefaultItem(long long long) ;NtUserSetMenuDefaultItem
@@ -771,17 +771,17 @@
 @ stdcall CreateDesktopExA(str str ptr long long ptr long ptr)
 @ stdcall CreateDesktopExW(wstr wstr ptr long long ptr long ptr)
 @ stdcall CreateWindowInBand(long wstr wstr long long long long ptr ptr ptr ptr long)
-#@ stdcall DCEQueryMode()
+@ stdcall DCEQueryMode() userbase.DCEQueryMode
 @ stdcall DisplayConfigGetDeviceInfo(ptr)
 @ stdcall DisplayConfigSetDeviceInfo(ptr)
 @ stdcall DoSoundConnect()
 @ stdcall DoSoundDisconnect()
-#@ stdcall DwmHintDxUpdate(ptr long)
+@ stdcall DwmHintDxUpdate(ptr long) userbase.DwmHintDxUpdate
 @ stdcall DwmGetSurfaceData() userbase.DwmGetSurfaceData
 @ stdcall DwmShutdown() userbase.DwmShutdown
-#@ stdcall DwmStartRedirection(ptr)
+@ stdcall DwmStartRedirection(ptr) userbase.DwmStartRedirection
 @ stdcall DwmStartup(ptr) userbase.DwmStartup
-#@ stdcall DwmStopRedirection()
+@ stdcall DwmStopRedirection() userbase.DwmStopRedirection
 @ stdcall EnableMouseInPointer(long)
 @ stdcall EvaluateProximityToRect(ptr ptr ptr)
 @ stdcall FrostCrashedWindow(ptr ptr)

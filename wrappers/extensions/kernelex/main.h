@@ -1361,12 +1361,27 @@ TpSetTimer(
 	LONG
 );
 
+BOOL 
+WINAPI 
+TpSetTimerEx( 
+	TP_TIMER *timer, 
+	LARGE_INTEGER *timeout, LONG period, LONG window_length );
+
 void 
 WINAPI 
 TpSetWait(
 	TP_WAIT *,
 	HANDLE,
 	LARGE_INTEGER *
+);
+
+BOOL 
+WINAPI 
+TpSetWaitEx( 
+	TP_WAIT *wait, 
+	HANDLE handle, 
+	LARGE_INTEGER *timeout, 
+	PVOID Reserved 
 );
 
 NTSTATUS 

@@ -35,7 +35,7 @@ HRESULT WINAPI CoCreateInstanceFromApp(REFCLSID rclsid, IUnknown *outer, DWORD c
     TRACE("%s, %p, %#lx, %p, %lu, %p\n", debugstr_guid(rclsid), outer, cls_context, server_info,
             count, results);
 
-    return CoCreateInstanceEx(rclsid, outer, cls_context | CLSCTX_APPCONTAINER, server_info,
+    return CoCreateInstanceEx(rclsid, outer, cls_context, server_info,
             count, results);
 }
 

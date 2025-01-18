@@ -334,10 +334,36 @@ BOOL WINAPI GetInputLocaleInfo(LCID locale, LPCWSTR localName)
 	return TRUE;
 }
 
+PVOID TryGetProcedure(char* procedureName){
+	HMODULE userbaseModule;
+	PVOID procedureAddress;
+	
+	userbaseModule = LoadLibraryW(L"userbase.dll");
+	
+	if(userbaseModule){
+		procedureAddress = GetProcAddress(userbaseModule, procedureName);
+		if(procedureAddress){
+			FreeLibrary(userbaseModule);
+			return procedureAddress;
+		}
+	}
+	FreeLibrary(userbaseModule);
+	return NULL;
+}
+
 BOOL WINAPI AddClipboardFormatListener(
   _In_  HWND hwnd
 )
 {
+    // PVOID AddClipboardFormatListener;
+	
+	// AddClipboardFormatListener = TryGetProcedure("AddClipboardFormatListener");
+
+    // if(AddClipboardFormatListener)
+	// {
+		// return AddClipboardFormatListener(hwnd);
+	// }
+	
 	DbgPrint("AddClipboardFormatListener is UNIMPLEMENTED\n"); 
 	return TRUE;
 }
