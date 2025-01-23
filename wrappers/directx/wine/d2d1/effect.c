@@ -1173,6 +1173,12 @@ static HRESULT d2d_effect_properties_internal_add(struct d2d_effect_properties *
 
     assert(type >= D2D1_PROPERTY_TYPE_STRING && type <= D2D1_PROPERTY_TYPE_COLOR_CONTEXT);
 
+    if (type == D2D1_PROPERTY_TYPE_BLOB)
+    {
+        FIXME("Ignoring property %s of type %u.\n", wine_dbgstr_w(name), type);
+        return S_OK;
+    }
+
     if (!d2d_array_reserve((void **)&props->properties, &props->size, props->count + 1,
             sizeof(*props->properties)))
     {
@@ -1206,11 +1212,6 @@ static HRESULT d2d_effect_properties_internal_add(struct d2d_effect_properties *
     {
         p->data.ptr = wcsdup(value);
         p->size = value ? (wcslen(value) + 1) * sizeof(WCHAR) : sizeof(WCHAR);
-    }
-    else if (p->type == D2D1_PROPERTY_TYPE_BLOB)
-    {
-        p->data.ptr = NULL;
-        p->size = 0;
     }
     else
     {
@@ -1393,13 +1394,7 @@ static HRESULT d2d_effect_property_get_value(const struct d2d_effect_properties 
     memset(value, 0, size);
 
     if (type != D2D1_PROPERTY_TYPE_UNKNOWN && prop->type != type) return E_INVALIDARG;
-    /* Do not check sizes for variable-length properties. */
-    if (prop->type != D2D1_PROPERTY_TYPE_STRING
-            && prop->type != D2D1_PROPERTY_TYPE_BLOB
-            && prop->size != size)
-    {
-        return E_INVALIDARG;
-    }
+    if (prop->type != D2D1_PROPERTY_TYPE_STRING && prop->size != size) return E_INVALIDARG;
 
     if (prop->get_function)
         return prop->get_function((IUnknown *)effect->impl, value, size, &actual_size);
@@ -1407,8 +1402,8 @@ static HRESULT d2d_effect_property_get_value(const struct d2d_effect_properties 
     switch (prop->type)
     {
         case D2D1_PROPERTY_TYPE_BLOB:
-            memset(value, 0, size);
-            break;
+            FIXME("Unimplemented for type %u.\n", prop->type);
+            return E_NOTIMPL;
         case D2D1_PROPERTY_TYPE_STRING:
             return d2d_effect_return_string(prop->data.ptr, (WCHAR *)value, size / sizeof(WCHAR));
         default:
@@ -1863,7 +1858,7 @@ static void d2d_effect_cleanup(struct d2d_effect *effect)
     ID2D1EffectContext_Release(&effect->effect_context->ID2D1EffectContext_iface);
     if (effect->graph)
         ID2D1TransformGraph_Release(&effect->graph->ID2D1TransformGraph_iface);
-    d2d_effect_properties_cleanup(&effect->properties);
+    //d2d_effect_properties_cleanup(&effect->properties);
     if (effect->impl)
         ID2D1EffectImpl_Release(effect->impl);
 }
@@ -2056,7 +2051,7 @@ static void STDMETHODCALLTYPE d2d_effect_SetInput(ID2D1Effect *iface, UINT32 ind
 
 static HRESULT d2d_effect_set_input_count(struct d2d_effect *effect, UINT32 count)
 {
-    bool initialized = effect->inputs != NULL;
+    BOOL initialized = effect->inputs != NULL;
     HRESULT hr = S_OK;
     unsigned int i;
 
@@ -2599,7 +2594,7 @@ static HRESULT d2d_effect_render_info_create(struct d2d_render_info **obj)
     return S_OK;
 }
 
-static bool d2d_transform_node_needs_render_info(const struct d2d_transform_node *node)
+static BOOL d2d_transform_node_needs_render_info(const struct d2d_transform_node *node)
 {
     static const GUID *iids[] =
     {

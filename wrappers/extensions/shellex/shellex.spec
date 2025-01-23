@@ -22,7 +22,7 @@
 23  stdcall ILIsParent(ptr ptr long)
 24  stdcall ILFindChild(ptr ptr)
 25  stdcall ILCombine(ptr ptr)
-26  stdcall ILLoadFromStream(ptr ptr)
+26  stdcall ILLoadFromStream(ptr ptr) shell32.ILLoadFromStream
 27  stdcall ILSaveToStream(ptr ptr)
 28  stdcall SHILCreateFromPath(ptr ptr ptr) 
 29  stdcall -noname PathIsRoot(ptr) 
@@ -98,7 +98,7 @@
 102 stdcall SHCoCreateInstance(wstr ptr long ptr ptr)
 103 stdcall SignalFileOpen(ptr)
 119 stdcall IsLFNDrive(ptr) 
-121 stdcall SHFlushClipboard()
+121 stdcall SHFlushClipboard() shell32.SHFlushClipboard
 122 stdcall -noname RunDll_CallEntry16(long long long str long)
 123 stdcall -noname SHFreeUnusedLibraries()
 126 stdcall -noname SHOutOfMemoryMessageBox(long long long) # Fixme
@@ -114,9 +114,9 @@
 145 stdcall -noname PathFindOnPath(wstr wstr)
 146 stdcall -noname RLBuildListOfPaths()
 147 stdcall SHCLSIDFromString(long long) 
-148 stdcall SHMapIDListToImageListIndexAsync(ptr ptr ptr long ptr ptr ptr ptr ptr)
+148 stdcall SHMapIDListToImageListIndexAsync(ptr ptr ptr long ptr ptr ptr ptr ptr) shell32.SHMapIDListToImageListIndexAsync
 149 stdcall SHFind_InitMenuPopup(long long long long)
-151 stdcall SHLoadOLE(long)
+151 stdcall SHLoadOLE(long) shell32.SHLoadOLE
 152 stdcall ILGetSize(ptr)
 153 stdcall ILGetNext(ptr)
 154 stdcall ILAppendID(long long long)
@@ -126,12 +126,12 @@
 158 stdcall -noname PathGetExtension(wstr long long) 
 159 stdcall -noname PathIsDirectory(wstr) 
 160 stdcall -noname SHNetConnectionDialog(ptr wstr long) 
-161 stdcall SHRunControlPanel(long long)
+161 stdcall SHRunControlPanel(long long) shell32.SHRunControlPanel
 162 stdcall SHSimpleIDListFromPath(ptr) 
 163 stdcall -noname StrToOleStr(wstr str) 
 164 stdcall Win32DeleteFile(wstr)
 165 stdcall SHCreateDirectory(long ptr)
-166 stdcall CallCPLEntry16(long long long long long long)
+166 stdcall CallCPLEntry16(long long long long long long) shell32.CallCPLEntry16
 167 stdcall SHAddFromPropSheetExtArray(long long long)
 168 stdcall SHCreatePropSheetExtArray(long wstr long)
 169 stdcall SHDestroyPropSheetExtArray(long)
@@ -205,10 +205,10 @@
 257 stdcall -noname SHGetShellFolderViewCB(ptr)
 258 stdcall -noname LinkWindow_RegisterClass()
 259 stdcall -noname LinkWindow_UnregisterClass()
-520 stdcall SHAllocShared(ptr long long)
-521 stdcall SHLockShared(long long)
-522 stdcall SHUnlockShared(ptr)
-523 stdcall SHFreeShared(long long)
+520 stdcall SHAllocShared(ptr long long) shell32.SHAllocShared
+521 stdcall SHLockShared(long long) shell32.SHLockShared
+522 stdcall SHUnlockShared(ptr) shell32.SHUnlockShared
+523 stdcall SHFreeShared(long long) shell32.SHFreeShared
 524 stdcall RealDriveType(long long)
 525 stdcall -noname RealDriveTypeFlags(long long)
 526 stdcall SHFlushSFCache()
@@ -222,7 +222,7 @@
 650 stdcall -noname PathIsSameRoot(ptr ptr) 
 651 stdcall -noname OldReadCabinetState(long long) 
 652 stdcall WriteCabinetState(long)
-653 stdcall PathProcessCommand(long long long long) 
+653 stdcall PathProcessCommand(long long long long) shell32.PathProcessCommand
 654 stdcall ReadCabinetState(long long)
 660 stdcall -noname FileIconInit(long)
 680 stdcall IsUserAnAdmin()
@@ -241,7 +241,7 @@
 704 stdcall -noname GUIDFromStringW(wstr ptr)
 707 stdcall -noname SHOpenPropSheetA(str ptr long ptr ptr ptr str)
 708 stdcall -noname SHGetSetFolderCustomSettingsA(ptr str long)
-709 stdcall SHGetSetFolderCustomSettingsW(ptr wstr long)
+709 stdcall SHGetSetFolderCustomSettingsW(ptr wstr long) shell32.SHGetSetFolderCustomSettingsW
 711 stdcall -noname CheckWinIniForAssocs()
 712 stdcall -noname SHCopyMonikerToTemp(ptr wstr wstr long)
 713 stdcall -noname PathIsTemporaryA(str)
@@ -266,7 +266,7 @@
 745 stdcall -noname Create_IUIElement(long long)
 747 stdcall SHLimitInputEdit(ptr ptr)
 748 stdcall -noname SHLimitInputCombo(ptr ptr)
-749 stdcall SHGetShellStyleHInstance()
+749 stdcall SHGetShellStyleHInstance() shell32.SHGetShellStyleHInstance
 750 stdcall SHGetAttributesFromDataObject(ptr long ptr ptr)
 751 stdcall -noname SHSimulateDropOnClsid(ptr ptr long)
 752 stdcall -noname SHGetComputerDisplayNameW(ptr long wstr long)
@@ -275,13 +275,13 @@
 755 stdcall -noname PathIsEqualOrSubFolder(wstr wstr)
 756 stdcall -noname DeleteFileThumbnail(ptr)
 
-@ stdcall Activate_RunDLL(long ptr ptr ptr)
+@ stdcall Activate_RunDLL(long ptr ptr ptr) shell32.Activate_RunDLL
 @ stdcall AppCompat_RunDLLW(ptr ptr wstr long)
-@ stdcall CheckEscapesA(str long)
+@ stdcall CheckEscapesA(str long) shell32.CheckEscapesA
 @ stdcall CheckEscapesW(wstr long)
-@ stdcall Control_FillCache_RunDLL(long long long long) 
-@ stdcall Control_FillCache_RunDLLA(long long long long)
-@ stdcall Control_FillCache_RunDLLW(long long long long)
+@ stdcall Control_FillCache_RunDLL(long long long long) shell32.Control_FillCache_RunDLL
+@ stdcall Control_FillCache_RunDLLA(long long long long) shell32.Control_FillCache_RunDLLA
+@ stdcall Control_FillCache_RunDLLW(long long long long) shell32.Control_FillCache_RunDLLW
 @ stdcall Control_RunDLL(ptr ptr str long) Control_RunDLLA
 @ stdcall Control_RunDLLA(ptr ptr str long)
 @ stdcall Control_RunDLLAsUserW(ptr ptr wstr long)
@@ -309,13 +309,13 @@
 @ stdcall ExtractIconEx(ptr long ptr ptr long)
 @ stdcall ExtractIconExA(str long ptr ptr long)
 @ stdcall ExtractIconExW(wstr long ptr ptr long)
-@ stdcall ExtractIconResInfoA(ptr str long ptr ptr)
-@ stdcall ExtractIconResInfoW(ptr wstr long ptr ptr)
+@ stdcall ExtractIconResInfoA(ptr str long ptr ptr) shell32.ExtractIconResInfoA
+@ stdcall ExtractIconResInfoW(ptr wstr long ptr ptr) shell32.ExtractIconResInfoW
 @ stdcall ExtractIconW(long wstr long)
-@ stdcall ExtractVersionResource16W(wstr ptr)
+@ stdcall ExtractVersionResource16W(wstr ptr) shell32.ExtractVersionResource16W
 @ stdcall FindExecutableA(str str ptr)
 @ stdcall FindExecutableW(wstr wstr ptr)
-@ stdcall FindExeDlgProc(ptr long ptr ptr)
+@ stdcall FindExeDlgProc(ptr long ptr ptr) shell32.FindExeDlgProc
 @ stdcall FreeIconList(long)
 @ stdcall InternalExtractIconListA(ptr str ptr)
 @ stdcall InternalExtractIconListW(ptr wstr ptr)
@@ -402,22 +402,22 @@
 @ stdcall SHSetUnreadMailCountW (wstr long wstr)
 @ stdcall SHUpdateRecycleBinIcon()
 @ stdcall SheChangeDirA(str)
-@ stdcall SheChangeDirExA(str)
+@ stdcall SheChangeDirExA(str) shell32.SheChangeDirExA
 @ stdcall SheChangeDirExW(wstr)
-@ stdcall SheChangeDirW(wstr)
-@ stdcall SheConvertPathW(wstr wstr long)
-@ stdcall SheFullPathA(str long str)
-@ stdcall SheFullPathW(wstr long wstr)
-@ stdcall SheGetCurDrive()
+@ stdcall SheChangeDirW(wstr) shell32.SheChangeDirW
+@ stdcall SheConvertPathW(wstr wstr long) shell32.SheConvertPathW
+@ stdcall SheFullPathA(str long str) shell32.SheFullPathA
+@ stdcall SheFullPathW(wstr long wstr) shell32.SheFullPathW
+@ stdcall SheGetCurDrive() shell32.SheGetCurDrive
 @ stdcall SheGetDirA(long long)
-@ stdcall SheGetDirExW(wstr ptr wstr)
-@ stdcall SheGetDirW(long long)
-@ stdcall SheGetPathOffsetW(wstr)
-@ stdcall SheRemoveQuotesA(str)
-@ stdcall SheRemoveQuotesW(wstr)
+@ stdcall SheGetDirExW(wstr ptr wstr) shell32.SheGetDirExW
+@ stdcall SheGetDirW(long long) shell32.SheGetDirW
+@ stdcall SheGetPathOffsetW(wstr) shell32.SheGetPathOffsetW
+@ stdcall SheRemoveQuotesA(str) shell32.SheRemoveQuotesA
+@ stdcall SheRemoveQuotesW(wstr) shell32.SheRemoveQuotesW
 @ stdcall SheSetCurDrive(long)
-@ stdcall SheShortenPathA(str long)
-@ stdcall SheShortenPathW(wstr long)
+@ stdcall SheShortenPathA(str long) shell32.SheShortenPathA
+@ stdcall SheShortenPathW(wstr long) shell32.SheShortenPathW
 @ stdcall ShellAboutA(long str str long)
 @ stdcall ShellAboutW(long wstr wstr long)
 @ stdcall ShellExec_RunDLL(ptr ptr wstr long)
@@ -437,14 +437,14 @@
 @ stdcall StrCmpNIA(str str long) 
 @ stdcall StrCmpNIW(wstr wstr long) 
 @ stdcall StrCmpNW(wstr wstr long) 
-@ stdcall StrCpyNA (ptr str long)
-@ stdcall StrCpyNW(wstr wstr long) 
+@ stdcall StrCpyNA (ptr str long) shell32.StrCpyNA
+@ stdcall StrCpyNW(wstr wstr long) shell32.StrCpyNW
 @ stdcall StrNCmpA(str str long) 
 @ stdcall StrNCmpIA(str str long) 
 @ stdcall StrNCmpIW(wstr wstr long) 
 @ stdcall StrNCmpW(wstr wstr long)
-@ stdcall StrNCpyA (ptr str long) 
-@ stdcall StrNCpyW(wstr wstr long) 
+@ stdcall StrNCpyA (ptr str long) shell32.StrNCpyA
+@ stdcall StrNCpyW(wstr wstr long) shell32.StrNCpyW
 @ stdcall StrRChrA(str str long) 
 @ stdcall StrRChrIA(str str long) 
 @ stdcall StrRChrIW(wstr wstr long) 
@@ -529,7 +529,7 @@
 
 #Hooks
 @ stdcall CommandLineToArgvW(wstr ptr) CommandLineToArgvWInternal
-@ stdcall DllGetClassObject(ptr ptr ptr) DllGetClassObjectInternal
+@ stdcall DllGetClassObject(ptr ptr ptr) ;DllGetClassObjectInternal
 ;@ stdcall Shell_NotifyIcon(long ptr) Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 ;@ stdcall Shell_NotifyIconA(long ptr) Shell_NotifyIconAInternal ;Redirected to Longhorn shell
 @ stdcall Shell_NotifyIconW(long ptr) Shell_NotifyIconWInternal ;Redirected to Longhorn shell

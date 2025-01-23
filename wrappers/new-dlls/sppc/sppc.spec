@@ -18,7 +18,7 @@
 @ stub SLpTriggerServiceWorker
 @ stub SLpVLActivateProduct
 @ stdcall SLClose(ptr)
-@ stub SLConsumeRight
+@ stdcall SLConsumeRight(ptr ptr ptr wstr ptr)
 @ stub SLDepositMigrationBlob
 @ stub SLDepositOfflineConfirmationId
 @ stub SLDepositOfflineConfirmationIdEx
@@ -41,27 +41,27 @@
 @ stdcall SLGetLicensingStatusInformation(ptr ptr ptr wstr ptr ptr)
 @ stub SLGetPKeyId
 @ stub SLGetPKeyInformation
-@ stub SLGetPolicyInformation
-@ stub SLGetPolicyInformationDWORD
+@ stdcall SLGetPolicyInformation(ptr wstr ptr ptr ptr)
+@ stdcall SLGetPolicyInformationDWORD(ptr wstr ptr)
 @ stub SLGetProductSkuInformation
-@ stub SLGetSLIDList
+@ stdcall SLGetSLIDList(ptr long ptr long ptr ptr)
 @ stub SLGetServiceInformation
-@ stub SLInstallLicense
+@ stdcall SLInstallLicense(ptr long ptr ptr)
 @ stub SLInstallProofOfPurchase
 @ stub SLInstallProofOfPurchaseEx
 @ stub SLIsGenuineLocalEx
-@ stub SLLoadApplicationPolicies
+@ stdcall SLLoadApplicationPolicies(ptr ptr long ptr)
 @ stdcall SLOpen(ptr)
 @ stdcall SLPersistApplicationPolicies(ptr ptr long)
 @ stub SLPersistRTSPayloadOverride
 @ stub SLReArm
 @ stub SLRegisterEvent
 @ stub SLRegisterPlugin
-@ stub SLSetAuthenticationData
+@ stdcall SLSetAuthenticationData(ptr ptr ptr)
 @ stub SLSetCurrentProductKey
 @ stub SLSetGenuineInformation
 @ stub SLUninstallLicense
 @ stub SLUninstallProofOfPurchase
-@ stub SLUnloadApplicationPolicies
+@ stdcall SLUnloadApplicationPolicies(ptr long)
 @ stub SLUnregisterEvent
 @ stub SLUnregisterPlugin

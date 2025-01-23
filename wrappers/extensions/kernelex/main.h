@@ -260,6 +260,7 @@ typedef struct _UMS_CREATE_THREAD_ATTRIBUTES {
 #define CONTEXT_AMD64_ALL (CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_SEGMENTS | CONTEXT_AMD64_FLOATING_POINT | CONTEXT_AMD64_DEBUG_REGISTERS)
 
 #define RtlProcessHeap() (NtCurrentPeb()->ProcessHeap)
+#define AddrCVarAssocTblSize ((SIZE_T)256)
 
 static const BOOL is_win64 = (sizeof(void *) > sizeof(int));
 volatile long TzSpecificCache;
@@ -1588,18 +1589,6 @@ BaseProcessStartup(
 
 typedef unsigned __int64 QWORD, *PQWORD, *LPQWORD, **PPQWORD;
 
-typedef struct _ACVAHASHTABLEADDRESSLISTENTRY {
-	LIST_ENTRY			ListEntry; // MUST BE THE FIRST MEMBER OF THIS STRUCTURE
-	volatile LPVOID		lpAddr;
-	CONDITION_VARIABLE	CVar;
-	DWORD				dwWaiters;
-} ACVAHASHTABLEADDRESSLISTENTRY, *PACVAHASHTABLEADDRESSLISTENTRY, *LPACVAHASHTABLEADDRESSLISTENTRY;
-
-typedef struct _ACVAHASHTABLEENTRY {
-	LIST_ENTRY			Addresses;	// list of ACVAHASHTABLEADDRESSLISTENTRY structures
-	CRITICAL_SECTION	Lock;
-} ACVAHASHTABLEENTRY, *PACVAHASHTABLEENTRY, *LPACVAHASHTABLEENTRY;
-
 struct pseudo_console
 {
     HANDLE signal;
@@ -1621,5 +1610,3 @@ WINAPI
 BaseProcessStartThunk(VOID);
 
 extern BOOLEAN BaseRunningInServerProcess;
-
-ACVAHASHTABLEENTRY WaitOnAddressHashTable[16];

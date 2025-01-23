@@ -28,8 +28,9 @@
 
 WINE_DEFAULT_DEBUG_CHANNEL(dwrite);
 
-extern const unsigned short wine_linebreak_table[] DECLSPEC_HIDDEN;
-extern const unsigned short wine_scripts_table[] DECLSPEC_HIDDEN;
+extern const unsigned short wine_linebreak_table[];
+extern const unsigned short wine_scripts_table[];
+extern const unsigned short bidi_direction_table[];
 
 /* Number of characters needed for LOCALE_SNATIVEDIGITS */
 #define NATIVE_DIGITS_LEN 11
@@ -198,42 +199,337 @@ static const struct dwritescript_properties dwritescripts_properties[Script_Last
     { /* Hmnp */ { 0x706e6d48, 451,  8, 0x0020, 1, 1, 0, 0, 0, 0, 0 }, { _OT('h','m','n','p') } },
     { /* Nand */ { 0x646e614e, 311,  8, 0x0020, 1, 1, 0, 0, 0, 1, 0 }, { _OT('n','a','n','d') } },
     { /* Wcho */ { 0x6f686357, 283,  8, 0x0020, 1, 1, 0, 0, 0, 0, 0 }, { _OT('w','c','h','o') } },
+    { /* Chrs */ { 0x73726843, 109,  8, 0x0020, 0, 1, 0, 0, 0, 1, 1 }, { _OT('c','h','r','s') } },
+    { /* Diak */ { 0x6b616944, 342,  8, 0x0020, 1, 1, 0, 0, 0, 0, 0 }, { _OT('d','i','a','k') } },
+    { /* Kits */ { 0x7374694b, 288,  8, 0x0020, 1, 0, 1, 1, 0, 0, 0 }, { _OT('k','i','t','s') } },
+    { /* Yezi */ { 0x697a6559, 192,  8, 0x0020, 0, 1, 1, 0, 0, 0, 0 }, { _OT('y','e','z','i') } },
 };
 #undef _OT
 
 const char *debugstr_sa_script(UINT16 script)
 {
-    return script < Script_LastId ? debugstr_tag(dwritescripts_properties[script].props.isoScriptCode) : "undefined";
+    return script < Script_LastId ? debugstr_fourcc(dwritescripts_properties[script].props.isoScriptCode) : "undefined";
 }
 
-/* system font falback configuration */
-static const WCHAR *cjk_families[] = { L"Meiryo" };
-
-static const DWRITE_UNICODE_RANGE cjk_ranges[] =
+static const struct fallback_description
 {
-    { 0x3000, 0x30ff }, /* CJK Symbols and Punctuation, Hiragana, Katakana */
-    { 0x31f0, 0x31ff }, /* Katakana Phonetic Extensions */
-    { 0x4e00, 0x9fff }, /* CJK Unified Ideographs */
+    const char *ranges;
+    const WCHAR *families;
+    const WCHAR *locale;
+}
+system_fallback_config[] =
+{
+    /* Latin, Combining Diacritical Marks */
+    { "0000-007F, 0080-00FF, 0100-017F, 0180-024F, "
+      "0250-02AF, 02B0-02FF, 0300-036F", L"Tahoma" },
+
+    { "0530-058F, FB10-FB1C",   L"Noto Sans Armenian" },
+
+    { "0590-05FF, FB1D-FB4F",   L"Noto Sans Hebrew" },
+
+    { "0600-06FF, 0750-077F, "
+      "08A0-08FF, FB50-FDCF, "
+      "FDF0-FDFF, FE70-FEFE",   L"Noto Sans Arabic" },
+
+    { "0700-074F",              L"Noto Sans Syriac" },
+    { "0780-07BF",              L"Noto Sans Thaana" },
+    { "07C0-07FF",              L"Noto Sans NKo" },
+    { "0800-083F",              L"Noto Sans Samaritan" },
+    { "0840-085F",              L"Noto Sans Mandaic" },
+
+    { "0900-097F",              L"Noto Sans Devanagari" },
+    { "0980-09FF",              L"Noto Sans Bengali" },
+    { "0A00-0A7F",              L"Noto Sans Gurmukhi" },
+    { "0A80-0AFF",              L"Noto Sans Gujarati" },
+    { "0B00-0B7F",              L"Noto Sans Oriya" },
+    { "0B80-0BFF",              L"Noto Sans Tamil" },
+    { "0C00-0C7F",              L"Noto Sans Telugu" },
+    { "0C80-0CFF",              L"Noto Sans Kannada" },
+    { "0D00-0D7F",              L"Noto Sans Malayalam" },
+    { "0D80-0DFF",              L"Noto Sans Sinhala" },
+
+    { "0E00-0E7F",              L"Noto Sans Thai" },
+    { "0E80-0EFF",              L"Noto Sans Lao" },
+
+    { "0F00-0FFF",              L"Noto Serif Tibetan" },
+
+    { "1000-109F, A9E0-A9FF, AA60-AA7F", L"Noto Sans Myanmar" },
+
+    { "10A0-10FF, 2D00-2D2F",   L"Noto Sans Georgian" },
+
+    /* Hangul Jamo               - 1100-11FF
+       Hangul Compatibility Jamo - 3130-318F
+       Enc. CJK (Paren Hangul)   - 3200-321F
+       Enc. CJK (Circled Hangul) - 3260-327F
+       Hangul Jamo Extended-A    - A960-A97F
+       Hangul Syllables          - AC00-D7AF
+       Hangul Jamo Extended-B    - D7B0-D7FF */
+
+    { "1100-11FF, 3130-318F, "
+      "3200-321F, 3260-327F, "
+      "A960-A97F, AC00-D7FF, "
+      "D7B0-D7FF",              L"Noto Sans CJK KR" },
+
+    { "1680-169F",              L"Noto Sans Ogham" },
+
+    { "16A0-16FF",              L"Noto Sans Runic" },
+
+    { "1700-171F",              L"Noto Sans Tagalog" },
+    { "1720-173F",              L"Noto Sans Hanunoo" },
+    { "1740-175F",              L"Noto Sans Buhid" },
+    { "1760-177F",              L"Noto Sans Tagbanwa" },
+
+    { "1800-18AF, 202F, 11660-1167F", L"Noto Sans Mongolian" },
+
+    { "1900-194F",              L"Noto Sans Limbu" },
+    { "1950-197F",              L"Noto Sans Tai Le" },
+    { "1980-19DF",              L"Noto Sans New Tai Lue" },
+    { "1A00-1A1F",              L"Noto Sans Buginese" },
+    { "1A20-1AAF",              L"Noto Sans Tai Tham" },
+    { "1B00-1B7F",              L"Noto Sans Balinese" },
+    { "1B80-1BBF, 1CC0-1CCF",   L"Noto Sans Sundanes" },
+    { "1BC0-1BFF",              L"Noto Sans Batak" },
+    { "1C00-1C4F",              L"Noto Sans Lepcha" },
+    { "1C50-1C7F",              L"Noto Sans Ol Chiki" },
+
+    { "2C80-2CFF",              L"Noto Sans Coptic" },
+    { "2D30-2D7F",              L"Noto Sans Tifinagh" },
+
+    /* CJK Radicals Supplement - 2E80-2EFF */
+
+    { "2E80-2EFF",              L"Noto Sans CJK SC", L"zh-Hans" },
+    { "2E80-2EFF",              L"Noto Sans CJK TC", L"zh-Hant" },
+    { "2E80-2EFF",              L"Noto Sans CJK KR", L"ko" },
+
+    /* CJK Symbols and Punctuation - 3000-303F
+       Hiragana                    - 3040-309F
+       Katakana                    - 30A0-30FF
+       Katakana Phonetic Ext.      - 31F0-31FF */
+
+    { "3000-30FF, 31F0-31FF",   L"Noto Sans CJK SC", L"zh-Hans" },
+    { "3000-30FF, 31F0-31FF",   L"Noto Sans CJK TC", L"zh-Hant" },
+    { "3000-30FF, 31F0-31FF",   L"Noto Sans CJK KR", L"ko" },
+    { "3000-30FF, 31F0-31FF",   L"Noto Sans CJK JP" },
+
+    /* CJK Unified Ext A - 3400-4DBF
+       CJK Unified       - 4E00-9FFF */
+
+    { "3400-4DBF, 4E00-9FFF",   L"Noto Sans CJK SC", L"zh-Hans" },
+    { "3400-4DBF, 4E00-9FFF",   L"Noto Sans CJK TC", L"zh-Hant" },
+    { "3400-4DBF, 4E00-9FFF",   L"Noto Sans CJK KR", L"ko" },
+    { "3400-4DBF, 4E00-9FFF",   L"Noto Sans CJK JP" },
+
+    { "A000-A4CF",              L"Noto Sans Yi" },
+    { "A4D0-A4FF",              L"Noto Sans Lisu" },
+    { "A500-A63F",              L"Noto Sans Vai" },
+    { "A6A0-A6FF",              L"Noto Sans Bamum" },
+    { "A800-A82F",              L"Noto Sans Syloti Nagri" },
+    { "A840-A87F",              L"Noto Sans PhagsPa" },
+    { "A880-A8DF",              L"Noto Sans Saurashtra" },
+    { "A900-A92F",              L"Noto Sans Kayah Li" },
+    { "A930-A95F",              L"Noto Sans Rejang" },
+    { "A980-A9DF",              L"Noto Sans Javanese" },
+    { "AA00-AA5F",              L"Noto Sans Cham" },
+
+    /* CJK Compatibility Ideographs - F900-FAFF */
+
+    { "F900-FAFF",              L"Noto Sans CJK SC", L"zh-Hans" },
+    { "F900-FAFF",              L"Noto Sans CJK TC", L"zh-Hant" },
+    { "F900-FAFF",              L"Noto Sans CJK KR", L"ko" },
+    { "F900-FAFF",              L"Noto Sans CJK JP" },
+
+    /* Vertical Forms - FE10-FE1F */
+
+    { "FE10-FE1F",              L"Noto Sans CJK SC", L"zh-Hans" },
+    { "FE10-FE1F",              L"Noto Sans CJK KR", L"ko" },
+    { "FE10-FE1F",              L"Noto Sans CJK TC" },
+
+    /* CJK Compatibility Forms - FE30-FE4F
+       Small Form Variants     - FE50-FE6F */
+
+    { "FE30-FE6F",              L"Noto Sans CJK SC", L"zh-Hans" },
+    { "FE30-FE6F",              L"Noto Sans CJK KR", L"ko" },
+    { "FE30-FE6F",              L"Noto Sans CJK JP", L"ja" },
+    { "FE30-FE6F",              L"Noto Sans CJK TC" },
+
+    /* Halfwidth and Fullwidth Forms */
+    { "FF00-FFEF",              L"Noto Sans CJK SC", L"zh-Hans" },
+    { "FF00-FFEF",              L"Noto Sans CJK TC", L"zh-Hant" },
+    { "FF00-FFEF",              L"Noto Sans CJK KR", L"ko" },
+    { "FF00-FFEF",              L"Noto Sans CJK JP" },
 };
 
-struct fallback_mapping {
+struct text_source_context
+{
+    IDWriteTextAnalysisSource *source;
+
+    UINT32 position;
+    UINT32 length;
+    UINT32 consumed;
+
+    UINT32 chunk_length;
+    const WCHAR *text;
+    UINT32 cursor;
+    HRESULT status;
+    BOOL end;
+
+    UINT32 ch;
+};
+
+static inline unsigned int text_source_get_char_length(const struct text_source_context *context)
+{
+    return context->ch > 0xffff ? 2 : 1;
+}
+
+static void text_source_read_more(struct text_source_context *context)
+{
+    if ((context->chunk_length - context->cursor) > 1) return;
+
+    context->position += context->cursor;
+    context->cursor = 0;
+    if (FAILED(context->status = IDWriteTextAnalysisSource_GetTextAtPosition(context->source, context->position,
+            &context->text, &context->chunk_length)))
+    {
+        context->end = TRUE;
+    }
+}
+
+static void text_source_get_u32_char(struct text_source_context *context)
+{
+    const WCHAR *text;
+    UINT32 available;
+
+    /* Make sure to have full pair of surrogates */
+    text_source_read_more(context);
+
+    available = context->chunk_length - context->cursor;
+    text = context->text + context->cursor;
+
+    if (available > 1 && IS_HIGH_SURROGATE(*text) && IS_LOW_SURROGATE(*(text + 1)))
+    {
+        context->cursor += 2;
+        context->consumed += 2;
+        context->ch = 0x10000 + ((*text - 0xd800) << 10) + *(text + 1) - 0xdc00;
+        return;
+    }
+
+    context->cursor++;
+    context->consumed++;
+    context->ch = *text;
+}
+
+static HRESULT text_source_context_init(struct text_source_context *context, IDWriteTextAnalysisSource *source,
+        UINT32 position, UINT32 length)
+{
+    memset(context, 0, sizeof(*context));
+    context->source = source;
+    context->position = position;
+    context->length = length;
+
+    return IDWriteTextAnalysisSource_GetTextAtPosition(source, position, &context->text, &context->chunk_length);
+}
+
+static BOOL text_source_get_next_u32_char(struct text_source_context *context)
+{
+    if (context->consumed == context->length)
+    {
+        context->ch = 0;
+        context->end = TRUE;
+    }
+    else if (context->cursor < context->chunk_length)
+    {
+        text_source_get_u32_char(context);
+    }
+    else
+    {
+        text_source_read_more(context);
+        /* Normal end-of-text condition. */
+        if (!context->text || !context->chunk_length)
+            context->end = TRUE;
+        else
+            text_source_get_u32_char(context);
+    }
+
+    return context->end;
+}
+
+struct fallback_mapping
+{
     DWRITE_UNICODE_RANGE *ranges;
     UINT32 ranges_count;
     WCHAR **families;
     UINT32 families_count;
     IDWriteFontCollection *collection;
-    WCHAR *locale;
-    FLOAT scale;
+    float scale;
 };
 
-static const struct fallback_mapping fontfallback_neutral_data[] = {
-#define MAPPING_RANGE(ranges, families) \
-        { (DWRITE_UNICODE_RANGE *)ranges, ARRAY_SIZE(ranges), \
-          (WCHAR **)families, ARRAY_SIZE(families) }
+struct fallback_locale
+{
+    struct list entry;
+    WCHAR name[LOCALE_NAME_MAX_LENGTH];
+    struct
+    {
+        size_t *data;
+        size_t count;
+        size_t size;
+    } ranges;
+};
 
-    MAPPING_RANGE(cjk_ranges, cjk_families),
+static void fallback_locale_list_destroy(struct list *locales)
+{
+    struct fallback_locale *cur, *cur2;
 
-#undef MAPPING_RANGE
+    LIST_FOR_EACH_ENTRY_SAFE(cur, cur2, locales, struct fallback_locale, entry)
+    {
+        list_remove(&cur->entry);
+        free(cur->ranges.data);
+        free(cur);
+    }
+}
+
+static HRESULT fallback_locale_add_mapping(struct fallback_locale *locale, size_t index)
+{
+    size_t count = locale->ranges.count;
+
+    /* Append to last range, or start a new one. */
+    if (count && locale->ranges.data[count - 1] == (index - 1))
+    {
+        locale->ranges.data[count - 1] = index;
+        return S_OK;
+    }
+
+    if (!dwrite_array_reserve((void **)&locale->ranges.data, &locale->ranges.size, count + 2,
+            sizeof(*locale->ranges.data)))
+    {
+        return E_OUTOFMEMORY;
+    }
+
+    locale->ranges.data[count] = locale->ranges.data[count + 1] = index;
+    locale->ranges.count += 2;
+
+    return S_OK;
+}
+
+/* TODO: potentially needs improvement to consider partially matching locale names. */
+static struct fallback_locale * font_fallback_get_locale(const struct list *locales,
+        const WCHAR *locale_name)
+{
+    struct fallback_locale *locale, *neutral = NULL;
+
+    LIST_FOR_EACH_ENTRY(locale, locales, struct fallback_locale, entry)
+    {
+        if (!wcsicmp(locale->name, locale_name)) return locale;
+        if (!*locale->name) neutral = locale;
+    }
+
+    return neutral;
+}
+
+struct fallback_data
+{
+    struct fallback_mapping *mappings;
+    size_t count;
+    struct list locales;
 };
 
 struct dwrite_fontfallback
@@ -241,9 +537,9 @@ struct dwrite_fontfallback
     IDWriteFontFallback1 IDWriteFontFallback1_iface;
     LONG refcount;
     IDWriteFactory7 *factory;
-    IDWriteFontCollection1 *systemcollection;
-    struct fallback_mapping *mappings;
-    UINT32 mappings_count;
+    IDWriteFontCollection *systemcollection;
+    struct fallback_data data;
+    size_t mappings_size;
 };
 
 struct dwrite_fontfallback_builder
@@ -251,10 +547,77 @@ struct dwrite_fontfallback_builder
     IDWriteFontFallbackBuilder IDWriteFontFallbackBuilder_iface;
     LONG refcount;
     IDWriteFactory7 *factory;
-    struct fallback_mapping *mappings;
-    size_t size;
-    size_t count;
+    struct fallback_data data;
+    size_t mappings_size;
 };
+
+static struct fallback_data system_fallback =
+{
+    .locales = LIST_INIT(system_fallback.locales),
+};
+
+static void release_fallback_mapping(struct fallback_mapping *mapping)
+{
+    unsigned int i;
+
+    free(mapping->ranges);
+    for (i = 0; i < mapping->families_count; ++i)
+        free(mapping->families[i]);
+    free(mapping->families);
+    if (mapping->collection)
+        IDWriteFontCollection_Release(mapping->collection);
+}
+
+static void release_fallback_data(struct fallback_data *data)
+{
+    size_t i;
+
+    for (i = 0; i < data->count; ++i)
+        release_fallback_mapping(&data->mappings[i]);
+    free(data->mappings);
+    fallback_locale_list_destroy(&data->locales);
+}
+
+static BOOL fallback_mapping_contains_character(const struct fallback_mapping *mapping, UINT32 ch)
+{
+    size_t i;
+
+    for (i = 0; i < mapping->ranges_count; ++i)
+    {
+        const DWRITE_UNICODE_RANGE *range = &mapping->ranges[i];
+        if (range->first <= ch && range->last >= ch) return TRUE;
+    }
+
+    return FALSE;
+}
+
+static const struct fallback_mapping * find_fallback_mapping(const struct fallback_data *fallback,
+        const struct fallback_locale *locale, UINT32 ch)
+{
+    const struct fallback_mapping *mapping;
+    size_t i, j;
+
+    for (i = 0; i < locale->ranges.count; i += 2)
+    {
+        size_t start = locale->ranges.data[i], end = locale->ranges.data[i + 1];
+        for (j = start; j <= end; ++j)
+        {
+            mapping = &fallback->mappings[j];
+            if (fallback_mapping_contains_character(mapping, ch)) return mapping;
+        }
+    }
+
+    mapping = NULL;
+
+    /* Mapping wasn't found for specific locale, try with neutral one. This will only recurse once. */
+    if (*locale->name)
+    {
+        locale = font_fallback_get_locale(&fallback->locales, L"");
+        mapping = find_fallback_mapping(fallback, locale, ch);
+    }
+
+    return mapping;
+}
 
 struct dwrite_numbersubstitution
 {
@@ -283,40 +646,61 @@ static inline struct dwrite_fontfallback_builder *impl_from_IDWriteFontFallbackB
     return CONTAINING_RECORD(iface, struct dwrite_fontfallback_builder, IDWriteFontFallbackBuilder_iface);
 }
 
-static inline UINT16 get_char_script(WCHAR c)
+static inline UINT16 get_char_script(UINT32 c)
 {
-    UINT16 script = get_table_entry(wine_scripts_table, c);
+    UINT16 script = get_table_entry_32(wine_scripts_table, c);
     return script == Script_Inherited ? Script_Unknown : script;
 }
 
-static DWRITE_SCRIPT_ANALYSIS get_char_sa(WCHAR c)
+static DWRITE_SCRIPT_ANALYSIS get_char_sa(UINT32 c)
 {
     DWRITE_SCRIPT_ANALYSIS sa;
-    WORD type;
 
-    GetStringTypeW(CT_CTYPE1, &c, 1, &type);
     sa.script = get_char_script(c);
-    sa.shapes = (type & C1_CNTRL) || c == 0x2028 /* LINE SEPARATOR */ || c == 0x2029 /* PARAGRAPH SEPARATOR */ ?
-        DWRITE_SCRIPT_SHAPES_NO_VISUAL : DWRITE_SCRIPT_SHAPES_DEFAULT;
+    sa.shapes = DWRITE_SCRIPT_SHAPES_DEFAULT;
+    if ((c <= 0x001f)                          /* C0 controls */
+            || (c >= 0x007f && c <= 0x009f)    /* DELETE, C1 controls */
+            || (c == 0x00ad)                   /* SOFT HYPHEN */
+            || (c >= 0x200b && c <= 0x200f)    /* ZWSP, ZWNJ, ZWJ, LRM, RLM */
+            || (c >= 0x2028 && c <= 0x202e)    /* Line/paragraph separators, LRE, RLE, PDF, LRO, RLO */
+            || (c >= 0x2060 && c <= 0x2064)    /* WJ, invisible operators */
+            || (c >= 0x2066 && c <= 0x2069)    /* LRI, RLI, FSI, PDI */
+            || (c >= 0x206a && c <= 0x206f)    /* Deprecated control characters */
+            || (c == 0xfeff)                   /* ZWBNSP */
+            || (c == 0xfff9)                   /* Interlinear annotation */
+            || (c == 0xfffa)
+            || (c == 0xfffb)
+            || (c >= 0x1bca0 && c <= 0x1bca3)  /* Shorthand format controls */
+            || (c >= 0x1d173 && c <= 0x1d17a)  /* Musical symbols: beams and slurs */
+            || (c == 0xe0001)                  /* Language tag, deprecated */
+            || (c >= 0xe0020 && c <= 0xe007f)) /* Tag components */
+    {
+        sa.shapes = DWRITE_SCRIPT_SHAPES_NO_VISUAL;
+    }
+    else
+    {
+        sa.shapes = DWRITE_SCRIPT_SHAPES_DEFAULT;
+    }
+
     return sa;
 }
 
-static HRESULT analyze_script(const WCHAR *text, UINT32 position, UINT32 length, IDWriteTextAnalysisSink *sink)
+static HRESULT analyze_script(struct text_source_context *context, IDWriteTextAnalysisSink *sink)
 {
     DWRITE_SCRIPT_ANALYSIS sa;
-    UINT32 pos, i, seq_length;
+    UINT32 pos, length;
+    HRESULT hr;
 
-    if (!length)
-        return S_OK;
+    text_source_get_next_u32_char(context);
 
-    sa = get_char_sa(*text);
+    sa = get_char_sa(context->ch);
 
-    pos = position;
-    seq_length = 1;
+    pos = context->position;
+    length = text_source_get_char_length(context);
 
-    for (i = 1; i < length; i++)
+    while (!text_source_get_next_u32_char(context))
     {
-        DWRITE_SCRIPT_ANALYSIS cur_sa = get_char_sa(text[i]);
+        DWRITE_SCRIPT_ANALYSIS cur_sa = get_char_sa(context->ch);
 
         /* Unknown type is ignored when preceded or followed by another script */
         switch (sa.script) {
@@ -336,24 +720,31 @@ static HRESULT analyze_script(const WCHAR *text, UINT32 position, UINT32 length,
 
         /* this is a length of a sequence to be reported next */
         if (sa.script == cur_sa.script && sa.shapes == cur_sa.shapes)
-            seq_length++;
-        else {
-            HRESULT hr;
-
-            hr = IDWriteTextAnalysisSink_SetScriptAnalysis(sink, pos, seq_length, &sa);
+            length += text_source_get_char_length(context);
+        else
+        {
+            hr = IDWriteTextAnalysisSink_SetScriptAnalysis(sink, pos, length, &sa);
             if (FAILED(hr)) return hr;
-            pos = position + i;
-            seq_length = 1;
+            pos += length;
+            length = text_source_get_char_length(context);
             sa = cur_sa;
         }
     }
 
     /* one char length case or normal completion call */
-    return IDWriteTextAnalysisSink_SetScriptAnalysis(sink, pos, seq_length, &sa);
+    return IDWriteTextAnalysisSink_SetScriptAnalysis(sink, pos, length, &sa);
 }
 
-struct linebreaking_state {
+struct break_index
+{
+    unsigned int index;
+    UINT8 length;
+};
+
+struct linebreaking_state
+{
     DWRITE_LINE_BREAKPOINT *breakpoints;
+    struct break_index *breaks;
     UINT32 count;
 };
 
@@ -424,65 +815,110 @@ static BOOL has_strong_condition(DWRITE_BREAK_CONDITION old_condition, DWRITE_BR
 static inline void set_break_condition(UINT32 pos, enum BreakConditionLocation location, DWRITE_BREAK_CONDITION condition,
     struct linebreaking_state *state)
 {
-    if (location == BreakConditionBefore) {
-        if (has_strong_condition(state->breakpoints[pos].breakConditionBefore, condition))
+    unsigned int index = state->breaks[pos].index;
+
+    if (location == BreakConditionBefore)
+    {
+        if (has_strong_condition(state->breakpoints[index].breakConditionBefore, condition))
             return;
-        state->breakpoints[pos].breakConditionBefore = condition;
-        if (pos > 0)
-            state->breakpoints[pos-1].breakConditionAfter = condition;
+        state->breakpoints[index].breakConditionBefore = condition;
+        if (pos)
+        {
+            --pos;
+
+            index = state->breaks[pos].index;
+            if (state->breaks[pos].length > 1) index++;
+
+            state->breakpoints[index].breakConditionAfter = condition;
+        }
     }
-    else {
-        if (has_strong_condition(state->breakpoints[pos].breakConditionAfter, condition))
+    else
+    {
+        if (state->breaks[pos].length > 1) index++;
+
+        if (has_strong_condition(state->breakpoints[index].breakConditionAfter, condition))
             return;
-        state->breakpoints[pos].breakConditionAfter = condition;
+        state->breakpoints[index].breakConditionAfter = condition;
+
         if (pos + 1 < state->count)
-            state->breakpoints[pos+1].breakConditionBefore = condition;
+        {
+            index = state->breaks[pos + 1].index;
+            state->breakpoints[index].breakConditionBefore = condition;
+        }
     }
 }
 
 BOOL lb_is_newline_char(WCHAR ch)
 {
-    short c = get_table_entry(wine_linebreak_table, ch);
+    short c = get_table_entry_32(wine_linebreak_table, ch);
     return c == b_LF || c == b_NL || c == b_CR || c == b_BK;
 }
 
-static HRESULT analyze_linebreaks(const WCHAR *text, UINT32 count, DWRITE_LINE_BREAKPOINT *breakpoints)
+static HRESULT analyze_linebreaks(IDWriteTextAnalysisSource *source, UINT32 position,
+        UINT32 length, DWRITE_LINE_BREAKPOINT *breakpoints)
 {
+    struct text_source_context context;
     struct linebreaking_state state;
+    struct break_index *breaks;
+    unsigned int count, index;
     short *break_class;
-    int i, j;
+    int i = 0, j;
+    HRESULT hr;
 
-    break_class = heap_calloc(count, sizeof(*break_class));
-    if (!break_class)
+    if (FAILED(hr = text_source_context_init(&context, source, position, length))) return hr;
+
+    if (!(breaks = calloc(length, sizeof(*breaks))))
         return E_OUTOFMEMORY;
 
-    state.breakpoints = breakpoints;
-    state.count = count;
-
-    for (i = 0; i < count; i++)
+    if (!(break_class = calloc(length, sizeof(*break_class))))
     {
-        break_class[i] = get_table_entry(wine_linebreak_table, text[i]);
+        free(breaks);
+        return E_OUTOFMEMORY;
+    }
 
-        breakpoints[i].breakConditionBefore = DWRITE_BREAK_CONDITION_NEUTRAL;
-        breakpoints[i].breakConditionAfter  = DWRITE_BREAK_CONDITION_NEUTRAL;
-        breakpoints[i].isWhitespace = !!iswspace(text[i]);
-        breakpoints[i].isSoftHyphen = text[i] == 0x00ad /* Unicode Soft Hyphen */;
-        breakpoints[i].padding = 0;
+    count = index = 0;
+    while (!text_source_get_next_u32_char(&context))
+    {
+        break_class[count] = get_table_entry_32(wine_linebreak_table, context.ch);
+        breaks[count].length = text_source_get_char_length(&context);
+        breaks[count].index = index;
 
         /* LB1 - resolve some classes. TODO: use external algorithms for these classes. */
-        switch (break_class[i])
+        switch (break_class[count])
         {
             case b_AI:
             case b_SA:
             case b_SG:
             case b_XX:
-                break_class[i] = b_AL;
+                break_class[count] = b_AL;
                 break;
             case b_CJ:
-                break_class[i] = b_NS;
+                break_class[count] = b_NS;
                 break;
         }
+
+        breakpoints[index].breakConditionBefore = DWRITE_BREAK_CONDITION_NEUTRAL;
+        breakpoints[index].breakConditionAfter  = DWRITE_BREAK_CONDITION_NEUTRAL;
+        breakpoints[index].isWhitespace = context.ch < 0xffff ? !!iswspace(context.ch) : 0;
+        breakpoints[index].isSoftHyphen = context.ch == 0x00ad /* Unicode Soft Hyphen */;
+        breakpoints[index].padding = 0;
+        ++index;
+
+        if (breaks[count].length > 1)
+        {
+            breakpoints[index] = breakpoints[index - 1];
+            /* Never break in surrogate pairs. */
+            breakpoints[index - 1].breakConditionAfter = DWRITE_BREAK_CONDITION_MAY_NOT_BREAK;
+            breakpoints[index].breakConditionBefore = DWRITE_BREAK_CONDITION_MAY_NOT_BREAK;
+            ++index;
+        }
+
+        ++count;
     }
+
+    state.breakpoints = breakpoints;
+    state.breaks = breaks;
+    state.count = count;
 
     /* LB2 - never break at the start */
     set_break_condition(0, BreakConditionBefore, DWRITE_BREAK_CONDITION_MAY_NOT_BREAK, &state);
@@ -813,7 +1249,9 @@ static HRESULT analyze_linebreaks(const WCHAR *text, UINT32 count, DWRITE_LINE_B
         set_break_condition(i, BreakConditionAfter, DWRITE_BREAK_CONDITION_CAN_BREAK, &state);
     }
 
-    heap_free(break_class);
+    free(break_class);
+    free(breaks);
+
     return S_OK;
 }
 
@@ -846,76 +1284,10 @@ static ULONG WINAPI dwritetextanalyzer_Release(IDWriteTextAnalyzer2 *iface)
     return 1;
 }
 
-/* This helper tries to get 'length' chars from a source, allocating a buffer only if source failed to provide enough
-   data after a first request. */
-static HRESULT get_text_source_ptr(IDWriteTextAnalysisSource *source, UINT32 position, UINT32 length, const WCHAR **text, WCHAR **buff)
-{
-    HRESULT hr;
-    UINT32 len;
-
-    *buff = NULL;
-    *text = NULL;
-    len = 0;
-    hr = IDWriteTextAnalysisSource_GetTextAtPosition(source, position, text, &len);
-    if (FAILED(hr)) return hr;
-
-    if (len < length) {
-        UINT32 read;
-
-        *buff = heap_alloc(length*sizeof(WCHAR));
-        if (!*buff)
-            return E_OUTOFMEMORY;
-        memcpy(*buff, *text, len*sizeof(WCHAR));
-        read = len;
-
-        while (read < length && *text) {
-            *text = NULL;
-            len = 0;
-            hr = IDWriteTextAnalysisSource_GetTextAtPosition(source, read, text, &len);
-            if (FAILED(hr)) {
-                heap_free(*buff);
-                return hr;
-            }
-            memcpy(*buff + read, *text, min(len, length-read)*sizeof(WCHAR));
-            read += len;
-        }
-
-        *text = *buff;
-    }
-
-    return hr;
-}
-
 static HRESULT WINAPI dwritetextanalyzer_AnalyzeScript(IDWriteTextAnalyzer2 *iface,
     IDWriteTextAnalysisSource* source, UINT32 position, UINT32 length, IDWriteTextAnalysisSink* sink)
 {
-    WCHAR *buff = NULL;
-    const WCHAR *text;
-    HRESULT hr;
-
-    TRACE("%p, %u, %u, %p.\n", source, position, length, sink);
-
-    if (length == 0)
-        return S_OK;
-
-    hr = get_text_source_ptr(source, position, length, &text, &buff);
-    if (FAILED(hr))
-        return hr;
-
-    hr = analyze_script(text, position, length, sink);
-    heap_free(buff);
-
-    return hr;
-}
-
-static HRESULT WINAPI dwritetextanalyzer_AnalyzeBidi(IDWriteTextAnalyzer2 *iface,
-    IDWriteTextAnalysisSource* source, UINT32 position, UINT32 length, IDWriteTextAnalysisSink* sink)
-{
-    UINT8 *levels = NULL, *explicit = NULL;
-    UINT8 baselevel, level, explicit_level;
-    UINT32 pos, i, seq_length;
-    WCHAR *buff = NULL;
-    const WCHAR *text;
+    struct text_source_context context;
     HRESULT hr;
 
     TRACE("%p, %u, %u, %p.\n", source, position, length, sink);
@@ -923,49 +1295,87 @@ static HRESULT WINAPI dwritetextanalyzer_AnalyzeBidi(IDWriteTextAnalyzer2 *iface
     if (!length)
         return S_OK;
 
-    hr = get_text_source_ptr(source, position, length, &text, &buff);
-    if (FAILED(hr))
-        return hr;
+    if (FAILED(hr = text_source_context_init(&context, source, position, length))) return hr;
 
-    levels = heap_calloc(length, sizeof(*levels));
-    explicit = heap_calloc(length, sizeof(*explicit));
+    return analyze_script(&context, sink);
+}
 
-    if (!levels || !explicit) {
-        hr = E_OUTOFMEMORY;
-        goto done;
+static inline unsigned int get_bidi_char_length(const struct bidi_char *c)
+{
+    return c->ch > 0xffff ? 2 : 1;
+}
+
+static inline UINT8 get_char_bidi_class(UINT32 ch)
+{
+    return get_table_entry_32(bidi_direction_table, ch);
+}
+
+static HRESULT WINAPI dwritetextanalyzer_AnalyzeBidi(IDWriteTextAnalyzer2 *iface,
+    IDWriteTextAnalysisSource* source, UINT32 position, UINT32 length, IDWriteTextAnalysisSink* sink)
+{
+    struct text_source_context context;
+    UINT8 baselevel, resolved, explicit;
+    unsigned int i, chars_count = 0;
+    struct bidi_char *chars, *ptr;
+    UINT32 pos, seq_length;
+    HRESULT hr;
+
+    TRACE("%p, %u, %u, %p.\n", source, position, length, sink);
+
+    if (!length)
+        return S_OK;
+
+    if (!(chars = calloc(length, sizeof(*chars))))
+        return E_OUTOFMEMORY;
+
+    ptr = chars;
+    text_source_context_init(&context, source, position, length);
+    while (!text_source_get_next_u32_char(&context))
+    {
+        ptr->ch = context.ch;
+        ptr->nominal_bidi_class = ptr->bidi_class = get_char_bidi_class(context.ch);
+        ptr++;
+
+        ++chars_count;
     }
 
+    /* Resolve levels using utf-32 codepoints, size differences are accounted for
+       when levels are reported with SetBidiLevel(). */
+
     baselevel = IDWriteTextAnalysisSource_GetParagraphReadingDirection(source);
-    hr = bidi_computelevels(text, length, baselevel, explicit, levels);
+    hr = bidi_computelevels(chars, chars_count, baselevel);
     if (FAILED(hr))
         goto done;
 
-    level = levels[0];
-    explicit_level = explicit[0];
     pos = position;
-    seq_length = 1;
+    resolved = chars->resolved;
+    explicit = chars->explicit;
+    seq_length = get_bidi_char_length(chars);
 
-    for (i = 1; i < length; i++) {
-        if (levels[i] == level && explicit[i] == explicit_level)
-            seq_length++;
-        else {
-            hr = IDWriteTextAnalysisSink_SetBidiLevel(sink, pos, seq_length, explicit_level, level);
+    for (i = 1, ptr = chars + 1; i < chars_count; ++i, ++ptr)
+    {
+        if (ptr->resolved == resolved && ptr->explicit == explicit)
+        {
+            seq_length += get_bidi_char_length(ptr);
+        }
+        else
+        {
+            hr = IDWriteTextAnalysisSink_SetBidiLevel(sink, pos, seq_length, explicit, resolved);
             if (FAILED(hr))
                 goto done;
 
             pos += seq_length;
-            seq_length = 1;
-            level = levels[i];
-            explicit_level = explicit[i];
+            seq_length = get_bidi_char_length(ptr);
+            resolved = ptr->resolved;
+            explicit = ptr->explicit;
         }
     }
+
     /* one char length case or normal completion call */
-    hr = IDWriteTextAnalysisSink_SetBidiLevel(sink, pos, seq_length, explicit_level, level);
+    hr = IDWriteTextAnalysisSink_SetBidiLevel(sink, pos, seq_length, explicit, resolved);
 
 done:
-    heap_free(explicit);
-    heap_free(levels);
-    heap_free(buff);
+    free(chars);
 
     return hr;
 }
@@ -981,62 +1391,23 @@ static HRESULT WINAPI dwritetextanalyzer_AnalyzeNumberSubstitution(IDWriteTextAn
 }
 
 static HRESULT WINAPI dwritetextanalyzer_AnalyzeLineBreakpoints(IDWriteTextAnalyzer2 *iface,
-    IDWriteTextAnalysisSource* source, UINT32 position, UINT32 length, IDWriteTextAnalysisSink* sink)
+        IDWriteTextAnalysisSource *source, UINT32 position, UINT32 length, IDWriteTextAnalysisSink *sink)
 {
-    DWRITE_LINE_BREAKPOINT *breakpoints = NULL;
-    WCHAR *buff = NULL;
-    const WCHAR *text;
+    DWRITE_LINE_BREAKPOINT *breakpoints;
     HRESULT hr;
-    UINT32 len;
 
     TRACE("%p, %u, %u, %p.\n", source, position, length, sink);
 
-    if (length == 0)
+    if (!length)
         return S_OK;
 
-    /* get some, check for length */
-    text = NULL;
-    len = 0;
-    hr = IDWriteTextAnalysisSource_GetTextAtPosition(source, position, &text, &len);
-    if (FAILED(hr)) return hr;
+    if (!(breakpoints = calloc(length, sizeof(*breakpoints))))
+        return E_OUTOFMEMORY;
 
-    if (len < length) {
-        UINT32 read;
+    if (SUCCEEDED(hr = analyze_linebreaks(source, position, length, breakpoints)))
+        hr = IDWriteTextAnalysisSink_SetLineBreakpoints(sink, position, length, breakpoints);
 
-        buff = heap_calloc(length, sizeof(*buff));
-        if (!buff)
-            return E_OUTOFMEMORY;
-        memcpy(buff, text, len*sizeof(WCHAR));
-        read = len;
-
-        while (read < length && text) {
-            text = NULL;
-            len = 0;
-            hr = IDWriteTextAnalysisSource_GetTextAtPosition(source, read, &text, &len);
-            if (FAILED(hr))
-                goto done;
-            memcpy(&buff[read], text, min(len, length-read)*sizeof(WCHAR));
-            read += len;
-        }
-
-        text = buff;
-    }
-
-    breakpoints = heap_calloc(length, sizeof(*breakpoints));
-    if (!breakpoints) {
-        hr = E_OUTOFMEMORY;
-        goto done;
-    }
-
-    hr = analyze_linebreaks(text, length, breakpoints);
-    if (FAILED(hr))
-        goto done;
-
-    hr = IDWriteTextAnalysisSink_SetLineBreakpoints(sink, position, length, breakpoints);
-
-done:
-    heap_free(breakpoints);
-    heap_free(buff);
+    free(breakpoints);
 
     return hr;
 }
@@ -1084,7 +1455,7 @@ static void get_number_substitutes(IDWriteNumberSubstitution *substitution, BOOL
             case 1:
             default:
                 if (value != 1)
-                    WARN("Unknown IDIGITSUBSTITUTION value %u, locale %s.\n", value, debugstr_w(numbersubst->locale));
+                    WARN("Unknown IDIGITSUBSTITUTION value %lu, locale %s.\n", value, debugstr_w(numbersubst->locale));
             }
         }
         else
@@ -1137,7 +1508,7 @@ static void analyzer_dump_user_features(DWRITE_TYPOGRAPHIC_FEATURES const **feat
     for (i = 0, start = 0; i < feature_ranges; start += feature_range_lengths[i++]) {
         TRACE("feature range [%u,%u)\n", start, start + feature_range_lengths[i]);
         for (j = 0; j < features[i]->featureCount; j++)
-            TRACE("feature %s, parameter %u\n", debugstr_tag(features[i]->features[j].nameTag),
+            TRACE("feature %s, parameter %u\n", debugstr_fourcc(features[i]->features[j].nameTag),
                     features[i]->features[j].parameter);
     }
 }
@@ -1174,8 +1545,8 @@ static HRESULT WINAPI dwritetextanalyzer_GetGlyphs(IDWriteTextAnalyzer2 *iface,
     context.length = length;
     context.is_rtl = is_rtl;
     context.is_sideways = is_sideways;
-    context.u.subst.glyphs = heap_calloc(glyph_count, sizeof(*glyphs));
-    context.u.subst.glyph_props = heap_calloc(glyph_count, sizeof(*glyph_props));
+    context.u.subst.glyphs = calloc(glyph_count, sizeof(*glyphs));
+    context.u.subst.glyph_props = calloc(glyph_count, sizeof(*glyph_props));
     context.u.subst.text_props = text_props;
     context.u.subst.clustermap = clustermap;
     context.u.subst.max_glyph_count = max_glyph_count;
@@ -1185,7 +1556,7 @@ static HRESULT WINAPI dwritetextanalyzer_GetGlyphs(IDWriteTextAnalyzer2 *iface,
     context.user_features.features = features;
     context.user_features.range_lengths = feature_range_lengths;
     context.user_features.range_count = feature_ranges;
-    context.glyph_infos = heap_calloc(glyph_count, sizeof(*context.glyph_infos));
+    context.glyph_infos = calloc(glyph_count, sizeof(*context.glyph_infos));
     context.table = &context.cache->gsub;
 
     *actual_glyph_count = 0;
@@ -1206,9 +1577,9 @@ static HRESULT WINAPI dwritetextanalyzer_GetGlyphs(IDWriteTextAnalyzer2 *iface,
     }
 
 failed:
-    heap_free(context.u.subst.glyph_props);
-    heap_free(context.u.subst.glyphs);
-    heap_free(context.glyph_infos);
+    free(context.u.subst.glyph_props);
+    free(context.u.subst.glyphs);
+    free(context.glyph_infos);
 
     return hr;
 }
@@ -1221,7 +1592,7 @@ static HRESULT WINAPI dwritetextanalyzer_GetGlyphPlacements(IDWriteTextAnalyzer2
     UINT32 const* feature_range_lengths, UINT32 feature_ranges, float *advances, DWRITE_GLYPH_OFFSET *offsets)
 {
     const struct dwritescript_properties *scriptprops;
-    struct scriptshaping_context context;
+    struct scriptshaping_context context = { 0 };
     struct dwrite_fontface *font_obj;
     unsigned int i;
     HRESULT hr;
@@ -1268,7 +1639,7 @@ static HRESULT WINAPI dwritetextanalyzer_GetGlyphPlacements(IDWriteTextAnalyzer2
     context.user_features.features = features;
     context.user_features.range_lengths = feature_range_lengths;
     context.user_features.range_count = feature_ranges;
-    context.glyph_infos = heap_calloc(glyph_count, sizeof(*context.glyph_infos));
+    context.glyph_infos = calloc(glyph_count, sizeof(*context.glyph_infos));
     context.table = &context.cache->gpos;
 
     if (!context.glyph_infos)
@@ -1281,7 +1652,7 @@ static HRESULT WINAPI dwritetextanalyzer_GetGlyphPlacements(IDWriteTextAnalyzer2
     hr = shape_get_positions(&context, scriptprops->scripttags);
 
 failed:
-    heap_free(context.glyph_infos);
+    free(context.glyph_infos);
 
     return hr;
 }
@@ -1295,7 +1666,7 @@ static HRESULT WINAPI dwritetextanalyzer_GetGdiCompatibleGlyphPlacements(IDWrite
     UINT32 const* feature_range_lengths, UINT32 feature_ranges, float *advances, DWRITE_GLYPH_OFFSET *offsets)
 {
     const struct dwritescript_properties *scriptprops;
-    struct scriptshaping_context context;
+    struct scriptshaping_context context = { 0 };
     DWRITE_MEASURING_MODE measuring_mode;
     struct dwrite_fontface *font_obj;
     unsigned int i;
@@ -1345,7 +1716,7 @@ static HRESULT WINAPI dwritetextanalyzer_GetGdiCompatibleGlyphPlacements(IDWrite
     context.user_features.features = features;
     context.user_features.range_lengths = feature_range_lengths;
     context.user_features.range_count = feature_ranges;
-    context.glyph_infos = heap_calloc(glyph_count, sizeof(*context.glyph_infos));
+    context.glyph_infos = calloc(glyph_count, sizeof(*context.glyph_infos));
     context.table = &context.cache->gpos;
 
     if (!context.glyph_infos)
@@ -1358,7 +1729,7 @@ static HRESULT WINAPI dwritetextanalyzer_GetGdiCompatibleGlyphPlacements(IDWrite
     hr = shape_get_positions(&context, scriptprops->scripttags);
 
 failed:
-    heap_free(context.glyph_infos);
+    free(context.glyph_infos);
 
     return hr;
 }
@@ -1394,8 +1765,7 @@ static HRESULT apply_cluster_spacing(float leading_spacing, float trailing_spaci
             break;
     }
 
-    deltas = heap_calloc(end - start + 1, sizeof(*deltas));
-    if (!deltas)
+    if (!(deltas = calloc(end - start + 1, sizeof(*deltas))))
         return E_OUTOFMEMORY;
 
     /* Cluster advance, note that properties are ignored. */
@@ -1475,7 +1845,7 @@ static HRESULT apply_cluster_spacing(float leading_spacing, float trailing_spaci
                 modified_advances[i - 1];
     }
 
-    heap_free(deltas);
+    free(deltas);
 
     return S_OK;
 }
@@ -1689,16 +2059,18 @@ static HRESULT WINAPI dwritetextanalyzer1_GetTextComplexity(IDWriteTextAnalyzer2
     *len_read = i;
 
     /* fetch indices */
-    if (*is_simple && indices) {
-        UINT32 *codepoints = heap_calloc(*len_read, sizeof(*codepoints));
-        if (!codepoints)
+    if (*is_simple && indices)
+    {
+        UINT32 *codepoints;
+
+        if (!(codepoints = calloc(*len_read, sizeof(*codepoints))))
             return E_OUTOFMEMORY;
 
         for (i = 0; i < *len_read; i++)
             codepoints[i] = text[i];
 
         hr = IDWriteFontFace_GetGlyphIndices(face, codepoints, *len_read, indices);
-        heap_free(codepoints);
+        free(codepoints);
     }
 
     return hr;
@@ -1804,7 +2176,7 @@ static HRESULT WINAPI dwritetextanalyzer2_GetTypographicFeatures(IDWriteTextAnal
     context.language_tag = get_opentype_language(locale);
     props = &dwritescripts_properties[sa.script];
 
-    return shape_get_typographic_features(&context, props->scripttags, max_tagcount, actual_tagcount, (unsigned int *)tags);
+    return shape_get_typographic_features(&context, props->scripttags, max_tagcount, actual_tagcount, tags);
 };
 
 static HRESULT WINAPI dwritetextanalyzer2_CheckTypographicFeature(IDWriteTextAnalyzer2 *iface,
@@ -1816,7 +2188,7 @@ static HRESULT WINAPI dwritetextanalyzer2_CheckTypographicFeature(IDWriteTextAna
     struct dwrite_fontface *font_obj;
     HRESULT hr;
 
-    TRACE("%p, %p, %u, %s, %s, %u, %p, %p.\n", iface, fontface, sa.script, debugstr_w(locale), debugstr_tag(feature),
+    TRACE("%p, %p, %u, %s, %s, %u, %p, %p.\n", iface, fontface, sa.script, debugstr_w(locale), debugstr_fourcc(feature),
             glyph_count, glyphs, feature_applies);
 
     if (sa.script > Script_LastId)
@@ -1826,14 +2198,14 @@ static HRESULT WINAPI dwritetextanalyzer2_CheckTypographicFeature(IDWriteTextAna
 
     context.cache = fontface_get_shaping_cache(font_obj);
     context.language_tag = get_opentype_language(locale);
-    if (!(context.glyph_infos = heap_calloc(glyph_count, sizeof(*context.glyph_infos))))
+    if (!(context.glyph_infos = calloc(glyph_count, sizeof(*context.glyph_infos))))
         return E_OUTOFMEMORY;
 
     props = &dwritescripts_properties[sa.script];
 
     hr = shape_check_typographic_feature(&context, props->scripttags, feature, glyph_count, glyphs, feature_applies);
 
-    heap_free(context.glyph_infos);
+    free(context.glyph_infos);
 
     return hr;
 }
@@ -1895,7 +2267,7 @@ static ULONG WINAPI dwritenumbersubstitution_AddRef(IDWriteNumberSubstitution *i
     struct dwrite_numbersubstitution *object = impl_from_IDWriteNumberSubstitution(iface);
     ULONG refcount = InterlockedIncrement(&object->refcount);
 
-    TRACE("%p, refcount %d.\n", iface, refcount);
+    TRACE("%p, refcount %ld.\n", iface, refcount);
 
     return refcount;
 }
@@ -1905,12 +2277,12 @@ static ULONG WINAPI dwritenumbersubstitution_Release(IDWriteNumberSubstitution *
     struct dwrite_numbersubstitution *object = impl_from_IDWriteNumberSubstitution(iface);
     ULONG refcount = InterlockedDecrement(&object->refcount);
 
-    TRACE("%p, refcount %d.\n", iface, refcount);
+    TRACE("%p, refcount %ld.\n", iface, refcount);
 
     if (!refcount)
     {
-        heap_free(object->locale);
-        heap_free(object);
+        free(object->locale);
+        free(object);
     }
 
     return refcount;
@@ -1943,17 +2315,17 @@ HRESULT create_numbersubstitution(DWRITE_NUMBER_SUBSTITUTION_METHOD method, cons
     if (method != DWRITE_NUMBER_SUBSTITUTION_METHOD_NONE && !IsValidLocaleName(locale))
         return E_INVALIDARG;
 
-    substitution = heap_alloc(sizeof(*substitution));
-    if (!substitution)
+    if (!(substitution = calloc(1, sizeof(*substitution))))
         return E_OUTOFMEMORY;
 
     substitution->IDWriteNumberSubstitution_iface.lpVtbl = &numbersubstitutionvtbl;
     substitution->refcount = 1;
     substitution->ignore_user_override = ignore_user_override;
     substitution->method = method;
-    substitution->locale = heap_strdupW(locale);
-    if (locale && !substitution->locale) {
-        heap_free(substitution);
+    substitution->locale = wcsdup(locale);
+    if (locale && !substitution->locale)
+    {
+        free(substitution);
         return E_OUTOFMEMORY;
     }
 
@@ -1999,43 +2371,121 @@ static ULONG WINAPI fontfallback_Release(IDWriteFontFallback1 *iface)
     return IDWriteFactory7_Release(fallback->factory);
 }
 
-static int __cdecl compare_mapping_range(const void *a, const void *b)
+static inline BOOL fallback_is_uvs(const struct text_source_context *context)
 {
-    UINT32 ch = *(UINT32 *)a;
-    DWRITE_UNICODE_RANGE *range = (DWRITE_UNICODE_RANGE *)b;
-
-    if (ch > range->last)
-        return 1;
-    else if (ch < range->first)
-        return -1;
-    else
-        return 0;
+    /* MONGOLIAN FREE VARIATION SELECTOR ONE..THREE */
+    if (context->ch >= 0x180b && context->ch <= 0x180d) return TRUE;
+    /* VARIATION SELECTOR-1..16 */
+    if (context->ch >= 0xfe00 && context->ch <= 0xfe0f) return TRUE;
+    /* VARIATION SELECTOR-17..256 */
+    if (context->ch >= 0xe0100 && context->ch <= 0xe01ef) return TRUE;
+    return FALSE;
 }
 
-static const struct fallback_mapping *find_fallback_mapping(struct dwrite_fontfallback *fallback, UINT32 ch)
+static UINT32 fallback_font_get_supported_length(IDWriteFont3 *font, IDWriteTextAnalysisSource *source,
+        UINT32 position, UINT32 length)
 {
-    UINT32 i;
+    struct text_source_context context;
+    UINT32 mapped = 0;
 
-    for (i = 0; i < fallback->mappings_count; i++) {
-        struct fallback_mapping *mapping = &fallback->mappings[i];
-
-        if (bsearch(&ch, mapping->ranges, mapping->ranges_count, sizeof(*mapping->ranges),
-                compare_mapping_range) != NULL)
-            return mapping;
+    text_source_context_init(&context, source, position, length);
+    while (!text_source_get_next_u32_char(&context))
+    {
+        /* Ignore selectors that are not leading. */
+        if (!mapped || !fallback_is_uvs(&context))
+        {
+            if (!IDWriteFont3_HasCharacter(font, context.ch)) break;
+        }
+        mapped += text_source_get_char_length(&context);
     }
 
-    return NULL;
+    return mapped;
 }
 
-HRESULT create_matching_font(IDWriteFontCollection *collection, const WCHAR *name,
-    DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STYLE style, DWRITE_FONT_STRETCH stretch, IDWriteFont **font)
+static HRESULT fallback_map_characters(const struct dwrite_fontfallback *fallback, IDWriteTextAnalysisSource *source,
+        UINT32 position, UINT32 text_length, DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STYLE style,
+        DWRITE_FONT_STRETCH stretch, IDWriteFont **ret_font, UINT32 *ret_length, float *scale)
+{
+    const struct fallback_mapping *mapping = NULL;
+    struct text_source_context context;
+    const struct fallback_data *data;
+    const WCHAR *locale_name = NULL;
+    struct fallback_locale *locale;
+    UINT32 i, length = 0, mapped;
+    IDWriteFont3 *font;
+    HRESULT hr;
+
+    /* ~0u is a marker for system fallback data */
+    data = fallback->data.count == ~0u ? &system_fallback : &fallback->data;
+
+    /* We will try to map as much of given input as GetLocaleName() says. It's assumed that returned length covers
+       whole span of characters set with that locale, so callback is only used once. */
+    if (FAILED(hr = IDWriteTextAnalysisSource_GetLocaleName(source, position, &length, &locale_name)))
+        return hr;
+
+    length = length ? min(length, text_length) : text_length;
+    if (!locale_name) locale_name = L"";
+
+    /* Lookup locale entry once, if specific locale is missing neutral one will be returned. */
+    locale = font_fallback_get_locale(&data->locales, locale_name);
+
+    if (FAILED(hr = text_source_context_init(&context, source, position, length))) return hr;
+
+    /* Find a mapping for given locale. */
+    text_source_get_next_u32_char(&context);
+    mapping = find_fallback_mapping(data, locale, context.ch);
+    mapped = text_source_get_char_length(&context);
+    while (!text_source_get_next_u32_char(&context))
+    {
+        if (find_fallback_mapping(data, locale, context.ch) != mapping) break;
+        mapped += text_source_get_char_length(&context);
+    }
+
+    if (!mapping)
+    {
+        *ret_font = NULL;
+        *ret_length = mapped;
+
+        return S_OK;
+    }
+
+    /* Go through families in the mapping, use first family that supports some of the input. */
+    for (i = 0; i < mapping->families_count; ++i)
+    {
+        if (SUCCEEDED(create_matching_font(mapping->collection ? mapping->collection : fallback->systemcollection,
+                mapping->families[i], weight, style, stretch, &IID_IDWriteFont3, (void **)&font)))
+        {
+            if (!(mapped = fallback_font_get_supported_length(font, source, position, mapped)))
+            {
+                IDWriteFont3_Release(font);
+                continue;
+            }
+
+            *ret_font = (IDWriteFont *)font;
+            *ret_length = mapped;
+            *scale = mapping->scale;
+
+            return S_OK;
+        }
+    }
+
+    /* Mapping was found, but either font couldn't be created or there's no font that supports given input. */
+    *ret_font = NULL;
+    *ret_length = length;
+
+    return S_OK;
+}
+
+HRESULT create_matching_font(IDWriteFontCollection *collection, const WCHAR *name, DWRITE_FONT_WEIGHT weight,
+        DWRITE_FONT_STYLE style, DWRITE_FONT_STRETCH stretch, REFIID riid, void **obj)
 {
     IDWriteFontFamily *family;
     BOOL exists = FALSE;
+    IDWriteFont *font;
     HRESULT hr;
     UINT32 i;
 
-    *font = NULL;
+    *obj = NULL;
 
     hr = IDWriteFontCollection_FindFamilyName(collection, name, &i, &exists);
     if (FAILED(hr))
@@ -2048,141 +2498,58 @@ HRESULT create_matching_font(IDWriteFontCollection *collection, const WCHAR *nam
     if (FAILED(hr))
         return hr;
 
-    hr = IDWriteFontFamily_GetFirstMatchingFont(family, weight, stretch, style, font);
+    hr = IDWriteFontFamily_GetFirstMatchingFont(family, weight, stretch, style, &font);
     IDWriteFontFamily_Release(family);
-    return hr;
-}
 
-static HRESULT fallback_map_characters(IDWriteFont *font, const WCHAR *text, UINT32 length, UINT32 *mapped_length)
-{
-    HRESULT hr = S_OK;
-    UINT32 i;
-
-    for (i = 0; i < length; i++) {
-        UINT16 script = get_char_script(text[i]);
-        BOOL exists;
-
-        if (script == Script_Unknown || script == Script_Common) {
-            ++*mapped_length;
-            continue;
-        }
-
-        /* stop on first unsupported character */
-        exists = FALSE;
-        hr = IDWriteFont_HasCharacter(font, text[i], &exists);
-        if (hr == S_OK && exists)
-            ++*mapped_length;
-        else
-            break;
+    if (SUCCEEDED(hr))
+    {
+        hr = IDWriteFont_QueryInterface(font, riid, obj);
+        IDWriteFont_Release(font);
     }
 
     return hr;
-}
-
-static HRESULT fallback_get_fallback_font(struct dwrite_fontfallback *fallback, const WCHAR *text, UINT32 length,
-        DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STYLE style, DWRITE_FONT_STRETCH stretch, UINT32 *mapped_length,
-        IDWriteFont **mapped_font)
-{
-    const struct fallback_mapping *mapping;
-    HRESULT hr;
-    UINT32 i;
-
-    *mapped_font = NULL;
-
-    mapping = find_fallback_mapping(fallback, text[0]);
-    if (!mapping) {
-        WARN("No mapping range for %#x.\n", text[0]);
-        return E_FAIL;
-    }
-
-    /* Now let's see what fallback can handle. Pick first font that could be created. */
-    for (i = 0; i < mapping->families_count; i++) {
-        hr = create_matching_font((IDWriteFontCollection *)fallback->systemcollection, mapping->families[i],
-                weight, style, stretch, mapped_font);
-        if (hr == S_OK) {
-            TRACE("Created fallback font using family %s.\n", debugstr_w(mapping->families[i]));
-            break;
-        }
-    }
-
-    if (!*mapped_font) {
-        WARN("Failed to create fallback font.\n");
-        return E_FAIL;
-    }
-
-    hr = fallback_map_characters(*mapped_font, text, length, mapped_length);
-    if (FAILED(hr))
-        WARN("Mapping with fallback family %s failed, hr %#x.\n", debugstr_w(mapping->families[i]), hr);
-
-    if (!*mapped_length) {
-        IDWriteFont_Release(*mapped_font);
-        *mapped_font = NULL;
-    }
-
-    return *mapped_length ? S_OK : E_FAIL;
 }
 
 static HRESULT WINAPI fontfallback_MapCharacters(IDWriteFontFallback1 *iface, IDWriteTextAnalysisSource *source,
-    UINT32 position, UINT32 length, IDWriteFontCollection *basecollection, const WCHAR *basefamily,
-    DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STYLE style, DWRITE_FONT_STRETCH stretch, UINT32 *mapped_length,
-    IDWriteFont **ret_font, FLOAT *scale)
+        UINT32 position, UINT32 length, IDWriteFontCollection *basecollection, const WCHAR *basefamily,
+        DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STYLE style, DWRITE_FONT_STRETCH stretch, UINT32 *mapped_length,
+        IDWriteFont **ret_font, float *scale)
 {
     struct dwrite_fontfallback *fallback = impl_from_IDWriteFontFallback1(iface);
-    WCHAR *buff = NULL;
-    const WCHAR *text;
-    HRESULT hr;
+    IDWriteFont3 *font;
 
-    TRACE("%p, %p, %u, %u, %p, %s, %u, %u, %u, %p, %p, %p.\n", iface, source, position, length, basecollection,
-            debugstr_w(basefamily), weight, style, stretch, mapped_length, ret_font, scale);
+    TRACE("%p, %p, %u, %u, %p, %s, %u, %u, %u, %p, %p, %p.\n", iface, source, position, length,
+        basecollection, debugstr_w(basefamily), weight, style, stretch, mapped_length, ret_font, scale);
 
     *mapped_length = 0;
-    *scale = 1.0f;
     *ret_font = NULL;
+    *scale = 1.0f;
 
     if (!source)
         return E_INVALIDARG;
 
-    if (length == 0)
+    if (!length)
         return S_OK;
 
     if (!basecollection)
-        basecollection = (IDWriteFontCollection*)fallback->systemcollection;
+        basecollection = fallback->systemcollection;
 
-    hr = get_text_source_ptr(source, position, length, &text, &buff);
-    if (FAILED(hr))
-        goto done;
-
-    if (basefamily && *basefamily) {
-        hr = create_matching_font(basecollection, basefamily, weight, style, stretch, ret_font);
-        if (FAILED(hr))
-            goto done;
-
-        hr = fallback_map_characters(*ret_font, text, length, mapped_length);
-        if (FAILED(hr))
-            goto done;
-    }
-
-    if (!*mapped_length) {
-        IDWriteFont *mapped_font;
-
-        hr = fallback_get_fallback_font(fallback, text, length, weight, style, stretch, mapped_length, &mapped_font);
-        if (FAILED(hr)) {
-            /* fallback wasn't found, keep base font if any, so we can get at least some visual output */
-            if (*ret_font) {
-                *mapped_length = length;
-                hr = S_OK;
+    if (basefamily && *basefamily)
+    {
+        if (SUCCEEDED(create_matching_font(basecollection, basefamily, weight, style, stretch,
+                &IID_IDWriteFont, (void **)&font)))
+        {
+            if ((*mapped_length = fallback_font_get_supported_length(font, source, position, length)))
+            {
+                *ret_font = (IDWriteFont *)font;
+                *scale = 1.0f;
+                return S_OK;
             }
-        }
-        else {
-            if (*ret_font)
-                IDWriteFont_Release(*ret_font);
-            *ret_font = mapped_font;
+            IDWriteFont3_Release(font);
         }
     }
 
-done:
-    heap_free(buff);
-    return hr;
+    return fallback_map_characters(fallback, source, position, length, weight, style, stretch, ret_font, mapped_length, scale);
 }
 
 static HRESULT WINAPI fontfallback1_MapCharacters(IDWriteFontFallback1 *iface, IDWriteTextAnalysisSource *source,
@@ -2205,32 +2572,11 @@ static const IDWriteFontFallback1Vtbl fontfallbackvtbl =
     fontfallback1_MapCharacters,
 };
 
-HRESULT create_system_fontfallback(IDWriteFactory7 *factory, IDWriteFontFallback1 **ret)
-{
-    struct dwrite_fontfallback *fallback;
-
-    *ret = NULL;
-
-    fallback = heap_alloc(sizeof(*fallback));
-    if (!fallback)
-        return E_OUTOFMEMORY;
-
-    fallback->IDWriteFontFallback1_iface.lpVtbl = &fontfallbackvtbl;
-    fallback->factory = factory;
-    fallback->mappings = (struct fallback_mapping *)fontfallback_neutral_data;
-    fallback->mappings_count = ARRAY_SIZE(fontfallback_neutral_data);
-    IDWriteFactory5_GetSystemFontCollection((IDWriteFactory5 *)fallback->factory, FALSE, &fallback->systemcollection, FALSE);
-
-    *ret = &fallback->IDWriteFontFallback1_iface;
-
-    return S_OK;
-}
-
 void release_system_fontfallback(IDWriteFontFallback1 *iface)
 {
     struct dwrite_fontfallback *fallback = impl_from_IDWriteFontFallback1(iface);
-    IDWriteFontCollection1_Release(fallback->systemcollection);
-    heap_free(fallback);
+    IDWriteFontCollection_Release(fallback->systemcollection);
+    free(fallback);
 }
 
 static ULONG WINAPI customfontfallback_AddRef(IDWriteFontFallback1 *iface)
@@ -2238,7 +2584,7 @@ static ULONG WINAPI customfontfallback_AddRef(IDWriteFontFallback1 *iface)
     struct dwrite_fontfallback *fallback = impl_from_IDWriteFontFallback1(iface);
     ULONG refcount = InterlockedIncrement(&fallback->refcount);
 
-    TRACE("%p, refcount %u.\n", iface, refcount);
+    TRACE("%p, refcount %lu.\n", iface, refcount);
 
     return refcount;
 }
@@ -2248,37 +2594,18 @@ static ULONG WINAPI customfontfallback_Release(IDWriteFontFallback1 *iface)
     struct dwrite_fontfallback *fallback = impl_from_IDWriteFontFallback1(iface);
     ULONG refcount = InterlockedDecrement(&fallback->refcount);
 
-    TRACE("%p, refcount %u.\n", iface, refcount);
+    TRACE("%p, refcount %lu.\n", iface, refcount);
 
     if (!refcount)
     {
         IDWriteFactory7_Release(fallback->factory);
-        heap_free(fallback);
+        if (fallback->systemcollection)
+            IDWriteFontCollection_Release(fallback->systemcollection);
+        release_fallback_data(&fallback->data);
+        free(fallback);
     }
 
     return refcount;
-}
-
-static HRESULT WINAPI customfontfallback_MapCharacters(IDWriteFontFallback1 *iface, IDWriteTextAnalysisSource *source,
-    UINT32 position, UINT32 length, IDWriteFontCollection *basecollection, const WCHAR *basefamily,
-    DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STYLE style, DWRITE_FONT_STRETCH stretch, UINT32 *mapped_length,
-    IDWriteFont **ret_font, FLOAT *scale)
-{
-    FIXME("%p, %p, %u, %u, %p, %s, %u, %u, %u, %p, %p, %p.\n", iface, source, position, length,
-        basecollection, debugstr_w(basefamily), weight, style, stretch, mapped_length, ret_font, scale);
-
-    return E_NOTIMPL;
-}
-
-static HRESULT WINAPI customfontfallback1_MapCharacters(IDWriteFontFallback1 *iface, IDWriteTextAnalysisSource *source,
-    UINT32 position, UINT32 length, IDWriteFontCollection *basecollection, const WCHAR *basefamily,
-    DWRITE_FONT_AXIS_VALUE const *axis_values, UINT32 values_count, UINT32 *mapped_length, FLOAT *scale,
-    IDWriteFontFace5 **ret_fontface)
-{
-    FIXME("%p, %p, %u, %u, %p, %s, %p, %u, %p, %p, %p.\n", iface, source, position, length, basecollection,
-            debugstr_w(basefamily), axis_values, values_count, mapped_length, scale, ret_fontface);
-
-    return E_NOTIMPL;
 }
 
 static const IDWriteFontFallback1Vtbl customfontfallbackvtbl =
@@ -2286,8 +2613,8 @@ static const IDWriteFontFallback1Vtbl customfontfallbackvtbl =
     fontfallback_QueryInterface,
     customfontfallback_AddRef,
     customfontfallback_Release,
-    customfontfallback_MapCharacters,
-    customfontfallback1_MapCharacters,
+    fontfallback_MapCharacters,
+    fontfallback1_MapCharacters,
 };
 
 static HRESULT WINAPI fontfallbackbuilder_QueryInterface(IDWriteFontFallbackBuilder *iface, REFIID riid, void **obj)
@@ -2311,83 +2638,146 @@ static ULONG WINAPI fontfallbackbuilder_AddRef(IDWriteFontFallbackBuilder *iface
     struct dwrite_fontfallback_builder *fallbackbuilder = impl_from_IDWriteFontFallbackBuilder(iface);
     ULONG refcount = InterlockedIncrement(&fallbackbuilder->refcount);
 
-    TRACE("%p, refcount %d.\n", iface, refcount);
+    TRACE("%p, refcount %ld.\n", iface, refcount);
 
     return refcount;
 }
 
 static ULONG WINAPI fontfallbackbuilder_Release(IDWriteFontFallbackBuilder *iface)
 {
-    struct dwrite_fontfallback_builder *fallbackbuilder = impl_from_IDWriteFontFallbackBuilder(iface);
-    ULONG refcount = InterlockedDecrement(&fallbackbuilder->refcount);
-    size_t i;
+    struct dwrite_fontfallback_builder *builder = impl_from_IDWriteFontFallbackBuilder(iface);
+    ULONG refcount = InterlockedDecrement(&builder->refcount);
 
-    TRACE("%p, refcount %d.\n", iface, refcount);
+    TRACE("%p, refcount %ld.\n", iface, refcount);
 
     if (!refcount)
     {
-        for (i = 0; i < fallbackbuilder->count; ++i)
-        {
-            struct fallback_mapping *mapping = &fallbackbuilder->mappings[i];
-            UINT32 j;
-
-            for (j = 0; j < mapping->families_count; j++)
-                heap_free(mapping->families[j]);
-            heap_free(mapping->families);
-
-            if (mapping->collection)
-                IDWriteFontCollection_Release(mapping->collection);
-            heap_free(mapping->ranges);
-            heap_free(mapping->locale);
-        }
-
-        IDWriteFactory7_Release(fallbackbuilder->factory);
-        heap_free(fallbackbuilder->mappings);
-        heap_free(fallbackbuilder);
+        IDWriteFactory7_Release(builder->factory);
+        release_fallback_data(&builder->data);
+        free(builder);
     }
 
     return refcount;
 }
 
-static HRESULT WINAPI fontfallbackbuilder_AddMapping(IDWriteFontFallbackBuilder *iface,
-        const DWRITE_UNICODE_RANGE *ranges, UINT32 ranges_count, WCHAR const **target_families, UINT32 families_count,
-        IDWriteFontCollection *collection, WCHAR const *locale, WCHAR const *base_family, FLOAT scale)
+static struct fallback_locale * fallback_builder_add_locale(struct dwrite_fontfallback_builder *builder,
+        const WCHAR *locale_name)
 {
-    struct dwrite_fontfallback_builder *fallbackbuilder = impl_from_IDWriteFontFallbackBuilder(iface);
+    struct fallback_locale *locale;
+
+    if (!locale_name) locale_name = L"";
+    if ((locale = font_fallback_get_locale(&builder->data.locales, locale_name))) return locale;
+    if (!(locale = calloc(1, sizeof(*locale)))) return NULL;
+    lstrcpynW(locale->name, locale_name, ARRAY_SIZE(locale->name));
+    list_add_tail(&builder->data.locales, &locale->entry);
+    return locale;
+}
+
+static HRESULT WINAPI fontfallbackbuilder_AddMapping(IDWriteFontFallbackBuilder *iface,
+        const DWRITE_UNICODE_RANGE *ranges, UINT32 ranges_count, WCHAR const **families, UINT32 families_count,
+        IDWriteFontCollection *collection, WCHAR const *locale_name, WCHAR const *base_family, float scale)
+{
+    struct dwrite_fontfallback_builder *builder = impl_from_IDWriteFontFallbackBuilder(iface);
     struct fallback_mapping *mapping;
-    UINT32 i;
+    struct fallback_locale *locale;
+    unsigned int i, j, m, count;
 
-    TRACE("%p, %p, %u, %p, %u, %p, %s, %s, %f.\n", iface, ranges, ranges_count, target_families, families_count,
-            collection, debugstr_w(locale), debugstr_w(base_family), scale);
+    TRACE("%p, %p, %u, %p, %u, %p, %s, %s, %f.\n", iface, ranges, ranges_count, families, families_count,
+            collection, debugstr_w(locale_name), debugstr_w(base_family), scale);
 
-    if (!ranges || ranges_count == 0 || !target_families || families_count == 0 || scale < 0.0f)
+    if (!ranges || !ranges_count || !families || !families_count || scale < 0.0f)
         return E_INVALIDARG;
 
     if (base_family)
         FIXME("base family ignored.\n");
 
-    if (!dwrite_array_reserve((void **)&fallbackbuilder->mappings, &fallbackbuilder->size, fallbackbuilder->count + 1,
-            sizeof(*fallbackbuilder->mappings)))
+    if (!dwrite_array_reserve((void **)&builder->data.mappings, &builder->mappings_size,
+            builder->data.count + 1, sizeof(*builder->data.mappings)))
     {
         return E_OUTOFMEMORY;
     }
 
-    mapping = &fallbackbuilder->mappings[fallbackbuilder->count++];
+    mapping = &builder->data.mappings[builder->data.count];
+    memset(mapping, 0, sizeof(*mapping));
 
-    mapping->ranges = heap_calloc(ranges_count, sizeof(*mapping->ranges));
-    memcpy(mapping->ranges, ranges, sizeof(*mapping->ranges) * ranges_count);
-    mapping->ranges_count = ranges_count;
-    mapping->families = heap_calloc(families_count, sizeof(*mapping->families));
+    /* Append new mapping, link to its locale node. */
+
+    if (!(locale = fallback_builder_add_locale(builder, locale_name)))
+        return E_FAIL;
+
+    if (!(mapping->ranges = calloc(ranges_count, sizeof(*mapping->ranges))))
+        goto failed;
+
+    /* Filter ranges that won't be usable. */
+    for (i = 0, count = 0; i < ranges_count; ++i)
+    {
+        if (ranges[i].first > ranges[i].last) continue;
+        if (ranges[i].first > 0x10ffff) continue;
+        mapping->ranges[count].first = ranges[i].first;
+        mapping->ranges[count].last = min(ranges[i].last, 0x10ffff);
+        count++;
+    }
+    if (!count)
+    {
+        release_fallback_mapping(mapping);
+        return S_OK;
+    }
+
+    mapping->ranges_count = count;
+
+    if (!(mapping->families = calloc(families_count, sizeof(*mapping->families))))
+        goto failed;
     mapping->families_count = families_count;
     for (i = 0; i < families_count; i++)
-        mapping->families[i] = heap_strdupW(target_families[i]);
-    mapping->collection = collection;
-    if (mapping->collection)
-        IDWriteFontCollection_AddRef(mapping->collection);
-    mapping->locale = heap_strdupW(locale);
+        if (!(mapping->families[i] = wcsdup(families[i]))) goto failed;
     mapping->scale = scale;
 
+    if (FAILED(fallback_locale_add_mapping(locale, builder->data.count))) goto failed;
+
+    /* Mappings with explicit collections take priority, for that reduce existing mappings ranges
+       by newly added ranges. */
+
+    mapping->collection = collection;
+    if (mapping->collection)
+    {
+        IDWriteFontCollection_AddRef(mapping->collection);
+
+        for (m = 0; m < builder->data.count; ++m)
+        {
+            struct fallback_mapping *c = &builder->data.mappings[m];
+            if (c->collection) continue;
+            for (i = 0; i < count; ++i)
+            {
+                const DWRITE_UNICODE_RANGE *new_range = &mapping->ranges[i];
+
+                for (j = 0; j < c->ranges_count; ++j)
+                {
+                    DWRITE_UNICODE_RANGE *range = &c->ranges[j];
+
+                    /* In case existing ranges intersect, disable or reduce them */
+                    if (range->first >= new_range->first && range->last <= new_range->last)
+                    {
+                        range->first = range->last = ~0u;
+                    }
+                    else if (range->first >= new_range->first && range->first <= new_range->last)
+                    {
+                        range->first = new_range->last;
+                    }
+                    else if (range->last >= new_range->first && range->last <= new_range->last)
+                    {
+                        range->last = new_range->first;
+                    }
+                }
+            }
+        }
+    }
+
+    builder->data.count++;
     return S_OK;
+
+failed:
+    release_fallback_mapping(mapping);
+    return E_OUTOFMEMORY;
 }
 
 static HRESULT WINAPI fontfallbackbuilder_AddMappings(IDWriteFontFallbackBuilder *iface, IDWriteFontFallback *fallback)
@@ -2397,27 +2787,113 @@ static HRESULT WINAPI fontfallbackbuilder_AddMappings(IDWriteFontFallbackBuilder
     return E_NOTIMPL;
 }
 
+static HRESULT fallbackbuilder_init_fallback_data(const struct dwrite_fontfallback_builder *builder,
+        struct fallback_data *data)
+{
+    struct fallback_locale *iter, *locale;
+    size_t i, j;
+
+    /* Duplicate locales list. */
+    list_init(&data->locales);
+    LIST_FOR_EACH_ENTRY(iter, &builder->data.locales, struct fallback_locale, entry)
+    {
+        if (!(locale = calloc(1, sizeof(*locale)))) goto failed;
+        wcscpy(locale->name, iter->name);
+        locale->ranges.count = iter->ranges.count;
+        locale->ranges.size = iter->ranges.count;
+        if (!(locale->ranges.data = malloc(iter->ranges.count * sizeof(*iter->ranges.data))))
+        {
+            free(locale);
+            goto failed;
+        }
+        memcpy(locale->ranges.data, iter->ranges.data, iter->ranges.count * sizeof(*iter->ranges.data));
+        list_add_tail(&data->locales, &locale->entry);
+    }
+
+    /* Duplicate mappings. */
+    if (!(data->mappings = calloc(builder->data.count, sizeof(*data->mappings))))
+        goto failed;
+
+    data->count = builder->data.count;
+    for (i = 0; i < data->count; ++i)
+    {
+        struct fallback_mapping *src = &builder->data.mappings[i];
+        struct fallback_mapping *dst = &data->mappings[i];
+
+        if (!(dst->ranges = calloc(src->ranges_count, sizeof(*src->ranges)))) goto failed;
+        memcpy(dst->ranges, src->ranges, src->ranges_count * sizeof(*src->ranges));
+        dst->ranges_count = src->ranges_count;
+
+        if (!(dst->families = calloc(src->families_count, sizeof(*src->families)))) goto failed;
+        dst->families_count = src->families_count;
+        for (j = 0; j < src->families_count; ++j)
+        {
+            if (!(dst->families[j] = wcsdup(src->families[j]))) goto failed;
+        }
+
+        dst->collection = src->collection;
+        if (dst->collection)
+            IDWriteFontCollection_AddRef(dst->collection);
+        dst->scale = src->scale;
+    }
+
+    return S_OK;
+
+failed:
+
+    return E_OUTOFMEMORY;
+}
+
+static HRESULT fallbackbuilder_create_fallback(struct dwrite_fontfallback_builder *builder, struct dwrite_fontfallback **ret)
+{
+    struct dwrite_fontfallback *fallback;
+    HRESULT hr;
+
+    if (!(fallback = calloc(1, sizeof(*fallback))))
+        return E_OUTOFMEMORY;
+
+    fallback->IDWriteFontFallback1_iface.lpVtbl = &customfontfallbackvtbl;
+    fallback->refcount = 1;
+    fallback->factory = builder->factory;
+    IDWriteFactory7_AddRef(fallback->factory);
+    if (FAILED(hr = IDWriteFactory_GetSystemFontCollection((IDWriteFactory *)fallback->factory,
+            &fallback->systemcollection, FALSE)))
+    {
+        goto done;
+    }
+
+    if (FAILED(hr = fallbackbuilder_init_fallback_data(builder, &fallback->data)))
+    {
+        goto done;
+    }
+
+    *ret = fallback;
+
+    return S_OK;
+
+done:
+
+    IDWriteFontFallback1_Release(&fallback->IDWriteFontFallback1_iface);
+    return hr;
+}
+
 static HRESULT WINAPI fontfallbackbuilder_CreateFontFallback(IDWriteFontFallbackBuilder *iface,
         IDWriteFontFallback **ret)
 {
-    struct dwrite_fontfallback_builder *fallbackbuilder = impl_from_IDWriteFontFallbackBuilder(iface);
+    struct dwrite_fontfallback_builder *builder = impl_from_IDWriteFontFallbackBuilder(iface);
     struct dwrite_fontfallback *fallback;
+    HRESULT hr;
 
     TRACE("%p, %p.\n", iface, ret);
 
     *ret = NULL;
 
-    fallback = heap_alloc(sizeof(*fallback));
-    if (!fallback)
-        return E_OUTOFMEMORY;
+    if (SUCCEEDED(hr = fallbackbuilder_create_fallback(builder, &fallback)))
+    {
+        *ret = (IDWriteFontFallback *)&fallback->IDWriteFontFallback1_iface;
+    }
 
-    fallback->IDWriteFontFallback1_iface.lpVtbl = &customfontfallbackvtbl;
-    fallback->refcount = 1;
-    fallback->factory = fallbackbuilder->factory;
-    IDWriteFactory7_AddRef(fallback->factory);
-
-    *ret = (IDWriteFontFallback *)&fallback->IDWriteFontFallback1_iface;
-    return S_OK;
+    return hr;
 }
 
 static const IDWriteFontFallbackBuilderVtbl fontfallbackbuildervtbl =
@@ -2430,21 +2906,147 @@ static const IDWriteFontFallbackBuilderVtbl fontfallbackbuildervtbl =
     fontfallbackbuilder_CreateFontFallback,
 };
 
-HRESULT create_fontfallback_builder(IDWriteFactory7 *factory, IDWriteFontFallbackBuilder **ret)
+static HRESULT create_fontfallback_builder_internal(IDWriteFactory7 *factory, struct dwrite_fontfallback_builder **ret)
 {
     struct dwrite_fontfallback_builder *builder;
 
     *ret = NULL;
 
-    builder = heap_alloc_zero(sizeof(*builder));
-    if (!builder)
+    if (!(builder = calloc(1, sizeof(*builder))))
         return E_OUTOFMEMORY;
 
     builder->IDWriteFontFallbackBuilder_iface.lpVtbl = &fontfallbackbuildervtbl;
     builder->refcount = 1;
     builder->factory = factory;
     IDWriteFactory7_AddRef(builder->factory);
+    list_init(&builder->data.locales);
 
-    *ret = &builder->IDWriteFontFallbackBuilder_iface;
+    *ret = builder;
+
+    return S_OK;
+}
+
+HRESULT create_fontfallback_builder(IDWriteFactory7 *factory, IDWriteFontFallbackBuilder **ret)
+{
+    struct dwrite_fontfallback_builder *builder;
+    HRESULT hr;
+
+    *ret = NULL;
+
+    if (SUCCEEDED(hr = create_fontfallback_builder_internal(factory, &builder)))
+        *ret = &builder->IDWriteFontFallbackBuilder_iface;
+
+    return hr;
+}
+
+static void system_fallback_parse_ranges(const char *str, DWRITE_UNICODE_RANGE *ranges,
+        unsigned int max_count, unsigned int *ret)
+{
+    unsigned int count = 0;
+    char *end;
+
+    while (*str && count < max_count)
+    {
+        ranges[count].first = ranges[count].last = strtoul(str, &end, 16);
+        if (*end == '-')
+        {
+            str = end + 1;
+            ranges[count].last = strtoul(str, &end, 16);
+        }
+        str = end;
+        if (*str == ',') str++;
+        count++;
+    }
+
+    *ret = count;
+}
+
+static void system_fallback_parse_families(WCHAR *str, WCHAR **families, unsigned int max_count,
+        unsigned int *ret)
+{
+    unsigned int count = 0;
+    WCHAR *family, *ctx;
+
+    family = wcstok_s(str, L",", &ctx);
+    while (family && count < max_count)
+    {
+        while (*family == ' ') family++;
+        families[count++] = family;
+        family = wcstok_s(NULL, L",", &ctx);
+    }
+
+    *ret = count;
+}
+
+static INIT_ONCE init_system_fallback_once = INIT_ONCE_STATIC_INIT;
+
+/* Particular factory instance used for initialization is not important, it won't be referenced by
+   created fallback data. */
+static BOOL WINAPI dwrite_system_fallback_initonce(INIT_ONCE *once, void *param, void **context)
+{
+    struct dwrite_fontfallback_builder *builder;
+    IDWriteFontFallbackBuilder *builder_iface;
+    unsigned int range_count, families_count;
+    IDWriteFactory7 *factory = param;
+    DWRITE_UNICODE_RANGE ranges[16];
+    WCHAR *families[4], *str;
+    HRESULT hr;
+    size_t i;
+
+    if (FAILED(create_fontfallback_builder_internal(factory, &builder))) return FALSE;
+    builder_iface = &builder->IDWriteFontFallbackBuilder_iface;
+
+    for (i = 0; i < ARRAY_SIZE(system_fallback_config); ++i)
+    {
+        const struct fallback_description *entry = &system_fallback_config[i];
+
+        system_fallback_parse_ranges(entry->ranges, ranges, ARRAY_SIZE(ranges), &range_count);
+
+        /* TODO: reuse the buffer */
+        str = wcsdup(entry->families);
+        system_fallback_parse_families(str, families, ARRAY_SIZE(families), &families_count);
+
+        if (FAILED(hr = IDWriteFontFallbackBuilder_AddMapping(builder_iface, ranges, range_count,
+                (const WCHAR **)families, families_count, NULL, entry->locale, NULL, 1.0f)))
+        {
+            WARN("Failed to add mapping, hr %#lx.\n", hr);
+        }
+
+        free(str);
+    }
+
+    hr = fallbackbuilder_init_fallback_data(builder, &system_fallback);
+    IDWriteFontFallbackBuilder_Release(builder_iface);
+
+    return hr == S_OK;
+}
+
+void release_system_fallback_data(void)
+{
+    release_fallback_data(&system_fallback);
+}
+
+HRESULT create_system_fontfallback(IDWriteFactory7 *factory, IDWriteFontFallback1 **ret)
+{
+    struct dwrite_fontfallback *fallback;
+
+    *ret = NULL;
+
+    if (!InitOnceExecuteOnce(&init_system_fallback_once, dwrite_system_fallback_initonce, factory, NULL))
+    {
+        WARN("Failed to initialize system fallback data.\n");
+        return E_FAIL;
+    }
+
+    if (!(fallback = calloc(1, sizeof(*fallback))))
+        return E_OUTOFMEMORY;
+
+    fallback->IDWriteFontFallback1_iface.lpVtbl = &fontfallbackvtbl;
+    fallback->factory = factory;
+    fallback->data.count = ~0u;
+    IDWriteFactory_GetSystemFontCollection((IDWriteFactory *)fallback->factory, &fallback->systemcollection, FALSE);
+
+    *ret = &fallback->IDWriteFontFallback1_iface;
+
     return S_OK;
 }

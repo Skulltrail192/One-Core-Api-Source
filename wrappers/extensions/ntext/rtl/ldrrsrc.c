@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2018 Shorthorn Project
+Copyright (c) 2025 Shorthorn Project
 
 Module Name:
 
@@ -8,11 +8,11 @@ Module Name:
 
 Abstract:
 
-    Implement Load Resources and Alternate Resources functions
+    This module implements RTL Resources APIs
 
 Author:
 
-    Skulltrail 19-March-2018
+    Skulltrail 23-Jaunary-2025
 
 Revision History:
 
@@ -66,6 +66,23 @@ PVOID
 LdrGetAlternateResourceModuleHandle(
     IN PVOID Module
     )
+/*++
+
+Routine Description:
+
+    This function gets the alternate resource module from the table
+    containing the handle.
+
+Arguments:
+
+    Module - Module of which alternate resource module needs to loaded.
+
+Return Value:
+
+   Handle of the alternate resource module.
+
+--*/
+
 {
     ULONG ModuleIndex;
 
@@ -85,10 +102,32 @@ LdrpSetAlternateResourceModuleHandle(
     IN PVOID Module,
     IN PVOID AlternateModule
     )
+
+/*++
+
+Routine Description:
+
+    This function records the handle of the base module and alternate
+    resource module in an array.
+
+Arguments:
+
+    Module - The handle of the base module.
+    AlternateModule - The handle of the alternate resource module
+
+Return Value:
+
+    TBD.
+
+--*/
+
 {
     PALT_RESOURCE_MODULE NewModules;
 
     if (AlternateResourceModules == NULL){
+        //
+        //  Allocate memory of initial size MEMBLOCKSIZE.
+        //
         NewModules = RtlAllocateHeap(
                         RtlProcessHeap(),
                         HEAP_ZERO_MEMORY,
@@ -136,6 +175,25 @@ LdrLoadAlternateResourceModuleEx(
     IN PVOID Module,
     IN LPCWSTR PathToAlternateModule OPTIONAL
     )
+
+/*++
+
+Routine Description:
+
+    This function does the acutally loading into memory of the alternate
+    resource module, or loads from the table if it was loaded before.
+
+Arguments:
+
+    Module - The handle of the base module.
+    PathToAlternateModule - Optional path from which module is being loaded.
+
+Return Value:
+
+    Handle to the alternate resource module.
+
+--*/
+
 {
     PVOID AlternateModule, DllBase;
     PLDR_DATA_TABLE_ENTRY Entry;
@@ -166,6 +224,10 @@ LdrLoadAlternateResourceModuleEx(
 	
 	NtQueryDefaultUILanguage(&UILangId);
 
+    /*if (!LdrAlternateResourcesEnabled()) {
+        return NULL;
+        }*/
+
     RtlEnterCriticalSection(&LocaleCritSection);
 
     AlternateModule = LdrGetAlternateResourceModuleHandle(Module);
@@ -175,16 +237,28 @@ LdrLoadAlternateResourceModuleEx(
 				ImpersonateLangId = NtCurrentTeb()->IsImpersonating != 0 ? UILangId : 0;
 			CustomLangId = UILangId;
 	}
+	//AlternateModule = LdrGetAlternateResourceModuleHandle(Module, CustomLangId);
     if (AlternateModule == NO_ALTERNATE_RESOURCE_MODULE){
+        //
+        //  We tried to load this module before but failed. Don't try
+        //  again in the future.
+        //
         RtlLeaveCriticalSection(&LocaleCritSection);
         return NULL;
         }
     else if (AlternateModule > 0){
+        //
+        //  We found the previously loaded match
+        //
         RtlLeaveCriticalSection(&LocaleCritSection);
         return AlternateModule;
         }
 
     if (ARGUMENT_PRESENT(PathToAlternateModule)){
+        //
+        //  Caller suplied path.
+        //
+
         CopyCount = wcslen(PathToAlternateModule);
 
         for (p = (LPWSTR) PathToAlternateModule + CopyCount;
@@ -201,16 +275,19 @@ LdrLoadAlternateResourceModuleEx(
 
         DllPathNameLength = (ULONG)(p - PathToAlternateModule) * sizeof(WCHAR);
 
-        memcpy(
+        wcscpy(//RtlCopyMemory(
             DllPathName,
             PathToAlternateModule
-            ,DllPathNameLength);
+            );//,DllPathNameLength);
 
         BaseDllName = p ;
         BaseDllNameLength = CopyCount * sizeof(WCHAR) - DllPathNameLength;
 
         }
     else{
+        //
+        //  Try to get full dll path from Ldr data table.
+        //
         Status = LdrFindEntryForAddress(Module, &Entry);
         if (!NT_SUCCESS( Status )){
             goto error_exit;
@@ -219,10 +296,10 @@ LdrLoadAlternateResourceModuleEx(
         DllPathNameLength = Entry->FullDllName.Length -
                             Entry->BaseDllName.Length;
 
-        memcpy(
+        wcscpy(//RtlCopyMemory(
             DllPathName,
-            Entry->FullDllName.Buffer,
-            DllPathNameLength);
+            Entry->FullDllName.Buffer
+            );//,DllPathNameLength);
 
         BaseDllName = Entry->BaseDllName.Buffer;
         BaseDllNameLength = Entry->BaseDllName.Length;
@@ -230,6 +307,9 @@ LdrLoadAlternateResourceModuleEx(
 
     DllPathName[DllPathNameLength / sizeof(WCHAR)] = UNICODE_NULL;
 
+    //
+    //  Generate the langid directory like "0804\"
+    //
     if (!UILangId){
         Status = NtQueryDefaultUILanguage( &UILangId );
         if (!NT_SUCCESS( Status )) {		
@@ -251,6 +331,9 @@ LdrLoadAlternateResourceModuleEx(
     LangIdDir[CopyCount++] = L'\\';
     LangIdDir[CopyCount++] = UNICODE_NULL;
 	
+	//
+	// Get culture name by LANGID of CustomLangId
+	//
 	for(i=0;i<LOCALE_TABLE_SIZE;i++){
 		if(CustomLangId == locale_table[i].lcid){
 			RtlInitUnicodeString(&LocaleName, locale_table[i].localeName);
@@ -446,14 +529,6 @@ LdrLoadAlternateResourceModule(
 	return LdrLoadAlternateResourceModuleEx(0, Module, PathToAlternateModule);
 }
 
-int page_fault(ULONG ExceptionCode) 	
-{
-    if (ExceptionCode == EXCEPTION_ACCESS_VIOLATION ||
-        ExceptionCode == EXCEPTION_PRIV_INSTRUCTION)
-        return EXCEPTION_EXECUTE_HANDLER;
-    return EXCEPTION_CONTINUE_SEARCH;
-}
-
 BOOLEAN
 NTAPI
 LdrUnloadAlternateResourceModule(
@@ -492,7 +567,7 @@ LdrUnloadAlternateResourceModule(
             );
     }
 
-    // _SEH2_TRY{
+    __try {
         if (ModuleIndex != AlternateResourceModuleCount - 1){
             RtlMoveMemory(
                 AltModule,
@@ -500,13 +575,12 @@ LdrUnloadAlternateResourceModule(
                 (AlternateResourceModuleCount - ModuleIndex - 1) * RESMODSIZE
                 );
             }
-        // }
-    // _SEH2_EXCEPT(page_fault(_SEH2_GetExceptionCode()))
-	// {
-        // RtlLeaveCriticalSection(&LocaleCritSection);
-        // return FALSE;
-    // }
-    // _SEH2_END;
+        }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        RtlLeaveCriticalSection(&LocaleCritSection);
+        return FALSE;
+        }
+
     AlternateResourceModuleCount --;
 
     if (AlternateResourceModuleCount == 0){
@@ -585,6 +659,14 @@ static int is_data_file_module( PVOID BaseAddress )
     return (ULONG_PTR)BaseAddress & 1;
 }
 
+int page_fault(ULONG ExceptionCode) 	
+{
+    if (ExceptionCode == EXCEPTION_ACCESS_VIOLATION ||
+        ExceptionCode == EXCEPTION_PRIV_INSTRUCTION)
+        return EXCEPTION_EXECUTE_HANDLER;
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 NTSTATUS
 LdrpAccessResourceDataNoMultipleLanguage(
     IN PVOID DllHandle,
@@ -602,7 +684,7 @@ LdrpAccessResourceDataNoMultipleLanguage(
 
     RTL_PAGED_CODE();
 
-    // _SEH2_TRY {
+    _SEH2_TRY {
         ResourceDirectory = (PIMAGE_RESOURCE_DIRECTORY)
             RtlImageDirectoryEntryToData(DllHandle,
                                          TRUE,
@@ -666,9 +748,9 @@ LdrpAccessResourceDataNoMultipleLanguage(
             *Size = ResourceDataEntry->Size;
         }
 
-    // }    _SEH2_EXCEPT (EXCEPTION_EXECUTE_HANDLER) {
-        // Status = GetExceptionCode();
-    // }
+    }    _SEH2_EXCEPT (EXCEPTION_EXECUTE_HANDLER) {
+        Status = GetExceptionCode();
+    }
 
     return Status;
 }
@@ -871,7 +953,7 @@ LdrpSearchResourceSection_U_by_name(
     {
         pos = (min + max) / 2;
         str = (const IMAGE_RESOURCE_DIR_STRING_U *)((const char *)root + entry[pos].NameOffset);
-        res = wcsncmp( name, str->NameString, str->Length );
+        res = _wcsnicmp( name, str->NameString, str->Length );
         if (!res && namelen == str->Length)
         {
             if (!entry[pos].DataIsDirectory == !want_dir)
@@ -1032,13 +1114,13 @@ LdrFindResource_U(
 
     _SEH2_TRY
     {
-        if (ResourceInfo)
-        {
-            DbgPrint( "module %p type %lx name %lx lang %04lx level %lu\n",
-                     BaseAddress, ResourceInfo->Type, 
-                     Level > 1 ? ResourceInfo->Name : 0,
-                     Level > 2 ? ResourceInfo->Language : 0, Level );
-        }
+        // if (ResourceInfo)
+        // {
+            // DbgPrint( "module %p type %lx name %lx lang %04lx level %lu\n",
+                     // BaseAddress, ResourceInfo->Type, 
+                     // Level > 1 ? ResourceInfo->Name : 0,
+                     // Level > 2 ? ResourceInfo->Language : 0, Level );
+        // }
 
         status = LdrpSearchResourceSection_U( BaseAddress, ResourceInfo, Level, &res, FALSE );
         if (NT_SUCCESS(status))
@@ -1067,13 +1149,13 @@ LdrFindResourceEx_U(
 
     _SEH2_TRY
     {
-        if (ResourceInfo)
-        {
-            DbgPrint( "module %p type %lx name %lx lang %04lx level %lu\n",
-                     BaseAddress, ResourceInfo->Type, 
-                     Level > 1 ? ResourceInfo->Name : 0,
-                     Level > 2 ? ResourceInfo->Language : 0, Level );
-        }
+        // if (ResourceInfo)
+        // {
+            // DbgPrint( "module %p type %lx name %lx lang %04lx level %lu\n",
+                     // BaseAddress, ResourceInfo->Type, 
+                     // Level > 1 ? ResourceInfo->Name : 0,
+                     // Level > 2 ? ResourceInfo->Language : 0, Level );
+        // }
 
         status = LdrpSearchResourceSection_U( BaseAddress, ResourceInfo, Level, &res, FALSE );
         if (NT_SUCCESS(status))
@@ -1102,13 +1184,13 @@ LdrFindResourceDirectory_U(
 
     _SEH2_TRY
     {
-        if (info)
-        {
-            DbgPrint( "module %p type %ws name %ws lang %04lx level %lu\n",
-                     BaseAddress, (LPCWSTR)info->Type,
-                     level > 1 ? (LPCWSTR)info->Name : L"",
-                     level > 2 ? info->Language : 0, level );
-        }
+        // if (info)
+        // {
+            // DbgPrint( "module %p type %ws name %ws lang %04lx level %lu\n",
+                     // BaseAddress, (LPCWSTR)info->Type,
+                     // level > 1 ? (LPCWSTR)info->Name : L"",
+                     // level > 2 ? info->Language : 0, level );
+        // }
 
         status = LdrpSearchResourceSection_U( BaseAddress, info, level, &res, TRUE );
         if (NT_SUCCESS(status))

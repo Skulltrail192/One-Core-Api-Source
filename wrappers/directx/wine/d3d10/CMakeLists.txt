@@ -11,6 +11,7 @@ spec2def(d3d10.dll d3d10.spec ADD_IMPORTLIB)
 list(APPEND SOURCE
     d3d10_main.c
 	d3d10_guid.c
+    crt.c #special for don't need link with crt
     effect.c
 	#Taken from wine d3dcompiler_43
 	reflection.c
@@ -28,6 +29,6 @@ add_library(d3d10 SHARED
 
 set_module_type(d3d10 win32dll)
 target_link_libraries(d3d10 wine uuid dxguid d3d10_uuids d3d12_uuids dxgi_uuids)
-add_importlibs(d3d10 d3dwine msvcrt d3dcompiler_43 dxgi d3d10core kernel32 ntdll)
+add_importlibs(d3d10 d3dwine msvcrt d3dcompiler_43 d3dcompiler_39 dxgi d3d10core kernel32 ntdll)
 add_pch(d3d10 d3d10_private.h SOURCE)
 add_cd_file(TARGET d3d10 DESTINATION reactos/system32 FOR all)

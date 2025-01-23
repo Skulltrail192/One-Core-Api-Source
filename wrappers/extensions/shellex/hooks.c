@@ -74,7 +74,91 @@ static const struct {
 	// {&CLSID_ShellImageDataFactory, ShellImageDataFactory_Constructor},
 	{&CLSID_FileOperation, IFileOperation_Constructor},
 	{NULL, NULL}
-};				   
+};		   
+
+/*************************************************************************
+ * Shell_NotifyIconW            [SHELL32.298]
+ */
+BOOL WINAPI Shell_NotifyIconW(DWORD dwMessage, PNOTIFYICONDATAW pnid)
+{
+    BOOL ret = FALSE;
+    HWND hShellTrayWnd;
+    DWORD cbSize, dwValidFlags;
+    TRAYNOTIFYDATAW tnid;
+    COPYDATASTRUCT data;
+
+    /* Find a handle to the shell tray window */
+    hShellTrayWnd = FindWindowW(L"Shell_TrayWnd", NULL);
+    if (!hShellTrayWnd)
+        return FALSE; // None found, bail out
+
+    /* Validate the structure size and the flags */
+    cbSize = pnid->cbSize;
+    dwValidFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+    if (cbSize == sizeof(NOTIFYICONDATAW))
+    {
+        dwValidFlags |= NIF_STATE | NIF_INFO | NIF_GUID /* | NIF_REALTIME | NIF_SHOWTIP */;
+    }
+    else if (cbSize == NOTIFYICONDATAW_V3_SIZE)
+    {
+        dwValidFlags |= NIF_STATE | NIF_INFO | NIF_GUID;
+    }
+    else if (cbSize == NOTIFYICONDATAW_V2_SIZE)
+    {
+        dwValidFlags |= NIF_STATE | NIF_INFO;
+    }
+    else // if cbSize == NOTIFYICONDATAW_V1_SIZE or something else
+    {
+        if (cbSize != NOTIFYICONDATAW_V1_SIZE)
+        {
+            WARN("Invalid cbSize (%d) - using only Win95 fields (size=%d)\n",
+                cbSize, NOTIFYICONDATAW_V1_SIZE);
+            cbSize = NOTIFYICONDATAW_V1_SIZE;
+        }
+    }
+
+    /* Build the data structure */
+    ZeroMemory(&tnid, sizeof(tnid));
+    tnid.dwSignature = NI_NOTIFY_SIG;
+    tnid.dwMessage   = dwMessage;
+
+    /* Copy only the needed data, everything else is zeroed out */
+    CopyMemory(&tnid.nid, pnid, cbSize);
+    /* Adjust the size (the NOTIFYICONDATA structure is the full-fledged one) and the flags */
+    tnid.nid.cbSize = sizeof(tnid.nid);
+    tnid.nid.uFlags &= dwValidFlags;
+
+    /* Be sure the szTip member (that could be cut-off) is correctly NULL-terminated */
+    if (tnid.nid.uFlags & NIF_TIP)
+    {
+        if (cbSize <= NOTIFYICONDATAW_V1_SIZE)
+        {
+#define NIDV1_TIP_SIZE_W  (NOTIFYICONDATAW_V1_SIZE - FIELD_OFFSET(NOTIFYICONDATAW, szTip))/sizeof(WCHAR)
+            tnid.nid.szTip[NIDV1_TIP_SIZE_W - 1] = 0;
+#undef NIDV1_TIP_SIZE_W
+        }
+        else
+        {
+            tnid.nid.szTip[_countof(tnid.nid.szTip) - 1] = 0;
+        }
+    }
+
+    /* Be sure the info strings are correctly NULL-terminated */
+    if (tnid.nid.uFlags & NIF_INFO)
+    {
+        tnid.nid.szInfo[_countof(tnid.nid.szInfo) - 1] = 0;
+        tnid.nid.szInfoTitle[_countof(tnid.nid.szInfoTitle) - 1] = 0;
+    }
+
+    /* Send the data */
+    data.dwData = TABDMC_NOTIFY;
+    data.cbData = sizeof(tnid);
+    data.lpData = &tnid;
+    if (SendMessageW(hShellTrayWnd, WM_COPYDATA, (WPARAM)pnid->hWnd, (LPARAM)&data))
+        ret = TRUE;
+
+    return ret;
+}
 
 BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) {
     if (lpData->cbSize > NOTIFYICONDATAW_V2_SIZE) {
@@ -97,9 +181,9 @@ BOOL WINAPI Shell_NotifyIconWInternal(DWORD dwMessage, PNOTIFYICONDATAW lpData) 
         }
         if (lpXPData.uVersion > 3)
             lpXPData.uVersion = 3;
-        return Shell_NotifyIconWNative(dwMessage, &lpXPData);
+        return Shell_NotifyIconW(dwMessage, &lpXPData);
     }
-    return Shell_NotifyIconWNative(dwMessage, lpData);
+    return Shell_NotifyIconW(dwMessage, lpData);
 }
 
 BOOL WINAPI Shell_NotifyIconAInternal(DWORD dwMessage, PNOTIFYICONDATAA lpData) {
@@ -153,51 +237,51 @@ CheckIfIsOSExec(){
     }	
 }
 
-/*************************************************************************
- * DllGetClassObject     [SHELL32.@]
- * SHDllGetClassObject   [SHELL32.128]
- */
-HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
-{
-	IClassFactory * pcf = NULL;
-	HRESULT	hres;
-	int i;
+// /*************************************************************************
+ // * DllGetClassObject     [SHELL32.@]
+ // * SHDllGetClassObject   [SHELL32.128]
+ // */
+// HRESULT WINAPI DllGetClassObjectInternal(REFCLSID rclsid, REFIID iid, LPVOID *ppv)
+// {
+	// IClassFactory * pcf = NULL;
+	// HRESULT	hres;
+	// int i;
 	
-	TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
+	// TRACE("CLSID:%s,IID:%s\n",shdebugstr_guid(rclsid),shdebugstr_guid(iid));
 
-	if (!ppv) return E_INVALIDARG;
-	*ppv = NULL;
+	// if (!ppv) return E_INVALIDARG;
+	// *ppv = NULL;
 
-	/* search our internal interface table */
-	for(i=0;InterfaceTable[i].clsid;i++) {
-	    if(IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
-	        //TRACE("index[%u]\n", i);
-			if(IsEqualIID(&CLSID_ShellLink, rclsid))
-			{
-				if(!CheckIfIsOSExec()){
-					pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
-					break;
-				}else{
-					continue;
-				}				
-			}else{
-				pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
-				break;				
-			}
-	    }			
-	}		
+	// /* search our internal interface table */
+	// for(i=0;InterfaceTable[i].clsid;i++) {
+	    // if(IsEqualIID(InterfaceTable[i].clsid, rclsid)) {
+	        // //TRACE("index[%u]\n", i);
+			// if(IsEqualIID(&CLSID_ShellLink, rclsid))
+			// {
+				// if(!CheckIfIsOSExec()){
+					// pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
+					// break;
+				// }else{
+					// continue;
+				// }				
+			// }else{
+				// pcf = IDefClF_fnConstructor(InterfaceTable[i].lpfnCI, NULL, NULL);
+				// break;				
+			// }
+	    // }			
+	// }		
 
-    if (!pcf) {
-	    //FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));
-	    return DllGetClassObjectNative(rclsid, iid, ppv);//return DllGetClassObjectInternal;
-	}
+    // if (!pcf) {
+	    // //FIXME("failed for CLSID=%s\n", shdebugstr_guid(rclsid));
+	    // return DllGetClassObjectNative(rclsid, iid, ppv);//return DllGetClassObjectInternal;
+	// }
 
-	hres = IClassFactory_QueryInterface(pcf, iid, ppv);
-	IClassFactory_Release(pcf);
+	// hres = IClassFactory_QueryInterface(pcf, iid, ppv);
+	// IClassFactory_Release(pcf);
 
-	//TRACE("-- pointer to class factory: %p\n",*ppv);
-	return hres;
-}
+	// //TRACE("-- pointer to class factory: %p\n",*ppv);
+	// return hres;
+// }
 
 /**************************************************************************
  * Default ClassFactory Implementation
@@ -597,4 +681,64 @@ WCHAR** WINAPI CommandLineToArgvWInternal(const WCHAR *cmdline, int *numargs)
     *numargs = argc;
 
     return argv;
+}
+
+/*************************************************************************
+ * ILLoadFromStream (SHELL32.26)
+ *
+ * NOTES
+ *   the first two bytes are the len, the pidl is following then
+ */
+HRESULT WINAPI ILLoadFromStream (IStream * pStream, LPITEMIDLIST * ppPidl)
+{
+    WORD        wLen = 0;
+    DWORD       dwBytesRead;
+    HRESULT     ret = E_FAIL;
+
+
+    //TRACE("%p %p\n", pStream ,  ppPidl);
+
+    SHFree(*ppPidl);
+    *ppPidl = NULL;
+
+    IStream_AddRef (pStream);
+
+    if (SUCCEEDED(IStream_Read(pStream, &wLen, 2, &dwBytesRead)))
+    {
+        //TRACE("PIDL length is %d\n", wLen);
+        if (wLen != 0)
+        {
+            *ppPidl = SHAlloc (wLen);
+            if (SUCCEEDED(IStream_Read(pStream, *ppPidl , wLen, &dwBytesRead)))
+            {
+                //TRACE("Stream read OK\n");
+                ret = S_OK;
+            }
+            else
+            {
+                //WARN("reading pidl failed\n");
+                SHFree(*ppPidl);
+                *ppPidl = NULL;
+            }
+        }
+        else
+        {
+            *ppPidl = NULL;
+            ret = S_OK;
+        }
+    }
+
+    /* we are not yet fully compatible */
+    if (*ppPidl && !pcheck(*ppPidl))
+    {
+        WARN("Check failed\n");
+#ifndef __REACTOS__ /* We don't know all pidl formats, must allow loading unknown */
+        SHFree(*ppPidl);
+        *ppPidl = NULL;
+#endif
+    }
+
+    IStream_Release (pStream);
+    TRACE("done\n");
+    return ret;
 }

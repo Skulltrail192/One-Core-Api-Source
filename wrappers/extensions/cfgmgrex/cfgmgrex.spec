@@ -195,10 +195,8 @@
 @ stdcall CM_Unregister_Device_Interface_ExA(str long long) setupapi.CM_Unregister_Device_Interface_ExA
 @ stdcall CM_Unregister_Device_Interface_ExW(wstr long long) setupapi.CM_Unregister_Device_Interface_ExW
 
-#Vista functions
-@ stdcall CM_Get_DevNode_PropertyW(long ptr ptr ptr ptr long) setupapi.CM_Get_DevNode_PropertyW
-
 #Windows 7 functions
+@ stdcall CM_Get_DevNode_PropertyW(long ptr ptr ptr ptr long) #setupapi.CM_Get_DevNode_PropertyW
 @ stdcall CM_MapCrToWin32Err(long long) setupapi.CM_MapCrToWin32Err
 
 #Win8

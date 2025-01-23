@@ -47,13 +47,10 @@ BaseDllInitialize(
     {
         case DLL_PROCESS_ATTACH:
         {
-			int i;
-			LPACVAHASHTABLEENTRY lpHashTableEntry;
             /* Insert more dll attach stuff here! */
 			kernel32_handle = GetModuleHandleW(L"kernel32");
 			InitializeCriticalForLocaleInfo();
-			//RegInitialize();
-			
+		
 			//Initialize Locale
 			init_locale();
 			
@@ -73,11 +70,6 @@ BaseDllInitialize(
 			
             DllInitialized = TRUE;
 
-			for (i = 0; i < ARRAYSIZE(WaitOnAddressHashTable); ++i) {
-				lpHashTableEntry = &WaitOnAddressHashTable[i];
-				InitializeCriticalSection(&lpHashTableEntry->Lock);
-				InitializeListHead(&lpHashTableEntry->Addresses);
-			}
 			AppData = (LPWSTR)HeapAlloc(GetProcessHeap(), 8, MAX_PATH * 2);
 			if (!AppData)
 				return E_OUTOFMEMORY;

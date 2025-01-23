@@ -914,13 +914,17 @@ CreateThreadpoolWait(
  */
 BOOL WINAPI GetThreadGroupAffinity(HANDLE hThread, PGROUP_AFFINITY GroupAffinity)
 {
-	HANDLE hProcess;
+    HANDLE hProcess;
     DWORD_PTR ProcessAffinityMask;
-    DWORD_PTR SystemAffinityMask;	
+    DWORD_PTR SystemAffinityMask;    
     DWORD Pid = GetProcessIdOfThread(hThread);
     BOOL Res;
-	
-	if(!Pid)
+    if (!GroupAffinity) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    
+    if(!Pid)
         return FALSE;
     hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
     if(!hProcess)
@@ -939,26 +943,31 @@ BOOL WINAPI GetThreadGroupAffinity(HANDLE hThread, PGROUP_AFFINITY GroupAffinity
  */
 BOOL WINAPI SetThreadGroupAffinity(HANDLE hThread, const GROUP_AFFINITY *GroupAffinity, PGROUP_AFFINITY PreviousGroupAffinity)
 {
-	DWORD Pid;
-	HANDLE hProcess;
+    DWORD Pid;
+    HANDLE hProcess;
     DWORD_PTR ProcessAffinityMask;
     DWORD_PTR SystemAffinityMask;
-	BOOL Res;
-	
-    if (PreviousGroupAffinity) {
-        Pid = GetProcessIdOfThread(hThread);
-        if(!Pid)
-            return FALSE;
-        hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
-        if(!hProcess)
-            return FALSE;
-        Res = GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
-        CloseHandle(hProcess);
-        if(!Res)
-            return FALSE;
-        PreviousGroupAffinity->Mask = ProcessAffinityMask;
-        PreviousGroupAffinity->Group = 0;
+    BOOL Res;
+    
+    if (!GroupAffinity) {
+        SetLastError(ERROR_NOACCESS);
+        return FALSE;
+    } else if (!PreviousGroupAffinity) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
     }
+    Pid = GetProcessIdOfThread(hThread);
+    if (!Pid)
+        return FALSE;
+    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, Pid);
+    if (!hProcess)
+        return FALSE;
+    Res = GetProcessAffinityMask(hProcess, &ProcessAffinityMask, &SystemAffinityMask);
+    CloseHandle(hProcess);
+    if (!Res)
+        return FALSE;
+    PreviousGroupAffinity->Mask = ProcessAffinityMask;
+    PreviousGroupAffinity->Group = 0;
     return SetThreadAffinityMask(hThread, GroupAffinity->Mask);
 }
 

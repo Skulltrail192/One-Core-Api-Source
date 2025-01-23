@@ -24,9 +24,6 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "config.h"
-#include "wine/port.h"
-
 #include "wined3d_private.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(d3d);
@@ -57,7 +54,7 @@ void wined3d_context_cleanup(struct wined3d_context *context)
  * A to avoid breaking caller code. */
 void context_restore(struct wined3d_context *context, struct wined3d_texture *texture, unsigned int sub_resource_idx)
 {
-    if (context->current_rt.texture != texture || context->current_rt.sub_resource_idx != sub_resource_idx)
+    if (texture && (context->current_rt.texture != texture || context->current_rt.sub_resource_idx != sub_resource_idx))
     {
         context_release(context);
         context = context_acquire(texture->resource.device, texture, sub_resource_idx);
@@ -80,6 +77,9 @@ void context_invalidate_state(struct wined3d_context *context, unsigned int stat
 {
     unsigned int representative = context->state_table[state_id].representative;
     unsigned int index, shift;
+
+    if (!representative)
+        ERR("Invalidating representative 0, state_id %u.\n", state_id);
 
     index = representative / (sizeof(*context->dirty_graphics_states) * CHAR_BIT);
     shift = representative & ((sizeof(*context->dirty_graphics_states) * CHAR_BIT) - 1);
@@ -113,6 +113,10 @@ void wined3d_context_init(struct wined3d_context *context, struct wined3d_swapch
             | (1u << WINED3D_SHADER_TYPE_HULL)
             | (1u << WINED3D_SHADER_TYPE_DOMAIN)
             | (1u << WINED3D_SHADER_TYPE_COMPUTE);
+
+    context->update_primitive_type = 1;
+    context->update_patch_vertex_count = 1;
+    context->update_multisample_state = 1;
 }
 
 HRESULT wined3d_context_no3d_init(struct wined3d_context *context_no3d, struct wined3d_swapchain *swapchain)
@@ -157,9 +161,8 @@ void wined3d_stream_info_from_declaration(struct wined3d_stream_info *stream_inf
         const struct wined3d_state *state, const struct wined3d_d3d_info *d3d_info)
 {
     /* We need to deal with frequency data! */
+    BOOL use_vshader = use_vs(state) || (d3d_info->ffp_hlsl && state->shader[WINED3D_SHADER_TYPE_VERTEX]);
     struct wined3d_vertex_declaration *declaration = state->vertex_declaration;
-    BOOL generic_attributes = d3d_info->ffp_generic_attributes;
-    BOOL use_vshader = use_vs(state);
     unsigned int i;
 
     stream_info->use_map = 0;
@@ -209,16 +212,7 @@ void wined3d_stream_info_from_declaration(struct wined3d_stream_info *stream_inf
         }
         else
         {
-            if (!generic_attributes && !element->ffp_valid)
-            {
-                WARN("Skipping unsupported fixed function element of format %s and usage %s.\n",
-                        debug_d3dformat(element->format->id), debug_d3ddeclusage(element->usage));
-                stride_used = FALSE;
-            }
-            else
-            {
-                stride_used = fixed_get_input(element->usage, element->usage_idx, &idx);
-            }
+            stride_used = fixed_get_input(element->usage, element->usage_idx, &idx);
         }
 
         if (stride_used)
@@ -267,20 +261,19 @@ void context_update_stream_info(struct wined3d_context *context, const struct wi
     const struct wined3d_d3d_info *d3d_info = context->d3d_info;
     DWORD prev_all_vbo = stream_info->all_vbo;
     unsigned int i;
-    WORD map;
+    uint32_t map;
 
     wined3d_stream_info_from_declaration(stream_info, state, d3d_info);
 
     stream_info->all_vbo = 1;
-    for (i = 0, map = stream_info->use_map; map; map >>= 1, ++i)
+    map = stream_info->use_map;
+    while (map)
     {
         struct wined3d_stream_info_element *element;
         struct wined3d_bo_address data;
         struct wined3d_buffer *buffer;
 
-        if (!(map & 1))
-            continue;
-
+        i = wined3d_bit_scan(&map);
         element = &stream_info->elements[i];
         buffer = state->streams[element->stream_idx].buffer;
 
@@ -304,7 +297,7 @@ void context_update_stream_info(struct wined3d_context *context, const struct wi
         else
         {
             wined3d_buffer_load(buffer, context, state);
-            wined3d_buffer_get_memory(buffer, &data, buffer->locations);
+            wined3d_buffer_get_memory(buffer, context, &data);
             element->data.buffer_object = data.buffer_object;
             element->data.addr += (ULONG_PTR)data.addr;
         }
@@ -317,87 +310,4 @@ void context_update_stream_info(struct wined3d_context *context, const struct wi
 
     if (prev_all_vbo != stream_info->all_vbo)
         context_invalidate_state(context, STATE_INDEXBUFFER);
-
-    context->use_immediate_mode_draw = FALSE;
-
-    if (stream_info->all_vbo)
-        return;
-
-    if (!use_vs(state))
-    {
-        WORD slow_mask = -!d3d_info->ffp_generic_attributes & (1u << WINED3D_FFP_PSIZE);
-        slow_mask |= -(!d3d_info->vertex_bgra && !d3d_info->ffp_generic_attributes)
-                & ((1u << WINED3D_FFP_DIFFUSE) | (1u << WINED3D_FFP_SPECULAR) | (1u << WINED3D_FFP_BLENDWEIGHT));
-
-        if ((stream_info->position_transformed && !d3d_info->xyzrhw)
-                || (stream_info->use_map & slow_mask))
-            context->use_immediate_mode_draw = TRUE;
-    }
-}
-
-static BOOL is_resource_rtv_bound(const struct wined3d_state *state,
-        const struct wined3d_resource *resource)
-{
-    unsigned int i;
-
-    if (!resource->rtv_bind_count_device)
-        return false;
-
-    for (i = 0; i < ARRAY_SIZE(state->fb.render_targets); ++i)
-    {
-        if (state->fb.render_targets[i] && state->fb.render_targets[i]->resource == resource)
-            return true;
-    }
-
-    return false;
-}
-
-/* Context activation is done by the caller. */
-static void context_preload_texture(struct wined3d_context *context,
-        const struct wined3d_state *state, unsigned int idx)
-{
-    struct wined3d_texture *texture;
-
-    if (!(texture = state->textures[idx]))
-        return;
-
-    if (is_resource_rtv_bound(state, &texture->resource)
-            || (state->fb.depth_stencil && state->fb.depth_stencil->resource == &texture->resource))
-        context->uses_fbo_attached_resources = 1;
-
-    wined3d_texture_load(texture, context, is_srgb_enabled(state->sampler_states[idx]));
-}
-
-/* Context activation is done by the caller. */
-void context_preload_textures(struct wined3d_context *context, const struct wined3d_state *state)
-{
-    unsigned int i;
-
-    if (use_vs(state))
-    {
-        for (i = 0; i < WINED3D_MAX_VERTEX_SAMPLERS; ++i)
-        {
-            if (state->shader[WINED3D_SHADER_TYPE_VERTEX]->reg_maps.resource_info[i].type)
-                context_preload_texture(context, state, WINED3D_MAX_FRAGMENT_SAMPLERS + i);
-        }
-    }
-
-    if (use_ps(state))
-    {
-        for (i = 0; i < WINED3D_MAX_FRAGMENT_SAMPLERS; ++i)
-        {
-            if (state->shader[WINED3D_SHADER_TYPE_PIXEL]->reg_maps.resource_info[i].type)
-                context_preload_texture(context, state, i);
-        }
-    }
-    else
-    {
-        WORD ffu_map = context->fixed_function_usage_map;
-
-        for (i = 0; ffu_map; ffu_map >>= 1, ++i)
-        {
-            if (ffu_map & 1)
-                context_preload_texture(context, state, i);
-        }
-    }
 }

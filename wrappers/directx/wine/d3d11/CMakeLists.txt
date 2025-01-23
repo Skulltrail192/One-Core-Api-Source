@@ -12,6 +12,7 @@ list(APPEND SOURCE
 	async.c
 	buffer.c
     d3d11_main.c
+	decoder.c
 	device.c
 	inputlayout.c
 	shader.c

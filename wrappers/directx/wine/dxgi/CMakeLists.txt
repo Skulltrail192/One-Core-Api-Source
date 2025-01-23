@@ -10,7 +10,7 @@ list(APPEND SOURCE
     dxgi_main.c
     factory.c
     output.c
-    surface.c
+    resource.c
     swapchain.c
     utils.c
     dxgi_private.h)

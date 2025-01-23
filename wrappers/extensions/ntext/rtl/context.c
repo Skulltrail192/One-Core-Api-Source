@@ -416,3 +416,22 @@ void * NTAPI RtlLocateExtendedFeature( CONTEXT_EX *context_ex, ULONG feature_id,
 {
     return RtlLocateExtendedFeature2( context_ex, feature_id, (XSTATE_CONFIGURATION*)&SharedUserData->ProcessorFeatures, length );
 }
+
+ULONG64 
+NTAPI 
+RtlGetEnabledExtendedFeatures(
+	_In_  ULONG64 FeatureMask
+)
+{
+	return FeatureMask;
+}
+
+/**********************************************************************
+ *              RtlGetExtendedFeaturesMask  (NTDLL.@)
+ */
+ULONG64 WINAPI RtlGetExtendedFeaturesMask( CONTEXT_EX *context_ex )
+{
+    XSTATE *xs = (XSTATE *)((BYTE *)context_ex + context_ex->XState.Offset);
+
+    return xs->Mask & ~(ULONG64)3;
+}

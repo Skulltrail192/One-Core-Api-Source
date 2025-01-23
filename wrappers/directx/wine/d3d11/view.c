@@ -958,14 +958,12 @@ static ULONG STDMETHODCALLTYPE d3d11_depthstencil_view_AddRef(ID3D11DepthStencil
     struct d3d_depthstencil_view *view = impl_from_ID3D11DepthStencilView(iface);
     ULONG refcount = InterlockedIncrement(&view->refcount);
 
-    TRACE("%p increasing refcount to %u.\n", view, refcount);
+    TRACE("%p increasing refcount to %lu.\n", view, refcount);
 
     if (refcount == 1)
     {
         ID3D11Device2_AddRef(view->device);
-        wined3d_mutex_lock();
         wined3d_rendertarget_view_incref(view->wined3d_view);
-        wined3d_mutex_unlock();
     }
 
     return refcount;
@@ -976,16 +974,12 @@ static ULONG STDMETHODCALLTYPE d3d11_depthstencil_view_Release(ID3D11DepthStenci
     struct d3d_depthstencil_view *view = impl_from_ID3D11DepthStencilView(iface);
     ULONG refcount = InterlockedDecrement(&view->refcount);
 
-    TRACE("%p decreasing refcount to %u.\n", view, refcount);
+    TRACE("%p decreasing refcount to %lu.\n", view, refcount);
 
     if (!refcount)
     {
         ID3D11Device2 *device = view->device;
-
-        wined3d_mutex_lock();
         wined3d_rendertarget_view_decref(view->wined3d_view);
-        wined3d_mutex_unlock();
-
         ID3D11Device2_Release(device);
     }
 
@@ -1200,7 +1194,7 @@ static void STDMETHODCALLTYPE d3d_depth_stencil_view_wined3d_object_destroyed(vo
     struct d3d_depthstencil_view *view = parent;
 
     wined3d_private_store_cleanup(&view->private_store);
-    heap_free(parent);
+    free(parent);
 }
 
 static const struct wined3d_parent_ops d3d_depth_stencil_view_wined3d_parent_ops =
@@ -1306,7 +1300,7 @@ static HRESULT d3d_depthstencil_view_init(struct d3d_depthstencil_view *view, st
             view, &d3d_depth_stencil_view_wined3d_parent_ops, &view->wined3d_view)))
     {
         wined3d_mutex_unlock();
-        WARN("Failed to create a wined3d rendertarget view, hr %#x.\n", hr);
+        WARN("Failed to create a wined3d rendertarget view, hr %#lx.\n", hr);
         return hr;
     }
 
@@ -1324,13 +1318,13 @@ HRESULT d3d_depthstencil_view_create(struct d3d_device *device, ID3D11Resource *
     struct d3d_depthstencil_view *object;
     HRESULT hr;
 
-    if (!(object = heap_alloc_zero(sizeof(*object))))
+    if (!(object = calloc(1, sizeof(*object))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = d3d_depthstencil_view_init(object, device, resource, desc)))
     {
-        WARN("Failed to initialize depthstencil view, hr %#x.\n", hr);
-        heap_free(object);
+        WARN("Failed to initialise depth/stencil view, hr %#lx.\n", hr);
+        free(object);
         return hr;
     }
 
@@ -1402,14 +1396,12 @@ static ULONG STDMETHODCALLTYPE d3d11_rendertarget_view_AddRef(ID3D11RenderTarget
     struct d3d_rendertarget_view *view = impl_from_ID3D11RenderTargetView(iface);
     ULONG refcount = InterlockedIncrement(&view->refcount);
 
-    TRACE("%p increasing refcount to %u.\n", view, refcount);
+    TRACE("%p increasing refcount to %lu.\n", view, refcount);
 
     if (refcount == 1)
     {
         ID3D11Device2_AddRef(view->device);
-        wined3d_mutex_lock();
         wined3d_rendertarget_view_incref(view->wined3d_view);
-        wined3d_mutex_unlock();
     }
 
     return refcount;
@@ -1420,16 +1412,12 @@ static ULONG STDMETHODCALLTYPE d3d11_rendertarget_view_Release(ID3D11RenderTarge
     struct d3d_rendertarget_view *view = impl_from_ID3D11RenderTargetView(iface);
     ULONG refcount = InterlockedDecrement(&view->refcount);
 
-    TRACE("%p decreasing refcount to %u.\n", view, refcount);
+    TRACE("%p decreasing refcount to %lu.\n", view, refcount);
 
     if (!refcount)
     {
         ID3D11Device2 *device = view->device;
-
-        wined3d_mutex_lock();
         wined3d_rendertarget_view_decref(view->wined3d_view);
-        wined3d_mutex_unlock();
-
         ID3D11Device2_Release(device);
     }
 
@@ -1641,7 +1629,7 @@ static void STDMETHODCALLTYPE d3d_render_target_view_wined3d_object_destroyed(vo
     struct d3d_rendertarget_view *view = parent;
 
     wined3d_private_store_cleanup(&view->private_store);
-    heap_free(parent);
+    free(parent);
 }
 
 static const struct wined3d_parent_ops d3d_render_target_view_wined3d_parent_ops =
@@ -1753,7 +1741,7 @@ static HRESULT d3d_rendertarget_view_init(struct d3d_rendertarget_view *view, st
             view, &d3d_render_target_view_wined3d_parent_ops, &view->wined3d_view)))
     {
         wined3d_mutex_unlock();
-        WARN("Failed to create a wined3d rendertarget view, hr %#x.\n", hr);
+        WARN("Failed to create a wined3d rendertarget view, hr %#lx.\n", hr);
         return hr;
     }
 
@@ -1771,13 +1759,13 @@ HRESULT d3d_rendertarget_view_create(struct d3d_device *device, ID3D11Resource *
     struct d3d_rendertarget_view *object;
     HRESULT hr;
 
-    if (!(object = heap_alloc_zero(sizeof(*object))))
+    if (!(object = calloc(1, sizeof(*object))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = d3d_rendertarget_view_init(object, device, resource, desc)))
     {
-        WARN("Failed to initialize rendertarget view, hr %#x.\n", hr);
-        heap_free(object);
+        WARN("Failed to initialise rendertarget view, hr %#lx.\n", hr);
+        free(object);
         return hr;
     }
 
@@ -1850,14 +1838,12 @@ static ULONG STDMETHODCALLTYPE d3d11_shader_resource_view_AddRef(ID3D11ShaderRes
     struct d3d_shader_resource_view *view = impl_from_ID3D11ShaderResourceView(iface);
     ULONG refcount = InterlockedIncrement(&view->refcount);
 
-    TRACE("%p increasing refcount to %u.\n", view, refcount);
+    TRACE("%p increasing refcount to %lu.\n", view, refcount);
 
     if (refcount == 1)
     {
         ID3D11Device2_AddRef(view->device);
-        wined3d_mutex_lock();
         wined3d_shader_resource_view_incref(view->wined3d_view);
-        wined3d_mutex_unlock();
     }
 
     return refcount;
@@ -1868,16 +1854,12 @@ static ULONG STDMETHODCALLTYPE d3d11_shader_resource_view_Release(ID3D11ShaderRe
     struct d3d_shader_resource_view *view = impl_from_ID3D11ShaderResourceView(iface);
     ULONG refcount = InterlockedDecrement(&view->refcount);
 
-    TRACE("%p decreasing refcount to %u.\n", view, refcount);
+    TRACE("%p decreasing refcount to %lu.\n", view, refcount);
 
     if (!refcount)
     {
         ID3D11Device2 *device = view->device;
-
-        wined3d_mutex_lock();
         wined3d_shader_resource_view_decref(view->wined3d_view);
-        wined3d_mutex_unlock();
-
         ID3D11Device2_Release(device);
     }
 
@@ -2102,7 +2084,7 @@ static void STDMETHODCALLTYPE d3d_shader_resource_view_wined3d_object_destroyed(
     struct d3d_shader_resource_view *view = parent;
 
     wined3d_private_store_cleanup(&view->private_store);
-    heap_free(parent);
+    free(parent);
 }
 
 static const struct wined3d_parent_ops d3d_shader_resource_view_wined3d_parent_ops =
@@ -2253,7 +2235,7 @@ static HRESULT d3d_shader_resource_view_init(struct d3d_shader_resource_view *vi
             view, &d3d_shader_resource_view_wined3d_parent_ops, &view->wined3d_view)))
     {
         wined3d_mutex_unlock();
-        WARN("Failed to create wined3d shader resource view, hr %#x.\n", hr);
+        WARN("Failed to create wined3d shader resource view, hr %#lx.\n", hr);
         return hr;
     }
 
@@ -2271,13 +2253,13 @@ HRESULT d3d_shader_resource_view_create(struct d3d_device *device, ID3D11Resourc
     struct d3d_shader_resource_view *object;
     HRESULT hr;
 
-    if (!(object = heap_alloc_zero(sizeof(*object))))
+    if (!(object = calloc(1, sizeof(*object))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = d3d_shader_resource_view_init(object, device, resource, desc)))
     {
-        WARN("Failed to initialize shader resource view, hr %#x.\n", hr);
-        heap_free(object);
+        WARN("Failed to initialise shader resource view, hr %#lx.\n", hr);
+        free(object);
         return hr;
     }
 
@@ -2335,14 +2317,12 @@ static ULONG STDMETHODCALLTYPE d3d11_unordered_access_view_AddRef(ID3D11Unordere
     struct d3d11_unordered_access_view *view = impl_from_ID3D11UnorderedAccessView(iface);
     ULONG refcount = InterlockedIncrement(&view->refcount);
 
-    TRACE("%p increasing refcount to %u.\n", view, refcount);
+    TRACE("%p increasing refcount to %lu.\n", view, refcount);
 
     if (refcount == 1)
     {
         ID3D11Device2_AddRef(view->device);
-        wined3d_mutex_lock();
         wined3d_unordered_access_view_incref(view->wined3d_view);
-        wined3d_mutex_unlock();
     }
 
     return refcount;
@@ -2353,16 +2333,12 @@ static ULONG STDMETHODCALLTYPE d3d11_unordered_access_view_Release(ID3D11Unorder
     struct d3d11_unordered_access_view *view = impl_from_ID3D11UnorderedAccessView(iface);
     ULONG refcount = InterlockedDecrement(&view->refcount);
 
-    TRACE("%p decreasing refcount to %u.\n", view, refcount);
+    TRACE("%p decreasing refcount to %lu.\n", view, refcount);
 
     if (!refcount)
     {
         ID3D11Device2 *device = view->device;
-
-        wined3d_mutex_lock();
         wined3d_unordered_access_view_decref(view->wined3d_view);
-        wined3d_mutex_unlock();
-
         ID3D11Device2_Release(device);
     }
 
@@ -2451,7 +2427,7 @@ static void STDMETHODCALLTYPE d3d11_unordered_access_view_wined3d_object_destroy
     struct d3d11_unordered_access_view *view = parent;
 
     wined3d_private_store_cleanup(&view->private_store);
-    heap_free(parent);
+    free(parent);
 }
 
 static const struct wined3d_parent_ops d3d11_unordered_access_view_wined3d_parent_ops =
@@ -2562,7 +2538,7 @@ static HRESULT d3d11_unordered_access_view_init(struct d3d11_unordered_access_vi
             view, &d3d11_unordered_access_view_wined3d_parent_ops, &view->wined3d_view)))
     {
         wined3d_mutex_unlock();
-        WARN("Failed to create wined3d unordered access view, hr %#x.\n", hr);
+        WARN("Failed to create wined3d unordered access view, hr %#lx.\n", hr);
         return hr;
     }
 
@@ -2580,13 +2556,13 @@ HRESULT d3d11_unordered_access_view_create(struct d3d_device *device, ID3D11Reso
     struct d3d11_unordered_access_view *object;
     HRESULT hr;
 
-    if (!(object = heap_alloc_zero(sizeof(*object))))
+    if (!(object = calloc(1, sizeof(*object))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = d3d11_unordered_access_view_init(object, device, resource, desc)))
     {
-        WARN("Failed to initialize unordered access view, hr %#x.\n", hr);
-        heap_free(object);
+        WARN("Failed to initialise unordered access view, hr %#lx.\n", hr);
+        free(object);
         return hr;
     }
 
@@ -2603,4 +2579,173 @@ struct d3d11_unordered_access_view *unsafe_impl_from_ID3D11UnorderedAccessView(I
     assert(iface->lpVtbl == &d3d11_unordered_access_view_vtbl);
 
     return impl_from_ID3D11UnorderedAccessView(iface);
+}
+
+static struct d3d_video_decoder_output_view *impl_from_ID3D11VideoDecoderOutputView(ID3D11VideoDecoderOutputView *iface)
+{
+    return CONTAINING_RECORD(iface, struct d3d_video_decoder_output_view, ID3D11VideoDecoderOutputView_iface);
+}
+
+static HRESULT STDMETHODCALLTYPE d3d11_video_decoder_output_view_QueryInterface(ID3D11VideoDecoderOutputView *iface,
+        REFIID riid, void **object)
+{
+    TRACE("iface %p, riid %s, object %p.\n", iface, debugstr_guid(riid), object);
+
+    if (IsEqualGUID(riid, &IID_ID3D11VideoDecoderOutputView)
+            || IsEqualGUID(riid, &IID_ID3D11View)
+            || IsEqualGUID(riid, &IID_ID3D11DeviceChild)
+            || IsEqualGUID(riid, &IID_IUnknown))
+    {
+        ID3D11VideoDecoderOutputView_AddRef(*object = iface);
+        return S_OK;
+    }
+
+    WARN("%s not implemented, returning E_NOINTERFACE.\n", debugstr_guid(riid));
+
+    *object = NULL;
+    return E_NOINTERFACE;
+}
+
+static ULONG STDMETHODCALLTYPE d3d11_video_decoder_output_view_AddRef(ID3D11VideoDecoderOutputView *iface)
+{
+    struct d3d_video_decoder_output_view *view = impl_from_ID3D11VideoDecoderOutputView(iface);
+    ULONG refcount = InterlockedIncrement(&view->refcount);
+
+    TRACE("%p increasing refcount to %lu.\n", view, refcount);
+
+    return refcount;
+}
+
+static ULONG STDMETHODCALLTYPE d3d11_video_decoder_output_view_Release(ID3D11VideoDecoderOutputView *iface)
+{
+    struct d3d_video_decoder_output_view *view = impl_from_ID3D11VideoDecoderOutputView(iface);
+    ULONG refcount = InterlockedDecrement(&view->refcount);
+
+    TRACE("%p decreasing refcount to %lu.\n", view, refcount);
+
+    if (!refcount)
+    {
+        ID3D11Device2_Release(&view->device->ID3D11Device2_iface);
+        wined3d_private_store_cleanup(&view->private_store);
+        free(view);
+    }
+
+    return refcount;
+}
+
+static void STDMETHODCALLTYPE d3d11_video_decoder_output_view_GetDevice(ID3D11VideoDecoderOutputView *iface,
+        ID3D11Device **device)
+{
+    struct d3d_video_decoder_output_view *view = impl_from_ID3D11VideoDecoderOutputView(iface);
+
+    TRACE("iface %p, device %p.\n", iface, device);
+
+    ID3D11Device_AddRef(*device = (ID3D11Device *)view->device);
+}
+
+static HRESULT STDMETHODCALLTYPE d3d11_video_decoder_output_view_GetPrivateData(
+        ID3D11VideoDecoderOutputView *iface, REFGUID guid, UINT *data_size, void *data)
+{
+    struct d3d_video_decoder_output_view *view = impl_from_ID3D11VideoDecoderOutputView(iface);
+
+    TRACE("iface %p, guid %s, data_size %p, data %p.\n", iface, debugstr_guid(guid), data_size, data);
+
+    return d3d_get_private_data(&view->private_store, guid, data_size, data);
+}
+
+static HRESULT STDMETHODCALLTYPE d3d11_video_decoder_output_view_SetPrivateData(
+        ID3D11VideoDecoderOutputView *iface, REFGUID guid, UINT data_size, const void *data)
+{
+    struct d3d_video_decoder_output_view *view = impl_from_ID3D11VideoDecoderOutputView(iface);
+
+    TRACE("iface %p, guid %s, data_size %u, data %p.\n", iface, debugstr_guid(guid), data_size, data);
+
+    return d3d_set_private_data(&view->private_store, guid, data_size, data);
+}
+
+static HRESULT STDMETHODCALLTYPE d3d11_video_decoder_output_view_SetPrivateDataInterface(
+        ID3D11VideoDecoderOutputView *iface, REFGUID guid, const IUnknown *data)
+{
+    struct d3d_video_decoder_output_view *view = impl_from_ID3D11VideoDecoderOutputView(iface);
+
+    TRACE("iface %p, guid %s, data %p.\n", iface, debugstr_guid(guid), data);
+
+    return d3d_set_private_data_interface(&view->private_store, guid, data);
+}
+
+static void STDMETHODCALLTYPE d3d11_video_decoder_output_view_GetResource(
+        ID3D11VideoDecoderOutputView *iface, ID3D11Resource **resource)
+{
+    struct d3d_video_decoder_output_view *view = impl_from_ID3D11VideoDecoderOutputView(iface);
+
+    TRACE("iface %p, resource %p.\n", iface, resource);
+
+    ID3D11Resource_AddRef(*resource = view->resource);
+}
+
+static void STDMETHODCALLTYPE d3d11_video_decoder_output_view_GetDesc(
+        ID3D11VideoDecoderOutputView *iface, D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC *desc)
+{
+    struct d3d_video_decoder_output_view *view = impl_from_ID3D11VideoDecoderOutputView(iface);
+
+    TRACE("iface %p, desc %p.\n", iface, desc);
+
+    *desc = view->desc;
+}
+
+static const struct ID3D11VideoDecoderOutputViewVtbl d3d11_video_decoder_output_view_vtbl =
+{
+    /* IUnknown methods */
+    d3d11_video_decoder_output_view_QueryInterface,
+    d3d11_video_decoder_output_view_AddRef,
+    d3d11_video_decoder_output_view_Release,
+    /* ID3D11DeviceChild methods */
+    d3d11_video_decoder_output_view_GetDevice,
+    d3d11_video_decoder_output_view_GetPrivateData,
+    d3d11_video_decoder_output_view_SetPrivateData,
+    d3d11_video_decoder_output_view_SetPrivateDataInterface,
+    /* ID3D11View methods */
+    d3d11_video_decoder_output_view_GetResource,
+    /* ID3D11VideoDecoderOutputView methods */
+    d3d11_video_decoder_output_view_GetDesc,
+};
+
+static HRESULT d3d_video_decoder_output_view_init(struct d3d_video_decoder_output_view *view,
+        struct d3d_device *device, ID3D11Resource *resource, const D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC *desc)
+{
+    view->ID3D11VideoDecoderOutputView_iface.lpVtbl = &d3d11_video_decoder_output_view_vtbl;
+    view->refcount = 1;
+
+    wined3d_mutex_lock();
+    wined3d_private_store_init(&view->private_store);
+    wined3d_mutex_unlock();
+    view->resource = resource;
+    view->device = device;
+    ID3D11Device2_AddRef(&device->ID3D11Device2_iface);
+
+    return S_OK;
+}
+
+HRESULT d3d_video_decoder_output_view_create(struct d3d_device *device, ID3D11Resource *resource,
+        const D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC *desc, struct d3d_video_decoder_output_view **view)
+{
+    struct d3d_video_decoder_output_view *object;
+    HRESULT hr;
+
+    TRACE("profile %s, slice %u.\n", debugstr_guid(&desc->DecodeProfile), desc->u.Texture2D.ArraySlice);
+
+    if (!(object = calloc(1, sizeof(*object))))
+        return E_OUTOFMEMORY;
+
+    if (FAILED(hr = d3d_video_decoder_output_view_init(object, device, resource, desc)))
+    {
+        WARN("Failed to initialise video decoder output view, hr %#lx.\n", hr);
+        free(object);
+        return hr;
+    }
+
+    TRACE("Created video decoder output view %p.\n", object);
+    *view = object;
+
+    return S_OK;
 }

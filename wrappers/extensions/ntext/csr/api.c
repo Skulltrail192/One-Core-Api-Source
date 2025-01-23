@@ -46,7 +46,7 @@ CsrNewThread(VOID)
 	HANDLE hNtdll;
 	NTSTATUS Status;
     /* We're inside, so let's find csrsrv */
-    DbgPrint("Next-GEN CSRSS support\n");
+    //DbgPrint("Next-GEN CSRSS support\n");
 	
     RtlInitUnicodeString(&NtdllName, L"ntdll");
     Status = LdrGetDllHandle(NULL,

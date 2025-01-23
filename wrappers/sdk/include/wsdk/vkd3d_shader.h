@@ -19,8 +19,9 @@
 #ifndef __VKD3D_SHADER_H
 #define __VKD3D_SHADER_H
 
-#include <stdBOOL.h>
+#include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <vkd3d_types.h>
 
 #ifdef __cplusplus
@@ -30,12 +31,12 @@ extern "C" {
 /**
  * \file vkd3d_shader.h
  *
- * \since 1.2
- *
  * This file contains definitions for the vkd3d-shader library.
  *
  * The vkd3d-shader library provides multiple utilities related to the
  * compilation, transformation, and reflection of GPU shaders.
+ *
+ * \since 1.2
  */
 
 /** \since 1.3 */
@@ -45,6 +46,19 @@ enum vkd3d_shader_api_version
     VKD3D_SHADER_API_VERSION_1_1,
     VKD3D_SHADER_API_VERSION_1_2,
     VKD3D_SHADER_API_VERSION_1_3,
+    VKD3D_SHADER_API_VERSION_1_4,
+    VKD3D_SHADER_API_VERSION_1_5,
+    VKD3D_SHADER_API_VERSION_1_6,
+    VKD3D_SHADER_API_VERSION_1_7,
+    VKD3D_SHADER_API_VERSION_1_8,
+    VKD3D_SHADER_API_VERSION_1_9,
+    VKD3D_SHADER_API_VERSION_1_10,
+    VKD3D_SHADER_API_VERSION_1_11,
+    VKD3D_SHADER_API_VERSION_1_12,
+    VKD3D_SHADER_API_VERSION_1_13,
+    VKD3D_SHADER_API_VERSION_1_14,
+
+    VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_API_VERSION),
 };
 
 /** The type of a chained structure. */
@@ -78,6 +92,31 @@ enum vkd3d_shader_structure_type
      * \since 1.3
      */
     VKD3D_SHADER_STRUCTURE_TYPE_DESCRIPTOR_OFFSET_INFO,
+    /**
+     * The structure is a vkd3d_shader_scan_signature_info structure.
+     * \since 1.9
+     */
+    VKD3D_SHADER_STRUCTURE_TYPE_SCAN_SIGNATURE_INFO,
+    /**
+     * The structure is a vkd3d_shader_varying_map_info structure.
+     * \since 1.9
+     */
+    VKD3D_SHADER_STRUCTURE_TYPE_VARYING_MAP_INFO,
+    /**
+     * The structure is a vkd3d_shader_scan_combined_resource_sampler_info structure.
+     * \since 1.10
+     */
+    VKD3D_SHADER_STRUCTURE_TYPE_SCAN_COMBINED_RESOURCE_SAMPLER_INFO,
+    /**
+     * The structure is a vkd3d_shader_parameter_info structure.
+     * \since 1.13
+     */
+    VKD3D_SHADER_STRUCTURE_TYPE_PARAMETER_INFO,
+    /**
+     * The structure is a vkd3d_shader_scan_hull_shader_tessellation_info structure.
+     * \since 1.15
+     */
+    VKD3D_SHADER_STRUCTURE_TYPE_SCAN_HULL_SHADER_TESSELLATION_INFO,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_STRUCTURE_TYPE),
 };
@@ -98,6 +137,23 @@ enum vkd3d_shader_compile_option_buffer_uav
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_COMPILE_OPTION_BUFFER_UAV),
 };
 
+/**
+ * Determines how typed UAVs are declared.
+ * \since 1.5
+ */
+enum vkd3d_shader_compile_option_typed_uav
+{
+    /** Use R32(u)i/R32f format for UAVs which are read from. This is the default value. */
+    VKD3D_SHADER_COMPILE_OPTION_TYPED_UAV_READ_FORMAT_R32     = 0x00000000,
+    /**
+     * Use Unknown format for UAVs which are read from. This should only be set if
+     * shaderStorageImageReadWithoutFormat is enabled in the target environment.
+     */
+    VKD3D_SHADER_COMPILE_OPTION_TYPED_UAV_READ_FORMAT_UNKNOWN = 0x00000001,
+
+    VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_COMPILE_OPTION_TYPED_UAV),
+};
+
 enum vkd3d_shader_compile_option_formatting_flags
 {
     VKD3D_SHADER_COMPILE_OPTION_FORMATTING_NONE    = 0x00000000,
@@ -106,8 +162,108 @@ enum vkd3d_shader_compile_option_formatting_flags
     VKD3D_SHADER_COMPILE_OPTION_FORMATTING_OFFSETS = 0x00000004,
     VKD3D_SHADER_COMPILE_OPTION_FORMATTING_HEADER  = 0x00000008,
     VKD3D_SHADER_COMPILE_OPTION_FORMATTING_RAW_IDS = 0x00000010,
+    /**
+     * Emit the signatures when disassembling a shader.
+     *
+     * \since 1.12
+     */
+    VKD3D_SHADER_COMPILE_OPTION_FORMATTING_IO_SIGNATURES = 0x00000020,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_COMPILE_OPTION_FORMATTING_FLAGS),
+};
+
+/** Determines how matrices are stored. \since 1.9 */
+enum vkd3d_shader_compile_option_pack_matrix_order
+{
+    VKD3D_SHADER_COMPILE_OPTION_PACK_MATRIX_ROW_MAJOR    = 0x00000001,
+    VKD3D_SHADER_COMPILE_OPTION_PACK_MATRIX_COLUMN_MAJOR = 0x00000002,
+
+    VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_COMPILE_OPTION_PACK_MATRIX_ORDER),
+};
+
+/** Individual options to enable various backward compatibility features. \since 1.10 */
+enum vkd3d_shader_compile_option_backward_compatibility
+{
+    /**
+     *  Causes compiler to convert SM1-3 semantics to corresponding System Value semantics,
+     *  when compiling HLSL sources for SM4+ targets.
+     *
+     *  This option does the following conversions:
+     *
+     *  - POSITION to SV_Position for vertex shader outputs, pixel shader inputs,
+     *    and geometry shader inputs and outputs;
+     *  - COLORN to SV_TargetN for pixel shader outputs;
+     *  - DEPTH to SV_Depth for pixel shader outputs.
+     */
+    VKD3D_SHADER_COMPILE_OPTION_BACKCOMPAT_MAP_SEMANTIC_NAMES = 0x00000001,
+    /**
+     *  Causes 'double' to behave as an alias for 'float'. This option only
+     *  applies to HLSL sources with shader model 1-3 target profiles. Without
+     *  this option using the 'double' type produces compilation errors in
+     *  these target profiles.
+     *
+     *  This option is disabled by default.
+     *
+     *  \since 1.14
+     */
+    VKD3D_SHADER_COMPILE_OPTION_DOUBLE_AS_FLOAT_ALIAS = 0x00000002,
+
+    VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_COMPILE_OPTION_BACKWARD_COMPATIBILITY),
+};
+
+/**
+ * Determines the origin of fragment coordinates.
+ *
+ * \since 1.10
+ */
+enum vkd3d_shader_compile_option_fragment_coordinate_origin
+{
+    /** Fragment coordinates originate from the upper-left. This is the
+     * default; it's also the only value supported by Vulkan environments. */
+    VKD3D_SHADER_COMPILE_OPTION_FRAGMENT_COORDINATE_ORIGIN_UPPER_LEFT = 0x00000000,
+    /** Fragment coordinates originate from the lower-left. This matches the
+     * traditional behaviour of OpenGL environments. */
+    VKD3D_SHADER_COMPILE_OPTION_FRAGMENT_COORDINATE_ORIGIN_LOWER_LEFT = 0x00000001,
+
+    VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_COMPILE_OPTION_FRAGMENT_COORDINATE_ORIGIN),
+};
+
+/** Advertises feature availability. \since 1.11 */
+enum vkd3d_shader_compile_option_feature_flags
+{
+    /** The SPIR-V target environment supports 64-bit integer types. This
+     * corresponds to the "shaderInt64" feature in the Vulkan API, and the
+     * "GL_ARB_gpu_shader_int64" extension in the OpenGL API. */
+    VKD3D_SHADER_COMPILE_OPTION_FEATURE_INT64         = 0x00000001,
+    /** The SPIR-V target environment supports 64-bit floating-point types.
+     * This corresponds to the "shaderFloat64" feature in the Vulkan API, and
+     * the "GL_ARB_gpu_shader_fp64" extension in the OpenGL API. */
+    VKD3D_SHADER_COMPILE_OPTION_FEATURE_FLOAT64       = 0x00000002,
+    /** The SPIR-V target environment supports wave operations.
+     * This flag is valid only in VKD3D_SHADER_SPIRV_ENVIRONMENT_VULKAN_1_1
+     * or greater, and corresponds to the following minimum requirements in
+     * VkPhysicalDeviceSubgroupProperties:
+     * - subgroupSize >= 4.
+     * - supportedOperations has BASIC, VOTE, ARITHMETIC, BALLOT, SHUFFLE and
+     *       QUAD bits set.
+     * - supportedStages include COMPUTE and FRAGMENT. \since 1.12 */
+    VKD3D_SHADER_COMPILE_OPTION_FEATURE_WAVE_OPS      = 0x00000004,
+
+    VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_COMPILE_OPTION_FEATURE_FLAGS),
+};
+
+/**
+ * Flags for vkd3d_shader_parse_dxbc().
+ *
+ * \since 1.12
+ */
+enum vkd3d_shader_parse_dxbc_flags
+{
+    /** Ignore the checksum and continue parsing even if it is
+     * incorrect. */
+    VKD3D_SHADER_PARSE_DXBC_IGNORE_CHECKSUM           = 0x00000001,
+
+    VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_PARSE_DXBC_FLAGS),
 };
 
 enum vkd3d_shader_compile_option_name
@@ -126,6 +282,87 @@ enum vkd3d_shader_compile_option_name
     VKD3D_SHADER_COMPILE_OPTION_FORMATTING  = 0x00000003,
     /** \a value is a member of enum vkd3d_shader_api_version. \since 1.3 */
     VKD3D_SHADER_COMPILE_OPTION_API_VERSION = 0x00000004,
+    /** \a value is a member of enum vkd3d_shader_compile_option_typed_uav. \since 1.5 */
+    VKD3D_SHADER_COMPILE_OPTION_TYPED_UAV   = 0x00000005,
+    /**
+     * If \a value is nonzero, write the point size for Vulkan tessellation and
+     * geometry shaders. This option should be enabled if and only if the
+     * shaderTessellationAndGeometryPointSize feature is enabled. The default
+     * value is nonzero, i.e. write the point size.
+     *
+     * This option is supported by vkd3d_shader_compile() for the SPIR-V target
+     * type and Vulkan targets; it should not be enabled otherwise.
+     *
+     * \since 1.7
+     */
+    VKD3D_SHADER_COMPILE_OPTION_WRITE_TESS_GEOM_POINT_SIZE = 0x00000006,
+    /**
+     * This option specifies default matrix packing order for HLSL sources.
+     * Explicit variable modifiers or pragmas will take precedence.
+     *
+     * \a value is a member of enum vkd3d_shader_compile_option_pack_matrix_order.
+     *
+     * \since 1.9
+     */
+    VKD3D_SHADER_COMPILE_OPTION_PACK_MATRIX_ORDER = 0x00000007,
+    /**
+     * This option is used to enable various backward compatibility features.
+     *
+     * \a value is a mask of values from enum vkd3d_shader_compile_option_backward_compatibility.
+     *
+     * \since 1.10
+     */
+    VKD3D_SHADER_COMPILE_OPTION_BACKWARD_COMPATIBILITY = 0x00000008,
+    /**
+     * This option specifies the origin of fragment coordinates for SPIR-V
+     * targets.
+     *
+     * \a value is a member of enum
+     * vkd3d_shader_compile_option_fragment_coordinate_origin.
+     *
+     * \since 1.10
+     */
+    VKD3D_SHADER_COMPILE_OPTION_FRAGMENT_COORDINATE_ORIGIN = 0x00000009,
+    /**
+     * This option specifies the shader features available in the target
+     * environment. These are not extensions, i.e. they are always supported
+     * by the driver, but may not be supported by the available hardware.
+     *
+     * \a value is a member of enum vkd3d_shader_compile_option_feature_flags.
+     *
+     * \since 1.11
+     */
+    VKD3D_SHADER_COMPILE_OPTION_FEATURE = 0x0000000a,
+    /**
+     * If \a value is non-zero compilation will produce a child effect using
+     * shared object descriptions, as instructed by the "shared" modifier.
+     * Child effects are supported with fx_4_0, and fx_4_1 profiles. This option
+     * and "shared" modifiers are ignored for the fx_5_0 profile and non-fx profiles.
+     * The fx_2_0 profile does not have a separate concept of child effects, variables
+     * marked with "shared" modifier will be marked as such in a binary.
+     *
+     * \since 1.12
+     */
+    VKD3D_SHADER_COMPILE_OPTION_CHILD_EFFECT = 0x0000000b,
+    /**
+     * If \a value is nonzero, emit a compile warning warn when vectors or
+     * matrices are truncated in an implicit conversion.
+     * If warnings are disabled, this option has no effect.
+     * This option has no effects for targets other than HLSL.
+     *
+     * The default value is nonzero, i.e. enable implicit truncation warnings.
+     *
+     * \since 1.12
+     */
+    VKD3D_SHADER_COMPILE_OPTION_WARN_IMPLICIT_TRUNCATION = 0x0000000c,
+    /**
+     * If \a value is nonzero, empty constant buffers descriptions are
+     * written out in the output effect binary. This option applies only
+     * to fx_4_0 and fx_4_1 profiles and is otherwise ignored.
+     *
+     * \since 1.12
+     */
+    VKD3D_SHADER_COMPILE_OPTION_INCLUDE_EMPTY_BUFFERS_IN_EFFECTS = 0x0000000d,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_COMPILE_OPTION_NAME),
 };
@@ -239,44 +476,567 @@ enum vkd3d_shader_binding_flag
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_BINDING_FLAG),
 };
 
+/**
+ * The factor used to interpolate the fragment output colour with fog.
+ *
+ * See VKD3D_SHADER_PARAMETER_NAME_FOG_FRAGMENT_MODE for specification of the
+ * interpolation factor as defined here.
+ *
+ * The following variables may be used to determine the interpolation factor:
+ *
+ * c = The fog coordinate value output from the vertex shader. This is an
+ *     inter-stage varying with the semantic name "FOG" and semantic index 0.
+ *     It may be modified by VKD3D_SHADER_PARAMETER_NAME_FOG_SOURCE.
+ * E = The value of VKD3D_SHADER_PARAMETER_NAME_FOG_END.
+ * k = The value of VKD3D_SHADER_PARAMETER_NAME_FOG_SCALE.
+ *
+ * \since 1.15
+ */
+enum vkd3d_shader_fog_fragment_mode
+{
+    /**
+     * No fog interpolation is applied;
+     * the output colour is passed through unmodified.
+     * Equivalently, the fog interpolation factor is 1.
+     */
+    VKD3D_SHADER_FOG_FRAGMENT_NONE = 0x0,
+    /**
+     * The fog interpolation factor is 2^-(k * c).
+     *
+     * In order to implement traditional exponential fog, as present in
+     * Direct3D and OpenGL, i.e.
+     *
+     *     e^-(density * c)
+     *
+     * set
+     *
+     *     k = density * log₂(e)
+     */
+    VKD3D_SHADER_FOG_FRAGMENT_EXP = 0x1,
+    /**
+     * The fog interpolation factor is 2^-((k * c)²).
+     *
+     * In order to implement traditional square-exponential fog, as present in
+     * Direct3D and OpenGL, i.e.
+     *
+     *     e^-((density * c)²)
+     *
+     * set
+     *
+     *     k = density * √log₂(e)
+     */
+    VKD3D_SHADER_FOG_FRAGMENT_EXP2 = 0x2,
+    /**
+     * The fog interpolation factor is (E - c) * k.
+     *
+     * In order to implement traditional linear fog, as present in Direct3D and
+     * OpenGL, i.e.
+     *
+     *     (end - c) / (end - start)
+     *
+     * set
+     *
+     *     E = end
+     *     k = 1 / (end - start)
+     */
+    VKD3D_SHADER_FOG_FRAGMENT_LINEAR = 0x3,
+};
+
+/**
+ * The source of the fog varying output by a pre-rasterization shader.
+ * The fog varying is defined as the output varying with the semantic name "FOG"
+ * and semantic index 0.
+ *
+ * See VKD3D_SHADER_PARAMETER_NAME_FOG_SOURCE for further documentation of this
+ * parameter.
+ *
+ * \since 1.15
+ */
+enum vkd3d_shader_fog_source
+{
+    /**
+     * The source shader is not modified. That is, the fog varying in the target
+     * shader is the original fog varying if and only if present.
+     */
+    VKD3D_SHADER_FOG_SOURCE_FOG = 0x0,
+    /**
+     * If the source shader has a fog varying, it is not modified.
+     * Otherwise, if the source shader outputs a varying with semantic name
+     * "COLOR" and semantic index 1 whose index includes a W component,
+     * said W component is output as fog varying.
+     * Otherwise, no fog varying is output.
+     */
+    VKD3D_SHADER_FOG_SOURCE_FOG_OR_SPECULAR_W = 0x1,
+    /**
+     * The fog source is the Z component of the position output by the vertex
+     * shader.
+     */
+    VKD3D_SHADER_FOG_SOURCE_Z = 0x2,
+    /**
+     * The fog source is the W component of the position output by the vertex
+     * shader.
+     */
+    VKD3D_SHADER_FOG_SOURCE_W = 0x3,
+};
+
+/**
+ * The manner in which a parameter value is provided to the shader, used in
+ * struct vkd3d_shader_parameter and struct vkd3d_shader_parameter1.
+ */
 enum vkd3d_shader_parameter_type
 {
     VKD3D_SHADER_PARAMETER_TYPE_UNKNOWN,
+    /** The parameter value is embedded directly in the shader. */
     VKD3D_SHADER_PARAMETER_TYPE_IMMEDIATE_CONSTANT,
+    /**
+     * The parameter value is provided to the shader via specialization
+     * constants. This value is only supported for the SPIR-V target type.
+     */
     VKD3D_SHADER_PARAMETER_TYPE_SPECIALIZATION_CONSTANT,
+    /**
+     * The parameter value is provided to the shader as part of a uniform
+     * buffer.
+     *
+     * \since 1.13
+     */
+    VKD3D_SHADER_PARAMETER_TYPE_BUFFER,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_PARAMETER_TYPE),
 };
 
+/**
+ * The format of data provided to the shader, used in
+ * struct vkd3d_shader_parameter and struct vkd3d_shader_parameter1.
+ */
 enum vkd3d_shader_parameter_data_type
 {
     VKD3D_SHADER_PARAMETER_DATA_TYPE_UNKNOWN,
+    /** The parameter is provided as a 32-bit unsigned integer. */
     VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32,
+    /** The parameter is provided as a 32-bit float. \since 1.13 */
+    VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32,
+    /**
+     * The parameter is provided as a 4-dimensional vector of 32-bit floats.
+     * This parameter must be used with struct vkd3d_shader_parameter1;
+     * it cannot be used with struct vkd3d_shader_parameter.
+     * \since 1.14
+     */
+    VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32_VEC4,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_PARAMETER_DATA_TYPE),
 };
 
+/**
+ * Names a specific shader parameter, used in
+ * struct vkd3d_shader_parameter and struct vkd3d_shader_parameter1.
+ */
 enum vkd3d_shader_parameter_name
 {
     VKD3D_SHADER_PARAMETER_NAME_UNKNOWN,
+    /**
+     * The sample count of the framebuffer, as returned by the HLSL function
+     * GetRenderTargetSampleCount() or the GLSL builtin gl_NumSamples.
+     *
+     * This parameter should be specified when compiling to SPIR-V, which
+     * provides no builtin ability to query this information from the shader.
+     *
+     * The default value is 1.
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32.
+     */
     VKD3D_SHADER_PARAMETER_NAME_RASTERIZER_SAMPLE_COUNT,
+    /**
+     * Alpha test comparison function. When this parameter is provided, if the
+     * alpha component of the pixel shader colour output at location 0 fails the
+     * test, as defined by this function and the reference value provided by
+     * VKD3D_SHADER_PARAMETER_NAME_ALPHA_TEST_REF, the fragment will be
+     * discarded.
+     *
+     * This parameter, along with VKD3D_SHADER_PARAMETER_NAME_ALPHA_TEST_REF,
+     * can be used to implement fixed function alpha test, as present in
+     * Direct3D versions up to 9, if the target environment does not support
+     * alpha test as part of its own fixed-function API (as Vulkan and core
+     * OpenGL).
+     *
+     * The default value is VKD3D_SHADER_COMPARISON_FUNC_ALWAYS.
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32. The value specified must be
+     * a member of enum vkd3d_shader_comparison_func.
+     *
+     * Only VKD3D_SHADER_PARAMETER_TYPE_IMMEDIATE_CONSTANT is supported in this
+     * version of vkd3d-shader.
+     *
+     * \since 1.13
+     */
+    VKD3D_SHADER_PARAMETER_NAME_ALPHA_TEST_FUNC,
+    /**
+     * Alpha test reference value.
+     * See VKD3D_SHADER_PARAMETER_NAME_ALPHA_TEST_FUNC for documentation of
+     * alpha test.
+     *
+     * The default value is zero.
+     *
+     * \since 1.13
+     */
+    VKD3D_SHADER_PARAMETER_NAME_ALPHA_TEST_REF,
+    /**
+     * Whether to use flat interpolation for fragment shader colour inputs.
+     * If the value is nonzero, inputs whose semantic usage is COLOR will use
+     * flat interpolation instead of linear.
+     * This parameter is ignored if the shader model is 4 or greater, since only
+     * shader model 3 and below do not specify the interpolation mode in the
+     * shader bytecode.
+     *
+     * This parameter can be used to implement fixed function shade mode, as
+     * present in Direct3D versions up to 9, if the target environment does not
+     * support shade mode as part of its own fixed-function API (as Vulkan and
+     * core OpenGL).
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32.
+     *
+     * The default value is zero, i.e. use linear interpolation.
+     *
+     * Only VKD3D_SHADER_PARAMETER_TYPE_IMMEDIATE_CONSTANT is supported in this
+     * version of vkd3d-shader.
+     *
+     * \since 1.13
+     */
+    VKD3D_SHADER_PARAMETER_NAME_FLAT_INTERPOLATION,
+    /**
+     * A mask of enabled clip planes.
+     *
+     * When this parameter is provided to a vertex shader, for each nonzero bit
+     * of this mask, a user clip distance will be generated from vertex position
+     * in clip space, and the clip plane defined by the indexed vector, taken
+     * from the VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_# parameter.
+     *
+     * Regardless of the specific clip planes which are enabled, the clip
+     * distances which are output are a contiguous array starting from clip
+     * distance 0. This affects the interface of OpenGL. For example, if only
+     * clip planes 1 and 3 are enabled (and so the value of the mask is 0xa),
+     * the user should enable only GL_CLIP_DISTANCE0 and GL_CLIP_DISTANCE1.
+     *
+     * The default value is zero, i.e. do not enable any clip planes.
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32.
+     *
+     * Only VKD3D_SHADER_PARAMETER_TYPE_IMMEDIATE_CONSTANT is supported in this
+     * version of vkd3d-shader.
+     *
+     * If the source shader writes clip distances and this parameter is nonzero,
+     * compilation fails.
+     *
+     * \since 1.14
+     */
+    VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_MASK,
+    /**
+     * Clip plane values.
+     * See VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_MASK for documentation of
+     * clip planes.
+     *
+     * These enum values are contiguous and arithmetic may safely be performed
+     * on them. That is, VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_[n] is
+     * VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_0 plus n.
+     *
+     * The data type for each parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32_VEC4.
+     *
+     * The default value for each plane is a (0, 0, 0, 0) vector.
+     *
+     * \since 1.14
+     */
+    VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_0,
+    VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_1,
+    VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_2,
+    VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_3,
+    VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_4,
+    VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_5,
+    VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_6,
+    VKD3D_SHADER_PARAMETER_NAME_CLIP_PLANE_7,
+    /**
+     * Point size.
+     *
+     * When this parameter is provided to a vertex, tessellation, or geometry
+     * shader, and the source shader does not write point size, it specifies a
+     * uniform value which will be written to point size.
+     * If the source shader writes point size, this parameter is ignored.
+     *
+     * This parameter can be used to implement fixed function point size, as
+     * present in Direct3D versions 8 and 9, if the target environment does not
+     * support point size as part of its own fixed-function API (as Vulkan and
+     * core OpenGL).
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32.
+     *
+     * \since 1.14
+     */
+    VKD3D_SHADER_PARAMETER_NAME_POINT_SIZE,
+    /**
+     * Minimum point size.
+     *
+     * When this parameter is provided to a vertex, tessellation, or geometry
+     * shader, and the source shader writes point size or uses the
+     * VKD3D_SHADER_PARAMETER_NAME_POINT_SIZE parameter, the point size will
+     * be clamped to the provided minimum value.
+     * If point size is not written in one of these ways,
+     * this parameter is ignored.
+     * If this parameter is not provided, the point size will not be clamped
+     * to a minimum size by vkd3d-shader.
+     *
+     * This parameter can be used to implement fixed function point size, as
+     * present in Direct3D versions 8 and 9, if the target environment does not
+     * support point size as part of its own fixed-function API (as Vulkan and
+     * core OpenGL).
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32.
+     *
+     * \since 1.14
+     */
+    VKD3D_SHADER_PARAMETER_NAME_POINT_SIZE_MIN,
+    /**
+     * Maximum point size.
+     *
+     * This parameter has identical behaviour to
+     * VKD3D_SHADER_PARAMETER_NAME_POINT_SIZE_MIN, except that it provides
+     * the maximum size rather than the minimum.
+     *
+     * \since 1.14
+     */
+    VKD3D_SHADER_PARAMETER_NAME_POINT_SIZE_MAX,
+    /**
+     * Whether texture coordinate inputs should take their values from the
+     * point coordinate.
+     *
+     * When this parameter is provided to a pixel shader, and the value is
+     * nonzero, any fragment shader input with the semantic name "TEXCOORD"
+     * takes its value from the point coordinates instead of from the previous
+     * shader. The point coordinates here are defined as a four-component vector
+     * whose X and Y components are the X and Y coordinates of the fragment
+     * within a point being rasterized, and whose Z and W components are zero.
+     *
+     * In GLSL, the X and Y components are drawn from gl_PointCoord; in SPIR-V,
+     * they are drawn from a variable with the BuiltinPointCoord decoration.
+     *
+     * This includes t# fragment shader inputs in shader model 2 shaders,
+     * as well as texture sampling in shader model 1 shaders.
+     *
+     * This parameter can be used to implement fixed function point sprite, as
+     * present in Direct3D versions 8 and 9, if the target environment does not
+     * support point sprite as part of its own fixed-function API (as Vulkan and
+     * core OpenGL).
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32.
+     *
+     * The default value is zero, i.e. use the original varyings.
+     *
+     * Only VKD3D_SHADER_PARAMETER_TYPE_IMMEDIATE_CONSTANT is supported in this
+     * version of vkd3d-shader.
+     *
+     * \since 1.14
+     */
+    VKD3D_SHADER_PARAMETER_NAME_POINT_SPRITE,
+    /**
+     * Fog mode used in fragment shaders.
+     *
+     * The value specified by this parameter must be a member of
+     * enum vkd3d_shader_fog_fragment_mode.
+     *
+     * If not VKD3D_SHADER_FOG_FRAGMENT_NONE, the pixel shader colour output at
+     * location 0 is linearly interpolated with the fog colour defined by
+     * VKD3D_SHADER_PARAMETER_NAME_FOG_COLOUR. The interpolation factor is
+     * defined according to the enumerant selected by this parameter.
+     * The interpolated value is then outputted instead of the original value at
+     * location 0.
+     *
+     * An interpolation factor of 0 specifies to use the fog colour; a factor of
+     * 1 specifies to use the original colour output. The interpolation factor
+     * is clamped to the [0, 1] range before interpolating.
+     *
+     * The default value is VKD3D_SHADER_FOG_FRAGMENT_NONE.
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32.
+     *
+     * Only VKD3D_SHADER_PARAMETER_TYPE_IMMEDIATE_CONSTANT is supported in this
+     * version of vkd3d-shader.
+     *
+     * \since 1.15
+     */
+    VKD3D_SHADER_PARAMETER_NAME_FOG_FRAGMENT_MODE,
+    /**
+     * Fog colour.
+     * See VKD3D_SHADER_PARAMETER_NAME_FOG_FRAGMENT_MODE for documentation of
+     * fog.
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32_VEC4.
+     *
+     * The default value is transparent black, i.e. the vector {0, 0, 0, 0}.
+     *
+     * \since 1.15
+     */
+    VKD3D_SHADER_PARAMETER_NAME_FOG_COLOUR,
+    /**
+     * End coordinate for linear fog.
+     * See VKD3D_SHADER_PARAMETER_NAME_FOG_FRAGMENT_MODE for documentation of
+     * fog.
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32.
+     *
+     * The default value is 1.0.
+     *
+     * \since 1.15
+     */
+    VKD3D_SHADER_PARAMETER_NAME_FOG_END,
+    /**
+     * Scale value for fog.
+     * See VKD3D_SHADER_PARAMETER_NAME_FOG_FRAGMENT_MODE for documentation of
+     * fog.
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32.
+     *
+     * The default value is 1.0.
+     *
+     * \since 1.15
+     */
+    VKD3D_SHADER_PARAMETER_NAME_FOG_SCALE,
+    /**
+     * Fog source. The value specified by this parameter must be a member of
+     * enum vkd3d_shader_fog_source.
+     *
+     * This parameter replaces or suppletes the fog varying output by a
+     * pre-rasterization shader. The fog varying is defined as the output
+     * varying with the semantic name "FOG" and semantic index 0.
+     *
+     * Together with other fog parameters, this parameter can be used to
+     * implement fixed function fog, as present in Direct3D versions up to 9,
+     * if the target environment does not support fog as part of its own
+     * fixed-function API (as Vulkan and core OpenGL).
+     *
+     * The default value is VKD3D_SHADER_FOG_SOURCE_FOG.
+     *
+     * The data type for this parameter must be
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32.
+     *
+     * Only VKD3D_SHADER_PARAMETER_TYPE_IMMEDIATE_CONSTANT is supported in this
+     * version of vkd3d-shader.
+     *
+     * \since 1.15
+     */
+    VKD3D_SHADER_PARAMETER_NAME_FOG_SOURCE,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_PARAMETER_NAME),
 };
 
+/**
+ * The value of an immediate constant parameter, used in
+ * struct vkd3d_shader_parameter.
+ */
 struct vkd3d_shader_parameter_immediate_constant
 {
     union
     {
+        /**
+         * The value if the parameter's data type is
+         * VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32.
+         */
         uint32_t u32;
+        /**
+         * The value if the parameter's data type is
+         * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32.
+         *
+         * \since 1.13
+         */
+        float f32;
     } u;
 };
 
+/**
+ * The value of an immediate constant parameter, used in
+ * struct vkd3d_shader_parameter1.
+ *
+ * \since 1.13
+ */
+struct vkd3d_shader_parameter_immediate_constant1
+{
+    union
+    {
+        /**
+         * The value if the parameter's data type is
+         * VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32.
+         */
+        uint32_t u32;
+        /**
+         * The value if the parameter's data type is
+         * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32.
+         */
+        float f32;
+        /**
+         * A pointer to the value if the parameter's data type is
+         * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32_VEC4.
+         *
+         * \since 1.14
+         */
+        float f32_vec4[4];
+        void *_pointer_pad;
+        uint32_t _pad[4];
+    } u;
+};
+
+/**
+ * The linkage of a specialization constant parameter, used in
+ * struct vkd3d_shader_parameter and struct vkd3d_shader_parameter1.
+ */
 struct vkd3d_shader_parameter_specialization_constant
 {
+    /**
+     * The ID of the specialization constant.
+     * If the type comprises more than one constant, such as
+     * VKD3D_SHADER_PARAMETER_DATA_TYPE_FLOAT32_VEC4, then a contiguous
+     * array of specialization constants should be used, one for each component,
+     * and this ID should point to the first component.
+     */
     uint32_t id;
 };
 
+/**
+ * The linkage of a parameter specified through a uniform buffer, used in
+ * struct vkd3d_shader_parameter1.
+ */
+struct vkd3d_shader_parameter_buffer
+{
+    /**
+     * The set of the uniform buffer descriptor. If the target environment does
+     * not support descriptor sets, this value must be set to 0.
+     */
+    unsigned int set;
+    /** The binding index of the uniform buffer descriptor. */
+    unsigned int binding;
+    /** The byte offset of the parameter within the buffer. */
+    uint32_t offset;
+};
+
+/**
+ * An individual shader parameter.
+ *
+ * This structure is an earlier version of struct vkd3d_shader_parameter1
+ * which supports fewer parameter types;
+ * refer to that structure for usage information.
+ *
+ * Only the following types may be used with this structure:
+ *
+ * - VKD3D_SHADER_PARAMETER_TYPE_IMMEDIATE_CONSTANT
+ * - VKD3D_SHADER_PARAMETER_TYPE_SPECIALIZATION_CONSTANT
+ */
 struct vkd3d_shader_parameter
 {
     enum vkd3d_shader_parameter_name name;
@@ -287,6 +1047,75 @@ struct vkd3d_shader_parameter
         struct vkd3d_shader_parameter_immediate_constant immediate_constant;
         struct vkd3d_shader_parameter_specialization_constant specialization_constant;
     } u;
+};
+
+/**
+ * An individual shader parameter.
+ *
+ * This structure is used in struct vkd3d_shader_parameter_info; see there for
+ * explanation of shader parameters.
+ *
+ * For example, to specify the rasterizer sample count to the shader via an
+ * unsigned integer specialization constant with ID 3,
+ * set the following members:
+ *
+ * - \a name = VKD3D_SHADER_PARAMETER_NAME_RASTERIZER_SAMPLE_COUNT
+ * - \a type = VKD3D_SHADER_PARAMETER_TYPE_SPECIALIZATION_CONSTANT
+ * - \a data_type = VKD3D_SHADER_PARAMETER_DATA_TYPE_UINT32
+ * - \a u.specialization_constant.id = 3
+ *
+ * This structure is an extended version of struct vkd3d_shader_parameter.
+ */
+struct vkd3d_shader_parameter1
+{
+    /** The builtin parameter to be mapped. */
+    enum vkd3d_shader_parameter_name name;
+    /** How the parameter will be provided to the shader. */
+    enum vkd3d_shader_parameter_type type;
+    /**
+     * The data type of the supplied parameter, which determines how it is to
+     * be interpreted.
+     */
+    enum vkd3d_shader_parameter_data_type data_type;
+    union
+    {
+        /**
+         * Additional information if \a type is
+         * VKD3D_SHADER_PARAMETER_TYPE_IMMEDIATE_CONSTANT.
+         */
+        struct vkd3d_shader_parameter_immediate_constant1 immediate_constant;
+        /**
+         * Additional information if \a type is
+         * VKD3D_SHADER_PARAMETER_TYPE_SPECIALIZATION_CONSTANT.
+         */
+        struct vkd3d_shader_parameter_specialization_constant specialization_constant;
+        /**
+         * Additional information if \a type is
+         * VKD3D_SHADER_PARAMETER_TYPE_BUFFER.
+         */
+        struct vkd3d_shader_parameter_buffer buffer;
+        void *_pointer_pad;
+        uint32_t _pad[4];
+    } u;
+};
+
+/**
+ * Symbolic register indices for mapping uniform constant register sets in
+ * legacy Direct3D bytecode to constant buffer views in the target environment.
+ *
+ * Members of this enumeration are used in
+ * \ref vkd3d_shader_resource_binding.register_index.
+ *
+ * \since 1.9
+ */
+enum vkd3d_shader_d3dbc_constant_register
+{
+    /** The float constant register set, c# in Direct3D assembly. */
+    VKD3D_SHADER_D3DBC_FLOAT_CONSTANT_REGISTER  = 0x0,
+    /** The integer constant register set, i# in Direct3D assembly. */
+    VKD3D_SHADER_D3DBC_INT_CONSTANT_REGISTER    = 0x1,
+    /** The boolean constant register set, b# in Direct3D assembly. */
+    VKD3D_SHADER_D3DBC_BOOL_CONSTANT_REGISTER   = 0x2,
 };
 
 /**
@@ -313,7 +1142,14 @@ struct vkd3d_shader_resource_binding
      * support multiple register spaces, this parameter must be set to 0.
      */
     unsigned int register_space;
-    /** Register index of the DXBC resource. */
+    /**
+     * Register index of the Direct3D resource.
+     *
+     * For legacy Direct3D shaders, vkd3d-shader maps each constant register
+     * set to a single constant buffer view. This parameter names the register
+     * set to map, and must be a member of
+     * enum vkd3d_shader_d3dbc_constant_register.
+     */
     unsigned int register_index;
     /** Shader stage(s) to which the resource is visible. */
     enum vkd3d_shader_visibility shader_visibility;
@@ -573,6 +1409,16 @@ enum vkd3d_shader_source_type
      * model 1, 2, and 3 shaders. \since 1.3
      */
     VKD3D_SHADER_SOURCE_D3D_BYTECODE,
+    /**
+     * A 'DirectX Intermediate Language' shader embedded in a DXBC container. This is
+     * the format used for Direct3D shader model 6 shaders. \since 1.9
+     */
+    VKD3D_SHADER_SOURCE_DXBC_DXIL,
+    /**
+     * Binary format used by Direct3D 9/10.x/11 effects.
+     * Input is a raw FX section without container. \since 1.14
+     */
+    VKD3D_SHADER_SOURCE_FX,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_SOURCE_TYPE),
 };
@@ -582,7 +1428,7 @@ enum vkd3d_shader_target_type
 {
     /**
      * The shader has no type or is to be ignored. This is not a valid value
-     * for vkd3d_shader_compile() or vkd3d_shader_scan().
+     * for vkd3d_shader_compile().
      */
     VKD3D_SHADER_TARGET_NONE,
     /**
@@ -609,6 +1455,15 @@ enum vkd3d_shader_target_type
      * An 'OpenGL Shading Language' shader. \since 1.3
      */
     VKD3D_SHADER_TARGET_GLSL,
+    /**
+     * Binary format used by Direct3D 9/10.x/11 effects profiles.
+     * Output is a raw FX section without container. \since 1.11
+     */
+    VKD3D_SHADER_TARGET_FX,
+    /**
+     * A 'Metal Shading Language' shader. \since 1.14
+     */
+    VKD3D_SHADER_TARGET_MSL,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_TARGET_TYPE),
 };
@@ -683,6 +1538,8 @@ enum vkd3d_shader_spirv_environment
     VKD3D_SHADER_SPIRV_ENVIRONMENT_NONE,
     VKD3D_SHADER_SPIRV_ENVIRONMENT_OPENGL_4_5,
     VKD3D_SHADER_SPIRV_ENVIRONMENT_VULKAN_1_0, /* default target */
+    /** \since 1.12 */
+    VKD3D_SHADER_SPIRV_ENVIRONMENT_VULKAN_1_1,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_SPIRV_ENVIRONMENT),
 };
@@ -695,6 +1552,10 @@ enum vkd3d_shader_spirv_extension
     VKD3D_SHADER_SPIRV_EXTENSION_EXT_DESCRIPTOR_INDEXING,
     /** \since 1.3 */
     VKD3D_SHADER_SPIRV_EXTENSION_EXT_STENCIL_EXPORT,
+    /** \since 1.11 */
+    VKD3D_SHADER_SPIRV_EXTENSION_EXT_VIEWPORT_INDEX_LAYER,
+    /** \since 1.12 */
+    VKD3D_SHADER_SPIRV_EXTENSION_EXT_FRAGMENT_SHADER_INTERLOCK,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_SPIRV_EXTENSION),
 };
@@ -808,7 +1669,8 @@ typedef int (*PFN_vkd3d_shader_open_include)(const char *filename, BOOL local,
  * vkd3d_shader_preprocess_info.
  *
  * \param code Contents of the included file, which were allocated by the
- * \ref pfn_open_include callback. The user must free them.
+ * vkd3d_shader_preprocess_info.pfn_open_include callback.
+ * The user must free them.
  *
  * \param context The user-defined pointer passed to struct
  * vkd3d_shader_preprocess_info.
@@ -835,8 +1697,8 @@ struct vkd3d_shader_preprocess_info
 
     /**
      * Pointer to an array of predefined macros. Each macro in this array will
-     * be expanded as if a corresponding #define statement were prepended to the
-     * source code.
+     * be expanded as if a corresponding \#define statement were prepended to
+     * the source code.
      *
      * If the same macro is specified multiple times, only the last value is
      * used.
@@ -1094,6 +1956,8 @@ enum vkd3d_shader_descriptor_range_flags
     VKD3D_SHADER_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE                    = 0x2,
     VKD3D_SHADER_DESCRIPTOR_RANGE_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE = 0x4,
     VKD3D_SHADER_DESCRIPTOR_RANGE_FLAG_DATA_STATIC                      = 0x8,
+    /** \since 1.11 */
+    VKD3D_SHADER_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_STATIC_KEEPING_BUFFER_BOUNDS_CHECKS = 0x10000,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_DESCRIPTOR_RANGE_FLAGS),
 };
@@ -1240,6 +2104,11 @@ enum vkd3d_shader_descriptor_info_flag
     VKD3D_SHADER_DESCRIPTOR_INFO_FLAG_UAV_READ                = 0x00000002,
     /** The descriptor is a comparison sampler. */
     VKD3D_SHADER_DESCRIPTOR_INFO_FLAG_SAMPLER_COMPARISON_MODE = 0x00000004,
+    /** The descriptor is a UAV resource, on which the shader performs
+     *  atomic ops. \since 1.6 */
+    VKD3D_SHADER_DESCRIPTOR_INFO_FLAG_UAV_ATOMICS             = 0x00000008,
+    /** The descriptor is a raw (byte-addressed) buffer. \since 1.9 */
+    VKD3D_SHADER_DESCRIPTOR_INFO_FLAG_RAW_BUFFER              = 0x00000010,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_DESCRIPTOR_INFO_FLAG),
 };
@@ -1279,6 +2148,34 @@ struct vkd3d_shader_descriptor_info
  * A chained structure enumerating the descriptors declared by a shader.
  *
  * This structure extends vkd3d_shader_compile_info.
+ *
+ * When scanning a legacy Direct3D shader, vkd3d-shader enumerates descriptors
+ * as follows:
+ *
+ * - Each constant register set used by the shader is scanned as a single
+ *   constant buffer descriptor.
+ *   There may therefore be up to three such descriptors, one for each register
+ *   set used by the shader: float, integer, and boolean.
+ *   The fields are set as follows:
+ *   * The \ref vkd3d_shader_descriptor_info.type field is set to
+ *     VKD3D_SHADER_DESCRIPTOR_TYPE_CBV.
+ *   * The \ref vkd3d_shader_descriptor_info.register_space field is set to zero.
+ *   * The \ref vkd3d_shader_descriptor_info.register_index field is set to a
+ *     member of enum vkd3d_shader_d3dbc_constant_register denoting which set
+ *     is used.
+ *   * The \ref vkd3d_shader_descriptor_info.count field is set to one.
+ * - Each sampler used by the shader is scanned as two separate descriptors,
+ *   one representing the texture, and one representing the sampler state.
+ *   If desired, these may be mapped back into a single combined sampler using
+ *   struct vkd3d_shader_combined_resource_sampler.
+ *   The fields are set as follows:
+ *   * The \ref vkd3d_shader_descriptor_info.type field is set to
+ *     VKD3D_SHADER_DESCRIPTOR_TYPE_SRV and VKD3D_SHADER_DESCRIPTOR_TYPE_SAMPLER
+ *     respectively.
+ *   * The \ref vkd3d_shader_descriptor_info.register_space field is set to zero.
+ *   * The \ref vkd3d_shader_descriptor_info.register_index field is set to the
+ *     binding index of the original sampler, for both descriptors.
+ *   * The \ref vkd3d_shader_descriptor_info.count field is set to one.
  */
 struct vkd3d_shader_scan_descriptor_info
 {
@@ -1296,6 +2193,73 @@ struct vkd3d_shader_scan_descriptor_info
 };
 
 /**
+ * This structure describes a single resource-sampler pair. It is returned as
+ * part of struct vkd3d_shader_scan_combined_resource_sampler_info.
+ *
+ * \since 1.10
+ */
+struct vkd3d_shader_combined_resource_sampler_info
+{
+    unsigned int resource_space;
+    unsigned int resource_index;
+    unsigned int sampler_space;
+    unsigned int sampler_index;
+};
+
+/**
+ * A chained structure describing the resource-sampler pairs used by a shader.
+ *
+ * This structure extends vkd3d_shader_compile_info.
+ *
+ * The information returned in this structure can be used to populate the
+ * \ref vkd3d_shader_interface_info.combined_samplers field. This is
+ * particularly useful when targeting environments without separate binding
+ * points for samplers and resources, like OpenGL.
+ *
+ * No resource-sampler pairs are returned for dynamic accesses to
+ * resource/sampler descriptor arrays, as can occur in Direct3D shader model
+ * 5.1 shaders.
+ *
+ * Members of this structure are allocated by vkd3d-shader and should be freed
+ * with vkd3d_shader_free_scan_combined_resource_sampler_info() when no longer
+ * needed.
+ *
+ * \since 1.10
+ */
+struct vkd3d_shader_scan_combined_resource_sampler_info
+{
+    /** Must be set to VKD3D_SHADER_STRUCTURE_TYPE_SCAN_COMBINED_RESOURCE_SAMPLER_INFO. */
+    enum vkd3d_shader_structure_type type;
+    /** Optional pointer to a structure containing further parameters. */
+    const void *next;
+
+    /** Pointer to an array of resource-sampler pairs. */
+    struct vkd3d_shader_combined_resource_sampler_info *combined_samplers;
+    /** The number of resource-sampler pairs in \ref combined_samplers. */
+    unsigned int combined_sampler_count;
+};
+
+/**
+ * A chained structure describing the tessellation information in a hull shader.
+ *
+ * This structure extends vkd3d_shader_compile_info.
+ *
+ * \since 1.15
+ */
+struct vkd3d_shader_scan_hull_shader_tessellation_info
+{
+    /** Must be set to VKD3D_SHADER_STRUCTURE_TYPE_SCAN_HULL_SHADER_TESSELLATION_INFO. */
+    enum vkd3d_shader_structure_type type;
+    /** Optional pointer to a structure containing further parameters. */
+    const void *next;
+
+    /** The tessellation output primitive. */
+    enum vkd3d_shader_tessellator_output_primitive output_primitive;
+    /** The tessellation partitioning mode. */
+    enum vkd3d_shader_tessellator_partitioning partitioning;
+};
+
+/**
  * Data type of a shader varying, returned as part of struct
  * vkd3d_shader_signature_element.
  */
@@ -1309,10 +2273,12 @@ enum vkd3d_shader_component_type
     VKD3D_SHADER_COMPONENT_INT      = 0x2,
     /** 32-bit IEEE floating-point. */
     VKD3D_SHADER_COMPONENT_FLOAT    = 0x3,
-    /** BOOLean. */
+    /** Boolean. */
     VKD3D_SHADER_COMPONENT_BOOL     = 0x4,
     /** 64-bit IEEE floating-point. */
     VKD3D_SHADER_COMPONENT_DOUBLE   = 0x5,
+    /** 64-bit unsigned integer. \since 1.11 */
+    VKD3D_SHADER_COMPONENT_UINT64   = 0x6,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_COMPONENT_TYPE),
 };
@@ -1334,7 +2300,7 @@ enum vkd3d_shader_sysval_semantic
     VKD3D_SHADER_SV_VIEWPORT_ARRAY_INDEX      = 0x05,
     /** Vertex ID; SV_VertexID in Direct3D. */
     VKD3D_SHADER_SV_VERTEX_ID                 = 0x06,
-    /** Primtive ID; SV_PrimitiveID in Direct3D. */
+    /** Primitive ID; SV_PrimitiveID in Direct3D. */
     VKD3D_SHADER_SV_PRIMITIVE_ID              = 0x07,
     /** Instance ID; SV_InstanceID in Direct3D. */
     VKD3D_SHADER_SV_INSTANCE_ID               = 0x08,
@@ -1348,6 +2314,24 @@ enum vkd3d_shader_sysval_semantic
     VKD3D_SHADER_SV_TESS_FACTOR_TRIINT        = 0x0e,
     VKD3D_SHADER_SV_TESS_FACTOR_LINEDET       = 0x0f,
     VKD3D_SHADER_SV_TESS_FACTOR_LINEDEN       = 0x10,
+    /** Render target; SV_Target in Direct3D. \since 1.9 */
+    VKD3D_SHADER_SV_TARGET                    = 0x40,
+    /** Depth; SV_Depth in Direct3D. \since 1.9 */
+    VKD3D_SHADER_SV_DEPTH                     = 0x41,
+    /** Sample mask; SV_Coverage in Direct3D. \since 1.9 */
+    VKD3D_SHADER_SV_COVERAGE                  = 0x42,
+    /**
+     * Depth, which is guaranteed to be greater than or equal to the current
+     * depth; SV_DepthGreaterEqual in Direct3D. \since 1.9
+     */
+    VKD3D_SHADER_SV_DEPTH_GREATER_EQUAL       = 0x43,
+    /**
+     * Depth, which is guaranteed to be less than or equal to the current
+     * depth; SV_DepthLessEqual in Direct3D. \since 1.9
+     */
+    VKD3D_SHADER_SV_DEPTH_LESS_EQUAL          = 0x44,
+    /** Stencil reference; SV_StencilRef in Direct3D. \since 1.9 */
+    VKD3D_SHADER_SV_STENCIL_REF               = 0x45,
 
     VKD3D_FORCE_32_BIT_ENUM(VKD3D_SHADER_SYSVAL_SEMANTIC),
 };
@@ -1434,6 +2418,46 @@ enum vkd3d_shader_swizzle_component
 };
 
 /**
+ * A description of a DXBC section.
+ *
+ * \since 1.7
+ */
+struct vkd3d_shader_dxbc_section_desc
+{
+    /** The section tag. */
+    uint32_t tag;
+    /** The contents of the section. */
+    struct vkd3d_shader_code data;
+};
+
+/**
+ * A description of a DXBC blob, as returned by vkd3d_shader_parse_dxbc().
+ *
+ * \since 1.7
+ */
+struct vkd3d_shader_dxbc_desc
+{
+    /**
+     * The DXBC tag. This will always be "DXBC" in structures returned by
+     * this version of vkd3d-shader.
+     */
+    uint32_t tag;
+    /** A checksum of the DXBC contents. */
+    uint32_t checksum[4];
+    /**
+     * The DXBC version. This will always be 1 in structures returned by this
+     * version of vkd3d-shader.
+     */
+    unsigned int version;
+    /** The total size of the DXBC blob. */
+    size_t size;
+    /** The number of sections contained in the DXBC. */
+    size_t section_count;
+    /** Descriptions of the sections contained in the DXBC. */
+    struct vkd3d_shader_dxbc_section_desc *sections;
+};
+
+/**
  * A mask selecting one component from a vkd3d-shader swizzle. The component has
  * type \ref vkd3d_shader_swizzle_component.
  */
@@ -1451,10 +2475,10 @@ enum vkd3d_shader_swizzle_component
  * \endcode
  */
 #define VKD3D_SHADER_SWIZZLE(x, y, z, w) \
-        vkd3d_shader_create_swizzle(VKD3D_SHADER_SWIZZLE_ ## x, \
-                VKD3D_SHADER_SWIZZLE_ ## y, \
-                VKD3D_SHADER_SWIZZLE_ ## z, \
-                VKD3D_SHADER_SWIZZLE_ ## w)
+        (VKD3D_SHADER_SWIZZLE_ ## x << VKD3D_SHADER_SWIZZLE_SHIFT(0) \
+                | VKD3D_SHADER_SWIZZLE_ ## y << VKD3D_SHADER_SWIZZLE_SHIFT(1) \
+                | VKD3D_SHADER_SWIZZLE_ ## z << VKD3D_SHADER_SWIZZLE_SHIFT(2) \
+                | VKD3D_SHADER_SWIZZLE_ ## w << VKD3D_SHADER_SWIZZLE_SHIFT(3))
 
 /** The identity swizzle ".xyzw". */
 #define VKD3D_SHADER_NO_SWIZZLE VKD3D_SHADER_SWIZZLE(X, Y, Z, W)
@@ -1469,6 +2493,170 @@ static inline uint32_t vkd3d_shader_create_swizzle(enum vkd3d_shader_swizzle_com
             | ((z & VKD3D_SHADER_SWIZZLE_MASK) << VKD3D_SHADER_SWIZZLE_SHIFT(2))
             | ((w & VKD3D_SHADER_SWIZZLE_MASK) << VKD3D_SHADER_SWIZZLE_SHIFT(3));
 }
+
+/**
+ * A chained structure containing descriptions of shader inputs and outputs.
+ *
+ * This structure is currently implemented only for DXBC and legacy D3D bytecode
+ * source types.
+ * For DXBC shaders, the returned information is parsed directly from the
+ * signatures embedded in the DXBC shader.
+ * For legacy D3D shaders, the returned information is synthesized based on
+ * registers declared or used by shader instructions.
+ * For all other shader types, the structure is zeroed.
+ *
+ * All members (except for \ref type and \ref next) are output-only.
+ *
+ * This structure is passed to vkd3d_shader_scan() and extends
+ * vkd3d_shader_compile_info.
+ *
+ * Members of this structure are allocated by vkd3d-shader and should be freed
+ * with vkd3d_shader_free_scan_signature_info() when no longer needed.
+ *
+ * All signatures may contain pointers into the input shader, and should only
+ * be accessed while the input shader remains valid.
+ *
+ * Signature elements are synthesized from legacy Direct3D bytecode as follows:
+ * - The \ref vkd3d_shader_signature_element.semantic_name field is set to an
+ *   uppercase string corresponding to the HLSL name for the usage, e.g.
+ *   "POSITION", "BLENDWEIGHT", "COLOR", "PSIZE", etc.
+ * - The \ref vkd3d_shader_signature_element.semantic_index field is set to the
+ *   usage index.
+ * - The \ref vkd3d_shader_signature_element.stream_index is always 0.
+ *
+ * Signature elements are synthesized for any input or output register declared
+ * or used in a legacy Direct3D bytecode shader, including the following:
+ * - Shader model 1 and 2 colour and texture coordinate registers.
+ * - The shader model 1 pixel shader output register.
+ * - Shader model 1 and 2 vertex shader output registers (position, fog, and
+ *   point size).
+ * - Shader model 3 pixel shader system value input registers (pixel position
+ *   and face).
+ *
+ * \since 1.9
+ */
+struct vkd3d_shader_scan_signature_info
+{
+    /** Must be set to VKD3D_SHADER_STRUCTURE_TYPE_SCAN_SIGNATURE_INFO. */
+    enum vkd3d_shader_structure_type type;
+    /** Optional pointer to a structure containing further parameters. */
+    const void *next;
+
+    /** The shader input varyings. */
+    struct vkd3d_shader_signature input;
+
+    /** The shader output varyings. */
+    struct vkd3d_shader_signature output;
+
+    /** The shader patch constant varyings. */
+    struct vkd3d_shader_signature patch_constant;
+};
+
+/**
+ * Describes the mapping of a output varying register in a shader stage,
+ * to an input varying register in the following shader stage.
+ *
+ * This structure is used in struct vkd3d_shader_varying_map_info.
+ */
+struct vkd3d_shader_varying_map
+{
+    /**
+     * The signature index (in the output signature) of the output varying.
+     * If greater than or equal to the number of elements in the output
+     * signature, signifies that the varying is consumed by the next stage but
+     * not written by this one.
+     */
+    unsigned int output_signature_index;
+    /** The register index of the input varying to map this register to. */
+    unsigned int input_register_index;
+    /** The mask consumed by the destination register. */
+    unsigned int input_mask;
+};
+
+/**
+ * A chained structure which describes how output varyings in this shader stage
+ * should be mapped to input varyings in the next stage.
+ *
+ * This structure is optional. It should not be provided if there is no shader
+ * stage.
+ * However, depending on the input and output formats, this structure may be
+ * necessary in order to generate shaders which correctly match each other.
+ *
+ * If this structure is absent, vkd3d-shader will map varyings from one stage
+ * to another based on their register index.
+ * For Direct3D shader model 3.0, such a default mapping will be incorrect
+ * unless the registers are allocated in the same order, and hence this
+ * field is necessary to correctly match inter-stage varyings.
+ * This mapping may also be necessary under other circumstances where the
+ * varying interface does not match exactly.
+ *
+ * This structure is passed to vkd3d_shader_compile() and extends
+ * vkd3d_shader_compile_info.
+ *
+ * This structure contains only input parameters.
+ *
+ * \since 1.9
+ */
+struct vkd3d_shader_varying_map_info
+{
+    /** Must be set to VKD3D_SHADER_STRUCTURE_TYPE_VARYING_MAP_INFO. */
+    enum vkd3d_shader_structure_type type;
+    /** Optional pointer to a structure containing further parameters. */
+    const void *next;
+
+    /**
+     * A mapping of output varyings in this shader stage to input varyings
+     * in the next shader stage.
+     *
+     * This mapping should include exactly one element for each varying
+     * consumed by the next shader stage.
+     * If this shader stage outputs a varying that is not consumed by the next
+     * shader stage, that varying should be absent from this array.
+     *
+     * This mapping may be constructed by vkd3d_shader_build_varying_map().
+     */
+    const struct vkd3d_shader_varying_map *varying_map;
+    /** The number of registers provided in \ref varying_map. */
+    unsigned int varying_count;
+};
+
+/**
+ * Interface information regarding a builtin shader parameter.
+ *
+ * Like compile options specified with struct vkd3d_shader_compile_option,
+ * parameters are used to specify certain values which are not part of the
+ * source shader bytecode but which need to be specified in the shader bytecode
+ * in the target format.
+ * Unlike struct vkd3d_shader_compile_option, however, this structure allows
+ * parameters to be specified in a variety of different ways, as described by
+ * enum vkd3d_shader_parameter_type.
+ *
+ * This structure is an extended version of struct vkd3d_shader_parameter as
+ * used in struct vkd3d_shader_spirv_target_info, which allows more parameter
+ * types to be used, and also allows specifying parameters when compiling
+ * shaders to target types other than SPIR-V. If this structure is chained
+ * along with vkd3d_shader_spirv_target_info, any parameters specified in the
+ * latter structure are ignored.
+ *
+ * This structure is passed to vkd3d_shader_compile() and extends
+ * vkd3d_shader_compile_info.
+ *
+ * This structure contains only input parameters.
+ *
+ * \since 1.13
+ */
+struct vkd3d_shader_parameter_info
+{
+    /** Must be set to VKD3D_SHADER_STRUCTURE_TYPE_PARAMETER_INFO. */
+    enum vkd3d_shader_structure_type type;
+    /** Optional pointer to a structure containing further parameters. */
+    const void *next;
+
+    /** Pointer to an array of dynamic parameters for this shader instance. */
+    const struct vkd3d_shader_parameter1 *parameters;
+    /** Size, in elements, of \ref parameters. */
+    unsigned int parameter_count;
+};
 
 #ifdef LIBVKD3D_SHADER_SOURCE
 # define VKD3D_SHADER_API VKD3D_EXPORT
@@ -1529,6 +2717,21 @@ VKD3D_SHADER_API const enum vkd3d_shader_target_type *vkd3d_shader_get_supported
  *
  * This version of vkd3d-shader supports the following transformations:
  * - VKD3D_SHADER_SOURCE_DXBC_TPF to VKD3D_SHADER_TARGET_SPIRV_BINARY
+ * - VKD3D_SHADER_SOURCE_DXBC_TPF to VKD3D_SHADER_TARGET_SPIRV_TEXT
+ *   (if vkd3d was compiled with SPIRV-Tools)
+ * - VKD3D_SHADER_SOURCE_DXBC_TPF to VKD3D_SHADER_TARGET_D3D_ASM
+ * - VKD3D_SHADER_SOURCE_D3D_BYTECODE to VKD3D_SHADER_TARGET_SPIRV_BINARY
+ * - VKD3D_SHADER_SOURCE_D3D_BYTECODE to VKD3D_SHADER_TARGET_SPIRV_TEXT
+ *   (if vkd3d was compiled with SPIRV-Tools)
+ * - VKD3D_SHADER_SOURCE_D3D_BYTECODE to VKD3D_SHADER_TARGET_D3D_ASM
+ * - VKD3D_SHADER_SOURCE_HLSL to VKD3D_SHADER_TARGET_SPIRV_BINARY
+ * - VKD3D_SHADER_SOURCE_HLSL to VKD3D_SHADER_TARGET_SPIRV_TEXT
+ *   (if vkd3d was compiled with SPIRV-Tools)
+ * - VKD3D_SHADER_SOURCE_HLSL to VKD3D_SHADER_TARGET_D3D_ASM
+ * - VKD3D_SHADER_SOURCE_HLSL to VKD3D_SHADER_TARGET_D3D_BYTECODE
+ * - VKD3D_SHADER_SOURCE_HLSL to VKD3D_SHADER_TARGET_DXBC_TPF
+ * - VKD3D_SHADER_SOURCE_HLSL to VKD3D_SHADER_TARGET_FX
+ * - VKD3D_SHADER_SOURCE_FX to VKD3D_SHADER_TARGET_D3D_ASM
  *
  * Supported transformations can also be detected at runtime with the functions
  * vkd3d_shader_get_supported_source_types() and
@@ -1536,10 +2739,18 @@ VKD3D_SHADER_API const enum vkd3d_shader_target_type *vkd3d_shader_get_supported
  *
  * Depending on the source and target types, this function may support the
  * following chained structures:
+ * - vkd3d_shader_descriptor_offset_info
+ * - vkd3d_shader_hlsl_source_info
  * - vkd3d_shader_interface_info
+ * - vkd3d_shader_parameter_info
+ * - vkd3d_shader_preprocess_info
+ * - vkd3d_shader_scan_combined_resource_sampler_info
+ * - vkd3d_shader_scan_descriptor_info
+ * - vkd3d_shader_scan_signature_info
  * - vkd3d_shader_spirv_domain_shader_target_info
  * - vkd3d_shader_spirv_target_info
  * - vkd3d_shader_transform_feedback_info
+ * - vkd3d_shader_varying_map_info
  *
  * \param compile_info A chained structure containing compilation parameters.
  *
@@ -1561,7 +2772,7 @@ VKD3D_SHADER_API const enum vkd3d_shader_target_type *vkd3d_shader_get_supported
  * vkd3d_shader_compile_info. Regardless of the requested level, if this
  * parameter is NULL, no compilation messages will be returned.
  * \n
- * If no compilation messages are produced by the compiler, this parameter may
+ * If no messages are produced by the compiler, this parameter may
  * receive NULL instead of a valid string pointer.
  *
  * \return A member of \ref vkd3d_result.
@@ -1610,10 +2821,15 @@ VKD3D_SHADER_API void vkd3d_shader_free_shader_code(struct vkd3d_shader_code *co
  * needed.
  *
  * \param messages Optional output location for error or informational messages
- * produced by the compiler.
+ * produced by the parser.
  * \n
- * This parameter behaves identically to the \a messages parameter of
- * vkd3d_shader_compile().
+ * This string is null-terminated and UTF-8 encoded.
+ * \n
+ * The messages are allocated by vkd3d-shader and should be freed with
+ * vkd3d_shader_free_messages() when no longer needed.
+ * \n
+ * If no messages are produced by the parser, this parameter may
+ * receive NULL instead of a valid string pointer.
  *
  * \return A member of \ref vkd3d_result.
  */
@@ -1648,10 +2864,15 @@ VKD3D_SHADER_API void vkd3d_shader_free_root_signature(
  * vkd3d_shader_free_shader_code() when no longer needed.
  *
  * \param messages Optional output location for error or informational messages
- * produced by the compiler.
+ * produced by the serializer.
  * \n
- * This parameter behaves identically to the \a messages parameter of
- * vkd3d_shader_compile().
+ * This string is null-terminated and UTF-8 encoded.
+ * \n
+ * The messages are allocated by vkd3d-shader and should be freed with
+ * vkd3d_shader_free_messages() when no longer needed.
+ * \n
+ * If no messages are produced by the serializer, this parameter may
+ * receive NULL instead of a valid string pointer.
  *
  * \return A member of \ref vkd3d_result.
  */
@@ -1685,23 +2906,55 @@ VKD3D_SHADER_API int vkd3d_shader_convert_root_signature(struct vkd3d_shader_ver
  * Parse shader source code or byte code, returning various types of requested
  * information.
  *
+ * The \a source_type member of \a compile_info must be set to the type of the
+ * shader.
+ *
+ * The \a target_type member may be set to VKD3D_SHADER_TARGET_NONE, in which
+ * case vkd3d_shader_scan() will return information about the shader in
+ * isolation. Alternatively, it may be set to a valid compilation target for the
+ * shader, in which case vkd3d_shader_scan() will return information that
+ * reflects the interface for a shader as it will be compiled to that target.
+ * In this case other chained structures may be appended to \a compile_info as
+ * they would be passed to vkd3d_shader_compile(), and interpreted accordingly,
+ * such as vkd3d_shader_spirv_target_info.
+ *
+ * (For a hypothetical example, suppose the source shader distinguishes float
+ * and integer texture data, but the target environment does not support integer
+ * textures. In this case vkd3d_shader_compile() might translate integer
+ * operations to float. Accordingly using VKD3D_SHADER_TARGET_NONE would
+ * accurately report whether the texture expects integer or float data, but
+ * using the relevant specific target type would report
+ * VKD3D_SHADER_RESOURCE_DATA_FLOAT.)
+ *
  * Currently this function supports the following code types:
  * - VKD3D_SHADER_SOURCE_DXBC_TPF
+ * - VKD3D_SHADER_SOURCE_D3D_BYTECODE
  *
  * \param compile_info A chained structure containing scan parameters.
  * \n
- * The DXBC_TPF scanner supports the following chained structures:
+ * The scanner supports the following chained structures:
  * - vkd3d_shader_scan_descriptor_info
+ * - vkd3d_shader_scan_signature_info
+ * - vkd3d_shader_scan_combined_resource_sampler_info
  * \n
  * Although the \a compile_info parameter is read-only, chained structures
  * passed to this function need not be, and may serve as output parameters,
  * depending on their structure type.
  *
  * \param messages Optional output location for error or informational messages
- * produced by the compiler.
+ * produced by the parser.
  * \n
- * This parameter behaves identically to the \a messages parameter of
- * vkd3d_shader_compile().
+ * This string is null-terminated and UTF-8 encoded.
+ * \n
+ * The messages are allocated by vkd3d-shader and should be freed with
+ * vkd3d_shader_free_messages() when no longer needed.
+ * \n
+ * The messages returned can be regulated with the \a log_level member of struct
+ * vkd3d_shader_compile_info. Regardless of the requested level, if this
+ * parameter is NULL, no compilation messages will be returned.
+ * \n
+ * If no messages are produced by the parser, this parameter may
+ * receive NULL instead of a valid string pointer.
  *
  * \return A member of \ref vkd3d_result.
  */
@@ -1719,11 +2972,17 @@ VKD3D_SHADER_API void vkd3d_shader_free_scan_descriptor_info(
         struct vkd3d_shader_scan_descriptor_info *scan_descriptor_info);
 
 /**
- * Read the input signature of a compiled shader, returning a structural
+ * Read the input signature of a compiled DXBC shader, returning a structural
  * description which can be easily parsed by C code.
  *
  * This function parses a compiled shader. To parse a standalone root signature,
  * use vkd3d_shader_parse_root_signature().
+ *
+ * This function only parses DXBC shaders, and only retrieves the input
+ * signature. To retrieve signatures from other shader types, or other signature
+ * types, use vkd3d_shader_scan() and struct vkd3d_shader_scan_signature_info.
+ * This function returns the same input signature that is returned in
+ * struct vkd3d_shader_scan_signature_info.
  *
  * \param dxbc Compiled byte code, in DXBC format.
  *
@@ -1733,12 +2992,20 @@ VKD3D_SHADER_API void vkd3d_shader_free_scan_descriptor_info(
  * Members of \a signature may be allocated by vkd3d-shader. The signature
  * should be freed with vkd3d_shader_free_shader_signature() when no longer
  * needed.
+ * \n
+ * The signature may contain pointers into the input shader, and should only be
+ * accessed while the input shader remains valid.
  *
  * \param messages Optional output location for error or informational messages
- * produced by the compiler.
+ * produced by the parser.
  * \n
- * This parameter behaves identically to the \a messages parameter of
- * vkd3d_shader_compile().
+ * This string is null-terminated and UTF-8 encoded.
+ * \n
+ * The messages are allocated by vkd3d-shader and should be freed with
+ * vkd3d_shader_free_messages() when no longer needed.
+ * \n
+ * If no messages are produced by the parser, this parameter may
+ * receive NULL instead of a valid string pointer.
  *
  * \return A member of \ref vkd3d_result.
  */
@@ -1794,10 +3061,19 @@ VKD3D_SHADER_API void vkd3d_shader_free_shader_signature(struct vkd3d_shader_sig
  * vkd3d_shader_free_shader_code() when no longer needed.
  *
  * \param messages Optional output location for error or informational messages
- * produced by the compiler.
+ * produced by the preprocessor.
  * \n
- * This parameter behaves identically to the \a messages parameter of
- * vkd3d_shader_compile().
+ * This string is null-terminated and UTF-8 encoded.
+ * \n
+ * The messages are allocated by vkd3d-shader and should be freed with
+ * vkd3d_shader_free_messages() when no longer needed.
+ * \n
+ * The messages returned can be regulated with the \a log_level member of struct
+ * vkd3d_shader_compile_info. Regardless of the requested level, if this
+ * parameter is NULL, no compilation messages will be returned.
+ * \n
+ * If no messages are produced by the preprocessor, this parameter may
+ * receive NULL instead of a valid string pointer.
  *
  * \return A member of \ref vkd3d_result.
  *
@@ -1805,6 +3081,153 @@ VKD3D_SHADER_API void vkd3d_shader_free_shader_signature(struct vkd3d_shader_sig
  */
 VKD3D_SHADER_API int vkd3d_shader_preprocess(const struct vkd3d_shader_compile_info *compile_info,
         struct vkd3d_shader_code *out, char **messages);
+
+/**
+ * Set a callback to be called when vkd3d-shader outputs debug logging.
+ *
+ * If NULL, or if this function has not been called, libvkd3d-shader will print
+ * all enabled log output to stderr.
+ *
+ * \param callback Callback function to set.
+ *
+ * \since 1.4
+ */
+VKD3D_SHADER_API void vkd3d_shader_set_log_callback(PFN_vkd3d_log callback);
+
+/**
+ * Free the contents of a vkd3d_shader_dxbc_desc structure allocated by
+ * another vkd3d-shader function, such as vkd3d_shader_parse_dxbc().
+ *
+ * This function may free the \ref vkd3d_shader_dxbc_desc.sections member, but
+ * does not free the structure itself.
+ *
+ * \param dxbc The vkd3d_shader_dxbc_desc structure to free.
+ *
+ * \since 1.7
+ */
+VKD3D_SHADER_API void vkd3d_shader_free_dxbc(struct vkd3d_shader_dxbc_desc *dxbc);
+
+/**
+ * Parse a DXBC blob contained in a vkd3d_shader_code structure.
+ *
+ * \param dxbc A vkd3d_shader_code structure containing the DXBC blob to parse.
+ *
+ * \param flags A combination of zero or more elements of enum
+ * vkd3d_shader_parse_dxbc_flags.
+ *
+ * \param desc A vkd3d_shader_dxbc_desc structure describing the contents of
+ * the DXBC blob. Its vkd3d_shader_dxbc_section_desc structures will contain
+ * pointers into the input blob; its contents are only valid while the input
+ * blob is valid. The contents of this structure should be freed with
+ * vkd3d_shader_free_dxbc() when no longer needed.
+ *
+ * \param messages Optional output location for error or informational messages
+ * produced by the parser.
+ * \n
+ * This string is null-terminated and UTF-8 encoded.
+ * \n
+ * The messages are allocated by vkd3d-shader and should be freed with
+ * vkd3d_shader_free_messages() when no longer needed.
+ * \n
+ * If no messages are produced by the parser, this parameter may
+ * receive NULL instead of a valid string pointer.
+ *
+ * \return A member of \ref vkd3d_result.
+ *
+ * \since 1.7
+ */
+VKD3D_SHADER_API int vkd3d_shader_parse_dxbc(const struct vkd3d_shader_code *dxbc,
+        uint32_t flags, struct vkd3d_shader_dxbc_desc *desc, char **messages);
+
+/**
+ * Serialize a DXBC description into a blob stored in a vkd3d_shader_code
+ * structure.
+ *
+ * \param section_count The number of DXBC sections to serialize.
+ *
+ * \param sections An array of vkd3d_shader_dxbc_section_desc structures
+ * to serialize.
+ *
+ * \param dxbc A pointer to a vkd3d_shader_code structure in which the
+ * serialized blob will be stored.
+ * \n
+ * The output blob is allocated by vkd3d-shader and should be freed with
+ * vkd3d_shader_free_shader_code() when no longer needed.
+ *
+ * \param messages Optional output location for error or informational messages
+ * produced by the serializer.
+ * \n
+ * This string is null-terminated and UTF-8 encoded.
+ * \n
+ * The messages are allocated by vkd3d-shader and should be freed with
+ * vkd3d_shader_free_messages() when no longer needed.
+ * \n
+ * If no messages are produced by the serializer, this parameter may
+ * receive NULL instead of a valid string pointer.
+ *
+ * \return A member of \ref vkd3d_result.
+ *
+ * \since 1.7
+ */
+VKD3D_SHADER_API int vkd3d_shader_serialize_dxbc(size_t section_count,
+        const struct vkd3d_shader_dxbc_section_desc *sections, struct vkd3d_shader_code *dxbc, char **messages);
+
+/**
+ * Free members of struct vkd3d_shader_scan_signature_info allocated by
+ * vkd3d_shader_scan().
+ *
+ * This function may free members of vkd3d_shader_scan_signature_info, but
+ * does not free the structure itself.
+ *
+ * \param info Scan information to free.
+ *
+ * \since 1.9
+ */
+VKD3D_SHADER_API void vkd3d_shader_free_scan_signature_info(struct vkd3d_shader_scan_signature_info *info);
+
+/**
+ * Build a mapping of output varyings in a shader stage to input varyings in
+ * the following shader stage.
+ *
+ * This mapping should be used in struct vkd3d_shader_varying_map_info to
+ * compile the first shader.
+ *
+ * \param output_signature The output signature of the first shader.
+ *
+ * \param input_signature The input signature of the second shader.
+ *
+ * \param count On output, contains the number of entries written into
+ * "varyings".
+ *
+ * \param varyings Pointer to an output array of varyings.
+ * This must point to space for N varyings, where N is the number of elements
+ * in the input signature.
+ *
+ * \remark Valid legacy Direct3D pixel shaders have at most 12 varying inputs:
+ * 10 inter-stage varyings, face, and position.
+ * Therefore, in practice, it is safe to call this function with a
+ * pre-allocated array with a fixed size of 12.
+ *
+ * \since 1.9
+ */
+VKD3D_SHADER_API void vkd3d_shader_build_varying_map(const struct vkd3d_shader_signature *output_signature,
+        const struct vkd3d_shader_signature *input_signature,
+        unsigned int *count, struct vkd3d_shader_varying_map *varyings);
+
+/**
+ * Free members of struct vkd3d_shader_scan_combined_resource_sampler_info
+ * allocated by vkd3d_shader_scan().
+ *
+ * This function may free members of
+ * vkd3d_shader_scan_combined_resource_sampler_info, but does not free the
+ * structure itself.
+ *
+ * \param info Combined resource-sampler information to free.
+ *
+ * \since 1.10
+ */
+VKD3D_SHADER_API void vkd3d_shader_free_scan_combined_resource_sampler_info(
+        struct vkd3d_shader_scan_combined_resource_sampler_info *info);
 
 #endif  /* VKD3D_SHADER_NO_PROTOTYPES */
 
@@ -1858,6 +3281,29 @@ typedef void (*PFN_vkd3d_shader_free_shader_signature)(struct vkd3d_shader_signa
 /** Type of vkd3d_shader_preprocess(). \since 1.3 */
 typedef void (*PFN_vkd3d_shader_preprocess)(struct vkd3d_shader_compile_info *compile_info,
         struct vkd3d_shader_code *out, char **messages);
+
+/** Type of vkd3d_shader_set_log_callback(). \since 1.4 */
+typedef void (*PFN_vkd3d_shader_set_log_callback)(PFN_vkd3d_log callback);
+
+/** Type of vkd3d_shader_free_dxbc(). \since 1.7 */
+typedef void (*PFN_vkd3d_shader_free_dxbc)(struct vkd3d_shader_dxbc_desc *dxbc);
+/** Type of vkd3d_shader_parse_dxbc(). \since 1.7 */
+typedef int (*PFN_vkd3d_shader_parse_dxbc)(const struct vkd3d_shader_code *dxbc,
+        uint32_t flags, struct vkd3d_shader_dxbc_desc *desc, char **messages);
+/** Type of vkd3d_shader_serialize_dxbc(). \since 1.7 */
+typedef int (*PFN_vkd3d_shader_serialize_dxbc)(size_t section_count,
+        const struct vkd3d_shader_dxbc_section_desc *sections, struct vkd3d_shader_code *dxbc, char **messages);
+
+/** Type of vkd3d_shader_build_varying_map(). \since 1.9 */
+typedef void (*PFN_vkd3d_shader_build_varying_map)(const struct vkd3d_shader_signature *output_signature,
+        const struct vkd3d_shader_signature *input_signature,
+        unsigned int *count, struct vkd3d_shader_varying_map *varyings);
+/** Type of vkd3d_shader_free_scan_signature_info(). \since 1.9 */
+typedef void (*PFN_vkd3d_shader_free_scan_signature_info)(struct vkd3d_shader_scan_signature_info *info);
+
+/** Type of vkd3d_shader_free_scan_combined_resource_sampler_info(). \since 1.10 */
+typedef void (*PFN_vkd3d_shader_free_scan_combined_resource_sampler_info)(
+        struct vkd3d_shader_scan_combined_resource_sampler_info *info);
 
 #ifdef __cplusplus
 }

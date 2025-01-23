@@ -26,19 +26,13 @@ extern "C" {
 #ifdef _SLC_
 #define SLCAPI
 #else
-#define SLCAPI DECLSPEC_HIDDEN
+#define SLCAPI DECLSPEC_IMPORT
 #endif
 
 typedef GUID SLID;
 
 typedef PVOID HSLC;
-
-#define REG_NONE		0	/* no type */
-#define REG_SZ			1	/* string type (ASCII) */
-#define REG_EXPAND_SZ		2	/* string, includes %ENVVAR% (expanded by caller) (ASCII) */
-#define REG_BINARY		3	/* binary format, callerspecific */
-#define REG_DWORD		4	/* DWORD in little endian format */
-#define REG_MULTI_SZ		7	/* multiple strings, delimited by \0, terminated by \0\0 (ASCII) */
+typedef PVOID HSLP;
 
 typedef enum _tagSLDATATYPE
 {
@@ -69,10 +63,30 @@ typedef struct _tagSL_LICENSING_STATUS
     UINT64 qwValidityExpiration;
 } SL_LICENSING_STATUS;
 
+typedef enum _tagSLIDTYPE {
+    SL_ID_APPLICATION = 0,
+    SL_ID_PRODUCT_SKU,
+    SL_ID_LICENSE_FILE,
+    SL_ID_LICENSE,
+    SL_ID_PKEY,
+    SL_ID_ALL_LICENSES,
+    SL_ID_ALL_LICENSE_FILES,
+    SL_ID_STORE_TOKEN,
+    SL_ID_LAST
+} SLIDTYPE;
+
+SLCAPI HRESULT WINAPI SLConsumeRight(HSLC, const SLID*, const SLID*, PCWSTR, PVOID);
 SLCAPI HRESULT WINAPI SLGetLicensingStatusInformation(HSLC, const SLID*, const SLID*, LPCWSTR, UINT*, SL_LICENSING_STATUS**);
+SLCAPI HRESULT WINAPI SLGetPolicyInformation(HSLC, PCWSTR, SLDATATYPE*, UINT*, PBYTE*);
+SLCAPI HRESULT WINAPI SLGetPolicyInformationDWORD(HSLC, PCWSTR, DWORD*);
+SLCAPI HRESULT WINAPI SLGetSLIDList(HSLC, SLIDTYPE, const SLID*, SLIDTYPE, UINT*, SLID**);
 SLCAPI HRESULT WINAPI SLGetWindowsInformation(LPCWSTR, SLDATATYPE*, UINT*, LPBYTE*);
 SLCAPI HRESULT WINAPI SLGetWindowsInformationDWORD(LPCWSTR, LPDWORD);
+SLCAPI HRESULT WINAPI SLInstallLicense(HSLC, UINT, const BYTE*, SLID*);
+SLCAPI HRESULT WINAPI SLLoadApplicationPolicies(const SLID*, const SLID*, DWORD, HSLP*);
 SLCAPI HRESULT WINAPI SLOpen(HSLC*);
+SLCAPI HRESULT WINAPI SLSetAuthenticationData(HSLC*, UINT*, PBYTE*);
+SLCAPI HRESULT WINAPI SLUnloadApplicationPolicies(HSLP, DWORD);
 
 #ifdef __cplusplus
 }

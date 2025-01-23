@@ -17,16 +17,15 @@
  *
  */
 
-#include "config.h"
-#include "wine/port.h"
-
 #include "wined3d_private.h"
+#include "wined3d_gl.h"
+#include "wined3d_vk.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(d3d);
 
 ULONG CDECL wined3d_sampler_incref(struct wined3d_sampler *sampler)
 {
-    ULONG refcount = InterlockedIncrement(&sampler->refcount);
+    unsigned int refcount = InterlockedIncrement(&sampler->refcount);
 
     TRACE("%p increasing refcount to %u.\n", sampler, refcount);
 
@@ -35,7 +34,7 @@ ULONG CDECL wined3d_sampler_incref(struct wined3d_sampler *sampler)
 
 ULONG CDECL wined3d_sampler_decref(struct wined3d_sampler *sampler)
 {
-    ULONG refcount = InterlockedDecrement(&sampler->refcount);
+    unsigned int refcount = wined3d_atomic_decrement_mutex_lock(&sampler->refcount);
 
     TRACE("%p decreasing refcount to %u.\n", sampler, refcount);
 
@@ -43,6 +42,7 @@ ULONG CDECL wined3d_sampler_decref(struct wined3d_sampler *sampler)
     {
         sampler->parent_ops->wined3d_object_destroyed(sampler->parent);
         sampler->device->adapter->adapter_ops->adapter_destroy_sampler(sampler);
+        wined3d_mutex_unlock();
     }
 
     return refcount;
@@ -60,6 +60,19 @@ static void wined3d_sampler_init(struct wined3d_sampler *sampler, struct wined3d
 {
     TRACE("sampler %p, device %p, desc %p, parent %p, parent_ops %p.\n",
             sampler, device, desc, parent, parent_ops);
+
+    TRACE("    Address modes: U %#x, V %#x, W %#x.\n", desc->address_u, desc->address_v, desc->address_w);
+    TRACE("    Border colour: {%.8e, %.8e, %.8e, %.8e}.\n",
+            desc->border_color[0], desc->border_color[1], desc->border_color[2], desc->border_color[3]);
+    TRACE("    Filters: mag %#x, min %#x, mip %#x.\n", desc->mag_filter, desc->min_filter, desc->mip_filter);
+    TRACE("    LOD bias: %.8e.\n", desc->lod_bias);
+    TRACE("    Minimum LOD: %.8e.\n", desc->min_lod);
+    TRACE("    Maximum LOD: %.8e.\n", desc->max_lod);
+    TRACE("    Base mip level: %u.\n", desc->mip_base_level);
+    TRACE("    Maximum anisotropy: %u.\n", desc->max_anisotropy);
+    TRACE("    Comparison: %d.\n", desc->compare);
+    TRACE("    Comparison func: %#x.\n", desc->comparison_func);
+    TRACE("    SRGB decode: %d.\n", desc->srgb_decode);
 
     sampler->refcount = 1;
     sampler->device = device;
@@ -122,7 +135,7 @@ void wined3d_sampler_gl_init(struct wined3d_sampler_gl *sampler_gl, struct wined
 
     wined3d_sampler_init(&sampler_gl->s, device, desc, parent, parent_ops);
 
-    if (device->adapter->gl_info.supported[ARB_SAMPLER_OBJECTS])
+    if (wined3d_adapter_gl(device->adapter)->gl_info.supported[ARB_SAMPLER_OBJECTS])
         wined3d_cs_init_object(device->cs, wined3d_sampler_gl_cs_init, sampler_gl);
 }
 
@@ -294,24 +307,12 @@ static void texture_gl_apply_base_level(struct wined3d_texture_gl *texture_gl,
         const struct wined3d_sampler_desc *desc, const struct wined3d_gl_info *gl_info)
 {
     struct gl_texture *gl_tex;
-    unsigned int base_level;
-
-    if (texture_gl->t.flags & WINED3D_TEXTURE_COND_NP2)
-        base_level = 0;
-    else if (desc->mip_filter == WINED3D_TEXF_NONE)
-        base_level = texture_gl->t.lod;
-    else
-        base_level = min(max(desc->mip_base_level, texture_gl->t.lod), texture_gl->t.level_count - 1);
 
     gl_tex = wined3d_texture_gl_get_gl_texture(texture_gl, texture_gl->t.flags & WINED3D_TEXTURE_IS_SRGB);
-    if (base_level != gl_tex->base_level)
+    if (desc->mip_base_level != gl_tex->sampler_desc.mip_base_level)
     {
-        /* Note that WINED3D_SAMP_MAX_MIP_LEVEL specifies the largest mipmap
-         * (default 0), while GL_TEXTURE_MAX_LEVEL specifies the smallest
-         * mipmap used (default 1000). So WINED3D_SAMP_MAX_MIP_LEVEL
-         * corresponds to GL_TEXTURE_BASE_LEVEL. */
-        gl_info->gl_ops.gl.p_glTexParameteri(texture_gl->target, GL_TEXTURE_BASE_LEVEL, base_level);
-        gl_tex->base_level = base_level;
+        gl_info->gl_ops.gl.p_glTexParameteri(texture_gl->target, GL_TEXTURE_BASE_LEVEL, desc->mip_base_level);
+        gl_tex->sampler_desc.mip_base_level = desc->mip_base_level;
     }
 }
 

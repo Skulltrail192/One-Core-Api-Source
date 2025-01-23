@@ -19,8 +19,8 @@
  */
 
 #define COBJMACROS
-#define NONAMELESSUNION
 
+#include <stdint.h>
 #include "dwrite_private.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(dwrite);
@@ -45,6 +45,7 @@ WINE_DEFAULT_DEBUG_CHANNEL(dwrite);
 #define MS_CMAP_TAG DWRITE_MAKE_OPENTYPE_TAG('c','m','a','p')
 #define MS_META_TAG DWRITE_MAKE_OPENTYPE_TAG('m','e','t','a')
 #define MS_KERN_TAG DWRITE_MAKE_OPENTYPE_TAG('k','e','r','n')
+#define MS_FVAR_TAG DWRITE_MAKE_OPENTYPE_TAG('f','v','a','r')
 
 /* 'sbix' formats */
 #define MS_PNG__TAG DWRITE_MAKE_OPENTYPE_TAG('p','n','g',' ')
@@ -61,47 +62,53 @@ WINE_DEFAULT_DEBUG_CHANNEL(dwrite);
 #ifdef WORDS_BIGENDIAN
 #define GET_BE_WORD(x) (x)
 #define GET_BE_DWORD(x) (x)
+#define GET_BE_FIXED(x) (x / 65536.0f)
 #else
 #define GET_BE_WORD(x)  RtlUshortByteSwap(x)
 #define GET_BE_DWORD(x) RtlUlongByteSwap(x)
+#define GET_BE_FIXED(x) ((int32_t)GET_BE_DWORD(x) / 65536.0f)
 #endif
 
 #define GLYPH_CONTEXT_MAX_LENGTH 64
 #define SHAPE_MAX_NESTING_LEVEL 6
 
-typedef struct {
-    CHAR TTCTag[4];
-    DWORD Version;
-    DWORD numFonts;
-    DWORD OffsetTable[1];
-} TTC_Header_V1;
+struct ttc_header
+{
+    uint32_t tag;
+    uint16_t major_version;
+    uint16_t minor_version;
+    uint32_t num_fonts;
+    uint32_t offsets[1];
+};
 
-typedef struct {
-    DWORD version;
-    WORD numTables;
-    WORD searchRange;
-    WORD entrySelector;
-    WORD rangeShift;
-} TTC_SFNT_V1;
+struct ot_table_dir
+{
+    uint32_t version;
+    uint16_t numTables;
+    uint16_t searchRange;
+    uint16_t entrySelector;
+    uint16_t rangeShift;
+};
 
-typedef struct {
-    DWORD tag;
-    DWORD checkSum;
-    DWORD offset;
-    DWORD length;
-} TT_TableRecord;
+struct ot_table_record
+{
+    uint32_t tag;
+    uint32_t checksum;
+    uint32_t offset;
+    uint32_t length;
+};
 
 struct cmap_encoding_record
 {
-    WORD platformID;
-    WORD encodingID;
-    DWORD offset;
+    uint16_t platformID;
+    uint16_t encodingID;
+    uint32_t offset;
 };
 
 struct cmap_header
 {
-    WORD version;
-    WORD num_tables;
+    uint16_t version;
+    uint16_t num_tables;
     struct cmap_encoding_record tables[1];
 };
 
@@ -160,15 +167,15 @@ enum tt_head_macstyle
 
 struct tt_post
 {
-    ULONG Version;
-    ULONG italicAngle;
-    SHORT underlinePosition;
-    SHORT underlineThickness;
-    ULONG fixed_pitch;
-    ULONG minmemType42;
-    ULONG maxmemType42;
-    ULONG minmemType1;
-    ULONG maxmemType1;
+    uint32_t Version;
+    int32_t italicAngle;
+    int16_t underlinePosition;
+    int16_t underlineThickness;
+    uint32_t fixed_pitch;
+    uint32_t minmemType42;
+    uint32_t maxmemType42;
+    uint32_t minmemType1;
+    uint32_t maxmemType1;
 };
 
 struct tt_os2
@@ -220,44 +227,44 @@ struct tt_os2
 
 struct tt_hhea
 {
-    USHORT majorVersion;
-    USHORT minorVersion;
-    SHORT  ascender;
-    SHORT  descender;
-    SHORT  linegap;
-    USHORT advanceWidthMax;
-    SHORT  minLeftSideBearing;
-    SHORT  minRightSideBearing;
-    SHORT  xMaxExtent;
-    SHORT  caretSlopeRise;
-    SHORT  caretSlopeRun;
-    SHORT  caretOffset;
-    SHORT  reserved[4];
-    SHORT  metricDataFormat;
-    USHORT numberOfHMetrics;
+    uint16_t majorVersion;
+    uint16_t minorVersion;
+    int16_t ascender;
+    int16_t descender;
+    int16_t linegap;
+    uint16_t advanceWidthMax;
+    int16_t minLeftSideBearing;
+    int16_t minRightSideBearing;
+    int16_t xMaxExtent;
+    int16_t caretSlopeRise;
+    int16_t caretSlopeRun;
+    int16_t caretOffset;
+    int16_t reserved[4];
+    int16_t metricDataFormat;
+    uint16_t numberOfHMetrics;
 };
 
 struct sbix_header
 {
-    WORD version;
-    WORD flags;
-    DWORD num_strikes;
-    DWORD strike_offset[1];
+    uint16_t version;
+    uint16_t flags;
+    uint32_t num_strikes;
+    uint32_t strike_offset[1];
 };
 
 struct sbix_strike
 {
-    WORD ppem;
-    WORD ppi;
-    DWORD glyphdata_offsets[1];
+    uint16_t ppem;
+    uint16_t ppi;
+    uint32_t glyphdata_offsets[1];
 };
 
 struct sbix_glyph_data
 {
-    WORD originOffsetX;
-    WORD originOffsetY;
-    DWORD graphic_type;
-    BYTE data[1];
+    int16_t originOffsetX;
+    int16_t originOffsetY;
+    uint32_t graphic_type;
+    uint8_t data[1];
 };
 
 struct maxp
@@ -268,29 +275,41 @@ struct maxp
 
 struct cblc_header
 {
-    WORD major_version;
-    WORD minor_version;
-    DWORD num_sizes;
+    uint16_t major_version;
+    uint16_t minor_version;
+    uint32_t num_sizes;
 };
 
-typedef struct {
-    BYTE res[12];
-} sbitLineMetrics;
+struct sbit_line_metrics
+{
+    int8_t ascender;
+    int8_t descender;
+    uint8_t widthMax;
+    int8_t caretSlopeNumerator;
+    int8_t caretSlopeDenominator;
+    int8_t caretOffset;
+    int8_t minOriginSB;
+    int8_t minAdvanceSB;
+    int8_t maxBeforeBL;
+    int8_t minAfterBL;
+    int8_t pad1;
+    int8_t pad2;
+};
 
 struct cblc_bitmapsize_table
 {
-    DWORD indexSubTableArrayOffset;
-    DWORD indexTablesSize;
-    DWORD numberofIndexSubTables;
-    DWORD colorRef;
-    sbitLineMetrics hori;
-    sbitLineMetrics vert;
-    WORD startGlyphIndex;
-    WORD endGlyphIndex;
-    BYTE ppemX;
-    BYTE ppemY;
-    BYTE bit_depth;
-    BYTE flags;
+    uint32_t indexSubTableArrayOffset;
+    uint32_t indexTablesSize;
+    uint32_t numberofIndexSubTables;
+    uint32_t colorRef;
+    struct sbit_line_metrics hori;
+    struct sbit_line_metrics vert;
+    uint16_t startGlyphIndex;
+    uint16_t endGlyphIndex;
+    uint8_t ppemX;
+    uint8_t ppemY;
+    uint8_t bit_depth;
+    int8_t flags;
 };
 
 struct gasp_range
@@ -321,94 +340,94 @@ enum OS2_FSSELECTION {
 
 struct name_record
 {
-    WORD platformID;
-    WORD encodingID;
-    WORD languageID;
-    WORD nameID;
-    WORD length;
-    WORD offset;
+    uint16_t platformID;
+    uint16_t encodingID;
+    uint16_t languageID;
+    uint16_t nameID;
+    uint16_t length;
+    uint16_t offset;
 };
 
 struct name_header
 {
-    WORD format;
-    WORD count;
-    WORD stringOffset;
+    uint16_t format;
+    uint16_t count;
+    uint16_t stringOffset;
     struct name_record records[1];
 };
 
 struct vdmx_header
 {
-    WORD version;
-    WORD num_recs;
-    WORD num_ratios;
+    uint16_t version;
+    uint16_t num_recs;
+    uint16_t num_ratios;
 };
 
 struct vdmx_ratio
 {
-    BYTE bCharSet;
-    BYTE xRatio;
-    BYTE yStartRatio;
-    BYTE yEndRatio;
+    uint8_t bCharSet;
+    uint8_t xRatio;
+    uint8_t yStartRatio;
+    uint8_t yEndRatio;
 };
 
 struct vdmx_vtable
 {
-    WORD yPelHeight;
-    SHORT yMax;
-    SHORT yMin;
+    uint16_t yPelHeight;
+    int16_t yMax;
+    int16_t yMin;
 };
 
 struct vdmx_group
 {
-    WORD recs;
-    BYTE startsz;
-    BYTE endsz;
+    uint16_t recs;
+    uint8_t startsz;
+    uint8_t endsz;
     struct vdmx_vtable entries[1];
 };
 
 struct ot_feature_record
 {
-    DWORD tag;
-    WORD offset;
+    uint32_t tag;
+    uint16_t offset;
 };
 
 struct ot_feature_list
 {
-    WORD feature_count;
+    uint16_t feature_count;
     struct ot_feature_record features[1];
 };
 
 struct ot_langsys
 {
-    WORD lookup_order; /* Reserved */
-    WORD required_feature_index;
-    WORD feature_count;
-    WORD feature_index[1];
+    uint16_t lookup_order; /* Reserved */
+    uint16_t required_feature_index;
+    uint16_t feature_count;
+    uint16_t feature_index[1];
 };
 
 struct ot_langsys_record
 {
-    CHAR tag[4];
-    WORD langsys;
+    uint32_t tag;
+    uint16_t langsys;
 };
 
 struct ot_script
 {
-    WORD default_langsys;
-    WORD langsys_count;
+    uint16_t default_langsys;
+    uint16_t langsys_count;
     struct ot_langsys_record langsys[1];
 };
 
 struct ot_script_record
 {
-    CHAR tag[4];
-    WORD script;
+    uint32_t tag;
+    uint16_t script;
 };
 
 struct ot_script_list
 {
-    WORD script_count;
+    uint16_t script_count;
     struct ot_script_record scripts[1];
 };
 
@@ -424,42 +443,51 @@ enum ot_gdef_class
 
 struct gdef_header
 {
-    DWORD version;
-    UINT16 classdef;
-    UINT16 attach_list;
-    UINT16 ligcaret_list;
-    UINT16 markattach_classdef;
-    UINT16 markglyphsetdef;
+    uint16_t major_version;
+    uint16_t minor_version;
+    uint16_t classdef;
+    uint16_t attach_list;
+    uint16_t ligcaret_list;
+    uint16_t markattach_classdef;
+    uint16_t markglyphsetdef;
 };
 
 struct ot_gdef_classdef_format1
 {
-    WORD format;
-    WORD start_glyph;
-    WORD glyph_count;
-    WORD classes[1];
+    uint16_t format;
+    uint16_t start_glyph;
+    uint16_t glyph_count;
+    uint16_t classes[1];
 };
 
 struct ot_gdef_class_range
 {
-    WORD start_glyph;
-    WORD end_glyph;
-    WORD glyph_class;
+    uint16_t start_glyph;
+    uint16_t end_glyph;
+    uint16_t glyph_class;
 };
 
 struct ot_gdef_classdef_format2
 {
-    WORD format;
-    WORD range_count;
+    uint16_t format;
+    uint16_t range_count;
     struct ot_gdef_class_range ranges[1];
+};
+
+struct ot_gdef_markglyphsets
+{
+    uint16_t format;
+    uint16_t count;
+    uint32_t offsets[1];
 };
 
 struct gpos_gsub_header
 {
-    DWORD version;
-    WORD script_list;
-    WORD feature_list;
-    WORD lookup_list;
+    uint16_t major_version;
+    uint16_t minor_version;
+    uint16_t script_list;
+    uint16_t feature_list;
+    uint16_t lookup_list;
 };
 
 enum gsub_gpos_lookup_flags
@@ -545,272 +573,272 @@ enum OPENTYPE_PLATFORM_ID
 
 struct ot_gsubgpos_extension_format1
 {
-    UINT16 format;
-    UINT16 lookup_type;
-    DWORD extension_offset;
+    uint16_t format;
+    uint16_t lookup_type;
+    uint32_t extension_offset;
 };
 
 struct ot_gsub_singlesubst_format1
 {
-    UINT16 format;
-    UINT16 coverage;
-    short delta;
+    uint16_t format;
+    uint16_t coverage;
+    int16_t delta;
 };
 
 struct ot_gsub_singlesubst_format2
 {
-    UINT16 format;
-    UINT16 coverage;
-    UINT16 count;
-    UINT16 substitutes[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t count;
+    uint16_t substitutes[1];
 };
 
 struct ot_gsub_multsubst_format1
 {
-    UINT16 format;
-    UINT16 coverage;
-    UINT16 seq_count;
-    UINT16 seq[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t seq_count;
+    uint16_t seq[1];
 };
 
 struct ot_gsub_altsubst_format1
 {
-    UINT16 format;
-    UINT16 coverage;
-    UINT16 count;
-    UINT16 sets[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t count;
+    uint16_t sets[1];
 };
 
 struct ot_gsub_ligsubst_format1
 {
-    UINT16 format;
-    UINT16 coverage;
-    UINT16 lig_set_count;
-    UINT16 lig_sets[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t lig_set_count;
+    uint16_t lig_sets[1];
 };
 
 struct ot_gsub_ligset
 {
-    UINT16 count;
-    UINT16 offsets[1];
+    uint16_t count;
+    uint16_t offsets[1];
 };
 
 struct ot_gsub_lig
 {
-    UINT16 lig_glyph;
-    UINT16 comp_count;
-    UINT16 components[1];
+    uint16_t lig_glyph;
+    uint16_t comp_count;
+    uint16_t components[1];
 };
 
 struct ot_gsubgpos_context_format1
 {
-    UINT16 format;
-    UINT16 coverage;
-    UINT16 ruleset_count;
-    UINT16 rulesets[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t ruleset_count;
+    uint16_t rulesets[1];
 };
 
 struct ot_gsubgpos_ruleset
 {
-    UINT16 count;
-    UINT16 offsets[1];
+    uint16_t count;
+    uint16_t offsets[1];
 };
 
 struct ot_feature
 {
-    WORD feature_params;
-    WORD lookup_count;
-    WORD lookuplist_index[1];
+    uint16_t feature_params;
+    uint16_t lookup_count;
+    uint16_t lookuplist_index[1];
 };
 
 struct ot_lookup_list
 {
-    WORD lookup_count;
-    WORD lookup[1];
+    uint16_t lookup_count;
+    uint16_t lookup[1];
 };
 
 struct ot_lookup_table
 {
-    WORD lookup_type;
-    WORD flags;
-    WORD subtable_count;
-    WORD subtable[1];
+    uint16_t lookup_type;
+    uint16_t flags;
+    uint16_t subtable_count;
+    uint16_t subtable[1];
 };
 
 #define GLYPH_NOT_COVERED (~0u)
 
 struct ot_coverage_format1
 {
-    WORD format;
-    WORD glyph_count;
-    WORD glyphs[1];
+    uint16_t format;
+    uint16_t glyph_count;
+    uint16_t glyphs[1];
 };
 
 struct ot_coverage_range
 {
-    WORD start_glyph;
-    WORD end_glyph;
-    WORD startcoverage_index;
+    uint16_t start_glyph;
+    uint16_t end_glyph;
+    uint16_t startcoverage_index;
 };
 
 struct ot_coverage_format2
 {
-    WORD format;
-    WORD range_count;
+    uint16_t format;
+    uint16_t range_count;
     struct ot_coverage_range ranges[1];
 };
 
 struct ot_gpos_device_table
 {
-    WORD start_size;
-    WORD end_size;
-    WORD format;
-    WORD values[1];
+    uint16_t start_size;
+    uint16_t end_size;
+    uint16_t format;
+    uint16_t values[1];
 };
 
 struct ot_gpos_singlepos_format1
 {
-    WORD format;
-    WORD coverage;
-    WORD value_format;
-    WORD value[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t value_format;
+    uint16_t value[1];
 };
 
 struct ot_gpos_singlepos_format2
 {
-    WORD format;
-    WORD coverage;
-    WORD value_format;
-    WORD value_count;
-    WORD values[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t value_format;
+    uint16_t value_count;
+    uint16_t values[1];
 };
 
 struct ot_gpos_pairvalue
 {
-    WORD second_glyph;
-    BYTE data[1];
+    uint16_t second_glyph;
+    uint8_t data[1];
 };
 
 struct ot_gpos_pairset
 {
-    WORD pairvalue_count;
+    uint16_t pairvalue_count;
     struct ot_gpos_pairvalue pairvalues[1];
 };
 
 struct ot_gpos_pairpos_format1
 {
-    WORD format;
-    WORD coverage;
-    WORD value_format1;
-    WORD value_format2;
-    WORD pairset_count;
-    WORD pairsets[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t value_format1;
+    uint16_t value_format2;
+    uint16_t pairset_count;
+    uint16_t pairsets[1];
 };
 
 struct ot_gpos_pairpos_format2
 {
-    WORD format;
-    WORD coverage;
-    WORD value_format1;
-    WORD value_format2;
-    WORD class_def1;
-    WORD class_def2;
-    WORD class1_count;
-    WORD class2_count;
-    WORD values[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t value_format1;
+    uint16_t value_format2;
+    uint16_t class_def1;
+    uint16_t class_def2;
+    uint16_t class1_count;
+    uint16_t class2_count;
+    uint16_t values[1];
 };
 
 struct ot_gpos_anchor_format1
 {
-    WORD format;
-    short x_coord;
-    short y_coord;
+    uint16_t format;
+    int16_t x_coord;
+    int16_t y_coord;
 };
 
 struct ot_gpos_anchor_format2
 {
-    WORD format;
-    short x_coord;
-    short y_coord;
-    WORD anchor_point;
+    uint16_t format;
+    int16_t x_coord;
+    int16_t y_coord;
+    uint16_t anchor_point;
 };
 
 struct ot_gpos_anchor_format3
 {
-    WORD format;
-    short x_coord;
-    short y_coord;
-    WORD x_dev_offset;
-    WORD y_dev_offset;
+    uint16_t format;
+    int16_t x_coord;
+    int16_t y_coord;
+    uint16_t x_dev_offset;
+    uint16_t y_dev_offset;
 };
 
 struct ot_gpos_cursive_format1
 {
-    WORD format;
-    WORD coverage;
-    WORD count;
-    WORD anchors[1];
+    uint16_t format;
+    uint16_t coverage;
+    uint16_t count;
+    uint16_t anchors[1];
 };
 
 struct ot_gpos_mark_record
 {
-    WORD mark_class;
-    WORD mark_anchor;
+    uint16_t mark_class;
+    uint16_t mark_anchor;
 };
 
 struct ot_gpos_mark_array
 {
-    WORD count;
+    uint16_t count;
     struct ot_gpos_mark_record records[1];
 };
 
 struct ot_gpos_base_array
 {
-    WORD count;
-    WORD offsets[1];
+    uint16_t count;
+    uint16_t offsets[1];
 };
 
 struct ot_gpos_mark_to_base_format1
 {
-    WORD format;
-    WORD mark_coverage;
-    WORD base_coverage;
-    WORD mark_class_count;
-    WORD mark_array;
-    WORD base_array;
+    uint16_t format;
+    uint16_t mark_coverage;
+    uint16_t base_coverage;
+    uint16_t mark_class_count;
+    uint16_t mark_array;
+    uint16_t base_array;
 };
 
 struct ot_gpos_mark_to_lig_format1
 {
-    WORD format;
-    WORD mark_coverage;
-    WORD lig_coverage;
-    WORD mark_class_count;
-    WORD mark_array;
-    WORD lig_array;
+    uint16_t format;
+    uint16_t mark_coverage;
+    uint16_t lig_coverage;
+    uint16_t mark_class_count;
+    uint16_t mark_array;
+    uint16_t lig_array;
 };
 
 struct ot_gpos_mark_to_mark_format1
 {
-    WORD format;
-    WORD mark1_coverage;
-    WORD mark2_coverage;
-    WORD mark_class_count;
-    WORD mark1_array;
-    WORD mark2_array;
+    uint16_t format;
+    uint16_t mark1_coverage;
+    uint16_t mark2_coverage;
+    uint16_t mark_class_count;
+    uint16_t mark1_array;
+    uint16_t mark2_array;
 };
 
 struct kern_header
 {
-    WORD version;
-    WORD table_count;
+    uint16_t version;
+    uint16_t table_count;
 };
 
 struct kern_subtable_header
 {
-    WORD version;
-    WORD length;
-    WORD coverage;
+    uint16_t version;
+    uint16_t length;
+    uint16_t coverage;
 };
 
 #include "poppack.h"
@@ -1198,59 +1226,81 @@ static const UINT16 dwriteid_to_opentypeid[DWRITE_INFORMATIONAL_STRING_WEIGHT_ST
 /* CPAL table */
 struct cpal_header_0
 {
-    USHORT version;
-    USHORT num_palette_entries;
-    USHORT num_palettes;
-    USHORT num_color_records;
-    ULONG offset_first_color_record;
-    USHORT color_record_indices[1];
+    uint16_t version;
+    uint16_t num_palette_entries;
+    uint16_t num_palettes;
+    uint16_t num_color_records;
+    uint32_t offset_first_color_record;
+    uint16_t color_record_indices[1];
 };
 
 struct cpal_color_record
 {
-    BYTE blue;
-    BYTE green;
-    BYTE red;
-    BYTE alpha;
+    uint8_t blue;
+    uint8_t green;
+    uint8_t red;
+    uint8_t alpha;
 };
 
 /* COLR table */
 struct colr_header
 {
-    USHORT version;
-    USHORT num_baseglyph_records;
-    ULONG offset_baseglyph_records;
-    ULONG offset_layer_records;
-    USHORT num_layer_records;
+    uint16_t version;
+    uint16_t num_baseglyph_records;
+    uint32_t offset_baseglyph_records;
+    uint32_t offset_layer_records;
+    uint16_t num_layer_records;
 };
 
 struct colr_baseglyph_record
 {
-    USHORT glyph;
-    USHORT first_layer_index;
-    USHORT num_layers;
+    uint16_t glyph;
+    uint16_t first_layer_index;
+    uint16_t num_layers;
 };
 
 struct colr_layer_record
 {
-    USHORT glyph;
-    USHORT palette_index;
+    uint16_t glyph;
+    uint16_t palette_index;
 };
 
 struct meta_data_map
 {
-    DWORD tag;
-    DWORD offset;
-    DWORD length;
+    uint32_t tag;
+    uint32_t offset;
+    uint32_t length;
 };
 
 struct meta_header
 {
-    DWORD version;
-    DWORD flags;
-    DWORD reserved;
-    DWORD data_maps_count;
+    uint32_t version;
+    uint32_t flags;
+    uint32_t reserved;
+    uint32_t data_maps_count;
     struct meta_data_map maps[1];
+};
+
+struct fvar_header
+{
+    uint16_t major_version;
+    uint16_t minor_version;
+    uint16_t axes_array_offset;
+    uint16_t reserved;
+    uint16_t axis_count;
+    uint16_t axis_size;
+    uint16_t instance_count;
+    uint16_t instance_size;
+};
+
+struct var_axis_record
+{
+    uint32_t tag;
+    int32_t min_value;
+    int32_t default_value;
+    int32_t max_value;
+    uint16_t flags;
+    uint16_t nameid;
 };
 
 static const void *table_read_ensure(const struct dwrite_fonttable *table, unsigned int offset, unsigned int size)
@@ -1273,6 +1323,11 @@ static DWORD table_read_be_dword(const struct dwrite_fonttable *table, unsigned 
     return ptr ? GET_BE_DWORD(*ptr) : 0;
 }
 
+static float table_read_be_fixed(const struct dwrite_fonttable *table, unsigned int offset)
+{
+    return (int32_t)table_read_be_dword(table, offset) / 65536.0;
+}
+
 static DWORD table_read_dword(const struct dwrite_fonttable *table, unsigned int offset)
 {
     const DWORD *ptr = table_read_ensure(table, offset, sizeof(*ptr));
@@ -1293,8 +1348,7 @@ typedef HRESULT (*dwrite_fontfile_analyzer)(IDWriteFontFileStream *stream, UINT3
 static HRESULT opentype_ttc_analyzer(IDWriteFontFileStream *stream, UINT32 *font_count, DWRITE_FONT_FILE_TYPE *file_type,
     DWRITE_FONT_FACE_TYPE *face_type)
 {
-    static const DWORD ttctag = MS_TTCF_TAG;
-    const TTC_Header_V1 *header;
+    const struct ttc_header *header;
     void *context;
     HRESULT hr;
 
@@ -1302,8 +1356,9 @@ static HRESULT opentype_ttc_analyzer(IDWriteFontFileStream *stream, UINT32 *font
     if (FAILED(hr))
         return hr;
 
-    if (!memcmp(header->TTCTag, &ttctag, sizeof(ttctag))) {
-        *font_count = GET_BE_DWORD(header->numFonts);
+    if (header->tag == MS_TTCF_TAG)
+    {
+        *font_count = GET_BE_DWORD(header->num_fonts);
         *file_type = DWRITE_FONT_FILE_TYPE_OPENTYPE_COLLECTION;
         *face_type = DWRITE_FONT_FACE_TYPE_OPENTYPE_COLLECTION;
     }
@@ -1474,8 +1529,8 @@ HRESULT opentype_try_get_font_table(const struct file_stream_desc *stream_desc, 
     void **table_context, UINT32 *table_size, BOOL *found)
 {
     void *table_directory_context, *sfnt_context;
-    TT_TableRecord *table_record = NULL;
-    TTC_SFNT_V1 *font_header = NULL;
+    const struct ot_table_record *table_record = NULL;
+    const struct ot_table_dir *table_dir = NULL;
     UINT32 table_offset = 0;
     UINT16 table_count;
     HRESULT hr;
@@ -1486,38 +1541,48 @@ HRESULT opentype_try_get_font_table(const struct file_stream_desc *stream_desc, 
     *table_data = NULL;
     *table_context = NULL;
 
-    if (stream_desc->face_type == DWRITE_FONT_FACE_TYPE_OPENTYPE_COLLECTION) {
-        const TTC_Header_V1 *ttc_header;
+    if (stream_desc->face_type == DWRITE_FONT_FACE_TYPE_OPENTYPE_COLLECTION)
+    {
+        const struct ttc_header *ttc_header;
         void * ttc_context;
-        hr = IDWriteFontFileStream_ReadFileFragment(stream_desc->stream, (const void**)&ttc_header, 0, sizeof(*ttc_header), &ttc_context);
-        if (SUCCEEDED(hr)) {
-            if (stream_desc->face_index >= GET_BE_DWORD(ttc_header->numFonts))
+
+        hr = IDWriteFontFileStream_ReadFileFragment(stream_desc->stream, (const void **)&ttc_header, 0,
+                sizeof(*ttc_header), &ttc_context);
+        if (SUCCEEDED(hr))
+        {
+            if (stream_desc->face_index >= GET_BE_DWORD(ttc_header->num_fonts))
                 hr = E_INVALIDARG;
-            else {
-                table_offset = GET_BE_DWORD(ttc_header->OffsetTable[stream_desc->face_index]);
-                hr = IDWriteFontFileStream_ReadFileFragment(stream_desc->stream, (const void**)&font_header, table_offset, sizeof(*font_header), &sfnt_context);
+            else
+            {
+                table_offset = GET_BE_DWORD(ttc_header->offsets[stream_desc->face_index]);
+                hr = IDWriteFontFileStream_ReadFileFragment(stream_desc->stream, (const void **)&table_dir, table_offset,
+                        sizeof(*table_dir), &sfnt_context);
             }
             IDWriteFontFileStream_ReleaseFileFragment(stream_desc->stream, ttc_context);
         }
     }
     else
-        hr = IDWriteFontFileStream_ReadFileFragment(stream_desc->stream, (const void**)&font_header, 0, sizeof(*font_header), &sfnt_context);
+        hr = IDWriteFontFileStream_ReadFileFragment(stream_desc->stream, (const void **)&table_dir, 0,
+                sizeof(*table_dir), &sfnt_context);
 
     if (FAILED(hr))
         return hr;
 
-    table_count = GET_BE_WORD(font_header->numTables);
-    table_offset += sizeof(*font_header);
+    table_count = GET_BE_WORD(table_dir->numTables);
+    table_offset += sizeof(*table_dir);
 
     IDWriteFontFileStream_ReleaseFileFragment(stream_desc->stream, sfnt_context);
 
     hr = IDWriteFontFileStream_ReadFileFragment(stream_desc->stream, (const void **)&table_record, table_offset,
             table_count * sizeof(*table_record), &table_directory_context);
-    if (hr == S_OK) {
+    if (hr == S_OK)
+    {
         UINT16 i;
 
-        for (i = 0; i < table_count; i++) {
-            if (table_record->tag == tag) {
+        for (i = 0; i < table_count; ++i)
+        {
+            if (table_record->tag == tag)
+            {
                 UINT32 offset = GET_BE_DWORD(table_record->offset);
                 UINT32 length = GET_BE_DWORD(table_record->length);
 
@@ -1590,7 +1655,7 @@ static int __cdecl cmap_format4_compare_range(const void *a, const void *b)
 
 static UINT16 opentype_cmap_format4_get_glyph(const struct dwrite_cmap *cmap, unsigned int ch)
 {
-    struct cmap_format4_compare_context key = { cmap, ch };
+    struct cmap_format4_compare_context key = { .cmap = cmap, .ch = ch };
     unsigned int glyph, idx, range_offset;
     const UINT16 *end_found;
 
@@ -1777,7 +1842,7 @@ void dwrite_cmap_init(struct dwrite_cmap *cmap, IDWriteFontFile *file, unsigned 
     /* For fontface stream is already available and preset. */
     if (!cmap->stream && FAILED(hr = get_filestream_from_file(file, &cmap->stream)))
     {
-        WARN("Failed to get file stream, hr %#x.\n", hr);
+        WARN("Failed to get file stream, hr %#lx.\n", hr);
         goto failed;
     }
 
@@ -2022,22 +2087,20 @@ void opentype_get_font_metrics(struct file_stream_desc *stream_desc, DWRITE_FONT
         IDWriteFontFileStream_ReleaseFileFragment(stream_desc->stream, hhea.context);
 }
 
-void opentype_get_font_properties(struct file_stream_desc *stream_desc, struct dwrite_font_props *props)
+void opentype_get_font_properties(const struct file_stream_desc *stream_desc, struct dwrite_font_props *props)
 {
-    struct dwrite_fonttable os2, head, colr, cpal;
+    struct dwrite_fonttable os2, head, post, colr, cpal;
     BOOL is_symbol, is_monospaced;
 
     opentype_get_font_table(stream_desc, MS_OS2_TAG, &os2);
     opentype_get_font_table(stream_desc, MS_HEAD_TAG, &head);
 
-    /* default stretch, weight and style to normal */
+    memset(props, 0, sizeof(*props));
+
+    /* Default stretch, weight and style to normal */
     props->stretch = DWRITE_FONT_STRETCH_NORMAL;
     props->weight = DWRITE_FONT_WEIGHT_NORMAL;
     props->style = DWRITE_FONT_STYLE_NORMAL;
-    memset(&props->panose, 0, sizeof(props->panose));
-    memset(&props->fontsig, 0, sizeof(props->fontsig));
-    memset(&props->lf, 0, sizeof(props->lf));
-    props->flags = 0;
 
     /* DWRITE_FONT_STRETCH enumeration values directly match font data values */
     if (os2.data)
@@ -2132,20 +2195,18 @@ void opentype_get_font_properties(struct file_stream_desc *stream_desc, struct d
     if (is_symbol)
         props->flags |= FONT_IS_SYMBOL;
 
-    /* FONT_IS_MONOSPACED */
-    if (!(is_monospaced = props->panose.text.proportion == DWRITE_PANOSE_PROPORTION_MONOSPACED))
+    /* FONT_IS_MONOSPACED, slant angle */
+    opentype_get_font_table(stream_desc, MS_POST_TAG, &post);
+    is_monospaced = props->panose.text.proportion == DWRITE_PANOSE_PROPORTION_MONOSPACED;
+    if (post.data)
     {
-        struct dwrite_fonttable post;
-
-        opentype_get_font_table(stream_desc, MS_POST_TAG, &post);
-
-        if (post.data)
-        {
+        if (!is_monospaced)
             is_monospaced = !!table_read_dword(&post, FIELD_OFFSET(struct tt_post, fixed_pitch));
-
-            IDWriteFontFileStream_ReleaseFileFragment(stream_desc->stream, post.context);
-        }
+        props->slant_angle = table_read_be_fixed(&post, FIELD_OFFSET(struct tt_post, italicAngle));
     }
+    if (post.context)
+        IDWriteFontFileStream_ReleaseFileFragment(stream_desc->stream, post.context);
+
     if (is_monospaced)
         props->flags |= FONT_IS_MONOSPACED;
 
@@ -2274,7 +2335,7 @@ static void get_name_record_locale(enum OPENTYPE_PLATFORM_ID platform, USHORT la
     case OPENTYPE_PLATFORM_WIN:
         if (!LCIDToLocaleName(MAKELCID(lang_id, SORT_DEFAULT), locale, locale_len, 0))
         {
-            FIXME("failed to get locale name for lcid=0x%08x\n", MAKELCID(lang_id, SORT_DEFAULT));
+            FIXME("failed to get locale name for lcid=0x%08lx\n", MAKELCID(lang_id, SORT_DEFAULT));
             wcscpy(locale, L"en-US");
         }
         break;
@@ -2332,7 +2393,7 @@ static BOOL opentype_decode_namerecord(const struct dwrite_fonttable *table, uns
         if (codepage)
         {
             DWORD len = MultiByteToWideChar(codepage, 0, name, length, NULL, 0);
-            name_string = heap_alloc(sizeof(WCHAR) * (len+1));
+            name_string = malloc(sizeof(WCHAR) * (len+1));
             MultiByteToWideChar(codepage, 0, name, length, name_string, len);
             name_string[len] = 0;
         }
@@ -2346,7 +2407,7 @@ static BOOL opentype_decode_namerecord(const struct dwrite_fonttable *table, uns
 
         TRACE("string %s for locale %s found\n", debugstr_w(name_string), debugstr_w(locale));
         add_localizedstring(strings, locale, name_string);
-        heap_free(name_string);
+        free(name_string);
 
         ret = !wcscmp(locale, L"en-US");
     }
@@ -2488,7 +2549,7 @@ static HRESULT opentype_get_font_strings_from_meta(const struct file_stream_desc
         version = table_read_be_dword(&meta, 0);
         if (version != 1)
         {
-            WARN("Unexpected meta table version %d.\n", version);
+            WARN("Unexpected meta table version %ld.\n", version);
             goto end;
         }
 
@@ -2507,9 +2568,9 @@ static HRESULT opentype_get_font_strings_from_meta(const struct file_stream_desc
 
                 if ((data = table_read_ensure(&meta, GET_BE_DWORD(maps[i].offset), length)))
                 {
-                    WCHAR *ptrW = heap_alloc((length + 1) * sizeof(WCHAR)), *ctx, *token;
+                    WCHAR *ptrW, *ctx, *token;
 
-                    if (!ptrW)
+                    if (!(ptrW = malloc((length + 1) * sizeof(WCHAR))))
                     {
                         hr = E_OUTOFMEMORY;
                         goto end;
@@ -2528,7 +2589,7 @@ static HRESULT opentype_get_font_strings_from_meta(const struct file_stream_desc
                         token = meta_get_lng_name(NULL, &ctx);
                     }
 
-                    heap_free(ptrW);
+                    free(ptrW);
                 }
             }
         }
@@ -2565,12 +2626,26 @@ HRESULT opentype_get_font_info_strings(const struct file_stream_desc *stream_des
     return S_OK;
 }
 
-/* FamilyName locating order is WWS Family Name -> Preferred Family Name -> Family Name. If font claims to
-   have 'Preferred Family Name' in WWS format, then WWS name is not used. */
-HRESULT opentype_get_font_familyname(struct file_stream_desc *stream_desc, IDWriteLocalizedStrings **names)
+HRESULT opentype_get_font_familyname(const struct file_stream_desc *stream_desc, DWRITE_FONT_FAMILY_MODEL family_model,
+        IDWriteLocalizedStrings **names)
 {
+    static const unsigned int wws_candidates[] =
+    {
+        OPENTYPE_STRING_WWS_FAMILY_NAME,
+        OPENTYPE_STRING_TYPOGRAPHIC_FAMILY_NAME,
+        OPENTYPE_STRING_FAMILY_NAME,
+        ~0u,
+    };
+    static const unsigned int typographic_candidates[] =
+    {
+        OPENTYPE_STRING_TYPOGRAPHIC_FAMILY_NAME,
+        OPENTYPE_STRING_WWS_FAMILY_NAME,
+        OPENTYPE_STRING_FAMILY_NAME,
+        ~0u,
+    };
     struct dwrite_fonttable os2, name;
-    UINT16 fsselection;
+    const unsigned int *id;
+    BOOL try_wws_name;
     HRESULT hr;
 
     opentype_get_font_table(stream_desc, MS_OS2_TAG, &os2);
@@ -2578,20 +2653,32 @@ HRESULT opentype_get_font_familyname(struct file_stream_desc *stream_desc, IDWri
 
     *names = NULL;
 
-    /* If Preferred Family doesn't conform to WWS model try WWS name. */
-    fsselection = os2.data ? table_read_be_word(&os2, FIELD_OFFSET(struct tt_os2, fsSelection)) : 0;
-    if (os2.data && !(fsselection & OS2_FSSELECTION_WWS))
-        hr = opentype_get_font_strings_from_id(&name, OPENTYPE_STRING_WWS_FAMILY_NAME, names);
+    if (family_model == DWRITE_FONT_FAMILY_MODEL_TYPOGRAPHIC)
+    {
+        id = typographic_candidates;
+    }
     else
-        hr = E_FAIL;
+    {
+        /* FamilyName locating order is WWS Family Name -> Preferred Family Name -> Family Name. If font claims to
+           have 'Preferred Family Name' in WWS format, then WWS name is not used. */
 
-    if (FAILED(hr))
-        hr = opentype_get_font_strings_from_id(&name, OPENTYPE_STRING_TYPOGRAPHIC_FAMILY_NAME, names);
-    if (FAILED(hr))
-        hr = opentype_get_font_strings_from_id(&name, OPENTYPE_STRING_FAMILY_NAME, names);
+        opentype_get_font_table(stream_desc, MS_OS2_TAG, &os2);
+        /* If Preferred Family doesn't conform to WWS model try WWS name. */
+        try_wws_name = os2.data && !(table_read_be_word(&os2, FIELD_OFFSET(struct tt_os2, fsSelection)) & OS2_FSSELECTION_WWS);
+        if (os2.context)
+            IDWriteFontFileStream_ReleaseFileFragment(stream_desc->stream, os2.context);
 
-    if (os2.context)
-        IDWriteFontFileStream_ReleaseFileFragment(stream_desc->stream, os2.context);
+        id = wws_candidates;
+        if (!try_wws_name) id++;
+    }
+
+    while (*id != ~0u)
+    {
+        if (SUCCEEDED(hr = opentype_get_font_strings_from_id(&name, *id, names)))
+            break;
+        id++;
+    }
+
     if (name.context)
         IDWriteFontFileStream_ReleaseFileFragment(stream_desc->stream, name.context);
 
@@ -2644,13 +2731,13 @@ HRESULT opentype_get_font_facename(struct file_stream_desc *stream_desc, WCHAR *
             WCHAR *nameW;
 
             IDWriteLocalizedStrings_GetStringLength(lfnames, index, &length);
-            nameW = heap_alloc((length + 1) * sizeof(WCHAR));
+            nameW = malloc((length + 1) * sizeof(WCHAR));
             if (nameW)
             {
                 *nameW = 0;
                 IDWriteLocalizedStrings_GetString(lfnames, index, nameW, length + 1);
                 lstrcpynW(lfname, nameW, LF_FACESIZE);
-                heap_free(nameW);
+                free(nameW);
             }
         }
 
@@ -3053,7 +3140,7 @@ static unsigned int opentype_get_sbix_formats(IDWriteFontFace5 *fontface)
                         ret |= DWRITE_GLYPH_IMAGE_FORMATS_TIFF;
                         break;
                     default:
-                        FIXME("unexpected bitmap format %s\n", debugstr_tag(GET_BE_DWORD(glyph_data->graphic_type)));
+                        FIXME("unexpected bitmap format %s\n", debugstr_fourcc(GET_BE_DWORD(glyph_data->graphic_type)));
                 }
             }
         }
@@ -3189,7 +3276,7 @@ void opentype_layout_scriptshaping_cache_init(struct scriptshaping_cache *cache)
     }
 }
 
-unsigned int opentype_layout_find_script(const struct scriptshaping_cache *cache, DWORD kind, DWORD script,
+unsigned int opentype_layout_find_script(const struct scriptshaping_cache *cache, unsigned int kind, DWORD script,
         unsigned int *script_index)
 {
     const struct ot_gsubgpos_table *table = kind == MS_GSUB_TAG ? &cache->gsub : &cache->gpos;
@@ -3219,7 +3306,7 @@ unsigned int opentype_layout_find_script(const struct scriptshaping_cache *cache
     return 0;
 }
 
-unsigned int opentype_layout_find_language(const struct scriptshaping_cache *cache, DWORD kind, DWORD language,
+unsigned int opentype_layout_find_language(const struct scriptshaping_cache *cache, unsigned int kind, DWORD language,
         unsigned int script_index, unsigned int *language_index)
 {
     const struct ot_gsubgpos_table *table = kind == MS_GSUB_TAG ? &cache->gsub : &cache->gpos;
@@ -3435,7 +3522,7 @@ static unsigned int opentype_layout_is_glyph_covered(const struct dwrite_fonttab
 
 static inline unsigned int dwrite_popcount(unsigned int x)
 {
-#if defined(__GNUC__) && (__GNUC__ >= 4)
+#if defined(__MINGW32__)
     return __builtin_popcount(x);
 #else
     x -= x >> 1 & 0x55555555;
@@ -3538,10 +3625,10 @@ struct lookup
 {
     unsigned short index;
     unsigned short type;
-    unsigned short flags;
     unsigned short subtable_count;
 
     unsigned int mask;
+    unsigned int flags;
     unsigned int offset;
     unsigned int auto_zwnj : 1;
     unsigned int auto_zwj : 1;
@@ -3681,7 +3768,7 @@ static BOOL opentype_match_coverage_func(UINT16 glyph, UINT16 glyph_data, const 
 static BOOL opentype_layout_mark_set_covers(const struct scriptshaping_cache *cache, unsigned int set_index,
         UINT16 glyph)
 {
-    unsigned int format, offset = cache->gdef.markglyphsetdef, coverage_offset, set_count;
+    unsigned int format, offset = cache->gdef.markglyphsetdef, coverage_offset, count;
 
     if (!offset)
         return FALSE;
@@ -3690,11 +3777,12 @@ static BOOL opentype_layout_mark_set_covers(const struct scriptshaping_cache *ca
 
     if (format == 1)
     {
-        set_count = table_read_be_word(&cache->gdef.table, offset + 2);
-        if (!set_count || set_index >= set_count)
+        count = table_read_be_word(&cache->gdef.table, offset + FIELD_OFFSET(struct ot_gdef_markglyphsets, count));
+        if (!count || set_index >= count)
             return FALSE;
 
-        coverage_offset = table_read_be_dword(&cache->gdef.table, offset + 2 + set_index * sizeof(coverage_offset));
+        coverage_offset = table_read_be_dword(&cache->gdef.table, offset +
+                FIELD_OFFSET(struct ot_gdef_markglyphsets, offsets[set_index]));
         return opentype_layout_is_glyph_covered(&cache->gdef.table, offset + coverage_offset, glyph) != GLYPH_NOT_COVERED;
     }
     else
@@ -3936,7 +4024,7 @@ static BOOL opentype_layout_apply_gpos_pair_adjustment(struct scriptshaping_cont
                 value_len2 * sizeof(WORD);
 
         pairset_offset = subtable_offset + GET_BE_WORD(format1->pairsets[coverage_index]);
-        pairset = table_read_ensure(table, subtable_offset + pairset_offset, pairvalue_len * pairvalue_count);
+        pairset = table_read_ensure(table, pairset_offset, pairvalue_len * pairvalue_count);
         if (!pairset)
             return FALSE;
 
@@ -4231,7 +4319,7 @@ static BOOL opentype_layout_apply_mark_array(struct scriptshaping_context *conte
     if (context->is_rtl)
         context->offsets[context->cur].advanceOffset = mark_x - base_x;
     else
-        context->offsets[context->cur].advanceOffset = -context->advances[glyph_pos] + base_x - mark_x;
+        context->offsets[context->cur].advanceOffset = base_x - mark_x;
     context->offsets[context->cur].ascenderOffset = base_y - mark_y;
     opentype_set_glyph_attach_type(context, context->cur, GLYPH_ATTACH_MARK);
     context->glyph_infos[context->cur].attach_chain = (int)glyph_pos - (int)context->cur;
@@ -4461,9 +4549,9 @@ static int __cdecl lookups_sorting_compare(const void *a, const void *b)
 static BOOL opentype_layout_init_lookup(const struct ot_gsubgpos_table *table, unsigned short lookup_index,
         const struct shaping_feature *feature, struct lookup *lookup)
 {
-    unsigned short subtable_count, lookup_type, flags, mark_filtering_set;
+    unsigned short subtable_count, lookup_type, mark_filtering_set;
     const struct ot_lookup_table *lookup_table;
-    unsigned int offset;
+    unsigned int offset, flags;
 
     if (!(offset = table_read_be_word(&table->table, table->lookup_list +
             FIELD_OFFSET(struct ot_lookup_list, lookup[lookup_index]))))
@@ -4607,8 +4695,8 @@ static void opentype_layout_collect_lookups(struct scriptshaping_context *contex
     next_bit = global_bit_shift + 1;
     for (i = 0; i < features->count; ++i)
     {
-        unsigned int bits_needed;
         BOOL found = FALSE;
+        DWORD bits_needed;
 
         feature = &features->features[i];
 
@@ -4880,7 +4968,7 @@ void opentype_layout_apply_gpos_features(struct scriptshaping_context *context, 
         }
     }
 
-    heap_free(lookups.lookups);
+    free(lookups.lookups);
 
     if (context->has_gpos_attachment)
     {
@@ -4955,11 +5043,11 @@ static BOOL opentype_layout_gsub_ensure_buffer(struct scriptshaping_context *con
 
     new_capacity = context->u.subst.capacity * 2;
 
-    if ((glyphs = heap_realloc(context->u.subst.glyphs, new_capacity * sizeof(*glyphs))))
+    if ((glyphs = realloc(context->u.subst.glyphs, new_capacity * sizeof(*glyphs))))
         context->u.subst.glyphs = glyphs;
-    if ((glyph_props = heap_realloc(context->u.subst.glyph_props, new_capacity * sizeof(*glyph_props))))
+    if ((glyph_props = realloc(context->u.subst.glyph_props, new_capacity * sizeof(*glyph_props))))
         context->u.subst.glyph_props = glyph_props;
-    if ((glyph_infos = heap_realloc(context->glyph_infos, new_capacity * sizeof(*glyph_infos))))
+    if ((glyph_infos = realloc(context->glyph_infos, new_capacity * sizeof(*glyph_infos))))
         context->glyph_infos = glyph_infos;
 
     if ((ret = (glyphs && glyph_props && glyph_infos)))
@@ -5076,8 +5164,9 @@ static BOOL opentype_layout_apply_gsub_alt_substitution(struct scriptshaping_con
 
     if (format == 1)
     {
-        //const struct ot_gsub_altsubst_format1 *format1 = table_read_ensure(table, subtable_offset, sizeof(*format1));
-        unsigned int shift, alt_index;
+        const struct ot_gsub_altsubst_format1 *format1 = table_read_ensure(table, subtable_offset, sizeof(*format1));
+        DWORD shift;
+        unsigned int alt_index;
         UINT16 set_offset;
 
         coverage = table_read_be_word(table, subtable_offset + FIELD_OFFSET(struct ot_gsub_altsubst_format1, coverage));
@@ -5111,7 +5200,7 @@ static BOOL opentype_layout_apply_gsub_alt_substitution(struct scriptshaping_con
 static BOOL opentype_layout_context_match_input(const struct match_context *mc, unsigned int count, const UINT16 *input,
         unsigned int *end_offset, unsigned int *match_positions)
 {
-    struct match_data match_data = { mc, mc->input_offset };
+    struct match_data match_data = { .mc = mc, .subtable_offset = mc->input_offset };
     struct scriptshaping_context *context = mc->context;
     struct glyph_iterator iter;
     unsigned int i;
@@ -5185,7 +5274,7 @@ static void opentype_layout_delete_glyph(struct scriptshaping_context *context, 
 static BOOL opentype_layout_apply_ligature(struct scriptshaping_context *context, unsigned int offset,
         const struct lookup *lookup)
 {
-    struct match_context mc = { context, 0, 0, 0, opentype_match_glyph_func, lookup };
+    struct match_context mc = { .context = context, .lookup = lookup, .match_func = opentype_match_glyph_func };
     const struct dwrite_fonttable *gsub = &context->table->table;
     unsigned int match_positions[GLYPH_CONTEXT_MAX_LENGTH];
     unsigned int i, j, comp_count, match_length = 0;
@@ -5254,7 +5343,7 @@ static BOOL opentype_layout_apply_gsub_lig_substitution(struct scriptshaping_con
 
     if (format == 1)
     {
-        //const struct ot_gsub_ligsubst_format1 *format1 = table_read_ensure(table, subtable_offset, sizeof(*format1));
+        const struct ot_gsub_ligsubst_format1 *format1 = table_read_ensure(table, subtable_offset, sizeof(*format1));
         unsigned int i;
         const UINT16 *offsets;
         UINT16 lig_count;
@@ -5287,7 +5376,7 @@ static BOOL opentype_layout_apply_gsub_lig_substitution(struct scriptshaping_con
 static BOOL opentype_layout_context_match_backtrack(const struct match_context *mc, unsigned int count,
         const UINT16 *backtrack, unsigned int *match_start)
 {
-    struct match_data match_data = { mc, mc->backtrack_offset };
+    struct match_data match_data = { .mc = mc, .subtable_offset = mc->backtrack_offset };
     struct scriptshaping_context *context = mc->context;
     struct glyph_iterator iter;
     unsigned int i;
@@ -5313,7 +5402,7 @@ static BOOL opentype_layout_context_match_backtrack(const struct match_context *
 static BOOL opentype_layout_context_match_lookahead(const struct match_context *mc, unsigned int count,
         const UINT16 *lookahead, unsigned int offset, unsigned int *end_index)
 {
-    struct match_data match_data = { mc, mc->lookahead_offset };
+    struct match_data match_data = { .mc = mc, .subtable_offset = mc->lookahead_offset };
     struct scriptshaping_context *context = mc->context;
     struct glyph_iterator iter;
     unsigned int i;
@@ -5518,7 +5607,7 @@ static BOOL opentype_layout_apply_rule_set(const struct match_context *mc, unsig
 static BOOL opentype_layout_apply_context(struct scriptshaping_context *context, const struct lookup *lookup,
         unsigned int subtable_offset)
 {
-	struct match_context mc = { context, 0, 0, 0, NULL, lookup };
+    struct match_context mc = { .context = context, .lookup = lookup };
     const struct dwrite_fonttable *table = &context->table->table;
     unsigned int coverage_index = GLYPH_NOT_COVERED, count, offset;
     UINT16 glyph, format, coverage;
@@ -5619,7 +5708,7 @@ static BOOL opentype_layout_apply_context(struct scriptshaping_context *context,
 static BOOL opentype_layout_apply_chain_context(struct scriptshaping_context *context, const struct lookup *lookup,
         unsigned int subtable_offset)
 {
-	struct match_context mc = { context, 0, 0, 0, NULL, lookup };
+    struct match_context mc = { .context = context, .lookup = lookup };
     const struct dwrite_fonttable *table = &context->table->table;
     unsigned int coverage_index = GLYPH_NOT_COVERED, count, offset;
     UINT16 glyph, format, coverage;
@@ -5751,7 +5840,7 @@ static BOOL opentype_layout_apply_gsub_reverse_chain_context_substitution(struct
 
     if (format == 1)
     {
-        struct match_context mc = { context, 0, 0, 0, NULL, lookup };
+        struct match_context mc = { .context = context, .lookup = lookup };
         unsigned int start_index = 0, end_index = 0, backtrack_count, lookahead_count;
         unsigned int coverage, coverage_index;
         const UINT16 *backtrack, *lookahead;
@@ -5847,11 +5936,11 @@ static BOOL opentype_layout_apply_gsub_lookup(struct scriptshaping_context *cont
 
 static unsigned int unicode_get_mirrored_char(unsigned int codepoint)
 {
-    extern const WCHAR wine_mirror_map[] DECLSPEC_HIDDEN;
+    extern const WCHAR wine_mirror_map[];
     WCHAR mirror;
     /* TODO: check if mirroring for higher planes makes sense at all */
     if (codepoint > 0xffff) return codepoint;
-    mirror = get_table_entry(wine_mirror_map, codepoint);
+    mirror = get_table_entry_16(wine_mirror_map, codepoint);
     return mirror ? mirror : codepoint;
 }
 
@@ -6110,7 +6199,7 @@ void opentype_layout_apply_gsub_features(struct scriptshaping_context *context, 
     for (j = context->glyph_infos[start_idx].start_text_idx; j < context->length; ++j)
         context->u.buffer.clustermap[j] = start_idx;
 
-    heap_free(lookups.lookups);
+    free(lookups.lookups);
 }
 
 static BOOL opentype_layout_contextual_lookup_is_glyph_covered(struct scriptshaping_context *context, UINT16 glyph,
@@ -6339,7 +6428,7 @@ BOOL opentype_layout_check_feature(struct scriptshaping_context *context, unsign
             break;
     }
 
-    heap_free(lookups.lookups);
+    free(lookups.lookups);
 
     return ret;
 }
@@ -6396,7 +6485,7 @@ BOOL opentype_has_vertical_variants(struct dwrite_fontface *fontface)
         }
     }
 
-    heap_free(lookups.lookups);
+    free(lookups.lookups);
 
     if (count)
         fontface->flags |= FONTFACE_VERTICAL_VARIANTS;
@@ -6422,10 +6511,10 @@ HRESULT opentype_get_vertical_glyph_variants(struct dwrite_fontface *fontface, u
 
     context.cache = fontface_get_shaping_cache(fontface);
     context.u.subst.glyphs = glyphs;
-    context.u.subst.glyph_props = heap_calloc(glyph_count, sizeof(*context.u.subst.glyph_props));
+    context.u.subst.glyph_props = calloc(glyph_count, sizeof(*context.u.subst.glyph_props));
     context.u.subst.max_glyph_count = glyph_count;
     context.u.subst.capacity = glyph_count;
-    context.glyph_infos = heap_alloc_zero(sizeof(*context.glyph_infos) * glyph_count);
+    context.glyph_infos = calloc(glyph_count, sizeof(*context.glyph_infos));
     context.table = &context.cache->gsub;
 
     vert_feature.tag = DWRITE_MAKE_OPENTYPE_TAG('v','e','r','t');
@@ -6456,9 +6545,9 @@ HRESULT opentype_get_vertical_glyph_variants(struct dwrite_fontface *fontface, u
         }
     }
 
-    heap_free(context.u.subst.glyph_props);
-    heap_free(context.glyph_infos);
-    heap_free(lookups.lookups);
+    free(context.u.subst.glyph_props);
+    free(context.glyph_infos);
+    free(lookups.lookups);
 
     return S_OK;
 }
@@ -6590,4 +6679,97 @@ HRESULT opentype_get_kerning_pairs(struct dwrite_fontface *fontface, unsigned in
     values[count - 1] = 0;
 
     return S_OK;
+}
+
+static void opentype_font_var_add_static_axis(struct dwrite_var_axis **axis, unsigned int *axis_count,
+        unsigned int tag, float value)
+{
+    struct dwrite_var_axis *entry = &(*axis)[(*axis_count)++];
+    entry->tag = tag;
+    entry->min_value = entry->max_value = entry->default_value = value;
+    entry->attributes = 0;
+}
+
+HRESULT opentype_get_font_var_axis(const struct file_stream_desc *stream_desc, struct dwrite_var_axis **axis,
+        unsigned int *axis_count)
+{
+    static const float width_axis_values[] =
+    {
+        0.0f, /* DWRITE_FONT_STRETCH_UNDEFINED */
+        50.0f, /* DWRITE_FONT_STRETCH_ULTRA_CONDENSED */
+        62.5f, /* DWRITE_FONT_STRETCH_EXTRA_CONDENSED */
+        75.0f, /* DWRITE_FONT_STRETCH_CONDENSED */
+        87.5f, /* DWRITE_FONT_STRETCH_SEMI_CONDENSED */
+        100.0f, /* DWRITE_FONT_STRETCH_NORMAL */
+        112.5f, /* DWRITE_FONT_STRETCH_SEMI_EXPANDED */
+        125.0f, /* DWRITE_FONT_STRETCH_EXPANDED */
+        150.0f, /* DWRITE_FONT_STRETCH_EXTRA_EXPANDED */
+        200.0f, /* DWRITE_FONT_STRETCH_ULTRA_EXPANDED */
+    };
+    BOOL has_wght = FALSE, has_wdth = FALSE, has_slnt = FALSE, has_ital = FALSE;
+    const struct var_axis_record *records;
+    const struct fvar_header *header;
+    unsigned int i, count, tag, size;
+    struct dwrite_font_props props;
+    struct dwrite_fonttable fvar;
+    HRESULT hr = S_OK;
+
+    *axis = NULL;
+    *axis_count = 0;
+
+    opentype_get_font_table(stream_desc, MS_FVAR_TAG, &fvar);
+
+    if (!(header = table_read_ensure(&fvar, 0, sizeof(*header)))) goto done;
+    if (!(GET_BE_WORD(header->major_version) == 1 && GET_BE_WORD(header->minor_version) == 0))
+    {
+        WARN("Unexpected fvar version.\n");
+        goto done;
+    }
+
+    count = GET_BE_WORD(header->axis_count);
+    size = GET_BE_WORD(header->axis_size);
+
+    if (!count || size != sizeof(*records)) goto done;
+    if (!(records = table_read_ensure(&fvar, GET_BE_WORD(header->axes_array_offset), size * count))) goto done;
+
+    if (!(*axis = calloc(count + 4, sizeof(**axis))))
+    {
+        hr = E_OUTOFMEMORY;
+        goto done;
+    }
+
+    for (i = 0; i < count; ++i)
+    {
+        (*axis)[i].tag = tag = records[i].tag;
+        (*axis)[i].default_value = GET_BE_FIXED(records[i].default_value);
+        (*axis)[i].min_value = GET_BE_FIXED(records[i].min_value);
+        (*axis)[i].max_value = GET_BE_FIXED(records[i].max_value);
+        if (GET_BE_WORD(records[i].flags & 0x1))
+            (*axis)[i].attributes |= DWRITE_FONT_AXIS_ATTRIBUTES_HIDDEN;
+        /* FIXME: set DWRITE_FONT_AXIS_ATTRIBUTES_VARIABLE */
+
+        if (tag == DWRITE_FONT_AXIS_TAG_WEIGHT) has_wght = TRUE;
+        if (tag == DWRITE_FONT_AXIS_TAG_WIDTH) has_wdth = TRUE;
+        if (tag == DWRITE_FONT_AXIS_TAG_SLANT) has_slnt = TRUE;
+        if (tag == DWRITE_FONT_AXIS_TAG_ITALIC) has_ital = TRUE;
+    }
+
+    if (!has_wght || !has_wdth || !has_slnt || !has_ital)
+    {
+        opentype_get_font_properties(stream_desc, &props);
+        if (!has_wght) opentype_font_var_add_static_axis(axis, &count, DWRITE_FONT_AXIS_TAG_WEIGHT, props.weight);
+        if (!has_ital) opentype_font_var_add_static_axis(axis, &count, DWRITE_FONT_AXIS_TAG_ITALIC,
+                props.style == DWRITE_FONT_STYLE_ITALIC ? 1.0f : 0.0f);
+        if (!has_wdth) opentype_font_var_add_static_axis(axis, &count, DWRITE_FONT_AXIS_TAG_WIDTH,
+                width_axis_values[props.stretch]);
+        if (!has_slnt) opentype_font_var_add_static_axis(axis, &count, DWRITE_FONT_AXIS_TAG_SLANT, props.slant_angle);
+    }
+
+    *axis_count = count;
+
+done:
+    if (fvar.context)
+        IDWriteFontFileStream_ReleaseFileFragment(stream_desc->stream, fvar.context);
+
+    return hr;
 }

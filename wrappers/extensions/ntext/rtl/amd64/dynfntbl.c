@@ -1,9 +1,22 @@
-/*
- * PROJECT:     ReactOS RTL
- * LICENSE:     GPL-2.0-or-later (https://spdx.org/licenses/GPL-2.0-or-later)
- * PURPOSE:     Dynamic function table support routines
- * COPYRIGHT:   Copyright 2022 Timo Kreuzer (timo.kreuzer@reactos.org)
- */
+/*++
+
+Copyright (c) 2025 Shorthorn Project
+
+Module Name:
+
+    dynfntbl.c
+
+Abstract:
+
+    This module implements RTL Dynamic Table APIs
+
+Author:
+
+    Skulltrail 23-Jaunary-2025
+
+Revision History:
+
+--*/
 
 #include <main.h>
 #include <debug.h>

@@ -16,9 +16,6 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "config.h"
-#include "wine/port.h"
-
 #include "dxgi_private.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(dxgi);
@@ -127,7 +124,7 @@ static HRESULT dxgi_output_get_display_mode_list(struct dxgi_output *output,
 
     wined3d_mutex_lock();
     max_count = wined3d_output_get_mode_count(output->wined3d_output,
-            wined3d_format, WINED3D_SCANLINE_ORDERING_UNKNOWN);
+            wined3d_format, WINED3D_SCANLINE_ORDERING_UNKNOWN, false);
 
     if (!modes)
     {
@@ -147,9 +144,9 @@ static HRESULT dxgi_output_get_display_mode_list(struct dxgi_output *output,
     for (i = 0; i < *mode_count; ++i)
     {
         if (FAILED(hr = wined3d_output_get_mode(output->wined3d_output, wined3d_format,
-                WINED3D_SCANLINE_ORDERING_UNKNOWN, i, &mode)))
+                WINED3D_SCANLINE_ORDERING_UNKNOWN, i, &mode, true)))
         {
-            WARN("Failed to get output mode %u, hr %#x.\n", i, hr);
+            WARN("Failed to get output mode %u, hr %#lx.\n", i, hr);
             wined3d_mutex_unlock();
             return hr;
         }
@@ -223,7 +220,7 @@ static ULONG STDMETHODCALLTYPE dxgi_output_AddRef(IDXGIOutput6 *iface)
     struct dxgi_output *output = impl_from_IDXGIOutput6(iface);
     ULONG refcount = InterlockedIncrement(&output->refcount);
 
-    TRACE("%p increasing refcount to %u.\n", output, refcount);
+    TRACE("%p increasing refcount to %lu.\n", output, refcount);
 
     return refcount;
 }
@@ -233,13 +230,13 @@ static ULONG STDMETHODCALLTYPE dxgi_output_Release(IDXGIOutput6 *iface)
     struct dxgi_output *output = impl_from_IDXGIOutput6(iface);
     ULONG refcount = InterlockedDecrement(&output->refcount);
 
-    TRACE("%p decreasing refcount to %u.\n", output, refcount);
+    TRACE("%p decreasing refcount to %lu.\n", output, refcount);
 
     if (!refcount)
     {
         wined3d_private_store_cleanup(&output->private_store);
         IWineDXGIAdapter_Release(&output->adapter->IWineDXGIAdapter_iface);
-        heap_free(output);
+        free(output);
     }
 
     return refcount;
@@ -306,7 +303,7 @@ static HRESULT STDMETHODCALLTYPE dxgi_output_GetDesc(IDXGIOutput6 *iface, DXGI_O
     hr = wined3d_output_get_desc(output->wined3d_output, &wined3d_desc);
     if (FAILED(hr))
     {
-        WARN("Failed to get output desc, hr %#x.\n", hr);
+        WARN("Failed to get output desc, hr %#lx.\n", hr);
         wined3d_mutex_unlock();
         return hr;
     }
@@ -314,7 +311,7 @@ static HRESULT STDMETHODCALLTYPE dxgi_output_GetDesc(IDXGIOutput6 *iface, DXGI_O
     hr = wined3d_output_get_display_mode(output->wined3d_output, &mode, &rotation);
     if (FAILED(hr))
     {
-        WARN("Failed to get output display mode, hr %#x.\n", hr);
+        WARN("Failed to get output display mode, hr %#lx.\n", hr);
         wined3d_mutex_unlock();
         return hr;
     }
@@ -613,7 +610,7 @@ static HRESULT STDMETHODCALLTYPE dxgi_output_GetDesc1(IDXGIOutput6 *iface,
     hr = wined3d_output_get_desc(output->wined3d_output, &wined3d_desc);
     if (FAILED(hr))
     {
-        WARN("Failed to get output desc, hr %#x.\n", hr);
+        WARN("Failed to get output desc, hr %#lx.\n", hr);
         wined3d_mutex_unlock();
         return hr;
     }
@@ -621,7 +618,7 @@ static HRESULT STDMETHODCALLTYPE dxgi_output_GetDesc1(IDXGIOutput6 *iface,
     hr = wined3d_output_get_display_mode(output->wined3d_output, &mode, &rotation);
     if (FAILED(hr))
     {
-        WARN("Failed to get output display mode, hr %#x.\n", hr);
+        WARN("Failed to get output display mode, hr %#lx.\n", hr);
         wined3d_mutex_unlock();
         return hr;
     }
@@ -629,7 +626,7 @@ static HRESULT STDMETHODCALLTYPE dxgi_output_GetDesc1(IDXGIOutput6 *iface,
 
     if (FAILED(hr))
     {
-        WARN("Failed to get output desc, hr %#x.\n", hr);
+        WARN("Failed to get output desc, hr %#lx.\n", hr);
         return hr;
     }
 
@@ -728,7 +725,7 @@ static void dxgi_output_init(struct dxgi_output *output, unsigned int output_idx
 HRESULT dxgi_output_create(struct dxgi_adapter *adapter, unsigned int output_idx,
         struct dxgi_output **output)
 {
-    if (!(*output = heap_alloc_zero(sizeof(**output))))
+    if (!(*output = calloc(1, sizeof(**output))))
         return E_OUTOFMEMORY;
 
     dxgi_output_init(*output, output_idx, adapter);

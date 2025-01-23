@@ -120,12 +120,11 @@ arabic_state_table[][JOINING_TYPES] =
     { {NONE,NONE,0}, {NONE,ISOL,2}, {NONE,ISOL,1}, {NONE,ISOL,2}, {NONE,FIN3,5}, {NONE,ISOL,6}, }
 };
 
-extern const unsigned short arabic_shaping_table[] DECLSPEC_HIDDEN;
+extern const unsigned short arabic_shaping_table[];
 
-static unsigned short arabic_get_joining_type(WCHAR ch)
+static unsigned short arabic_get_joining_type(UINT ch)
 {
-    const unsigned short *table = arabic_shaping_table;
-    return table[table[table[ch >> 8] + ((ch >> 4) & 0x0f)] + (ch & 0xf)];
+    return get_table_entry_32(arabic_shaping_table, ch);
 }
 
 static void arabic_set_shaping_action(struct scriptshaping_context *context,
@@ -145,7 +144,7 @@ static void arabic_setup_masks(struct scriptshaping_context *context,
         const struct shaping_features *features)
 {
     unsigned int i, prev = ~0u, state = 0;
-    unsigned int masks[NUM_FEATURES];
+    unsigned int masks[NUM_FEATURES+1];
 
     for (i = 0; i < context->glyph_count; ++i)
     {
@@ -169,8 +168,9 @@ static void arabic_setup_masks(struct scriptshaping_context *context,
         state = entry->next_state;
     }
 
-    for (i = 0; i < ARRAY_SIZE(masks); ++i)
+    for (i = 0; i < NUM_FEATURES; ++i)
         masks[i] = shape_get_feature_1_mask(features, arabic_features[i]);
+    masks[NONE] = 0;
 
     /* Unaffected glyphs get action NONE with zero mask. */
     for (i = 0; i < context->glyph_count; ++i)
@@ -184,6 +184,6 @@ static void arabic_setup_masks(struct scriptshaping_context *context,
 
 const struct shaper arabic_shaper =
 {
-    arabic_collect_features,
-    arabic_setup_masks,
+    .collect_features = arabic_collect_features,
+    .setup_masks = arabic_setup_masks,
 };

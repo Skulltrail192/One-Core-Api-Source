@@ -20,7 +20,6 @@
 #define __WINE_D3D11_PRIVATE_H
 
 #include "wine/debug.h"
-#include "wine/heap.h"
 
 #include <assert.h>
 
@@ -35,63 +34,54 @@
 #ifdef D3D11_INIT_GUID
 #include "initguid.h"
 #endif
-#include "d3d/wined3d.h"
+#include "wine/config.h"
+#include "wine/wined3d.h"
 #include "winedxgi.h"
 #include "wine/rbtree.h"
-
-#define MAKE_TAG(ch0, ch1, ch2, ch3) \
-    ((DWORD)(ch0) | ((DWORD)(ch1) << 8) | \
-    ((DWORD)(ch2) << 16) | ((DWORD)(ch3) << 24 ))
-#define TAG_AON9 MAKE_TAG('A', 'o', 'n', '9')
-#define TAG_DXBC MAKE_TAG('D', 'X', 'B', 'C')
-#define TAG_ISGN MAKE_TAG('I', 'S', 'G', 'N')
-#define TAG_OSG5 MAKE_TAG('O', 'S', 'G', '5')
-#define TAG_OSGN MAKE_TAG('O', 'S', 'G', 'N')
-#define TAG_PCSG MAKE_TAG('P', 'C', 'S', 'G')
-#define TAG_SHDR MAKE_TAG('S', 'H', 'D', 'R')
-#define TAG_SHEX MAKE_TAG('S', 'H', 'E', 'X')
 
 struct d3d_device;
 
 /* TRACE helper functions */
-const char *debug_d3d10_primitive_topology(D3D10_PRIMITIVE_TOPOLOGY topology) DECLSPEC_HIDDEN;
-const char *debug_dxgi_format(DXGI_FORMAT format) DECLSPEC_HIDDEN;
-const char *debug_float4(const float *values) DECLSPEC_HIDDEN;
+const char *debug_d3d10_primitive_topology(D3D10_PRIMITIVE_TOPOLOGY topology);
+const char *debug_dxgi_format(DXGI_FORMAT format);
+const char *debug_float4(const float *values);
 
-DXGI_FORMAT dxgi_format_from_wined3dformat(enum wined3d_format_id format) DECLSPEC_HIDDEN;
-enum wined3d_format_id wined3dformat_from_dxgi_format(DXGI_FORMAT format) DECLSPEC_HIDDEN;
+DXGI_FORMAT dxgi_format_from_wined3dformat(enum wined3d_format_id format);
+enum wined3d_format_id wined3dformat_from_dxgi_format(DXGI_FORMAT format);
 void d3d11_primitive_topology_from_wined3d_primitive_type(enum wined3d_primitive_type primitive_type,
-        unsigned int patch_vertex_count, D3D11_PRIMITIVE_TOPOLOGY *topology) DECLSPEC_HIDDEN;
+        unsigned int patch_vertex_count, D3D11_PRIMITIVE_TOPOLOGY *topology);
 void wined3d_primitive_type_from_d3d11_primitive_topology(D3D11_PRIMITIVE_TOPOLOGY topology,
-        enum wined3d_primitive_type *type, unsigned int *patch_vertex_count) DECLSPEC_HIDDEN;
-unsigned int wined3d_getdata_flags_from_d3d11_async_getdata_flags(unsigned int d3d11_flags) DECLSPEC_HIDDEN;
-DWORD wined3d_usage_from_d3d11(enum D3D11_USAGE usage) DECLSPEC_HIDDEN;
-struct wined3d_resource *wined3d_resource_from_d3d11_resource(ID3D11Resource *resource) DECLSPEC_HIDDEN;
-struct wined3d_resource *wined3d_resource_from_d3d10_resource(ID3D10Resource *resource) DECLSPEC_HIDDEN;
-DWORD wined3d_map_flags_from_d3d11_map_type(D3D11_MAP map_type) DECLSPEC_HIDDEN;
-DWORD wined3d_map_flags_from_d3d10_map_type(D3D10_MAP map_type) DECLSPEC_HIDDEN;
-DWORD wined3d_clear_flags_from_d3d11_clear_flags(UINT clear_flags) DECLSPEC_HIDDEN;
-unsigned int wined3d_access_from_d3d11(D3D11_USAGE usage, UINT cpu_access) DECLSPEC_HIDDEN;
+        enum wined3d_primitive_type *type, unsigned int *patch_vertex_count);
+unsigned int wined3d_getdata_flags_from_d3d11_async_getdata_flags(unsigned int d3d11_flags);
+DWORD wined3d_usage_from_d3d11(enum D3D11_USAGE usage);
+struct wined3d_resource *wined3d_resource_from_d3d11_resource(ID3D11Resource *resource);
+struct wined3d_resource *wined3d_resource_from_d3d10_resource(ID3D10Resource *resource);
+DWORD wined3d_map_flags_from_d3d11_map_type(D3D11_MAP map_type);
+DWORD wined3d_map_flags_from_d3d10_map_type(D3D10_MAP map_type);
+DWORD wined3d_clear_flags_from_d3d11_clear_flags(UINT clear_flags);
+unsigned int wined3d_access_from_d3d11(D3D11_USAGE usage, UINT cpu_access);
+HRESULT d3d_device_create_dxgi_resource(IUnknown *device, struct wined3d_resource *wined3d_resource,
+        IUnknown *outer, BOOL needs_surface, IUnknown **dxgi_resource);
 
-enum D3D11_USAGE d3d11_usage_from_d3d10_usage(enum D3D10_USAGE usage) DECLSPEC_HIDDEN;
-enum D3D10_USAGE d3d10_usage_from_d3d11_usage(enum D3D11_USAGE usage) DECLSPEC_HIDDEN;
-UINT d3d11_bind_flags_from_d3d10_bind_flags(UINT bind_flags) DECLSPEC_HIDDEN;
-UINT d3d10_bind_flags_from_d3d11_bind_flags(UINT bind_flags) DECLSPEC_HIDDEN;
-UINT d3d11_cpu_access_flags_from_d3d10_cpu_access_flags(UINT cpu_access_flags) DECLSPEC_HIDDEN;
-UINT d3d10_cpu_access_flags_from_d3d11_cpu_access_flags(UINT cpu_access_flags) DECLSPEC_HIDDEN;
-UINT d3d11_resource_misc_flags_from_d3d10_resource_misc_flags(UINT resource_misc_flags) DECLSPEC_HIDDEN;
-UINT d3d10_resource_misc_flags_from_d3d11_resource_misc_flags(UINT resource_misc_flags) DECLSPEC_HIDDEN;
+enum D3D11_USAGE d3d11_usage_from_d3d10_usage(enum D3D10_USAGE usage);
+enum D3D10_USAGE d3d10_usage_from_d3d11_usage(enum D3D11_USAGE usage);
+UINT d3d11_bind_flags_from_d3d10_bind_flags(UINT bind_flags);
+UINT d3d10_bind_flags_from_d3d11_bind_flags(UINT bind_flags);
+UINT d3d11_cpu_access_flags_from_d3d10_cpu_access_flags(UINT cpu_access_flags);
+UINT d3d10_cpu_access_flags_from_d3d11_cpu_access_flags(UINT cpu_access_flags);
+UINT d3d11_resource_misc_flags_from_d3d10_resource_misc_flags(UINT resource_misc_flags);
+UINT d3d10_resource_misc_flags_from_d3d11_resource_misc_flags(UINT resource_misc_flags);
 
 BOOL validate_d3d11_resource_access_flags(D3D11_RESOURCE_DIMENSION resource_dimension,
         D3D11_USAGE usage, UINT bind_flags, UINT cpu_access_flags,
-        D3D_FEATURE_LEVEL feature_level) DECLSPEC_HIDDEN;
+        D3D_FEATURE_LEVEL feature_level);
 
 HRESULT d3d_get_private_data(struct wined3d_private_store *store,
-        REFGUID guid, UINT *data_size, void *data) DECLSPEC_HIDDEN;
+        REFGUID guid, UINT *data_size, void *data);
 HRESULT d3d_set_private_data(struct wined3d_private_store *store,
-        REFGUID guid, UINT data_size, const void *data) DECLSPEC_HIDDEN;
+        REFGUID guid, UINT data_size, const void *data);
 HRESULT d3d_set_private_data_interface(struct wined3d_private_store *store,
-        REFGUID guid, const IUnknown *object) DECLSPEC_HIDDEN;
+        REFGUID guid, const IUnknown *object);
 
 static inline unsigned int wined3d_bind_flags_from_d3d11(UINT bind_flags, UINT misc_flags)
 {
@@ -129,17 +119,16 @@ struct d3d_texture1d
     ID3D10Texture1D ID3D10Texture1D_iface;
     LONG refcount;
 
-    struct wined3d_private_store private_store;
-    IUnknown *dxgi_surface;
+    IUnknown *dxgi_resource;
     struct wined3d_texture *wined3d_texture;
     D3D11_TEXTURE1D_DESC desc;
     ID3D11Device2 *device;
 };
 
 HRESULT d3d_texture1d_create(struct d3d_device *device, const D3D11_TEXTURE1D_DESC *desc,
-        const D3D11_SUBRESOURCE_DATA *data, struct d3d_texture1d **texture) DECLSPEC_HIDDEN;
-struct d3d_texture1d *unsafe_impl_from_ID3D11Texture1D(ID3D11Texture1D *iface) DECLSPEC_HIDDEN;
-struct d3d_texture1d *unsafe_impl_from_ID3D10Texture1D(ID3D10Texture1D *iface) DECLSPEC_HIDDEN;
+        const D3D11_SUBRESOURCE_DATA *data, struct d3d_texture1d **texture);
+struct d3d_texture1d *unsafe_impl_from_ID3D11Texture1D(ID3D11Texture1D *iface);
+struct d3d_texture1d *unsafe_impl_from_ID3D10Texture1D(ID3D10Texture1D *iface);
 
 /* ID3D11Texture2D, ID3D10Texture2D */
 struct d3d_texture2d
@@ -148,9 +137,9 @@ struct d3d_texture2d
     ID3D10Texture2D ID3D10Texture2D_iface;
     LONG refcount;
 
-    struct wined3d_private_store private_store;
-    IUnknown *dxgi_surface;
+    IUnknown *dxgi_resource;
     struct wined3d_texture *wined3d_texture;
+    struct wined3d_swapchain *swapchain;
     D3D11_TEXTURE2D_DESC desc;
     ID3D11Device2 *device;
 };
@@ -161,9 +150,10 @@ static inline struct d3d_texture2d *impl_from_ID3D11Texture2D(ID3D11Texture2D *i
 }
 
 HRESULT d3d_texture2d_create(struct d3d_device *device, const D3D11_TEXTURE2D_DESC *desc,
-        const D3D11_SUBRESOURCE_DATA *data, struct d3d_texture2d **texture) DECLSPEC_HIDDEN;
-struct d3d_texture2d *unsafe_impl_from_ID3D11Texture2D(ID3D11Texture2D *iface) DECLSPEC_HIDDEN;
-struct d3d_texture2d *unsafe_impl_from_ID3D10Texture2D(ID3D10Texture2D *iface) DECLSPEC_HIDDEN;
+        struct wined3d_texture *wined3d_texture,
+        const D3D11_SUBRESOURCE_DATA *data, struct d3d_texture2d **out);
+struct d3d_texture2d *unsafe_impl_from_ID3D11Texture2D(ID3D11Texture2D *iface);
+struct d3d_texture2d *unsafe_impl_from_ID3D10Texture2D(ID3D10Texture2D *iface);
 
 /* ID3D11Texture3D, ID3D10Texture3D */
 struct d3d_texture3d
@@ -172,16 +162,16 @@ struct d3d_texture3d
     ID3D10Texture3D ID3D10Texture3D_iface;
     LONG refcount;
 
-    struct wined3d_private_store private_store;
+    IUnknown *dxgi_resource;
     struct wined3d_texture *wined3d_texture;
     D3D11_TEXTURE3D_DESC desc;
     ID3D11Device2 *device;
 };
 
 HRESULT d3d_texture3d_create(struct d3d_device *device, const D3D11_TEXTURE3D_DESC *desc,
-        const D3D11_SUBRESOURCE_DATA *data, struct d3d_texture3d **texture) DECLSPEC_HIDDEN;
-struct d3d_texture3d *unsafe_impl_from_ID3D11Texture3D(ID3D11Texture3D *iface) DECLSPEC_HIDDEN;
-struct d3d_texture3d *unsafe_impl_from_ID3D10Texture3D(ID3D10Texture3D *iface) DECLSPEC_HIDDEN;
+        const D3D11_SUBRESOURCE_DATA *data, struct d3d_texture3d **texture);
+struct d3d_texture3d *unsafe_impl_from_ID3D11Texture3D(ID3D11Texture3D *iface);
+struct d3d_texture3d *unsafe_impl_from_ID3D10Texture3D(ID3D10Texture3D *iface);
 
 /* ID3D11Buffer, ID3D10Buffer */
 struct d3d_buffer
@@ -190,16 +180,16 @@ struct d3d_buffer
     ID3D10Buffer ID3D10Buffer_iface;
     LONG refcount;
 
-    struct wined3d_private_store private_store;
+    IUnknown *dxgi_resource;
     struct wined3d_buffer *wined3d_buffer;
     D3D11_BUFFER_DESC desc;
     ID3D11Device2 *device;
 };
 
 HRESULT d3d_buffer_create(struct d3d_device *device, const D3D11_BUFFER_DESC *desc,
-        const D3D11_SUBRESOURCE_DATA *data, struct d3d_buffer **buffer) DECLSPEC_HIDDEN;
-struct d3d_buffer *unsafe_impl_from_ID3D11Buffer(ID3D11Buffer *iface) DECLSPEC_HIDDEN;
-struct d3d_buffer *unsafe_impl_from_ID3D10Buffer(ID3D10Buffer *iface) DECLSPEC_HIDDEN;
+        const D3D11_SUBRESOURCE_DATA *data, struct d3d_buffer **buffer);
+struct d3d_buffer *unsafe_impl_from_ID3D11Buffer(ID3D11Buffer *iface);
+struct d3d_buffer *unsafe_impl_from_ID3D10Buffer(ID3D10Buffer *iface);
 
 /* ID3D11DepthStencilView, ID3D10DepthStencilView */
 struct d3d_depthstencil_view
@@ -216,9 +206,9 @@ struct d3d_depthstencil_view
 };
 
 HRESULT d3d_depthstencil_view_create(struct d3d_device *device, ID3D11Resource *resource,
-        const D3D11_DEPTH_STENCIL_VIEW_DESC *desc, struct d3d_depthstencil_view **view) DECLSPEC_HIDDEN;
-struct d3d_depthstencil_view *unsafe_impl_from_ID3D11DepthStencilView(ID3D11DepthStencilView *iface) DECLSPEC_HIDDEN;
-struct d3d_depthstencil_view *unsafe_impl_from_ID3D10DepthStencilView(ID3D10DepthStencilView *iface) DECLSPEC_HIDDEN;
+        const D3D11_DEPTH_STENCIL_VIEW_DESC *desc, struct d3d_depthstencil_view **view);
+struct d3d_depthstencil_view *unsafe_impl_from_ID3D11DepthStencilView(ID3D11DepthStencilView *iface);
+struct d3d_depthstencil_view *unsafe_impl_from_ID3D10DepthStencilView(ID3D10DepthStencilView *iface);
 
 /* ID3D11RenderTargetView, ID3D10RenderTargetView */
 struct d3d_rendertarget_view
@@ -235,9 +225,9 @@ struct d3d_rendertarget_view
 };
 
 HRESULT d3d_rendertarget_view_create(struct d3d_device *device, ID3D11Resource *resource,
-        const D3D11_RENDER_TARGET_VIEW_DESC *desc, struct d3d_rendertarget_view **view) DECLSPEC_HIDDEN;
-struct d3d_rendertarget_view *unsafe_impl_from_ID3D11RenderTargetView(ID3D11RenderTargetView *iface) DECLSPEC_HIDDEN;
-struct d3d_rendertarget_view *unsafe_impl_from_ID3D10RenderTargetView(ID3D10RenderTargetView *iface) DECLSPEC_HIDDEN;
+        const D3D11_RENDER_TARGET_VIEW_DESC *desc, struct d3d_rendertarget_view **view);
+struct d3d_rendertarget_view *unsafe_impl_from_ID3D11RenderTargetView(ID3D11RenderTargetView *iface);
+struct d3d_rendertarget_view *unsafe_impl_from_ID3D10RenderTargetView(ID3D10RenderTargetView *iface);
 
 /* ID3D11ShaderResourceView, ID3D10ShaderResourceView1 */
 struct d3d_shader_resource_view
@@ -254,11 +244,11 @@ struct d3d_shader_resource_view
 };
 
 HRESULT d3d_shader_resource_view_create(struct d3d_device *device, ID3D11Resource *resource,
-        const D3D11_SHADER_RESOURCE_VIEW_DESC *desc, struct d3d_shader_resource_view **view) DECLSPEC_HIDDEN;
+        const D3D11_SHADER_RESOURCE_VIEW_DESC *desc, struct d3d_shader_resource_view **view);
 struct d3d_shader_resource_view *unsafe_impl_from_ID3D11ShaderResourceView(
-        ID3D11ShaderResourceView *iface) DECLSPEC_HIDDEN;
+        ID3D11ShaderResourceView *iface);
 struct d3d_shader_resource_view *unsafe_impl_from_ID3D10ShaderResourceView(
-        ID3D10ShaderResourceView *iface) DECLSPEC_HIDDEN;
+        ID3D10ShaderResourceView *iface);
 
 /* ID3D11UnorderedAccessView */
 struct d3d11_unordered_access_view
@@ -274,9 +264,23 @@ struct d3d11_unordered_access_view
 };
 
 HRESULT d3d11_unordered_access_view_create(struct d3d_device *device, ID3D11Resource *resource,
-        const D3D11_UNORDERED_ACCESS_VIEW_DESC *desc, struct d3d11_unordered_access_view **view) DECLSPEC_HIDDEN;
+        const D3D11_UNORDERED_ACCESS_VIEW_DESC *desc, struct d3d11_unordered_access_view **view);
 struct d3d11_unordered_access_view *unsafe_impl_from_ID3D11UnorderedAccessView(
-        ID3D11UnorderedAccessView *iface) DECLSPEC_HIDDEN;
+        ID3D11UnorderedAccessView *iface);
+
+struct d3d_video_decoder_output_view
+{
+    ID3D11VideoDecoderOutputView ID3D11VideoDecoderOutputView_iface;
+    LONG refcount;
+
+    struct wined3d_private_store private_store;
+    D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC desc;
+    ID3D11Resource *resource;
+    struct d3d_device *device;
+};
+
+HRESULT d3d_video_decoder_output_view_create(struct d3d_device *device, ID3D11Resource *resource,
+        const D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC *desc, struct d3d_video_decoder_output_view **view);
 
 /* ID3D11InputLayout, ID3D10InputLayout */
 struct d3d_input_layout
@@ -293,9 +297,9 @@ struct d3d_input_layout
 HRESULT d3d_input_layout_create(struct d3d_device *device,
         const D3D11_INPUT_ELEMENT_DESC *element_descs, UINT element_count,
         const void *shader_byte_code, SIZE_T shader_byte_code_length,
-        struct d3d_input_layout **layout) DECLSPEC_HIDDEN;
-struct d3d_input_layout *unsafe_impl_from_ID3D11InputLayout(ID3D11InputLayout *iface) DECLSPEC_HIDDEN;
-struct d3d_input_layout *unsafe_impl_from_ID3D10InputLayout(ID3D10InputLayout *iface) DECLSPEC_HIDDEN;
+        struct d3d_input_layout **layout);
+struct d3d_input_layout *unsafe_impl_from_ID3D11InputLayout(ID3D11InputLayout *iface);
+struct d3d_input_layout *unsafe_impl_from_ID3D10InputLayout(ID3D10InputLayout *iface);
 
 /* ID3D11VertexShader, ID3D10VertexShader */
 struct d3d_vertex_shader
@@ -310,9 +314,9 @@ struct d3d_vertex_shader
 };
 
 HRESULT d3d_vertex_shader_create(struct d3d_device *device, const void *byte_code, SIZE_T byte_code_length,
-        struct d3d_vertex_shader **shader) DECLSPEC_HIDDEN;
-struct d3d_vertex_shader *unsafe_impl_from_ID3D11VertexShader(ID3D11VertexShader *iface) DECLSPEC_HIDDEN;
-struct d3d_vertex_shader *unsafe_impl_from_ID3D10VertexShader(ID3D10VertexShader *iface) DECLSPEC_HIDDEN;
+        struct d3d_vertex_shader **shader);
+struct d3d_vertex_shader *unsafe_impl_from_ID3D11VertexShader(ID3D11VertexShader *iface);
+struct d3d_vertex_shader *unsafe_impl_from_ID3D10VertexShader(ID3D10VertexShader *iface);
 
 /* ID3D11HullShader */
 struct d3d11_hull_shader
@@ -326,8 +330,8 @@ struct d3d11_hull_shader
 };
 
 HRESULT d3d11_hull_shader_create(struct d3d_device *device, const void *byte_code, SIZE_T byte_code_length,
-        struct d3d11_hull_shader **shader) DECLSPEC_HIDDEN;
-struct d3d11_hull_shader *unsafe_impl_from_ID3D11HullShader(ID3D11HullShader *iface) DECLSPEC_HIDDEN;
+        struct d3d11_hull_shader **shader);
+struct d3d11_hull_shader *unsafe_impl_from_ID3D11HullShader(ID3D11HullShader *iface);
 
 /* ID3D11DomainShader */
 struct d3d11_domain_shader
@@ -341,8 +345,8 @@ struct d3d11_domain_shader
 };
 
 HRESULT d3d11_domain_shader_create(struct d3d_device *device, const void *byte_code, SIZE_T byte_code_length,
-        struct d3d11_domain_shader **shader) DECLSPEC_HIDDEN;
-struct d3d11_domain_shader *unsafe_impl_from_ID3D11DomainShader(ID3D11DomainShader *iface) DECLSPEC_HIDDEN;
+        struct d3d11_domain_shader **shader);
+struct d3d11_domain_shader *unsafe_impl_from_ID3D11DomainShader(ID3D11DomainShader *iface);
 
 /* ID3D11GeometryShader, ID3D10GeometryShader */
 struct d3d_geometry_shader
@@ -359,9 +363,9 @@ struct d3d_geometry_shader
 HRESULT d3d_geometry_shader_create(struct d3d_device *device, const void *byte_code, SIZE_T byte_code_length,
         const D3D11_SO_DECLARATION_ENTRY *so_entries, unsigned int so_entry_count,
         const unsigned int *buffer_strides, unsigned int buffer_stride_count, unsigned int rasterizer_stream,
-        struct d3d_geometry_shader **shader) DECLSPEC_HIDDEN;
-struct d3d_geometry_shader *unsafe_impl_from_ID3D11GeometryShader(ID3D11GeometryShader *iface) DECLSPEC_HIDDEN;
-struct d3d_geometry_shader *unsafe_impl_from_ID3D10GeometryShader(ID3D10GeometryShader *iface) DECLSPEC_HIDDEN;
+        struct d3d_geometry_shader **shader);
+struct d3d_geometry_shader *unsafe_impl_from_ID3D11GeometryShader(ID3D11GeometryShader *iface);
+struct d3d_geometry_shader *unsafe_impl_from_ID3D10GeometryShader(ID3D10GeometryShader *iface);
 
 /* ID3D11PixelShader, ID3D10PixelShader */
 struct d3d_pixel_shader
@@ -376,9 +380,9 @@ struct d3d_pixel_shader
 };
 
 HRESULT d3d_pixel_shader_create(struct d3d_device *device, const void *byte_code, SIZE_T byte_code_length,
-        struct d3d_pixel_shader **shader) DECLSPEC_HIDDEN;
-struct d3d_pixel_shader *unsafe_impl_from_ID3D11PixelShader(ID3D11PixelShader *iface) DECLSPEC_HIDDEN;
-struct d3d_pixel_shader *unsafe_impl_from_ID3D10PixelShader(ID3D10PixelShader *iface) DECLSPEC_HIDDEN;
+        struct d3d_pixel_shader **shader);
+struct d3d_pixel_shader *unsafe_impl_from_ID3D11PixelShader(ID3D11PixelShader *iface);
+struct d3d_pixel_shader *unsafe_impl_from_ID3D10PixelShader(ID3D10PixelShader *iface);
 
 /* ID3D11ComputeShader */
 struct d3d11_compute_shader
@@ -392,8 +396,8 @@ struct d3d11_compute_shader
 };
 
 HRESULT d3d11_compute_shader_create(struct d3d_device *device, const void *byte_code, SIZE_T byte_code_length,
-        struct d3d11_compute_shader **shader) DECLSPEC_HIDDEN;
-struct d3d11_compute_shader *unsafe_impl_from_ID3D11ComputeShader(ID3D11ComputeShader *iface) DECLSPEC_HIDDEN;
+        struct d3d11_compute_shader **shader);
+struct d3d11_compute_shader *unsafe_impl_from_ID3D11ComputeShader(ID3D11ComputeShader *iface);
 
 /* ID3D11ClassLinkage */
 struct d3d11_class_linkage
@@ -406,31 +410,31 @@ struct d3d11_class_linkage
 };
 
 HRESULT d3d11_class_linkage_create(struct d3d_device *device,
-        struct d3d11_class_linkage **class_linkage) DECLSPEC_HIDDEN;
+        struct d3d11_class_linkage **class_linkage);
 
-/* ID3D11BlendState, ID3D10BlendState1 */
+/* ID3D11BlendState1, ID3D10BlendState1 */
 struct d3d_blend_state
 {
-    ID3D11BlendState ID3D11BlendState_iface;
+    ID3D11BlendState1 ID3D11BlendState1_iface;
     ID3D10BlendState1 ID3D10BlendState1_iface;
     LONG refcount;
 
     struct wined3d_private_store private_store;
     struct wined3d_blend_state *wined3d_state;
-    D3D11_BLEND_DESC desc;
+    D3D11_BLEND_DESC1 desc;
     struct wine_rb_entry entry;
     ID3D11Device2 *device;
 };
 
-static inline struct d3d_blend_state *impl_from_ID3D11BlendState(ID3D11BlendState *iface)
+static inline struct d3d_blend_state *impl_from_ID3D11BlendState1(ID3D11BlendState1 *iface)
 {
-    return CONTAINING_RECORD(iface, struct d3d_blend_state, ID3D11BlendState_iface);
+    return CONTAINING_RECORD(iface, struct d3d_blend_state, ID3D11BlendState1_iface);
 }
 
-HRESULT d3d_blend_state_create(struct d3d_device *device, const D3D11_BLEND_DESC *desc,
-        struct d3d_blend_state **state) DECLSPEC_HIDDEN;
-struct d3d_blend_state *unsafe_impl_from_ID3D11BlendState(ID3D11BlendState *iface) DECLSPEC_HIDDEN;
-struct d3d_blend_state *unsafe_impl_from_ID3D10BlendState(ID3D10BlendState *iface) DECLSPEC_HIDDEN;
+HRESULT d3d_blend_state_create(struct d3d_device *device, const D3D11_BLEND_DESC1 *desc,
+        struct d3d_blend_state **state);
+struct d3d_blend_state *unsafe_impl_from_ID3D11BlendState(ID3D11BlendState *iface);
+struct d3d_blend_state *unsafe_impl_from_ID3D10BlendState(ID3D10BlendState *iface);
 
 /* ID3D11DepthStencilState, ID3D10DepthStencilState */
 struct d3d_depthstencil_state
@@ -452,30 +456,30 @@ static inline struct d3d_depthstencil_state *impl_from_ID3D11DepthStencilState(I
 }
 
 HRESULT d3d_depthstencil_state_create(struct d3d_device *device, const D3D11_DEPTH_STENCIL_DESC *desc,
-        struct d3d_depthstencil_state **state) DECLSPEC_HIDDEN;
+        struct d3d_depthstencil_state **state);
 struct d3d_depthstencil_state *unsafe_impl_from_ID3D11DepthStencilState(
-        ID3D11DepthStencilState *iface) DECLSPEC_HIDDEN;
+        ID3D11DepthStencilState *iface);
 struct d3d_depthstencil_state *unsafe_impl_from_ID3D10DepthStencilState(
-        ID3D10DepthStencilState *iface) DECLSPEC_HIDDEN;
+        ID3D10DepthStencilState *iface);
 
 /* ID3D11RasterizerState, ID3D10RasterizerState */
 struct d3d_rasterizer_state
 {
-    ID3D11RasterizerState ID3D11RasterizerState_iface;
+    ID3D11RasterizerState1 ID3D11RasterizerState1_iface;
     ID3D10RasterizerState ID3D10RasterizerState_iface;
     LONG refcount;
 
     struct wined3d_private_store private_store;
     struct wined3d_rasterizer_state *wined3d_state;
-    D3D11_RASTERIZER_DESC desc;
+    D3D11_RASTERIZER_DESC1 desc;
     struct wine_rb_entry entry;
     ID3D11Device2 *device;
 };
 
-HRESULT d3d_rasterizer_state_create(struct d3d_device *device, const D3D11_RASTERIZER_DESC *desc,
-        struct d3d_rasterizer_state **state) DECLSPEC_HIDDEN;
-struct d3d_rasterizer_state *unsafe_impl_from_ID3D11RasterizerState(ID3D11RasterizerState *iface) DECLSPEC_HIDDEN;
-struct d3d_rasterizer_state *unsafe_impl_from_ID3D10RasterizerState(ID3D10RasterizerState *iface) DECLSPEC_HIDDEN;
+HRESULT d3d_rasterizer_state_create(struct d3d_device *device, const D3D11_RASTERIZER_DESC1 *desc,
+        struct d3d_rasterizer_state **state);
+struct d3d_rasterizer_state *unsafe_impl_from_ID3D11RasterizerState(ID3D11RasterizerState *iface);
+struct d3d_rasterizer_state *unsafe_impl_from_ID3D10RasterizerState(ID3D10RasterizerState *iface);
 
 /* ID3D11SamplerState, ID3D10SamplerState */
 struct d3d_sampler_state
@@ -492,9 +496,9 @@ struct d3d_sampler_state
 };
 
 HRESULT d3d_sampler_state_create(struct d3d_device *device, const D3D11_SAMPLER_DESC *desc,
-        struct d3d_sampler_state **state) DECLSPEC_HIDDEN;
-struct d3d_sampler_state *unsafe_impl_from_ID3D11SamplerState(ID3D11SamplerState *iface) DECLSPEC_HIDDEN;
-struct d3d_sampler_state *unsafe_impl_from_ID3D10SamplerState(ID3D10SamplerState *iface) DECLSPEC_HIDDEN;
+        struct d3d_sampler_state **state);
+struct d3d_sampler_state *unsafe_impl_from_ID3D11SamplerState(ID3D11SamplerState *iface);
+struct d3d_sampler_state *unsafe_impl_from_ID3D10SamplerState(ID3D10SamplerState *iface);
 
 /* ID3D11Query, ID3D10Query */
 struct d3d_query
@@ -511,10 +515,10 @@ struct d3d_query
 };
 
 HRESULT d3d_query_create(struct d3d_device *device, const D3D11_QUERY_DESC *desc, BOOL predicate,
-        struct d3d_query **query) DECLSPEC_HIDDEN;
-struct d3d_query *unsafe_impl_from_ID3D11Query(ID3D11Query *iface) DECLSPEC_HIDDEN;
-struct d3d_query *unsafe_impl_from_ID3D10Query(ID3D10Query *iface) DECLSPEC_HIDDEN;
-struct d3d_query *unsafe_impl_from_ID3D11Asynchronous(ID3D11Asynchronous *iface) DECLSPEC_HIDDEN;
+        struct d3d_query **query);
+struct d3d_query *unsafe_impl_from_ID3D11Query(ID3D11Query *iface);
+struct d3d_query *unsafe_impl_from_ID3D10Query(ID3D10Query *iface);
+struct d3d_query *unsafe_impl_from_ID3D11Asynchronous(ID3D11Asynchronous *iface);
 
 struct d3d_device_context_state_entry
 {
@@ -545,6 +549,8 @@ struct d3d11_device_context
 {
     ID3D11DeviceContext1 ID3D11DeviceContext1_iface;
     ID3D11Multithread ID3D11Multithread_iface;
+    ID3D11VideoContext ID3D11VideoContext_iface;
+    ID3DUserDefinedAnnotation ID3DUserDefinedAnnotation_iface;
     LONG refcount;
 
     D3D11_DEVICE_CONTEXT_TYPE type;
@@ -562,6 +568,7 @@ struct d3d_device
     ID3D10Device1 ID3D10Device1_iface;
     ID3D10Multithread ID3D10Multithread_iface;
     IWineDXGIDeviceParent IWineDXGIDeviceParent_iface;
+    ID3D11VideoDevice1 ID3D11VideoDevice1_iface;
     IUnknown *outer_unk;
     LONG refcount;
 
@@ -608,7 +615,19 @@ static inline struct d3d_device *impl_from_ID3D10Device(ID3D10Device1 *iface)
     return CONTAINING_RECORD(iface, struct d3d_device, ID3D10Device1_iface);
 }
 
-void d3d_device_init(struct d3d_device *device, void *outer_unknown) DECLSPEC_HIDDEN;
+void d3d_device_init(struct d3d_device *device, void *outer_unknown);
+
+struct d3d_video_decoder
+{
+    ID3D11VideoDecoder ID3D11VideoDecoder_iface;
+    LONG refcount;
+
+    struct wined3d_private_store private_store;
+    struct d3d_device *device;
+};
+
+HRESULT d3d_video_decoder_create(struct d3d_device *device, const D3D11_VIDEO_DECODER_DESC *desc,
+        const D3D11_VIDEO_DECODER_CONFIG *config, struct d3d_video_decoder **decoder);
 
 /* Layered device */
 enum dxgi_device_layer_id

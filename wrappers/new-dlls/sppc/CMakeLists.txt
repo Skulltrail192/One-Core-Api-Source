@@ -17,5 +17,5 @@ list(APPEND SOURCE
 add_library(sppc SHARED ${SOURCE})
 set_module_type(sppc win32dll)
 target_link_libraries(sppc wine uuid)
-add_importlibs(sppc shell32 gdi32 oleaut32 ole32 user32 advapi32 shlwapi ntdll kernel32 msvcrt)
+add_importlibs(sppc shell32 gdi32 oleaut32 ole32 user32 advapi32 shlwapi ntext kernel32 msvcrt)
 add_cd_file(TARGET sppc DESTINATION reactos/system32 FOR all)

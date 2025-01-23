@@ -21,11 +21,10 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "config.h"
-#include "wine/port.h"
-
 #include "wined3d_private.h"
+#include "wined3d_gl.h"
 #include "winternl.h"
+#include "wine/list.h"
 
 WINE_DEFAULT_DEBUG_CHANNEL(d3d);
 WINE_DECLARE_DEBUG_CHANNEL(winediag);
@@ -40,6 +39,19 @@ enum wined3d_driver_model
     DRIVER_MODEL_NT5X,
     DRIVER_MODEL_NT6X
 };
+
+struct wined3d_adapter_budget_change_notification
+{
+    const struct wined3d_adapter *adapter;
+    HANDLE event;
+    DWORD cookie;
+    UINT64 last_local_budget;
+    UINT64 last_non_local_budget;
+    struct list entry;
+};
+
+static struct list adapter_budget_change_notifications = LIST_INIT( adapter_budget_change_notifications );
+static HANDLE notification_thread, notification_thread_stop_event;
 
 /* The d3d device ID */
 static const GUID IID_D3DDEVICE_D3DUID = { 0xaeb2cdd4, 0x6e41, 0x43ea, { 0x94,0x1c,0x83,0x61,0xcc,0x76,0x07,0x81 } };
@@ -98,7 +110,7 @@ HRESULT CDECL wined3d_output_take_ownership(const struct wined3d_output *output,
         case STATUS_SUCCESS:
             return S_OK;
         default:
-            FIXME("Unhandled error %#x.\n", status);
+            FIXME("Unhandled error %#lx.\n", status);
             return E_FAIL;
     }
 }
@@ -112,7 +124,7 @@ static void wined3d_output_cleanup(const struct wined3d_output *output)
 
     destroy_device_desc.hDevice = output->kmt_device;
     D3DKMTDestroyDevice(&destroy_device_desc);
-    close_adapter_desc.hAdapter = output->kmt_adapter;
+        close_adapter_desc.hAdapter = output->kmt_adapter;
     D3DKMTCloseAdapter(&close_adapter_desc);
 }
 
@@ -129,13 +141,13 @@ static HRESULT wined3d_output_init(struct wined3d_output *output, unsigned int o
     if (D3DKMTOpenAdapterFromGdiDisplayName(&open_adapter_desc))
         return E_INVALIDARG;
 
-    create_device_desc.u.hAdapter = open_adapter_desc.hAdapter;
+    create_device_desc.hAdapter = open_adapter_desc.hAdapter;
     if (D3DKMTCreateDevice(&create_device_desc))
-    {
+        {
         close_adapter_desc.hAdapter = open_adapter_desc.hAdapter;
         D3DKMTCloseAdapter(&close_adapter_desc);
         return E_FAIL;
-    }
+}
 
     output->ordinal = ordinal;
     lstrcpyW(output->device_name, device_name);
@@ -158,19 +170,28 @@ UINT64 adapter_adjust_memory(struct wined3d_adapter *adapter, INT64 amount)
     return adapter->vram_bytes_used;
 }
 
+ssize_t adapter_adjust_mapped_memory(struct wined3d_adapter *adapter, ssize_t size)
+{
+    /* Note that this needs to be thread-safe; the Vulkan adapter may map from
+     * client threads. */
+    ssize_t ret = InterlockedExchangeAddSizeT(&adapter->mapped_size, size) + size;
+    TRACE("Adjusted mapped adapter memory by %Id to %Id.\n", size, ret);
+    return ret;
+}
+
 void wined3d_adapter_cleanup(struct wined3d_adapter *adapter)
 {
     unsigned int output_idx;
 
     for (output_idx = 0; output_idx < adapter->output_count; ++output_idx)
         wined3d_output_cleanup(&adapter->outputs[output_idx]);
-    heap_free(adapter->outputs);
-    heap_free(adapter->formats);
+    free(adapter->outputs);
+    free(adapter->formats);
 }
 
 ULONG CDECL wined3d_incref(struct wined3d *wined3d)
 {
-    ULONG refcount = InterlockedIncrement(&wined3d->ref);
+    unsigned int refcount = InterlockedIncrement(&wined3d->ref);
 
     TRACE("%p increasing refcount to %u.\n", wined3d, refcount);
 
@@ -179,7 +200,7 @@ ULONG CDECL wined3d_incref(struct wined3d *wined3d)
 
 ULONG CDECL wined3d_decref(struct wined3d *wined3d)
 {
-    ULONG refcount = InterlockedDecrement(&wined3d->ref);
+    unsigned int refcount = InterlockedDecrement(&wined3d->ref);
 
     TRACE("%p decreasing refcount to %u.\n", wined3d, refcount);
 
@@ -187,13 +208,15 @@ ULONG CDECL wined3d_decref(struct wined3d *wined3d)
     {
         unsigned int i;
 
+        wined3d_mutex_lock();
         for (i = 0; i < wined3d->adapter_count; ++i)
         {
             struct wined3d_adapter *adapter = wined3d->adapters[i];
 
             adapter->adapter_ops->adapter_destroy(adapter);
         }
-        heap_free(wined3d);
+        free(wined3d);
+        wined3d_mutex_unlock();
     }
 
     return refcount;
@@ -219,6 +242,9 @@ ULONG CDECL wined3d_decref(struct wined3d *wined3d)
  * 24 -> Windows 10 April 2018 Update - WDDM 2.4
  * 25 -> Windows 10 October 2018 Update - WDDM 2.5
  * 26 -> Windows 10 May 2019 Update - WDDM 2.6
+ * 27 -> Windows 10 May 2020 Update - WDDM 2.7
+ * 30 -> Windows 11 21H2 - WDDM 3.0
+ * 31 -> Windows 11 22H2 - WDDM 3.1
  *
  * "y" is the maximum Direct3D version / feature level the driver supports.
  * 11 -> 6
@@ -266,7 +292,7 @@ static const struct driver_version_information driver_version_table[] =
     {DRIVER_AMD_R600,           DRIVER_MODEL_NT5X,  "ati2dvag.dll",    10, 1280},
     {DRIVER_AMD_R300,           DRIVER_MODEL_NT6X,  "atiumdag.dll",    10, 741 },
     {DRIVER_AMD_R600,           DRIVER_MODEL_NT6X,  "atiumdag.dll",    10, 1280},
-    {DRIVER_AMD_RX,             DRIVER_MODEL_NT6X,  "aticfx32.dll", 15002,   61},
+    {DRIVER_AMD_RX,             DRIVER_MODEL_NT6X,  "aticfx32.dll", 23013, 1023}, /* Adrenalin 23.12.1 */
 
     /* Intel
      * The drivers are unified but not all versions support all GPUs. At some point the 2k/xp
@@ -278,7 +304,7 @@ static const struct driver_version_information driver_version_table[] =
     {DRIVER_INTEL_GMA3000,      DRIVER_MODEL_NT5X,  "igxprd32.dll",    10, 5218},
     {DRIVER_INTEL_GMA950,       DRIVER_MODEL_NT6X,  "igdumd32.dll",    10, 1504},
     {DRIVER_INTEL_GMA3000,      DRIVER_MODEL_NT6X,  "igdumd32.dll",    10, 1666},
-    {DRIVER_INTEL_HD4000,       DRIVER_MODEL_NT6X,  "igdumdim32.dll",  15, 4352},
+    {DRIVER_INTEL_HD4000,       DRIVER_MODEL_NT6X,  "igdumdim32.dll", 101, 4577},
 
     /* Nvidia
      * - Geforce8 and newer is supported by the current 340.52 driver on XP-Win8
@@ -295,7 +321,7 @@ static const struct driver_version_information driver_version_table[] =
     {DRIVER_NVIDIA_GEFORCE6,    DRIVER_MODEL_NT6X,  "nvd3dum.dll",     13,  783},
     {DRIVER_NVIDIA_GEFORCE8,    DRIVER_MODEL_NT6X,  "nvd3dum.dll",     13, 4052},
     {DRIVER_NVIDIA_FERMI,       DRIVER_MODEL_NT6X,  "nvd3dum.dll",     13, 9135},
-    {DRIVER_NVIDIA_KEPLER,      DRIVER_MODEL_NT6X,  "nvd3dum.dll",     14, 4587},
+    {DRIVER_NVIDIA_KEPLER,      DRIVER_MODEL_NT6X,  "nvd3dum.dll",     15, 3118}, /* 531.18 */
 
     /* Red Hat */
     {DRIVER_REDHAT_VIRGL,       DRIVER_MODEL_GENERIC, "virgl.dll",      0,    0},
@@ -443,11 +469,13 @@ static const struct wined3d_gpu_description gpu_description_table[] =
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1060,    "NVIDIA GeForce GTX 1060",          DRIVER_NVIDIA_KEPLER,  6144},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1060M,   "NVIDIA GeForce GTX 1060M",         DRIVER_NVIDIA_KEPLER,  6144},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1070,    "NVIDIA GeForce GTX 1070",          DRIVER_NVIDIA_KEPLER,  8192},
+    {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1070M,   "NVIDIA GeForce GTX 1070M",         DRIVER_NVIDIA_KEPLER,  8192},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1080,    "NVIDIA GeForce GTX 1080",          DRIVER_NVIDIA_KEPLER,  8192},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1080M,   "NVIDIA GeForce GTX 1080M",         DRIVER_NVIDIA_KEPLER,  8192},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1080TI,  "NVIDIA GeForce GTX 1080 Ti",       DRIVER_NVIDIA_KEPLER,  11264},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_TITANX_PASCAL,      "NVIDIA TITAN X (Pascal)",          DRIVER_NVIDIA_KEPLER,  12288},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_TITANV,             "NVIDIA TITAN V",                   DRIVER_NVIDIA_KEPLER,  12288},
+    {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1650     ,"NVIDIA GeForce GTX 1650"      ,   DRIVER_NVIDIA_KEPLER,  4096},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1650SUPER,"NVIDIA GeForce GTX 1650 SUPER",   DRIVER_NVIDIA_KEPLER,  4096},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1660SUPER,"NVIDIA GeForce GTX 1660 SUPER",   DRIVER_NVIDIA_KEPLER,  6144},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_GTX1660TI,  "NVIDIA GeForce GTX 1660 Ti",       DRIVER_NVIDIA_KEPLER,  6144},
@@ -455,6 +483,10 @@ static const struct wined3d_gpu_description gpu_description_table[] =
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_RTX2070,    "NVIDIA GeForce RTX 2070",          DRIVER_NVIDIA_KEPLER,  8192},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_RTX2080,    "NVIDIA GeForce RTX 2080",          DRIVER_NVIDIA_KEPLER,  8192},
     {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_RTX2080TI,  "NVIDIA GeForce RTX 2080 Ti",       DRIVER_NVIDIA_KEPLER,  11264},
+    {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_RTX3070,    "NVIDIA GeForce RTX 3070",          DRIVER_NVIDIA_KEPLER,  8192},
+    {HW_VENDOR_NVIDIA,     CARD_NVIDIA_GEFORCE_RTX3080,    "NVIDIA GeForce RTX 3080",          DRIVER_NVIDIA_KEPLER,  10240},
+    {HW_VENDOR_NVIDIA,     CARD_NVIDIA_TESLA_T4,           "NVIDIA Tesla T4",                  DRIVER_NVIDIA_KEPLER,  16384},
+    {HW_VENDOR_NVIDIA,     CARD_NVIDIA_AMPERE_A10,         "NVIDIA Ampere A10",                DRIVER_NVIDIA_KEPLER,  24576},
 
     /* AMD cards */
     {HW_VENDOR_AMD,        CARD_AMD_RAGE_128PRO,           "ATI Rage Fury",                    DRIVER_AMD_RAGE_128PRO,  16  },
@@ -516,6 +548,10 @@ static const struct wined3d_gpu_description gpu_description_table[] =
     {HW_VENDOR_AMD,        CARD_AMD_RADEON_RX_NAVI_10,     "Radeon RX 5700 / 5700 XT",         DRIVER_AMD_RX,           8192},
     {HW_VENDOR_AMD,        CARD_AMD_RADEON_RX_NAVI_14,     "Radeon RX 5500M",                  DRIVER_AMD_RX,           4096},
     {HW_VENDOR_AMD,        CARD_AMD_RADEON_RX_NAVI_21,     "Radeon RX 6800/6800 XT / 6900 XT", DRIVER_AMD_RX,          16384},
+    {HW_VENDOR_AMD,        CARD_AMD_RADEON_PRO_V620,       "Radeon Pro V620",                  DRIVER_AMD_RX,          32768},
+    {HW_VENDOR_AMD,        CARD_AMD_RADEON_PRO_V620_VF,    "Radeon Pro V620 VF",               DRIVER_AMD_RX,          32768},
+    {HW_VENDOR_AMD,        CARD_AMD_VANGOGH,               "AMD VANGOGH",                      DRIVER_AMD_RX,           4096},
+    {HW_VENDOR_AMD,        CARD_AMD_RAPHAEL,               "AMD Radeon(TM) Graphics",          DRIVER_AMD_RX,           4096},
 
     /* Red Hat */
     {HW_VENDOR_REDHAT,     CARD_REDHAT_VIRGL,              "Red Hat VirtIO GPU",                                        DRIVER_REDHAT_VIRGL,  1024},
@@ -602,7 +638,8 @@ static const struct wined3d_gpu_description gpu_description_table[] =
     {HW_VENDOR_INTEL,      CARD_INTEL_HD620,               "Intel(R) HD Graphics 620",                                  DRIVER_INTEL_HD4000,  3072},
     {HW_VENDOR_INTEL,      CARD_INTEL_HD630_1,             "Intel(R) HD Graphics 630",                                  DRIVER_INTEL_HD4000,  3072},
     {HW_VENDOR_INTEL,      CARD_INTEL_HD630_2,             "Intel(R) HD Graphics 630",                                  DRIVER_INTEL_HD4000,  3072},
-    {HW_VENDOR_INTEL,      CARD_INTEL_UHD630,              "Intel(R) UHD Graphics 630",                                 DRIVER_INTEL_HD4000,  3072},
+    {HW_VENDOR_INTEL,      CARD_INTEL_UHD630_1,            "Intel(R) UHD Graphics 630",                                 DRIVER_INTEL_HD4000,  3072},
+    {HW_VENDOR_INTEL,      CARD_INTEL_UHD630_2,            "Intel(R) UHD Graphics 630",                                 DRIVER_INTEL_HD4000,  3072},
 };
 
 static const struct driver_version_information *get_driver_version_info(enum wined3d_display_driver driver,
@@ -679,7 +716,7 @@ static void wined3d_copy_name(char *dst, const char *src, unsigned int dst_size)
     }
 }
 
-BOOL wined3d_driver_info_init(struct wined3d_driver_info *driver_info,
+bool wined3d_driver_info_init(struct wined3d_driver_info *driver_info,
         const struct wined3d_gpu_description *gpu_desc, enum wined3d_feature_level feature_level,
         UINT64 vram_bytes, UINT64 sysmem_bytes)
 {
@@ -700,7 +737,7 @@ BOOL wined3d_driver_info_init(struct wined3d_driver_info *driver_info,
     }
     else
     {
-        TRACE("OS version %u.%u.\n", os_version.dwMajorVersion, os_version.dwMinorVersion);
+        TRACE("OS version %lu.%lu.\n", os_version.dwMajorVersion, os_version.dwMinorVersion);
         switch (os_version.dwMajorVersion)
         {
             case 2:
@@ -738,7 +775,7 @@ BOOL wined3d_driver_info_init(struct wined3d_driver_info *driver_info,
                 {
                     if (os_version.dwMinorVersion > 3)
                     {
-                        FIXME("Unhandled OS version %u.%u, reporting Windows 8.1.\n",
+                        FIXME("Unhandled OS version %lu.%lu, reporting Windows 8.1.\n",
                                 os_version.dwMajorVersion, os_version.dwMinorVersion);
                     }
                     driver_os_version = 10;
@@ -747,12 +784,12 @@ BOOL wined3d_driver_info_init(struct wined3d_driver_info *driver_info,
                 break;
 
             case 10:
-                driver_os_version = 26;
+                driver_os_version = 31;
                 driver_model = DRIVER_MODEL_NT6X;
                 break;
 
             default:
-                FIXME("Unhandled OS version %u.%u, reporting Windows 7.\n",
+                FIXME("Unhandled OS version %lu.%lu, reporting Windows 7.\n",
                         os_version.dwMajorVersion, os_version.dwMinorVersion);
                 driver_os_version = 8;
                 driver_model = DRIVER_MODEL_NT6X;
@@ -802,6 +839,10 @@ BOOL wined3d_driver_info_init(struct wined3d_driver_info *driver_info,
         driver_feature_level = min(driver_feature_level, 18);
     else if (os_version.dwMajorVersion < 6)
         driver_feature_level = min(driver_feature_level, 14);
+
+    /* Drivers with the OS version 30+ all have the feature level word set to 0 */
+    if (driver_os_version >= 30)
+        driver_feature_level = 0;
 
     driver_info->vendor = gpu_desc->vendor;
     driver_info->device = gpu_desc->device;
@@ -975,9 +1016,195 @@ struct wined3d_output * CDECL wined3d_adapter_get_output(const struct wined3d_ad
 
 unsigned int CDECL wined3d_adapter_get_output_count(const struct wined3d_adapter *adapter)
 {
-    TRACE("adapter %p, reporting %u outputs.\n", adapter, adapter->output_count);
+    TRACE("adapter %p, reporting %Iu outputs.\n", adapter, adapter->output_count);
 
     return adapter->output_count;
+}
+
+HRESULT CDECL wined3d_adapter_get_video_memory_info(const struct wined3d_adapter *adapter,
+        unsigned int node_idx, enum wined3d_memory_segment_group group,
+        struct wined3d_video_memory_info *info)
+{
+    static unsigned int once;
+    D3DKMT_QUERYVIDEOMEMORYINFO query_memory_info;
+    struct wined3d_adapter_identifier adapter_id;
+    NTSTATUS status;
+    HRESULT hr;
+
+    TRACE("adapter %p, node_idx %u, group %d, info %p.\n", adapter, node_idx, group, info);
+
+    if (group > WINED3D_MEMORY_SEGMENT_GROUP_NON_LOCAL)
+    {
+        WARN("Invalid memory segment group %#x.\n", group);
+        return E_INVALIDARG;
+    }
+
+    query_memory_info.hProcess = NULL;
+    query_memory_info.hAdapter = adapter;
+    query_memory_info.PhysicalAdapterIndex = node_idx;
+    query_memory_info.MemorySegmentGroup = (D3DKMT_MEMORY_SEGMENT_GROUP)group;
+    status = D3DKMTQueryVideoMemoryInfo(&query_memory_info);
+    if (status == STATUS_SUCCESS)
+    {
+        info->budget = query_memory_info.Budget;
+        info->current_usage = query_memory_info.CurrentUsage;
+        info->current_reservation = query_memory_info.CurrentReservation;
+        info->available_reservation = query_memory_info.AvailableForReservation;
+        return WINED3D_OK;
+    }
+
+    /* D3DKMTQueryVideoMemoryInfo() failed, fallback to fake memory info */
+    if (!once++)
+        FIXME("Returning fake video memory info.\n");
+
+    if (node_idx)
+        FIXME("Ignoring node index %u.\n", node_idx);
+
+    adapter_id.driver_size = 0;
+    adapter_id.description_size = 0;
+    if (FAILED(hr = wined3d_adapter_get_identifier(adapter, 0, &adapter_id)))
+        return hr;
+
+    switch (group)
+    {
+        case WINED3D_MEMORY_SEGMENT_GROUP_LOCAL:
+            info->budget = adapter_id.video_memory;
+            info->current_usage = adapter->vram_bytes_used;
+            info->available_reservation = adapter_id.video_memory / 2;
+            info->current_reservation = 0;
+            break;
+        case WINED3D_MEMORY_SEGMENT_GROUP_NON_LOCAL:
+            memset(info, 0, sizeof(*info));
+            break;
+    }
+    return WINED3D_OK;
+}
+
+static DWORD CALLBACK notification_thread_func(void *stop_event)
+{
+    struct wined3d_adapter_budget_change_notification *notification;
+    struct wined3d_video_memory_info info;
+    HRESULT hr;
+
+    SetThreadDescription(GetCurrentThread(), L"wined3d_budget_change_notification");
+
+    while (TRUE)
+    {
+        wined3d_mutex_lock();
+        LIST_FOR_EACH_ENTRY(notification, &adapter_budget_change_notifications,
+                struct wined3d_adapter_budget_change_notification, entry)
+        {
+            hr = wined3d_adapter_get_video_memory_info(notification->adapter, 0,
+                    WINED3D_MEMORY_SEGMENT_GROUP_LOCAL, &info);
+            if (SUCCEEDED(hr) && info.budget != notification->last_local_budget)
+            {
+                notification->last_local_budget = info.budget;
+                SetEvent(notification->event);
+                continue;
+            }
+
+            hr = wined3d_adapter_get_video_memory_info(notification->adapter, 0,
+                    WINED3D_MEMORY_SEGMENT_GROUP_NON_LOCAL, &info);
+            if (SUCCEEDED(hr) && info.budget != notification->last_non_local_budget)
+            {
+                notification->last_non_local_budget = info.budget;
+                SetEvent(notification->event);
+            }
+        }
+        wined3d_mutex_unlock();
+
+        if (WaitForSingleObject(stop_event, 1000) == WAIT_OBJECT_0)
+            break;
+    }
+
+    return TRUE;
+}
+
+HRESULT CDECL wined3d_adapter_register_budget_change_notification(const struct wined3d_adapter *adapter,
+        HANDLE event, DWORD *cookie)
+{
+    static DWORD cookie_counter;
+    static BOOL wrapped;
+    struct wined3d_adapter_budget_change_notification *notification, *new_notification;
+    BOOL found = FALSE;
+
+    new_notification = calloc(1, sizeof(*new_notification));
+    if (!new_notification)
+        return E_OUTOFMEMORY;
+
+    wined3d_mutex_lock();
+    new_notification->adapter = adapter;
+    new_notification->event = event;
+    new_notification->cookie = cookie_counter++;
+    if (cookie_counter < new_notification->cookie)
+        wrapped = TRUE;
+    if (wrapped)
+    {
+        while (TRUE)
+        {
+            LIST_FOR_EACH_ENTRY(notification, &adapter_budget_change_notifications,
+                    struct wined3d_adapter_budget_change_notification, entry)
+            {
+                if (notification->cookie == new_notification->cookie)
+                {
+                    found = TRUE;
+                    break;
+                }
+            }
+
+            if (!found)
+                break;
+
+            new_notification->cookie = cookie_counter++;
+        }
+    }
+
+    *cookie = new_notification->cookie;
+    list_add_head(&adapter_budget_change_notifications, &new_notification->entry);
+
+    if (!notification_thread)
+    {
+        notification_thread_stop_event = CreateEventW(0, FALSE, FALSE, NULL);
+        notification_thread = CreateThread(NULL, 0, notification_thread_func,
+                notification_thread_stop_event, 0, NULL);
+    }
+    wined3d_mutex_unlock();
+    return WINED3D_OK;
+}
+
+HRESULT CDECL wined3d_adapter_unregister_budget_change_notification(DWORD cookie)
+{
+    struct wined3d_adapter_budget_change_notification *notification;
+    HANDLE thread, thread_stop_event;
+
+    wined3d_mutex_lock();
+    LIST_FOR_EACH_ENTRY(notification, &adapter_budget_change_notifications,
+            struct wined3d_adapter_budget_change_notification, entry)
+    {
+        if (notification->cookie == cookie)
+        {
+            list_remove(&notification->entry);
+            free(notification);
+            break;
+        }
+    }
+
+    if (!list_empty(&adapter_budget_change_notifications))
+    {
+        wined3d_mutex_unlock();
+        return WINED3D_OK;
+    }
+
+    thread = notification_thread;
+    thread_stop_event = notification_thread_stop_event;
+    notification_thread = NULL;
+    notification_thread_stop_event = NULL;
+    wined3d_mutex_unlock();
+    SetEvent(thread_stop_event);
+    WaitForSingleObject(thread, INFINITE);
+    CloseHandle(thread);
+    CloseHandle(thread_stop_event);
+    return WINED3D_OK;
 }
 
 HRESULT CDECL wined3d_register_software_device(struct wined3d *wined3d, void *init_function)
@@ -1020,67 +1247,111 @@ HRESULT CDECL wined3d_output_get_desc(const struct wined3d_output *output,
 /* FIXME: GetAdapterModeCount and EnumAdapterModes currently only returns modes
      of the same bpp but different resolutions                                  */
 
+static void wined3d_output_update_modes(struct wined3d_output *output, bool cached)
+{
+    struct wined3d_display_mode *wined3d_mode;
+    DEVMODEW mode = {.dmSize = sizeof(mode)};
+    unsigned int i;
+
+    if (output->modes_valid && cached)
+        return;
+
+    output->mode_count = 0;
+
+    for (i = 0; EnumDisplaySettingsExW(output->device_name, i, &mode, 0); ++i)
+    {
+        if (!wined3d_array_reserve((void **)&output->modes, &output->modes_size,
+                output->mode_count + 1, sizeof(*output->modes)))
+            return;
+
+        wined3d_mode = &output->modes[output->mode_count++];
+        wined3d_mode->width = mode.dmPelsWidth;
+        wined3d_mode->height = mode.dmPelsHeight;
+        wined3d_mode->format_id = pixelformat_for_depth(mode.dmBitsPerPel);
+
+        if (mode.dmFields & DM_DISPLAYFREQUENCY)
+            wined3d_mode->refresh_rate = mode.dmDisplayFrequency;
+        else
+            wined3d_mode->refresh_rate = DEFAULT_REFRESH_RATE;
+
+        if (mode.dmFields & DM_DISPLAYFLAGS)
+        {
+            if (mode.dmDisplayFlags & DM_INTERLACED)
+                wined3d_mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_INTERLACED;
+            else
+                wined3d_mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_PROGRESSIVE;
+        }
+        else
+        {
+            wined3d_mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_UNKNOWN;
+        }
+    }
+
+    output->modes_valid = true;
+}
+
+static bool mode_matches_filter(const struct wined3d_adapter *adapter, const struct wined3d_display_mode *mode,
+        const struct wined3d_format *format, enum wined3d_scanline_ordering scanline_ordering)
+{
+    if (scanline_ordering != WINED3D_SCANLINE_ORDERING_UNKNOWN
+            && mode->scanline_ordering != WINED3D_SCANLINE_ORDERING_UNKNOWN
+            && scanline_ordering != mode->scanline_ordering)
+        return false;
+
+    if (format->id == WINED3DFMT_UNKNOWN)
+    {
+        /* This is for d3d8, do not enumerate P8 here. */
+        if (mode->format_id != WINED3DFMT_B5G6R5_UNORM && mode->format_id != WINED3DFMT_B8G8R8X8_UNORM)
+            return false;
+    }
+    else
+    {
+        const struct wined3d_format *mode_format = wined3d_get_format(adapter,
+                mode->format_id, WINED3D_BIND_RENDER_TARGET);
+
+        if (format->byte_count != mode_format->byte_count)
+            return false;
+    }
+
+    return true;
+}
+
 /* Note: dx9 supplies a format. Calls from d3d8 supply WINED3DFMT_UNKNOWN */
-unsigned int CDECL wined3d_output_get_mode_count(const struct wined3d_output *output,
-        enum wined3d_format_id format_id, enum wined3d_scanline_ordering scanline_ordering)
+unsigned int CDECL wined3d_output_get_mode_count(struct wined3d_output *output,
+        enum wined3d_format_id format_id, enum wined3d_scanline_ordering scanline_ordering, bool cached)
 {
     const struct wined3d_adapter *adapter;
     const struct wined3d_format *format;
-    unsigned int i = 0;
-    unsigned int j = 0;
-    UINT format_bits;
-    DEVMODEW mode;
+    unsigned int count = 0;
+    SIZE_T i;
 
     TRACE("output %p, format %s, scanline_ordering %#x.\n",
             output, debug_d3dformat(format_id), scanline_ordering);
 
     adapter = output->adapter;
     format = wined3d_get_format(adapter, format_id, WINED3D_BIND_RENDER_TARGET);
-    format_bits = format->byte_count * CHAR_BIT;
 
-    memset(&mode, 0, sizeof(mode));
-    mode.dmSize = sizeof(mode);
+    wined3d_output_update_modes(output, cached);
 
-    while (EnumDisplaySettingsExW(output->device_name, j++, &mode, 0))
+    for (i = 0; i < output->mode_count; ++i)
     {
-        if (mode.dmFields & DM_DISPLAYFLAGS)
-        {
-            if (scanline_ordering == WINED3D_SCANLINE_ORDERING_PROGRESSIVE
-                    && (mode.u2.dmDisplayFlags & DM_INTERLACED))
-                continue;
-
-            if (scanline_ordering == WINED3D_SCANLINE_ORDERING_INTERLACED
-                    && !(mode.u2.dmDisplayFlags & DM_INTERLACED))
-                continue;
-        }
-
-        if (format_id == WINED3DFMT_UNKNOWN)
-        {
-            /* This is for d3d8, do not enumerate P8 here. */
-            if (mode.dmBitsPerPel == 32 || mode.dmBitsPerPel == 16) ++i;
-        }
-        else if (mode.dmBitsPerPel == format_bits)
-        {
-            ++i;
-        }
+        if (mode_matches_filter(adapter, &output->modes[i], format, scanline_ordering))
+            ++count;
     }
 
-    TRACE("Returning %u matching modes (out of %u total) for output %p.\n", i, j, output);
+    TRACE("Returning %u matching modes (out of %Iu total).\n", count, output->mode_count);
 
-    return i;
+    return count;
 }
 
 /* Note: dx9 supplies a format. Calls from d3d8 supply WINED3DFMT_UNKNOWN */
-HRESULT CDECL wined3d_output_get_mode(const struct wined3d_output *output,
+HRESULT CDECL wined3d_output_get_mode(struct wined3d_output *output,
         enum wined3d_format_id format_id, enum wined3d_scanline_ordering scanline_ordering,
-        unsigned int mode_idx, struct wined3d_display_mode *mode)
+        unsigned int mode_idx, struct wined3d_display_mode *mode, bool cached)
 {
     const struct wined3d_adapter *adapter;
     const struct wined3d_format *format;
-    UINT format_bits;
-    DEVMODEW m;
-    UINT i = 0;
-    int j = 0;
+    SIZE_T i, match_idx = 0;
 
     TRACE("output %p, format %s, scanline_ordering %#x, mode_idx %u, mode %p.\n",
             output, debug_d3dformat(format_id), scanline_ordering, mode_idx, mode);
@@ -1090,66 +1361,31 @@ HRESULT CDECL wined3d_output_get_mode(const struct wined3d_output *output,
 
     adapter = output->adapter;
     format = wined3d_get_format(adapter, format_id, WINED3D_BIND_RENDER_TARGET);
-    format_bits = format->byte_count * CHAR_BIT;
 
-    memset(&m, 0, sizeof(m));
-    m.dmSize = sizeof(m);
+    wined3d_output_update_modes(output, cached);
 
-    while (i <= mode_idx)
+    for (i = 0; i < output->mode_count; ++i)
     {
-        if (!EnumDisplaySettingsExW(output->device_name, j++, &m, 0))
-        {
-            WARN("Invalid mode_idx %u.\n", mode_idx);
-            return WINED3DERR_INVALIDCALL;
-        }
+        const struct wined3d_display_mode *wined3d_mode = &output->modes[i];
 
-        if (m.dmFields & DM_DISPLAYFLAGS)
+        if (mode_matches_filter(adapter, wined3d_mode, format, scanline_ordering) && match_idx++ == mode_idx)
         {
-            if (scanline_ordering == WINED3D_SCANLINE_ORDERING_PROGRESSIVE
-                    && (m.u2.dmDisplayFlags & DM_INTERLACED))
-                continue;
+            *mode = *wined3d_mode;
+            if (format_id != WINED3DFMT_UNKNOWN)
+                mode->format_id = format_id;
 
-            if (scanline_ordering == WINED3D_SCANLINE_ORDERING_INTERLACED
-                    && !(m.u2.dmDisplayFlags & DM_INTERLACED))
-                continue;
-        }
-
-        if (format_id == WINED3DFMT_UNKNOWN)
-        {
-            /* This is for d3d8, do not enumerate P8 here. */
-            if (m.dmBitsPerPel == 32 || m.dmBitsPerPel == 16) ++i;
-        }
-        else if (m.dmBitsPerPel == format_bits)
-        {
-            ++i;
+            TRACE("%ux%u@%u %u bpp, %s %#x.\n", mode->width, mode->height, mode->refresh_rate,
+                    wined3d_get_format(adapter, mode->format_id, WINED3D_BIND_RENDER_TARGET)->byte_count * CHAR_BIT,
+                    debug_d3dformat(mode->format_id), mode->scanline_ordering);
+            return WINED3D_OK;
         }
     }
 
-    mode->width = m.dmPelsWidth;
-    mode->height = m.dmPelsHeight;
-    mode->refresh_rate = DEFAULT_REFRESH_RATE;
-    if (m.dmFields & DM_DISPLAYFREQUENCY)
-        mode->refresh_rate = m.dmDisplayFrequency;
-
-    if (format_id == WINED3DFMT_UNKNOWN)
-        mode->format_id = pixelformat_for_depth(m.dmBitsPerPel);
-    else
-        mode->format_id = format_id;
-
-    if (!(m.dmFields & DM_DISPLAYFLAGS))
-        mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_UNKNOWN;
-    else if (m.u2.dmDisplayFlags & DM_INTERLACED)
-        mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_INTERLACED;
-    else
-        mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_PROGRESSIVE;
-
-    TRACE("%ux%u@%u %u bpp, %s %#x.\n", mode->width, mode->height, mode->refresh_rate,
-            m.dmBitsPerPel, debug_d3dformat(mode->format_id), mode->scanline_ordering);
-
-    return WINED3D_OK;
+    WARN("Invalid mode_idx %u.\n", mode_idx);
+    return WINED3DERR_INVALIDCALL;
 }
 
-HRESULT CDECL wined3d_output_find_closest_matching_mode(const struct wined3d_output *output,
+HRESULT CDECL wined3d_output_find_closest_matching_mode(struct wined3d_output *output,
         struct wined3d_display_mode *mode)
 {
     unsigned int i, j, mode_count, matching_mode_count, closest;
@@ -1160,27 +1396,27 @@ HRESULT CDECL wined3d_output_find_closest_matching_mode(const struct wined3d_out
     TRACE("output %p, mode %p.\n", output, mode);
 
     if (!(mode_count = wined3d_output_get_mode_count(output, mode->format_id,
-            WINED3D_SCANLINE_ORDERING_UNKNOWN)))
+            WINED3D_SCANLINE_ORDERING_UNKNOWN, false)))
     {
         WARN("Output has 0 matching modes.\n");
         return E_FAIL;
     }
 
-    if (!(modes = heap_calloc(mode_count, sizeof(*modes))))
+    if (!(modes = calloc(mode_count, sizeof(*modes))))
         return E_OUTOFMEMORY;
-    if (!(matching_modes = heap_calloc(mode_count, sizeof(*matching_modes))))
+    if (!(matching_modes = calloc(mode_count, sizeof(*matching_modes))))
     {
-        heap_free(modes);
+        free(modes);
         return E_OUTOFMEMORY;
     }
 
     for (i = 0; i < mode_count; ++i)
     {
         if (FAILED(hr = wined3d_output_get_mode(output, mode->format_id,
-                WINED3D_SCANLINE_ORDERING_UNKNOWN, i, &modes[i])))
+                WINED3D_SCANLINE_ORDERING_UNKNOWN, i, &modes[i], true)))
         {
-            heap_free(matching_modes);
-            heap_free(modes);
+            free(matching_modes);
+            free(modes);
             return hr;
         }
         matching_modes[i] = &modes[i];
@@ -1215,8 +1451,8 @@ HRESULT CDECL wined3d_output_find_closest_matching_mode(const struct wined3d_out
         struct wined3d_display_mode current_mode;
         if (FAILED(hr = wined3d_output_get_display_mode(output, &current_mode, NULL)))
         {
-            heap_free(matching_modes);
-            heap_free(modes);
+            free(matching_modes);
+            free(modes);
             return hr;
         }
         mode->width = current_mode.width;
@@ -1226,8 +1462,8 @@ HRESULT CDECL wined3d_output_find_closest_matching_mode(const struct wined3d_out
     closest = ~0u;
     for (i = 0, j = 0; i < matching_mode_count; ++i)
     {
-        unsigned int d = abs(mode->width - matching_modes[i]->width)
-                + abs(mode->height - matching_modes[i]->height);
+        unsigned int d = abs((int)(mode->width - matching_modes[i]->width))
+            + abs((int)(mode->height - matching_modes[i]->height));
 
         if (closest > d)
         {
@@ -1238,8 +1474,8 @@ HRESULT CDECL wined3d_output_find_closest_matching_mode(const struct wined3d_out
 
     *mode = *matching_modes[j];
 
-    heap_free(matching_modes);
-    heap_free(modes);
+    free(matching_modes);
+    free(modes);
 
     TRACE("Returning %ux%u@%u %s %#x.\n", mode->width, mode->height,
             mode->refresh_rate, debug_d3dformat(mode->format_id),
@@ -1290,14 +1526,14 @@ HRESULT CDECL wined3d_output_get_display_mode(const struct wined3d_output *outpu
 
     if (!(m.dmFields & DM_DISPLAYFLAGS))
         mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_UNKNOWN;
-    else if (m.u2.dmDisplayFlags & DM_INTERLACED)
+    else if (m.dmDisplayFlags & DM_INTERLACED)
         mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_INTERLACED;
     else
         mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_PROGRESSIVE;
 
     if (rotation)
     {
-        switch (m.u1.s2.dmDisplayOrientation)
+        switch (m.dmDisplayOrientation)
         {
             case DMDO_DEFAULT:
                 *rotation = WINED3D_DISPLAY_ROTATION_0;
@@ -1312,7 +1548,7 @@ HRESULT CDECL wined3d_output_get_display_mode(const struct wined3d_output *outpu
                 *rotation = WINED3D_DISPLAY_ROTATION_270;
                 break;
             default:
-                FIXME("Unhandled display rotation %#x.\n", m.u1.s2.dmDisplayOrientation);
+                FIXME("Unhandled display rotation %#lx.\n", m.dmDisplayOrientation);
                 *rotation = WINED3D_DISPLAY_ROTATION_UNSPECIFIED;
                 break;
         }
@@ -1339,7 +1575,7 @@ static BOOL equal_display_mode(const DEVMODEW *mode1, const DEVMODEW *mode2)
         return FALSE;
 
     if (mode1->dmFields & mode2->dmFields & DM_DISPLAYFLAGS
-            && mode1->u2.dmDisplayFlags != mode2->u2.dmDisplayFlags)
+            && mode1->dmDisplayFlags != mode2->dmDisplayFlags)
         return FALSE;
 
     if (mode1->dmFields & mode2->dmFields & DM_DISPLAYFREQUENCY
@@ -1347,12 +1583,12 @@ static BOOL equal_display_mode(const DEVMODEW *mode1, const DEVMODEW *mode2)
         return FALSE;
 
     if (mode1->dmFields & mode2->dmFields & DM_DISPLAYORIENTATION
-            && mode1->u1.s2.dmDisplayOrientation != mode2->u1.s2.dmDisplayOrientation)
+            && mode1->dmDisplayOrientation != mode2->dmDisplayOrientation)
         return FALSE;
 
     if (mode1->dmFields & mode2->dmFields & DM_POSITION
-            && (mode1->u1.s2.dmPosition.x != mode2->u1.s2.dmPosition.x
-            || mode1->u1.s2.dmPosition.y != mode2->u1.s2.dmPosition.y))
+            && (mode1->dmPosition.x != mode2->dmPosition.x
+            || mode1->dmPosition.y != mode2->dmPosition.y))
         return FALSE;
 
     return TRUE;
@@ -1403,7 +1639,7 @@ HRESULT CDECL wined3d_restore_display_modes(struct wined3d *wined3d)
         ret = ChangeDisplaySettingsExW(NULL, NULL, NULL, 0, NULL);
         if (ret != DISP_CHANGE_SUCCESSFUL)
         {
-            ERR("Failed to restore all outputs to their registry display settings, error %d.\n", ret);
+            ERR("Failed to restore all outputs to their registry display settings, error %ld.\n", ret);
             return WINED3DERR_NOTAVAILABLE;
         }
     }
@@ -1463,7 +1699,7 @@ HRESULT CDECL wined3d_output_set_display_mode(struct wined3d_output *output,
     {
         new_mode.dmFields |= DM_DISPLAYFLAGS;
         if (mode->scanline_ordering == WINED3D_SCANLINE_ORDERING_INTERLACED)
-            new_mode.u2.dmDisplayFlags |= DM_INTERLACED;
+            new_mode.dmDisplayFlags |= DM_INTERLACED;
     }
     new_format_id = mode->format_id;
 
@@ -1526,7 +1762,7 @@ HRESULT wined3d_output_get_gamma_ramp(struct wined3d_output *output, struct wine
 }
 
 HRESULT CDECL wined3d_adapter_get_identifier(const struct wined3d_adapter *adapter,
-        DWORD flags, struct wined3d_adapter_identifier *identifier)
+        uint32_t flags, struct wined3d_adapter_identifier *identifier)
 {
     TRACE("adapter %p, flags %#x, identifier %p.\n", adapter, flags, identifier);
 
@@ -1614,12 +1850,12 @@ HRESULT CDECL wined3d_check_depth_stencil_match(const struct wined3d_adapter *ad
     rt_format = wined3d_get_format(adapter, render_target_format_id, WINED3D_BIND_RENDER_TARGET);
     ds_format = wined3d_get_format(adapter, depth_stencil_format_id, WINED3D_BIND_DEPTH_STENCIL);
 
-    if (!(rt_format->flags[WINED3D_GL_RES_TYPE_TEX_2D] & WINED3DFMT_FLAG_RENDERTARGET))
+    if (!(rt_format->caps[WINED3D_GL_RES_TYPE_TEX_2D] & WINED3D_FORMAT_CAP_RENDERTARGET))
     {
         WARN("Format %s is not render target format.\n", debug_d3dformat(rt_format->id));
         return WINED3DERR_NOTAVAILABLE;
     }
-    if (!(ds_format->flags[WINED3D_GL_RES_TYPE_TEX_2D] & WINED3DFMT_FLAG_DEPTH_STENCIL))
+    if (!(ds_format->caps[WINED3D_GL_RES_TYPE_TEX_2D] & WINED3D_FORMAT_CAP_DEPTH_STENCIL))
     {
         WARN("Format %s is not depth/stencil format.\n", debug_d3dformat(ds_format->id));
         return WINED3DERR_NOTAVAILABLE;
@@ -1640,7 +1876,7 @@ HRESULT CDECL wined3d_check_depth_stencil_match(const struct wined3d_adapter *ad
 
 HRESULT CDECL wined3d_check_device_multisample_type(const struct wined3d_adapter *adapter,
         enum wined3d_device_type device_type, enum wined3d_format_id surface_format_id, BOOL windowed,
-        enum wined3d_multisample_type multisample_type, DWORD *quality_levels)
+        enum wined3d_multisample_type multisample_type, unsigned int *quality_levels)
 {
     const struct wined3d_format *format;
     HRESULT hr = WINED3D_OK;
@@ -1693,11 +1929,12 @@ static BOOL wined3d_check_depth_stencil_format(const struct wined3d_adapter *ada
 
 static BOOL wined3d_check_surface_format(const struct wined3d_format *format)
 {
-    if ((format->flags[WINED3D_GL_RES_TYPE_TEX_2D] | format->flags[WINED3D_GL_RES_TYPE_RB]) & WINED3DFMT_FLAG_BLIT)
+    if ((format->caps[WINED3D_GL_RES_TYPE_TEX_2D] | format->caps[WINED3D_GL_RES_TYPE_RB])
+            & WINED3D_FORMAT_CAP_BLIT)
         return TRUE;
 
-    if ((format->flags[WINED3D_GL_RES_TYPE_TEX_2D] & (WINED3DFMT_FLAG_EXTENSION | WINED3DFMT_FLAG_TEXTURE))
-            == (WINED3DFMT_FLAG_EXTENSION | WINED3DFMT_FLAG_TEXTURE))
+    if ((format->attrs & WINED3D_FORMAT_ATTR_EXTENSION)
+            && (format->caps[WINED3D_GL_RES_TYPE_TEX_2D] & WINED3D_FORMAT_CAP_TEXTURE))
         return TRUE;
 
     return FALSE;
@@ -1713,15 +1950,15 @@ static BOOL wined3d_check_surface_format(const struct wined3d_format *format)
  * restrict it to some should applications need that. */
 HRESULT CDECL wined3d_check_device_format(const struct wined3d *wined3d,
         const struct wined3d_adapter *adapter, enum wined3d_device_type device_type,
-        enum wined3d_format_id adapter_format_id, DWORD usage, unsigned int bind_flags,
+        enum wined3d_format_id adapter_format_id, uint32_t usage, unsigned int bind_flags,
         enum wined3d_resource_type resource_type, enum wined3d_format_id check_format_id)
 {
     const struct wined3d_format *adapter_format, *format;
     enum wined3d_gl_resource_type gl_type, gl_type_end;
+    unsigned int format_caps = 0, format_attrs = 0;
     BOOL mipmap_gen_supported = TRUE;
     unsigned int allowed_bind_flags;
-    DWORD format_flags = 0;
-    DWORD allowed_usage;
+    uint32_t allowed_usage;
 
     TRACE("wined3d %p, adapter %p, device_type %s, adapter_format %s, usage %s, "
             "bind_flags %s, resource_type %s, check_format %s.\n",
@@ -1765,6 +2002,7 @@ HRESULT CDECL wined3d_check_device_format(const struct wined3d *wined3d,
             allowed_bind_flags = WINED3D_BIND_RENDER_TARGET
                     | WINED3D_BIND_DEPTH_STENCIL
                     | WINED3D_BIND_UNORDERED_ACCESS;
+            gl_type = gl_type_end = WINED3D_GL_RES_TYPE_TEX_2D;
             if (!(bind_flags & WINED3D_BIND_SHADER_RESOURCE))
             {
                 if (!wined3d_check_surface_format(format))
@@ -1772,8 +2010,6 @@ HRESULT CDECL wined3d_check_device_format(const struct wined3d *wined3d,
                     TRACE("%s is not supported for plain surfaces.\n", debug_d3dformat(format->id));
                     return WINED3DERR_NOTAVAILABLE;
                 }
-
-                gl_type = gl_type_end = WINED3D_GL_RES_TYPE_RB;
                 break;
             }
             allowed_usage |= WINED3DUSAGE_DYNAMIC
@@ -1787,7 +2023,6 @@ HRESULT CDECL wined3d_check_device_format(const struct wined3d *wined3d,
                     | WINED3DUSAGE_QUERY_VERTEXTEXTURE
                     | WINED3DUSAGE_QUERY_WRAPANDMIP;
             allowed_bind_flags |= WINED3D_BIND_SHADER_RESOURCE;
-            gl_type = gl_type_end = WINED3D_GL_RES_TYPE_TEX_2D;
             if (usage & WINED3DUSAGE_LEGACY_CUBEMAP)
             {
                 allowed_usage &= ~WINED3DUSAGE_QUERY_LEGACYBUMPMAP;
@@ -1819,7 +2054,9 @@ HRESULT CDECL wined3d_check_device_format(const struct wined3d *wined3d,
 
             allowed_usage = WINED3DUSAGE_DYNAMIC;
             allowed_bind_flags = WINED3D_BIND_SHADER_RESOURCE
-                    | WINED3D_BIND_UNORDERED_ACCESS;
+                    | WINED3D_BIND_UNORDERED_ACCESS
+                    | WINED3D_BIND_VERTEX_BUFFER
+                    | WINED3D_BIND_INDEX_BUFFER;
             gl_type = gl_type_end = WINED3D_GL_RES_TYPE_BUFFER;
             break;
 
@@ -1844,34 +2081,51 @@ HRESULT CDECL wined3d_check_device_format(const struct wined3d *wined3d,
     }
 
     if (bind_flags & WINED3D_BIND_SHADER_RESOURCE)
-        format_flags |= WINED3DFMT_FLAG_TEXTURE;
+        format_caps |= WINED3D_FORMAT_CAP_TEXTURE;
     if (bind_flags & WINED3D_BIND_RENDER_TARGET)
-        format_flags |= WINED3DFMT_FLAG_RENDERTARGET;
+        format_caps |= WINED3D_FORMAT_CAP_RENDERTARGET;
     if (bind_flags & WINED3D_BIND_DEPTH_STENCIL)
-        format_flags |= WINED3DFMT_FLAG_DEPTH_STENCIL;
+        format_caps |= WINED3D_FORMAT_CAP_DEPTH_STENCIL;
     if (bind_flags & WINED3D_BIND_UNORDERED_ACCESS)
-        format_flags |= WINED3DFMT_FLAG_UNORDERED_ACCESS;
-    if (usage & WINED3DUSAGE_QUERY_FILTER)
-        format_flags |= WINED3DFMT_FLAG_FILTERING;
-    if (usage & WINED3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING)
-        format_flags |= WINED3DFMT_FLAG_POSTPIXELSHADER_BLENDING;
-    if (usage & WINED3DUSAGE_QUERY_SRGBREAD)
-        format_flags |= WINED3DFMT_FLAG_SRGB_READ;
-    if (usage & WINED3DUSAGE_QUERY_SRGBWRITE)
-        format_flags |= WINED3DFMT_FLAG_SRGB_WRITE;
-    if (usage & WINED3DUSAGE_QUERY_VERTEXTEXTURE)
-        format_flags |= WINED3DFMT_FLAG_VTF;
-    if (usage & WINED3DUSAGE_QUERY_LEGACYBUMPMAP)
-        format_flags |= WINED3DFMT_FLAG_BUMPMAP;
+        format_caps |= WINED3D_FORMAT_CAP_UNORDERED_ACCESS;
+    if (bind_flags & WINED3D_BIND_VERTEX_BUFFER)
+        format_caps |= WINED3D_FORMAT_CAP_VERTEX_ATTRIBUTE;
+    if (bind_flags & WINED3D_BIND_INDEX_BUFFER)
+        format_caps |= WINED3D_FORMAT_CAP_INDEX_BUFFER;
 
-    if ((format_flags & WINED3DFMT_FLAG_TEXTURE) && (wined3d->flags & WINED3D_NO3D))
+    if (usage & WINED3DUSAGE_QUERY_FILTER)
+        format_caps |= WINED3D_FORMAT_CAP_FILTERING;
+    if (usage & WINED3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING)
+        format_caps |= WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING;
+    if (usage & WINED3DUSAGE_QUERY_SRGBREAD)
+        format_caps |= WINED3D_FORMAT_CAP_SRGB_READ;
+    if (usage & WINED3DUSAGE_QUERY_SRGBWRITE)
+        format_caps |= WINED3D_FORMAT_CAP_SRGB_WRITE;
+    if (usage & WINED3DUSAGE_QUERY_VERTEXTEXTURE)
+        format_caps |= WINED3D_FORMAT_CAP_VTF;
+    if (usage & WINED3DUSAGE_QUERY_LEGACYBUMPMAP)
+        format_attrs |= WINED3D_FORMAT_ATTR_BUMPMAP;
+
+    if ((format_caps & WINED3D_FORMAT_CAP_TEXTURE) && (wined3d->flags & WINED3D_NO3D))
     {
         TRACE("Requested texturing support, but wined3d was created with WINED3D_NO3D.\n");
         return WINED3DERR_NOTAVAILABLE;
     }
 
+    if ((format->attrs & format_attrs) != format_attrs)
+    {
+        TRACE("Requested format attributes %#x, but format %s only has %#x.\n",
+                format_attrs, debug_d3dformat(check_format_id), format->attrs);
+        return WINED3DERR_NOTAVAILABLE;
+    }
+
     for (; gl_type <= gl_type_end; ++gl_type)
     {
+        unsigned int caps = format->caps[gl_type];
+
+        if (gl_type == WINED3D_GL_RES_TYPE_TEX_2D && !(bind_flags & WINED3D_BIND_SHADER_RESOURCE))
+            caps |= format->caps[WINED3D_GL_RES_TYPE_RB];
+
         if ((bind_flags & WINED3D_BIND_RENDER_TARGET)
                 && !adapter->adapter_ops->adapter_check_format(adapter, adapter_format, format, NULL))
         {
@@ -1899,14 +2153,14 @@ HRESULT CDECL wined3d_check_device_format(const struct wined3d *wined3d,
             return WINED3DERR_NOTAVAILABLE;
         }
 
-        if ((format->flags[gl_type] & format_flags) != format_flags)
+        if ((caps & format_caps) != format_caps)
         {
-            TRACE("Requested format flags %#x, but format %s only has %#x.\n",
-                    format_flags, debug_d3dformat(check_format_id), format->flags[gl_type]);
+            TRACE("Requested format caps %#x, but format %s only has %#x.\n",
+                    format_caps, debug_d3dformat(check_format_id), caps);
             return WINED3DERR_NOTAVAILABLE;
         }
 
-        if (!(format->flags[gl_type] & WINED3DFMT_FLAG_GEN_MIPMAP))
+        if (!(caps & WINED3D_FORMAT_CAP_GEN_MIPMAP))
             mipmap_gen_supported = FALSE;
     }
 
@@ -1933,18 +2187,51 @@ unsigned int CDECL wined3d_calculate_format_pitch(const struct wined3d_adapter *
 }
 
 HRESULT CDECL wined3d_check_device_format_conversion(const struct wined3d_output *output,
-        enum wined3d_device_type device_type, enum wined3d_format_id src_format,
-        enum wined3d_format_id dst_format)
+        enum wined3d_device_type device_type, enum wined3d_format_id src_format_id,
+        enum wined3d_format_id dst_format_id)
 {
-    FIXME("output %p, device_type %s, src_format %s, dst_format %s stub!\n",
-            output, debug_d3ddevicetype(device_type), debug_d3dformat(src_format),
-            debug_d3dformat(dst_format));
+    const struct wined3d_format *src_format = wined3d_get_format(output->adapter, src_format_id, 0);
+    const struct wined3d_format *dst_format = wined3d_get_format(output->adapter, dst_format_id, 0);
+
+    TRACE("output %p, device_type %s, src_format %s, dst_format %s.\n",
+            output, debug_d3ddevicetype(device_type), debug_d3dformat(src_format_id),
+            debug_d3dformat(dst_format_id));
+
+    if (!(src_format->caps[WINED3D_GL_RES_TYPE_TEX_2D] & WINED3D_FORMAT_CAP_BLIT))
+    {
+        TRACE("Source format does not support blitting.\n");
+        return WINED3DERR_NOTAVAILABLE;
+    }
+
+    if (!(dst_format->caps[WINED3D_GL_RES_TYPE_TEX_2D] & WINED3D_FORMAT_CAP_BLIT))
+    {
+        TRACE("Destination format does not support blitting.\n");
+        return WINED3DERR_NOTAVAILABLE;
+    }
+
+    /* Source cannot be depth/stencil (although it can be YUV or compressed,
+     * and AMD also allows blitting from luminance formats). */
+    if (src_format->depth_size || src_format->stencil_size)
+    {
+        TRACE("Source format is depth/stencil.\n");
+        return WINED3DERR_NOTAVAILABLE;
+    }
+
+    /* The destination format must be a simple RGB format (no luminance, YUV,
+     * compression, etc.) All such formats have a nonzero red_size; the only
+     * exceptions are X24G8 (not supported in d3d9) and A8 (which, it turns out,
+     * no vendor reports support for converting to). */
+    if (!dst_format->red_size)
+    {
+        TRACE("Destination format is not a simple RGB format.\n");
+        return WINED3DERR_NOTAVAILABLE;
+    }
 
     return WINED3D_OK;
 }
 
 HRESULT CDECL wined3d_check_device_type(const struct wined3d *wined3d,
-        const struct wined3d_output *output, enum wined3d_device_type device_type,
+        struct wined3d_output *output, enum wined3d_device_type device_type,
         enum wined3d_format_id display_format, enum wined3d_format_id backbuffer_format,
         BOOL windowed)
 {
@@ -1974,7 +2261,7 @@ HRESULT CDECL wined3d_check_device_type(const struct wined3d *wined3d,
     {
         /* If the requested display format is not available, don't continue. */
         if (!wined3d_output_get_mode_count(output, display_format,
-                WINED3D_SCANLINE_ORDERING_UNKNOWN))
+                WINED3D_SCANLINE_ORDERING_UNKNOWN, false))
         {
             TRACE("No available modes for display format %s.\n", debug_d3dformat(display_format));
             return WINED3DERR_NOTAVAILABLE;
@@ -2186,12 +2473,8 @@ HRESULT CDECL wined3d_get_device_caps(const struct wined3d_adapter *adapter,
                           WINED3DPTEXTURECAPS_PROJECTED          |
                           WINED3DPTEXTURECAPS_PERSPECTIVE;
 
-    if (!d3d_info->texture_npot)
-    {
-        caps->TextureCaps |= WINED3DPTEXTURECAPS_POW2;
-        if (d3d_info->texture_npot_conditional)
-            caps->TextureCaps |= WINED3DPTEXTURECAPS_NONPOW2CONDITIONAL;
-    }
+    if (!d3d_info->unconditional_npot)
+        caps->TextureCaps |= WINED3DPTEXTURECAPS_POW2 | WINED3DPTEXTURECAPS_NONPOW2CONDITIONAL;
 
     caps->TextureFilterCaps =  WINED3DPTFILTERCAPS_MAGFLINEAR       |
                                WINED3DPTFILTERCAPS_MAGFPOINT        |
@@ -2282,8 +2565,8 @@ HRESULT CDECL wined3d_get_device_caps(const struct wined3d_adapter *adapter,
     caps->PixelShader1xMaxValue = shader_caps.ps_1x_max_value;
 
     caps->TextureOpCaps                    = fragment_caps.TextureOpCaps;
-    caps->MaxTextureBlendStages            = fragment_caps.MaxTextureBlendStages;
-    caps->MaxSimultaneousTextures          = fragment_caps.MaxSimultaneousTextures;
+    caps->MaxTextureBlendStages            = fragment_caps.max_blend_stages;
+    caps->MaxSimultaneousTextures          = fragment_caps.max_textures;
 
     caps->MaxUserClipPlanes                = vertex_caps.max_user_clip_planes;
     caps->MaxActiveLights                  = vertex_caps.max_active_lights;
@@ -2451,8 +2734,7 @@ HRESULT CDECL wined3d_get_device_caps(const struct wined3d_adapter *adapter,
     caps->ddraw_caps.ssb_color_key_caps = ckey_caps;
     caps->ddraw_caps.ssb_fx_caps = fx_caps;
 
-    caps->ddraw_caps.dds_caps = WINEDDSCAPS_FLIP
-            | WINEDDSCAPS_OFFSCREENPLAIN
+    caps->ddraw_caps.dds_caps = WINEDDSCAPS_OFFSCREENPLAIN
             | WINEDDSCAPS_PALETTE
             | WINEDDSCAPS_PRIMARYSURFACE
             | WINEDDSCAPS_TEXTURE
@@ -2461,6 +2743,7 @@ HRESULT CDECL wined3d_get_device_caps(const struct wined3d_adapter *adapter,
 
     caps->shader_double_precision = d3d_info->shader_double_precision;
     caps->viewport_array_index_any_shader = d3d_info->viewport_array_index_any_shader;
+    caps->stencil_export = d3d_info->stencil_export;
 
     caps->max_feature_level = d3d_info->feature_level;
 
@@ -2470,7 +2753,7 @@ HRESULT CDECL wined3d_get_device_caps(const struct wined3d_adapter *adapter,
 }
 
 HRESULT CDECL wined3d_device_create(struct wined3d *wined3d, struct wined3d_adapter *adapter,
-        enum wined3d_device_type device_type, HWND focus_window, DWORD flags, BYTE surface_alignment,
+        enum wined3d_device_type device_type, HWND focus_window, uint32_t flags, BYTE surface_alignment,
         const enum wined3d_feature_level *feature_levels, unsigned int feature_level_count,
         struct wined3d_device_parent *device_parent, struct wined3d_device **device)
 {
@@ -2513,11 +2796,11 @@ static const struct wined3d_state_entry_template misc_state_template_no3d[] =
     {STATE_SAMPLE_MASK,                                   {STATE_VDECL}},
     {STATE_DEPTH_STENCIL,                                 {STATE_VDECL}},
     {STATE_STENCIL_REF,                                   {STATE_VDECL}},
+    {STATE_DEPTH_BOUNDS,                                  {STATE_VDECL}},
     {STATE_STREAMSRC,                                     {STATE_VDECL}},
     {STATE_VDECL,                                         {STATE_VDECL, state_nop}},
     {STATE_RASTERIZER,                                    {STATE_VDECL}},
     {STATE_SCISSORRECT,                                   {STATE_VDECL}},
-    {STATE_POINTSPRITECOORDORIGIN,                        {STATE_VDECL}},
 
     {STATE_TEXTURESTAGE(0, WINED3D_TSS_BUMPENV_MAT00),    {STATE_VDECL}},
     {STATE_TEXTURESTAGE(0, WINED3D_TSS_BUMPENV_MAT01),    {STATE_VDECL}},
@@ -2570,79 +2853,10 @@ static const struct wined3d_state_entry_template misc_state_template_no3d[] =
 
     {STATE_VIEWPORT,                                      {STATE_VDECL}},
     {STATE_INDEXBUFFER,                                   {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_ANTIALIAS),                  {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_TEXTUREPERSPECTIVE),         {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAPU),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAPV),                      {STATE_VDECL}},
     {STATE_RENDER(WINED3D_RS_LINEPATTERN),                {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_MONOENABLE),                 {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_ROP2),                       {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_PLANEMASK),                  {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_LASTPIXEL),                  {STATE_VDECL}},
     {STATE_RENDER(WINED3D_RS_ZFUNC),                      {STATE_VDECL}},
     {STATE_RENDER(WINED3D_RS_DITHERENABLE),               {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_SUBPIXEL),                   {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_SUBPIXELX),                  {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_STIPPLEDALPHA),              {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_STIPPLEENABLE),              {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_MIPMAPLODBIAS),              {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_ANISOTROPY),                 {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_FLUSHBATCH),                 {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_TRANSLUCENTSORTINDEPENDENT), {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP0),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP1),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP2),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP3),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP4),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP5),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP6),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP7),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP8),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP9),                      {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP10),                     {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP11),                     {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP12),                     {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP13),                     {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP14),                     {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_WRAP15),                     {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_EXTENTS),                    {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_COLORKEYBLENDENABLE),        {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_SOFTWAREVERTEXPROCESSING),   {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_PATCHEDGESTYLE),             {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_PATCHSEGMENTS),              {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_POSITIONDEGREE),             {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_NORMALDEGREE),               {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_MINTESSELLATIONLEVEL),       {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_MAXTESSELLATIONLEVEL),       {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_ADAPTIVETESS_X),             {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_ADAPTIVETESS_Y),             {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_ADAPTIVETESS_Z),             {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_ADAPTIVETESS_W),             {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_ENABLEADAPTIVETESSELLATION), {STATE_VDECL}},
     {STATE_RENDER(WINED3D_RS_MULTISAMPLEANTIALIAS),       {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_DEBUGMONITORTOKEN),          {STATE_VDECL}},
-    {STATE_RENDER(WINED3D_RS_ZVISIBLE),                   {STATE_VDECL}},
-    /* Samplers */
-    {STATE_SAMPLER(0),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(1),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(2),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(3),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(4),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(5),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(6),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(7),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(8),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(9),                                    {STATE_VDECL}},
-    {STATE_SAMPLER(10),                                   {STATE_VDECL}},
-    {STATE_SAMPLER(11),                                   {STATE_VDECL}},
-    {STATE_SAMPLER(12),                                   {STATE_VDECL}},
-    {STATE_SAMPLER(13),                                   {STATE_VDECL}},
-    {STATE_SAMPLER(14),                                   {STATE_VDECL}},
-    {STATE_SAMPLER(15),                                   {STATE_VDECL}},
-    {STATE_SAMPLER(16), /* Vertex sampler 0 */            {STATE_VDECL}},
-    {STATE_SAMPLER(17), /* Vertex sampler 1 */            {STATE_VDECL}},
-    {STATE_SAMPLER(18), /* Vertex sampler 2 */            {STATE_VDECL}},
-    {STATE_SAMPLER(19), /* Vertex sampler 3 */            {STATE_VDECL}},
     {STATE_BASEVERTEXINDEX,                               {STATE_VDECL}},
     {STATE_FRAMEBUFFER,                                   {STATE_VDECL}},
     {STATE_SHADER(WINED3D_SHADER_TYPE_PIXEL),             {STATE_VDECL}},
@@ -2656,7 +2870,7 @@ static const struct wined3d_state_entry_template misc_state_template_no3d[] =
 static void adapter_no3d_destroy(struct wined3d_adapter *adapter)
 {
     wined3d_adapter_cleanup(adapter);
-    heap_free(adapter);
+    free(adapter);
 }
 
 static HRESULT adapter_no3d_create_device(struct wined3d *wined3d, const struct wined3d_adapter *adapter,
@@ -2664,17 +2878,19 @@ static HRESULT adapter_no3d_create_device(struct wined3d *wined3d, const struct 
         const enum wined3d_feature_level *levels, unsigned int level_count,
         struct wined3d_device_parent *device_parent, struct wined3d_device **device)
 {
+    /* No extensions in the state table, only extension 0, which is implicitly supported. */
+    static const BOOL supported_extensions[] = {TRUE};
     struct wined3d_device_no3d *device_no3d;
     HRESULT hr;
 
-    if (!(device_no3d = heap_alloc_zero(sizeof(*device_no3d))))
+    if (!(device_no3d = calloc(1, sizeof(*device_no3d))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = wined3d_device_init(&device_no3d->d, wined3d, adapter->ordinal, device_type, focus_window,
-            flags, surface_alignment, levels, level_count, adapter->gl_info.supported, device_parent)))
+            flags, surface_alignment, levels, level_count, supported_extensions, device_parent)))
     {
-        WARN("Failed to initialize device, hr %#x.\n", hr);
-        heap_free(device_no3d);
+        WARN("Failed to initialize device, hr %#lx.\n", hr);
+        free(device_no3d);
         return hr;
     }
 
@@ -2686,7 +2902,7 @@ static HRESULT adapter_no3d_create_device(struct wined3d *wined3d, const struct 
 static void adapter_no3d_destroy_device(struct wined3d_device *device)
 {
     wined3d_device_cleanup(device);
-    heap_free(device);
+    free(device);
 }
 
 static struct wined3d_context *adapter_no3d_acquire_context(struct wined3d_device *device,
@@ -2771,7 +2987,7 @@ static void *adapter_no3d_map_bo_address(struct wined3d_context *context,
 {
     if (data->buffer_object)
     {
-        ERR("Unsupported buffer object %#lx.\n", data->buffer_object);
+        ERR("Unsupported buffer object %p.\n", data->buffer_object);
         return NULL;
     }
 
@@ -2782,23 +2998,43 @@ static void adapter_no3d_unmap_bo_address(struct wined3d_context *context,
         const struct wined3d_bo_address *data, unsigned int range_count, const struct wined3d_range *ranges)
 {
     if (data->buffer_object)
-        ERR("Unsupported buffer object %#lx.\n", data->buffer_object);
+        ERR("Unsupported buffer object %p.\n", data->buffer_object);
 }
 
 static void adapter_no3d_copy_bo_address(struct wined3d_context *context,
-        const struct wined3d_bo_address *dst, const struct wined3d_bo_address *src, size_t size)
+        const struct wined3d_bo_address *dst, const struct wined3d_bo_address *src,
+        unsigned int range_count, const struct wined3d_range *ranges, uint32_t map_flags)
 {
+    unsigned int i;
+
     if (dst->buffer_object)
-        ERR("Unsupported dst buffer object %#lx.\n", dst->buffer_object);
+        ERR("Unsupported dst buffer object %p.\n", dst->buffer_object);
     if (src->buffer_object)
-        ERR("Unsupported src buffer object %#lx.\n", src->buffer_object);
+        ERR("Unsupported src buffer object %p.\n", src->buffer_object);
     if (dst->buffer_object || src->buffer_object)
         return;
-    memcpy(dst->addr, src->addr, size);
+
+    for (i = 0; i < range_count; ++i)
+        memcpy(dst->addr + ranges[i].offset, src->addr + ranges[i].offset, ranges[i].size);
+}
+
+static void adapter_no3d_flush_bo_address(struct wined3d_context *context,
+        const struct wined3d_const_bo_address *data, size_t size)
+{
+}
+
+static bool adapter_no3d_alloc_bo(struct wined3d_device *device, struct wined3d_resource *resource,
+        unsigned int sub_resource_idx, struct wined3d_bo_address *addr)
+{
+    return false;
+}
+
+static void adapter_no3d_destroy_bo(struct wined3d_context *context, struct wined3d_bo *bo)
+{
 }
 
 static HRESULT adapter_no3d_create_swapchain(struct wined3d_device *device,
-        struct wined3d_swapchain_desc *desc, struct wined3d_swapchain_state_parent *state_parent,
+        const struct wined3d_swapchain_desc *desc, struct wined3d_swapchain_state_parent *state_parent,
         void *parent, const struct wined3d_parent_ops *parent_ops, struct wined3d_swapchain **swapchain)
 {
     struct wined3d_swapchain *swapchain_no3d;
@@ -2807,14 +3043,14 @@ static HRESULT adapter_no3d_create_swapchain(struct wined3d_device *device,
     TRACE("device %p, desc %p, state_parent %p, parent %p, parent_ops %p, swapchain %p.\n",
             device, desc, state_parent, parent, parent_ops, swapchain);
 
-    if (!(swapchain_no3d = heap_alloc_zero(sizeof(*swapchain_no3d))))
+    if (!(swapchain_no3d = calloc(1, sizeof(*swapchain_no3d))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = wined3d_swapchain_no3d_init(swapchain_no3d, device, desc, state_parent, parent,
             parent_ops)))
     {
-        WARN("Failed to initialise swapchain, hr %#x.\n", hr);
-        heap_free(swapchain_no3d);
+        WARN("Failed to initialise swapchain, hr %#lx.\n", hr);
+        free(swapchain_no3d);
         return hr;
     }
 
@@ -2827,7 +3063,7 @@ static HRESULT adapter_no3d_create_swapchain(struct wined3d_device *device,
 static void adapter_no3d_destroy_swapchain(struct wined3d_swapchain *swapchain)
 {
     wined3d_swapchain_cleanup(swapchain);
-    heap_free(swapchain);
+    free(swapchain);
 }
 
 static HRESULT adapter_no3d_create_buffer(struct wined3d_device *device,
@@ -2840,13 +3076,13 @@ static HRESULT adapter_no3d_create_buffer(struct wined3d_device *device,
     TRACE("device %p, desc %p, data %p, parent %p, parent_ops %p, buffer %p.\n",
             device, desc, data, parent, parent_ops, buffer);
 
-    if (!(buffer_no3d = heap_alloc_zero(sizeof(*buffer_no3d))))
+    if (!(buffer_no3d = calloc(1, sizeof(*buffer_no3d))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = wined3d_buffer_no3d_init(buffer_no3d, device, desc, data, parent, parent_ops)))
     {
-        WARN("Failed to initialise buffer, hr %#x.\n", hr);
-        heap_free(buffer_no3d);
+        WARN("Failed to initialise buffer, hr %#lx.\n", hr);
+        free(buffer_no3d);
         return hr;
     }
 
@@ -2870,7 +3106,7 @@ static void adapter_no3d_destroy_buffer(struct wined3d_buffer *buffer)
     if (swapchain_count)
         wined3d_device_incref(device);
     wined3d_buffer_cleanup(buffer);
-    wined3d_cs_destroy_object(device->cs, heap_free, buffer);
+    wined3d_cs_destroy_object(device->cs, free, buffer);
     if (swapchain_count)
         wined3d_device_decref(device);
 }
@@ -2891,8 +3127,8 @@ static HRESULT adapter_no3d_create_texture(struct wined3d_device *device,
     if (FAILED(hr = wined3d_texture_no3d_init(texture_no3d, device, desc,
             layer_count, level_count, flags, parent, parent_ops)))
     {
-        WARN("Failed to initialise texture, hr %#x.\n", hr);
-        heap_free(texture_no3d);
+        WARN("Failed to initialise texture, hr %#lx.\n", hr);
+        free(texture_no3d);
         return hr;
     }
 
@@ -2920,7 +3156,7 @@ static void adapter_no3d_destroy_texture(struct wined3d_texture *texture)
     texture->resource.parent_ops->wined3d_object_destroyed(texture->resource.parent);
 
     wined3d_texture_cleanup(texture);
-    wined3d_cs_destroy_object(device->cs, heap_free, texture);
+    wined3d_cs_destroy_object(device->cs, free, texture);
 
     if (swapchain_count)
         wined3d_device_decref(device);
@@ -2936,13 +3172,13 @@ static HRESULT adapter_no3d_create_rendertarget_view(const struct wined3d_view_d
     TRACE("desc %s, resource %p, parent %p, parent_ops %p, view %p.\n",
             wined3d_debug_view_desc(desc, resource), resource, parent, parent_ops, view);
 
-    if (!(view_no3d = heap_alloc_zero(sizeof(*view_no3d))))
+    if (!(view_no3d = calloc(1, sizeof(*view_no3d))))
         return E_OUTOFMEMORY;
 
     if (FAILED(hr = wined3d_rendertarget_view_no3d_init(view_no3d, desc, resource, parent, parent_ops)))
     {
-        WARN("Failed to initialise view, hr %#x.\n", hr);
-        heap_free(view_no3d);
+        WARN("Failed to initialise view, hr %#lx.\n", hr);
+        free(view_no3d);
         return hr;
     }
 
@@ -2966,7 +3202,7 @@ static void adapter_no3d_destroy_rendertarget_view(struct wined3d_rendertarget_v
     if (swapchain_count)
         wined3d_device_incref(device);
     wined3d_rendertarget_view_cleanup(view);
-    wined3d_cs_destroy_object(device->cs, heap_free, view);
+    wined3d_cs_destroy_object(device->cs, free, view);
     if (swapchain_count)
         wined3d_device_decref(device);
 }
@@ -3047,45 +3283,48 @@ static void adapter_no3d_dispatch_compute(struct wined3d_device *device,
 }
 
 static void adapter_no3d_clear_uav(struct wined3d_context *context,
-        struct wined3d_unordered_access_view *view, const struct wined3d_uvec4 *clear_value, BOOL fp)
+        struct wined3d_unordered_access_view *view, const struct wined3d_uvec4 *clear_value, bool fp)
 {
     ERR("context %p, view %p, clear_value %s, fp %#x.\n", context, view, debug_uvec4(clear_value), fp);
 }
 
 static const struct wined3d_adapter_ops wined3d_adapter_no3d_ops =
 {
-    adapter_no3d_destroy,
-    adapter_no3d_create_device,
-    adapter_no3d_destroy_device,
-    adapter_no3d_acquire_context,
-    adapter_no3d_release_context,
-    adapter_no3d_get_wined3d_caps,
-    adapter_no3d_check_format,
-    adapter_no3d_init_3d,
-    adapter_no3d_uninit_3d,
-    adapter_no3d_map_bo_address,
-    adapter_no3d_unmap_bo_address,
-    adapter_no3d_copy_bo_address,
-    adapter_no3d_create_swapchain,
-    adapter_no3d_destroy_swapchain,
-    adapter_no3d_create_buffer,
-    adapter_no3d_destroy_buffer,
-    adapter_no3d_create_texture,
-    adapter_no3d_destroy_texture,
-    adapter_no3d_create_rendertarget_view,
-    adapter_no3d_destroy_rendertarget_view,
-    adapter_no3d_create_shader_resource_view,
-    adapter_no3d_destroy_shader_resource_view,
-    adapter_no3d_create_unordered_access_view,
-    adapter_no3d_destroy_unordered_access_view,
-    adapter_no3d_create_sampler,
-    adapter_no3d_destroy_sampler,
-    adapter_no3d_create_query,
-    adapter_no3d_destroy_query,
-    adapter_no3d_flush_context,
-    adapter_no3d_draw_primitive,
-    adapter_no3d_dispatch_compute,
-    adapter_no3d_clear_uav,
+    .adapter_destroy = adapter_no3d_destroy,
+    .adapter_create_device = adapter_no3d_create_device,
+    .adapter_destroy_device = adapter_no3d_destroy_device,
+    .adapter_acquire_context = adapter_no3d_acquire_context,
+    .adapter_release_context = adapter_no3d_release_context,
+    .adapter_get_wined3d_caps = adapter_no3d_get_wined3d_caps,
+    .adapter_check_format = adapter_no3d_check_format,
+    .adapter_init_3d = adapter_no3d_init_3d,
+    .adapter_uninit_3d = adapter_no3d_uninit_3d,
+    .adapter_map_bo_address = adapter_no3d_map_bo_address,
+    .adapter_unmap_bo_address = adapter_no3d_unmap_bo_address,
+    .adapter_copy_bo_address = adapter_no3d_copy_bo_address,
+    .adapter_flush_bo_address = adapter_no3d_flush_bo_address,
+    .adapter_alloc_bo = adapter_no3d_alloc_bo,
+    .adapter_destroy_bo = adapter_no3d_destroy_bo,
+    .adapter_create_swapchain = adapter_no3d_create_swapchain,
+    .adapter_destroy_swapchain = adapter_no3d_destroy_swapchain,
+    .adapter_create_buffer = adapter_no3d_create_buffer,
+    .adapter_destroy_buffer = adapter_no3d_destroy_buffer,
+    .adapter_create_texture = adapter_no3d_create_texture,
+    .adapter_destroy_texture = adapter_no3d_destroy_texture,
+    .adapter_create_rendertarget_view = adapter_no3d_create_rendertarget_view,
+    .adapter_destroy_rendertarget_view = adapter_no3d_destroy_rendertarget_view,
+    .adapter_create_shader_resource_view = adapter_no3d_create_shader_resource_view,
+    .adapter_destroy_shader_resource_view = adapter_no3d_destroy_shader_resource_view,
+    .adapter_create_unordered_access_view = adapter_no3d_create_unordered_access_view,
+    .adapter_destroy_unordered_access_view = adapter_no3d_destroy_unordered_access_view,
+    .adapter_create_sampler = adapter_no3d_create_sampler,
+    .adapter_destroy_sampler = adapter_no3d_destroy_sampler,
+    .adapter_create_query = adapter_no3d_create_query,
+    .adapter_destroy_query = adapter_no3d_destroy_query,
+    .adapter_flush_context = adapter_no3d_flush_context,
+    .adapter_draw_primitive = adapter_no3d_draw_primitive,
+    .adapter_dispatch_compute = adapter_no3d_dispatch_compute,
+    .adapter_clear_uav = adapter_no3d_clear_uav,
 };
 
 static void wined3d_adapter_no3d_init_d3d_info(struct wined3d_adapter *adapter, unsigned int wined3d_creation_flags)
@@ -3093,7 +3332,7 @@ static void wined3d_adapter_no3d_init_d3d_info(struct wined3d_adapter *adapter, 
     struct wined3d_d3d_info *d3d_info = &adapter->d3d_info;
 
     d3d_info->wined3d_creation_flags = wined3d_creation_flags;
-    d3d_info->texture_npot = TRUE;
+    d3d_info->unconditional_npot = true;
     d3d_info->feature_level = WINED3D_FEATURE_LEVEL_5;
 }
 
@@ -3109,7 +3348,7 @@ static struct wined3d_adapter *wined3d_adapter_no3d_create(unsigned int ordinal,
 
     TRACE("ordinal %u, wined3d_creation_flags %#x.\n", ordinal, wined3d_creation_flags);
 
-    if (!(adapter = heap_alloc_zero(sizeof(*adapter))))
+    if (!(adapter = calloc(1, sizeof(*adapter))))
         return NULL;
 
     if (ordinal == 0 && wined3d_get_primary_adapter_luid(&primary_luid))
@@ -3117,21 +3356,21 @@ static struct wined3d_adapter *wined3d_adapter_no3d_create(unsigned int ordinal,
 
     if (!wined3d_adapter_init(adapter, ordinal, luid, &wined3d_adapter_no3d_ops))
     {
-        heap_free(adapter);
+        free(adapter);
         return NULL;
     }
 
     if (!wined3d_adapter_no3d_init_format_info(adapter))
     {
         wined3d_adapter_cleanup(adapter);
-        heap_free(adapter);
+        free(adapter);
         return NULL;
     }
 
     if (!wined3d_driver_info_init(&adapter->driver_info, &gpu_description, WINED3D_FEATURE_LEVEL_NONE, 0, 0))
     {
         wined3d_adapter_cleanup(adapter);
-        heap_free(adapter);
+        free(adapter);
         return NULL;
     }
     adapter->vram_bytes_used = 0;
@@ -3151,26 +3390,16 @@ static struct wined3d_adapter *wined3d_adapter_no3d_create(unsigned int ordinal,
 
 static BOOL wined3d_adapter_create_output(struct wined3d_adapter *adapter, const WCHAR *output_name)
 {
-    struct wined3d_output *outputs;
     HRESULT hr;
 
-    if (!adapter->outputs && !(adapter->outputs = heap_calloc(1, sizeof(*adapter->outputs))))
-    {
+    if (!wined3d_array_reserve((void **)&adapter->outputs, &adapter->outputs_size,
+            adapter->output_count + 1, sizeof(*adapter->outputs)))
         return FALSE;
-    }
-    else
-    {
-        if (!(outputs = heap_realloc(adapter->outputs,
-                sizeof(*adapter->outputs) * (adapter->output_count + 1))))
-            return FALSE;
-
-        adapter->outputs = outputs;
-    }
 
     if (FAILED(hr = wined3d_output_init(&adapter->outputs[adapter->output_count],
             adapter->output_count, adapter, output_name)))
     {
-        ERR("Failed to initialise output %s, hr %#x.\n", wine_dbgstr_w(output_name), hr);
+        ERR("Failed to initialise output %s, hr %#lx.\n", wine_dbgstr_w(output_name), hr);
         return FALSE;
     }
 
@@ -3199,11 +3428,11 @@ BOOL wined3d_adapter_init(struct wined3d_adapter *adapter, unsigned int ordinal,
         WARN("Allocating a random LUID.\n");
         if (!AllocateLocallyUniqueId(&adapter->luid))
         {
-            ERR("Failed to allocate a LUID, error %#x.\n", GetLastError());
+            ERR("Failed to allocate a LUID, error %#lx.\n", GetLastError());
             return FALSE;
         }
     }
-    TRACE("adapter %p LUID %08x:%08x.\n", adapter, adapter->luid.HighPart, adapter->luid.LowPart);
+    TRACE("adapter %p LUID %08lx:%08lx.\n", adapter, adapter->luid.HighPart, adapter->luid.LowPart);
 
     display_device.cb = sizeof(display_device);
     while (EnumDisplayDevicesW(NULL, output_idx++, &display_device, 0))
@@ -3218,7 +3447,7 @@ BOOL wined3d_adapter_init(struct wined3d_adapter *adapter, unsigned int ordinal,
         if (!wined3d_adapter_create_output(adapter, display_device.DeviceName))
             goto done;
     }
-    TRACE("Initialised %d outputs for adapter %p.\n", adapter->output_count, adapter);
+    TRACE("Initialised %Iu outputs for adapter %p.\n", adapter->output_count, adapter);
 
     /* Make the primary output first */
     if (primary_idx)
@@ -3241,7 +3470,7 @@ done:
     {
         for (output_idx = 0; output_idx < adapter->output_count; ++output_idx)
             wined3d_output_cleanup(&adapter->outputs[output_idx]);
-        heap_free(adapter->outputs);
+        free(adapter->outputs);
     }
     return ret;
 }
@@ -3264,7 +3493,7 @@ const struct wined3d_parent_ops wined3d_null_parent_ops =
     wined3d_null_wined3d_object_destroyed,
 };
 
-HRESULT wined3d_init(struct wined3d *wined3d, DWORD flags)
+HRESULT wined3d_init(struct wined3d *wined3d, uint32_t flags)
 {
     wined3d->ref = 1;
     wined3d->flags = flags;

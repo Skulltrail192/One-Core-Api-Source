@@ -764,10 +764,6 @@
 @ stdcall ChangeWindowMessageFilterEx(ptr long long ptr)
 @ stdcall CheckDesktopByThreadId(ptr)
 @ stdcall CheckWindowThreadDesktop(ptr ptr)
-@ stdcall CloseGestureInfoHandle(ptr)
-@ stdcall CloseTouchInputHandle(ptr)
-@ stdcall ConsoleControl(long ptr long)
-@ stub ControlMagnification
 @ stdcall CreateDesktopExA(str str ptr long long ptr long ptr)
 @ stdcall CreateDesktopExW(wstr wstr ptr long long ptr long ptr)
 @ stdcall CreateWindowInBand(long wstr wstr long long long long ptr ptr ptr ptr long)
@@ -777,6 +773,7 @@
 @ stdcall DoSoundConnect()
 @ stdcall DoSoundDisconnect()
 @ stdcall DwmHintDxUpdate(ptr long) userbase.DwmHintDxUpdate
+@ stdcall DwmGetDxRgn() userbase.DwmGetDxRgn
 @ stdcall DwmGetSurfaceData() userbase.DwmGetSurfaceData
 @ stdcall DwmShutdown() userbase.DwmShutdown
 @ stdcall DwmStartRedirection(ptr) userbase.DwmStartRedirection
@@ -881,6 +878,12 @@
 1550  stdcall -noname DwmGetRedirSurfaceUpdateId(ptr long long) 
 1551  stdcall -noname DwmSetRedirSurfacePresentFlags(ptr long)
 1552  stdcall -noname DwmGetRedirSurfacePresentFlags(ptr ptr)
+
+#Win7 functions
+@ stdcall CloseGestureInfoHandle(ptr)
+@ stdcall CloseTouchInputHandle(ptr)
+@ stdcall ConsoleControl(long ptr long)
+@ stdcall ControlMagnification(long ptr)
 
 #Win8 functions
 @ stdcall GetDisplayAutoRotationPreferences(ptr)

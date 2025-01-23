@@ -12,12 +12,13 @@ spec2def(ntext.dll ntext.spec ADD_IMPORTLIB)
 
 set(baseaddress_ntext     0x7C910000)	
 
+
 list(APPEND SOURCE
 	crypt.c
     main.c
 	sqm.c
 	misc.c
-	csr/api.c
+	csr/api.c	
 	csr/capture.c	
 	etw/etw.c	
     etw/trace.c	####### this is a only test ########
@@ -36,7 +37,6 @@ list(APPEND SOURCE
 	rtl/critical.c
 	rtl/environ.c
 	rtl/error.c
-	rtl/extfeatures.c
 	rtl/exception.c
 	rtl/heap.c
 	rtl/hooks.c
@@ -67,6 +67,7 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/ntext_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/ntext.def)
 	
+	
 if(ARCH STREQUAL "amd64")
     list(APPEND SOURCE
         rtl/amd64/dynfntbl.c
@@ -85,7 +86,7 @@ if(MSVC)
     add_target_link_flags(ntext "/RELEASE")
 endif()
 
-target_link_libraries(ntext uuid ${PSEH_LIB})
+target_link_libraries(ntext libcntpr uuid ${PSEH_LIB})
 
 add_importlibs(ntext ntdll)
 

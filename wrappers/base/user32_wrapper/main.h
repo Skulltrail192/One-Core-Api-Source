@@ -658,3 +658,56 @@ SystemParametersInfoWInternal(
 	UINT uiParam,
 	PVOID pvParam,
 	UINT fWinIni);
+
+// Definitions of prototype functions for get address
+	
+typedef BOOL (WINAPI *AddClipboardFormatListenerFuncPtr)(
+    HWND);	
+	
+typedef BOOL (WINAPI *CalculatePopupWindowPositionFuncPtr)(
+    const POINT *,
+	const SIZE  *,
+	UINT,
+	RECT *,
+	RECT *);	
+
+typedef BOOL (WINAPI *CancelShutdownFuncPtr)(
+    VOID);
+
+typedef BOOL (WINAPI *ChangeWindowMessageFilterFuncPtr)(
+    UINT,
+	DWORD);
+	
+typedef BOOL (WINAPI *ChangeWindowMessageFilterExFuncPtr)(
+    HWND,
+	UINT,
+	DWORD,
+	PCHANGEFILTERSTRUCT);
+	
+typedef NTSTATUS (WINAPI *CheckDesktopByThreadIdFuncPtr)(
+    ULONG);	
+	
+typedef BOOL (WINAPI *CheckWindowThreadDesktopFuncPtr)(
+    HWND,
+	DWORD,
+	ULONG);	
+	
+typedef BOOL (WINAPI *CheckWindowThreadDesktopFuncPtr)(
+    HWND,
+	DWORD,
+	ULONG);
+	
+typedef BOOL (WINAPI *CloseGestureInfoHandleFuncPtr)(
+    HGESTUREINFO);
+
+typedef BOOL (WINAPI *CloseTouchInputHandleFuncPtr)(
+    HTOUCHINPUT);
+	
+typedef BOOL (WINAPI *ConsoleControlFuncPtr)(
+    CONSOLECONTROL,
+	PVOID,
+	ULONG);
+	
+typedef BOOL (WINAPI *ControlMagnificationFuncPtr)(
+    BOOL,
+	PVOID);	

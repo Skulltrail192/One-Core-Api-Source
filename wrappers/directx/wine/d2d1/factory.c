@@ -18,6 +18,7 @@
 
 #define D2D1_INIT_GUID
 #include "d2d1_private.h"
+#include "stdio.h"
 
 #include "xmllite.h"
 #include "wine/list.h"
@@ -853,7 +854,7 @@ static HRESULT parse_effect_inputs(IXmlReader *reader, struct d2d_effect_registr
 
             if (FAILED(hr = parse_effect_get_attribute(reader, L"name", &name))) return hr;
 
-            swprintf(buffW, ARRAY_SIZE(buffW), L"%lu", input_count);
+            swprintf(buffW,  L"%lu", input_count);
             d2d_effect_subproperties_add(subproperties, buffW, input_count, D2D1_PROPERTY_TYPE_STRING, name);
             input_count++;
 
@@ -896,7 +897,7 @@ static HRESULT parse_effect_inputs(IXmlReader *reader, struct d2d_effect_registr
     /* Apply default value to a missing property. If both properties are missing, add them. */
     if (min_inputs != max_inputs)
     {
-        swprintf(buffW, ARRAY_SIZE(buffW), L"%lu", min_inputs ? min_inputs_value : max_inputs_value);
+        swprintf(buffW, L"%lu", min_inputs ? min_inputs_value : max_inputs_value);
         if (min_inputs)
             hr = d2d_effect_properties_add(effect->properties, L"MaxInputs", D2D1_PROPERTY_MAX_INPUTS, D2D1_PROPERTY_TYPE_UINT32, buffW);
         else
@@ -904,7 +905,7 @@ static HRESULT parse_effect_inputs(IXmlReader *reader, struct d2d_effect_registr
     }
     else if (!min_inputs)
     {
-        swprintf(buffW, ARRAY_SIZE(buffW), L"%lu", input_count);
+        swprintf(buffW, L"%lu", input_count);
         hr = d2d_effect_properties_add(effect->properties, L"MinInputs", D2D1_PROPERTY_MIN_INPUTS, D2D1_PROPERTY_TYPE_UINT32, buffW);
         if (SUCCEEDED(hr))
             hr = d2d_effect_properties_add(effect->properties, L"MaxInputs", D2D1_PROPERTY_MAX_INPUTS, D2D1_PROPERTY_TYPE_UINT32, buffW);
@@ -1598,7 +1599,7 @@ D2D1_COLOR_F WINAPI D2D1ConvertColorSpace(D2D1_COLOR_SPACE src_colour_space,
     return ret;
 }
 
-static bool get_config_key_u32(HKEY default_key, HKEY application_key, const char *name, uint32_t *value)
+static BOOL get_config_key_u32(HKEY default_key, HKEY application_key, const char *name, uint32_t *value)
 {
     DWORD type, size;
     uint32_t data;
